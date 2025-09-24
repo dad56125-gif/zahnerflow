@@ -31,7 +31,12 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(bash:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
