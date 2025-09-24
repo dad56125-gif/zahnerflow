@@ -27,6 +27,9 @@ logs/
 .env.test.local
 .env.production.local
 
+# 允许跟踪的环境变量模板文件
+!.env.example
+
 # IDE配置
 .vscode/
 .idea/
