@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - '@serialport/bindings-cpp'
+  - electron
+  - electron-winstaller
+  - esbuild

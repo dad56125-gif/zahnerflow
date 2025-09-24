@@ -1,0 +1,123 @@
+# 依赖目录
+node_modules/
+**/node_modules/
+
+# 锁文件
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# 构建产物
+dist/
+build/
+out/
+**/dist/
+**/build/
+**/out/
+
+# 日志文件
+logs/
+*.log
+**/*.log
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 测试覆盖率报告
+coverage/
+**/coverage/
+
+# 临时文件
+.tmp/
+.temp/
+*.tmp
+*.temp
+
+# 缓存文件
+.cache/
+*.cache
+
+# 归档文件
+archive/
+
+# 备份文件
+*.backup
+
+# Electron构建产物
+release/
+app/
+
+# 运行时文件
+*.pid
+*.seed
+*.pid.lock
+
+# npm调试日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# pnpm调试日志
+pnpm-debug.log*
+
+# TypeScript缓存
+*.tsbuildinfo
+
+# Vitest缓存
+.vitest/
+
+# ESLint缓存
+.eslintcache
+
+# Prettier缓存
+.prettierrc.cache
+
+# Playwright测试结果
+test-results/
+playwright-report/
+playwright/.cache/
+
+# 自动生成的文档
+docs/api/
+
+# 本地数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# Windows特定文件
+desktop.ini
+$RECYCLE.BIN/
+
+# 热重载文件
+*.hot-update.js
+*.hot-update.json
+
+# 开发工具配置
+.devcontainer/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# 部署相关
+.serverless/
+.vercel/
+
+# 其他
+.env.example
+.DS_Store

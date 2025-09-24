@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wait/Delay Node Configuration",
+  "description": "Configuration schema for the wait/delay node in ZahnerFlow",
+  "type": "object",
+  "required": ["duration"],
+  "properties": {
+    "duration": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 86400,
+      "default": 1.0,
+      "description": "Duration to wait in seconds (0.1s to 24 hours)",
+      "examples": [1, 5, 10, 60, 300]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200,
+      "default": "",
+      "description": "Optional description of the wait purpose",
+      "examples": [
+        "Stabilization period",
+        "Wait for temperature equilibration",
+        "Delay between measurements"
+      ]
+    },
+    "allow_cancel": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the wait can be cancelled by the user"
+    },
+    "progress_updates": {
+      "type": "boolean",
+      "default": true,
+      "description": "Send progress updates for waits longer than 10 seconds"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "duration": 5.0,
+      "description": "Stabilization wait",
+      "allow_cancel": true
+    },
+    {
+      "duration": 60.0,
+      "description": "Temperature equilibration",
+      "allow_cancel": false
+    }
+  ]
+}
