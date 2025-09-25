@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Subject, Observable } from 'rxjs';
 import { ConsoleDisplayManager } from '../common/console-display-manager.service';
 
@@ -15,8 +15,7 @@ export interface EventHandler {
 
 @Injectable()
 export class SimpleEventBus {
-  private readonly logger = new Logger(SimpleEventBus.name);
-  private readonly moduleName = 'SimpleEventBus';
+    private readonly moduleName = 'SimpleEventBus';
   private subjects = new Map<string, Subject<EventPayload>>();
   private handlers = new Map<string, EventHandler[]>();
 
@@ -39,7 +38,7 @@ export class SimpleEventBus {
     };
 
     if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableDebug')) {
-      this.logger.debug(`Emitting event: ${eventType}`, {
+      this.consoleDisplayManager.log(this.moduleName, 'enableDebug', `Emitting event: ${eventType}`, {
         eventType,
         timestamp: event.timestamp,
         hasContext: !!context,
@@ -88,7 +87,7 @@ export class SimpleEventBus {
     this.handlers.get(eventType)!.push(handler);
 
     if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableDebug')) {
-      this.logger.debug(`Registered handler for event: ${eventType}`, {
+      this.consoleDisplayManager.log(this.moduleName, 'enableDebug', `Registered handler for event: ${eventType}`, {
         eventType,
         handlerCount: this.handlers.get(eventType)!.length
       });
@@ -117,7 +116,7 @@ export class SimpleEventBus {
       if (index > -1) {
         handlers.splice(index, 1);
         if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableDebug')) {
-          this.logger.debug(`Removed handler for event: ${eventType}`);
+          this.consoleDisplayManager.log(this.moduleName, 'enableDebug', `Removed handler for event: ${eventType}`);
         }
       }
     }
@@ -147,7 +146,7 @@ export class SimpleEventBus {
    * 销毁事件总线，清理资源
    */
   destroy(): void {
-    this.logger.log('Destroying event bus...');
+    this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Destroying event bus...');
 
     // 清理所有Subjects
     this.subjects.forEach(subject => {
@@ -158,7 +157,7 @@ export class SimpleEventBus {
     // 清理处理器
     this.handlers.clear();
 
-    this.logger.log('Event bus destroyed');
+    this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Event bus destroyed');
   }
 
   /**
@@ -172,7 +171,7 @@ export class SimpleEventBus {
     }
 
     if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableDebug')) {
-      this.logger.debug(`Invoking ${handlers.length} handlers for event: ${event.type}`);
+      this.consoleDisplayManager.log(this.moduleName, 'enableDebug', `Invoking ${handlers.length} handlers for event: ${event.type}`);
     }
 
     // 异步调用所有处理器，不等待结果
@@ -183,7 +182,7 @@ export class SimpleEventBus {
           const result = (handler as Function)(event);
           if (result instanceof Promise) {
             result.catch(error => {
-              this.logger.error(`Event handler failed for event ${event.type}:`, error);
+              this.consoleDisplayManager.log(this.moduleName, 'enableError', `Event handler failed for event ${event.type}:`, error);
             });
           }
         }
@@ -192,12 +191,12 @@ export class SimpleEventBus {
           const result = handler.handle(event);
           if (result instanceof Promise) {
             result.catch(error => {
-              this.logger.error(`Event handler failed for event ${event.type}:`, error);
+              this.consoleDisplayManager.log(this.moduleName, 'enableError', `Event handler failed for event ${event.type}:`, error);
             });
           }
         }
       } catch (error) {
-        this.logger.error(`Event handler threw error for event ${event.type}:`, error);
+        this.consoleDisplayManager.log(this.moduleName, 'enableError', `Event handler threw error for event ${event.type}:`, error);
       }
     });
   }

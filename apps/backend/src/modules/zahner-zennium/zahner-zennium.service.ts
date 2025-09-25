@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { DeviceStatus, CalibrationResult, ModuleStatus } from '../../interfaces/module-interfaces';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -13,7 +13,6 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   readonly version = '2.4.0';
   readonly dependencies = ['HttpModule'];
 
-  private readonly logger = new Logger(ZahnerZenniumService.name);
   private readonly moduleName = 'ZahnerZenniumService';
   private deviceConnected: boolean = false;
 
@@ -26,7 +25,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-      this.logger.log('ZahnerZenniumService 初始化...');
+      this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'ZahnerZenniumService 初始化...');
     }
 
     try {
@@ -35,11 +34,11 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       this.deviceConnected = true;
 
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.logger.log('Zahner设备连接成功');
+        this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner设备连接成功');
       }
     } catch (error) {
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-        this.logger.error(`Zahner设备连接失败: ${error.message}`);
+        this.consoleDisplayManager.log(this.moduleName, 'enableError', `Zahner设备连接失败: ${error.message}`);
       }
     }
   }
@@ -49,11 +48,11 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.zahnerDeviceService.disconnect();
         if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-          this.logger.log('Zahner设备断开连接');
+          this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner设备断开连接');
         }
       } catch (error) {
         if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-          this.logger.error(`设备断开连接失败: ${error.message}`);
+          this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备断开连接失败: ${error.message}`);
         }
       }
     }
@@ -104,7 +103,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
 
       return;
     } catch (error) {
-      this.logger.error(`设备连接失败: ${error.message}`);
+      this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备连接失败: ${error.message}`);
 
       // 发送设备连接失败事件
       this.eventBus.emit('device.error', {
@@ -139,7 +138,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       this.deviceConnected = false;
       return;
     } catch (error) {
-      this.logger.error(`设备断开失败: ${error.message}`);
+      this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备断开失败: ${error.message}`);
       throw error;
     }
   }
@@ -149,7 +148,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   async startup(parameters: Record<string, any> = {}): Promise<any> {
     try {
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.logger.log('正在启动 Zahner 设备服务...');
+        this.consoleDisplayManager.log(this.moduleName, 'enableLog', '正在启动 Zahner 设备服务...');
       }
 
       const targetEndpoint = parameters.host || process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000';
@@ -165,7 +164,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       });
 
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.logger.log('Zahner 设备服务启动成功');
+        this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner 设备服务启动成功');
       }
 
       return {
@@ -174,7 +173,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       };
     } catch (error) {
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-        this.logger.error(`设备服务启动失败: ${error.message}`);
+        this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备服务启动失败: ${error.message}`);
       }
 
       return {
@@ -188,7 +187,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   async shutdown(): Promise<any> {
     try {
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.logger.log('正在关闭 Zahner 设备服务...');
+        this.consoleDisplayManager.log(this.moduleName, 'enableLog', '正在关闭 Zahner 设备服务...');
       }
 
       if (this.deviceConnected) {
@@ -203,7 +202,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       });
 
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.logger.log('Zahner 设备服务关闭成功');
+        this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner 设备服务关闭成功');
       }
 
       return {
@@ -212,7 +211,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       };
     } catch (error) {
       if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-        this.logger.error(`设备服务关闭失败: ${error.message}`);
+        this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备服务关闭失败: ${error.message}`);
       }
 
       return {
@@ -310,7 +309,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.zahnerDeviceService.getDeviceOptions();
     } catch (error) {
-      this.logger.warn(`获取设备选项失败: ${error.message}`);
+      this.consoleDisplayManager.log(this.moduleName, 'enableWarn', `获取设备选项失败: ${error.message}`);
       return {
         potentiostat_modes: ['POTMODE_POTENTIOSTATIC', 'POTMODE_GALVANOSTATIC', 'POTMODE_PSEUDOGALVANOSTATIC'],
         scan_directions: ['START_TO_MAX', 'START_TO_MIN'],
@@ -329,7 +328,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.zahnerDeviceService.healthCheck();
     } catch (error) {
-      this.logger.error(`连接检查失败: ${error.message}`);
+      this.consoleDisplayManager.log(this.moduleName, 'enableError', `连接检查失败: ${error.message}`);
       return false;
     }
   }

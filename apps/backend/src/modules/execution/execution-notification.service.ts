@@ -1,10 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SimpleEventBus } from '../../notification/simple-event-bus.service';
 
 @Injectable()
 export class ExecutionNotificationService {
-  private readonly logger = new Logger(ExecutionNotificationService.name);
-
+  
   constructor(
     private readonly eventBus: SimpleEventBus,
   ) {
@@ -30,9 +29,10 @@ export class ExecutionNotificationService {
   }
 
   // 发送执行完成通知
-  sendExecutionCompleteNotification(executionId: string, success: boolean, duration: number): void {
+  sendExecutionCompleteNotification(executionId: string, success: boolean, duration: number, workflowId?: string): void {
     this.eventBus.emit('workflow.completed', {
       executionId,
+      workflowId, // 添加workflowId
       success,
       duration,
       timestamp: new Date(),

@@ -1,9 +1,10 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { IExecutionModule, ExecutionResult, ModuleStatus } from '../../interfaces/module-interfaces';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
 import { SimpleEventBus } from '../../notification/simple-event-bus.service';
 import { ExecutionNotificationService } from './execution-notification.service';
+import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 
 @Injectable()
 export class ExecutionService implements IExecutionModule, OnModuleInit {
@@ -11,16 +12,23 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   readonly version = '1.1.0';
   readonly dependencies = [];
 
-  protected logger = new Logger(ExecutionService.name);
   private executionCounter = 0;
   private currentExecutionId: string | null = null;
   private currentNodeId: string | null = null;
+
+  // 执行上下文管理 - 存储workflowId引用
+  private executionContexts = new Map<string, {
+    workflowId: string;
+    executionId: string;
+    startTime: Date;
+  }>();
 
   constructor(
     protected readonly zahnerService: ZahnerZenniumService,
     protected readonly workflowService: WorkflowService,
     protected readonly eventBus: SimpleEventBus,
     protected readonly executionNotificationService: ExecutionNotificationService,
+    private readonly consoleManager: ConsoleDisplayManager,
   ) {
     // 监听设备事件，发送节点和工作流通知
     this.setupDeviceEventListeners();
@@ -38,18 +46,19 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   private setupDeviceEventListeners(): void {
     // 监听测量完成事件，发送节点完成通知
     this.eventBus.on('measurement.completed').subscribe((event) => {
-      this.logger.log('收到设备measurement.completed事件，发送节点完成通知', {
+      this.consoleManager.log('ExecutionService', 'enableLog', '收到设备measurement.completed事件，发送节点完成通知', {
         measurementType: event.data.measurementType
       });
 
-      // 从事件上下文中获取节点信息
       const nodeId = event.data.context?.nodeId || this.getCurrentNodeId();
       const executionId = event.data.context?.executionId || this.getCurrentExecutionId();
+      const workflowId = this.getCurrentWorkflowId(executionId); // 关键修复！
 
       // 发送节点完成通知
       this.eventBus.emit('node.completed', {
         nodeId,
         executionId,
+        workflowId, // 添加workflowId
         nodeType: event.data.measurementType,
         result: event.data.result,
         timestamp: new Date(),
@@ -60,12 +69,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       this.eventBus.emit('workflow.node.completed', {
         nodeId,
         executionId,
+        workflowId, // 添加workflowId
         result: event.data.result,
         timestamp: new Date(),
         context: { source: 'execution-service' }
       });
 
-      this.logger.log('发送 workflow.node.completed 事件', {
+      this.consoleManager.log('ExecutionService', 'enableLog', '发送 workflow.node.completed 事件', {
         nodeId,
         executionId,
         result: event.data.result
@@ -74,17 +84,19 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     // 监听测量失败事件，发送节点失败通知
     this.eventBus.on('measurement.failed').subscribe((event) => {
-      this.logger.error('收到设备measurement.failed事件，发送节点失败通知', {
+      this.consoleManager.log('ExecutionService', 'enableError', '收到设备measurement.failed事件，发送节点失败通知', {
         measurementType: event.data.measurementType,
         error: event.data.error
       });
 
       const nodeId = event.data.context?.nodeId || this.getCurrentNodeId();
       const executionId = event.data.context?.executionId || this.getCurrentExecutionId();
+      const workflowId = this.getCurrentWorkflowId(executionId); // 关键修复！
 
       this.eventBus.emit('node.failed', {
         nodeId,
         executionId,
+        workflowId, // 添加workflowId
         error: event.data.error,
         timestamp: new Date(),
         context: { source: 'execution-service' }
@@ -93,12 +105,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       this.eventBus.emit('workflow.node.failed', {
         nodeId,
         executionId,
+        workflowId, // 添加workflowId
         error: event.data.error,
         timestamp: new Date(),
         context: { source: 'execution-service' }
       });
 
-      this.logger.error('发送 workflow.node.failed 事件', {
+      this.consoleManager.log('ExecutionService', 'enableError', '发送 workflow.node.failed 事件', {
         nodeId,
         executionId,
         error: event.data.error
@@ -111,6 +124,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const executionId = this.generateExecutionId();
     this.currentExecutionId = executionId; // 设置当前执行ID
     const startTime = Date.now();
+
+    // 保存执行上下文 - 关键修复！
+    this.executionContexts.set(executionId, {
+      workflowId,
+      executionId,
+      startTime: new Date()
+    });
 
     // 发送执行开始通知
     this.executionNotificationService.sendExecutionStartNotification(executionId, workflowId);
@@ -130,7 +150,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         throw new Error(`Workflow ${workflowId} not found`);
       }
 
-      this.logger.log(`获取到工作流定义: ${workflowId}`, {
+      this.consoleManager.log('ExecutionService', 'enableLog', `获取到工作流定义: ${workflowId}`, {
         nodesCount: workflow.definition.nodes?.length || 0,
         hasNodes: !!(workflow.definition.nodes && workflow.definition.nodes.length > 0)
       });
@@ -139,7 +159,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       const duration = Date.now() - startTime;
 
       // 发送执行完成通知
-      this.executionNotificationService.sendExecutionCompleteNotification(executionId, true, duration);
+      this.executionNotificationService.sendExecutionCompleteNotification(executionId, true, duration, workflowId);
 
       // 事件驱动架构：发送工作流完成事件
       this.eventBus.emit('workflow.completed', {
@@ -162,7 +182,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       const duration = Date.now() - startTime;
 
       // 发送执行失败通知
-      this.executionNotificationService.sendExecutionCompleteNotification(executionId, false, duration);
+      this.executionNotificationService.sendExecutionCompleteNotification(executionId, false, duration, workflowId);
 
       // 事件驱动架构：发送工作流失败事件
       this.eventBus.emit('workflow.failed', {
@@ -182,6 +202,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         error: error instanceof Error ? error.message : String(error),
         results: [], // 错误情况下没有完成的节点
       };
+    } finally {
+      // 执行结束后清理上下文
+      this.executionContexts.delete(executionId);
     }
   }
 
@@ -190,18 +213,19 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const totalNodes = nodes.length;
     const completedNodes: string[] = [];
 
-    this.logger.log(`执行工作流节点 - 总节点数: ${totalNodes}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `执行工作流节点 - 总节点数: ${totalNodes}`);
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       this.currentNodeId = node.id; // 设置当前节点ID
 
-      this.logger.log(`开始执行节点 ${i + 1}/${totalNodes}: ${node.id} (类型: ${node.type})`);
+      this.consoleManager.log('ExecutionService', 'enableLog', `开始执行节点 ${i + 1}/${totalNodes}: ${node.id} (类型: ${node.type})`);
 
       // 事件驱动架构：发送节点开始事件
       this.eventBus.emit('node.started', {
         nodeId: node.id,
         executionId,
+        workflowId: this.getCurrentWorkflowId(executionId), // 添加workflowId
         nodeType: node.type,
         timestamp: new Date(),
         context: { source: 'execution-service' }
@@ -210,12 +234,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       await this.executeNode(executionId, node);
       completedNodes.push(node.id);
 
-      this.logger.log(`完成执行节点: ${node.id}`);
+      this.consoleManager.log('ExecutionService', 'enableLog', `完成执行节点: ${node.id}`);
 
       // 事件驱动架构：发送节点完成事件
       this.eventBus.emit('node.completed', {
         nodeId: node.id,
         executionId,
+        workflowId: this.getCurrentWorkflowId(executionId), // 添加workflowId
         nodeType: node.type,
         result: true,
         timestamp: new Date(),
@@ -223,7 +248,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       });
     }
 
-    this.logger.log(`工作流节点执行完成 - 完成节点数: ${completedNodes.length}/${totalNodes}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `工作流节点执行完成 - 完成节点数: ${completedNodes.length}/${totalNodes}`);
     return completedNodes;
   }
 
@@ -274,7 +299,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         break;
 
       default:
-        this.logger.warn(`Unknown node type: ${nodeType}`);
+        this.consoleManager.log('ExecutionService', 'enableWarn', `Unknown node type: ${nodeType}`);
     }
   }
 
@@ -350,21 +375,21 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private async executeDelay(executionId: string, node: any): Promise<void> {
     const delayMs = node.data?.duration || 1000;
-    this.logger.log(`Executing delay node ${node.id} for ${delayMs}ms`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `Executing delay node ${node.id} for ${delayMs}ms`);
 
     await new Promise(resolve => setTimeout(resolve, delayMs));
-    this.logger.log(`Delay completed for node ${node.id}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `Delay completed for node ${node.id}`);
   }
 
   private async executeLoopStart(executionId: string, node: any): Promise<void> {
     const parameters = node.data?.parameters || {};
-    this.logger.log(`Loop start: ${parameters.loop_id}, count: ${parameters.loop_count}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `Loop start: ${parameters.loop_id}, count: ${parameters.loop_count}`);
     // 循环逻辑在工作流层面处理，这里只记录日志
   }
 
   private async executeLoopEnd(executionId: string, node: any): Promise<void> {
     const parameters = node.data?.parameters || {};
-    this.logger.log(`Loop end: ${parameters.loop_id}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `Loop end: ${parameters.loop_id}`);
     // 循环逻辑在工作流层面处理，这里只记录日志
   }
 
@@ -385,6 +410,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private getCurrentNodeId(): string {
     return this.currentNodeId || 'unknown';
+  }
+
+  private getCurrentWorkflowId(executionId: string): string {
+    const context = this.executionContexts.get(executionId);
+    return context?.workflowId || 'unknown';
   }
 
   private getCurrentExecutionId(): string {

@@ -6,6 +6,7 @@ import { ZahnerDeviceService } from '../../devices/zahner-device.service';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { ZahnerZenniumModule } from '../zahner-zennium/zahner-zennium.module';
 import { NotificationModule } from '../../notification/notification.module';
+import { CommonModule } from '../../common/common.module';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
@@ -13,6 +14,7 @@ import { HttpModule } from '@nestjs/axios';
     WorkflowModule,
     ZahnerZenniumModule,
     forwardRef(() => NotificationModule),
+    CommonModule,
     HttpModule,
   ],
   controllers: [ExecutionController],

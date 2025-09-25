@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SimpleEventBus, EventPayload, EventHandler } from '../simple-event-bus.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
+import { WorkflowGateway } from '../../gateways/workflow.gateway';
 
 export enum NodeStatus {
   READY = 'ready',
@@ -21,6 +22,7 @@ export class StateEventHandler implements EventHandler {
   constructor(
     private readonly eventBus: SimpleEventBus,
     private readonly consoleManager: ConsoleDisplayManager,
+    private readonly workflowGateway: WorkflowGateway,
   ) {
     // 注册事件处理器
     this.registerEventHandlers();
@@ -188,7 +190,7 @@ export class StateEventHandler implements EventHandler {
 
   // 节点状态处理
   private async handleNodeStarted(event: EventPayload): Promise<void> {
-    const { nodeId, executionId, nodeType } = event.data;
+    const { nodeId, executionId, nodeType, workflowId } = event.data;
 
     const previousState = this.nodeStates.get(nodeId);
     const newState = NodeStatus.RUNNING;
@@ -217,16 +219,26 @@ export class StateEventHandler implements EventHandler {
     this.eventBus.emit('node.state.changed', {
       nodeId,
       executionId,
+      workflowId, // 添加workflowId
       nodeType,
       fromState: previousState || 'unknown',
       toState: newState,
       timestamp: event.timestamp,
       context: event.context
     });
+
+    // 直接发送状态更新到前端 - 关键修复！
+    if (workflowId) {
+      this.workflowGateway.sendNodeStatusUpdate(workflowId, nodeId, newState, {
+        nodeType,
+        fromState: previousState || 'unknown',
+        toState: newState
+      });
+    }
   }
 
   private async handleNodeCompleted(event: EventPayload): Promise<void> {
-    const { nodeId, executionId, duration } = event.data;
+    const { nodeId, executionId, duration, workflowId } = event.data;
 
     const previousState = this.nodeStates.get(nodeId);
     const newState = NodeStatus.COMPLETED;
@@ -255,16 +267,26 @@ export class StateEventHandler implements EventHandler {
     this.eventBus.emit('node.state.changed', {
       nodeId,
       executionId,
+      workflowId, // 添加workflowId
       fromState: previousState || 'unknown',
       toState: newState,
       duration,
       timestamp: event.timestamp,
       context: event.context
     });
+
+    // 直接发送状态更新到前端 - 关键修复！
+    if (workflowId) {
+      this.workflowGateway.sendNodeStatusUpdate(workflowId, nodeId, newState, {
+        fromState: previousState || 'unknown',
+        toState: newState,
+        duration
+      });
+    }
   }
 
   private async handleNodeFailed(event: EventPayload): Promise<void> {
-    const { nodeId, executionId, error, duration } = event.data;
+    const { nodeId, executionId, error, duration, workflowId } = event.data;
 
     const previousState = this.nodeStates.get(nodeId);
     const newState = NodeStatus.FAILED;
@@ -294,6 +316,7 @@ export class StateEventHandler implements EventHandler {
     this.eventBus.emit('node.state.changed', {
       nodeId,
       executionId,
+      workflowId, // 添加workflowId
       fromState: previousState || 'unknown',
       toState: newState,
       error,
@@ -301,6 +324,16 @@ export class StateEventHandler implements EventHandler {
       timestamp: event.timestamp,
       context: event.context
     });
+
+    // 直接发送状态更新到前端 - 关键修复！
+    if (workflowId) {
+      this.workflowGateway.sendNodeStatusUpdate(workflowId, nodeId, newState, {
+        fromState: previousState || 'unknown',
+        toState: newState,
+        error,
+        duration
+      });
+    }
   }
 
   // 设备状态处理

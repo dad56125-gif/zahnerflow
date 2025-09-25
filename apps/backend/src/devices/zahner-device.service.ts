@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, timeout } from 'rxjs';
 import { BaseDeviceService } from './base-device.service';
 import { SimpleEventBus } from '../notification/simple-event-bus.service';
+import { ConsoleDisplayManager } from '../common/console-display-manager.service';
 
 @Injectable()
 export class ZahnerDeviceService extends BaseDeviceService {
@@ -12,6 +13,7 @@ export class ZahnerDeviceService extends BaseDeviceService {
   constructor(
     private readonly httpService: HttpService,
     eventBus: SimpleEventBus,
+    private readonly consoleManager: ConsoleDisplayManager,
   ) {
     super(eventBus, 'zahner-zennium');
     this.endpoint = process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000';
@@ -135,7 +137,7 @@ export class ZahnerDeviceService extends BaseDeviceService {
 
       return response.data;
     } catch (error) {
-      this.logger.warn(`获取设备选项失败: ${error.message}`);
+      this.consoleManager.log('ZahnerDeviceService', 'enableWarn', `获取设备选项失败: ${error.message}`);
       return {
         potentiostat_modes: ['POTMODE_POTENTIOSTATIC', 'POTMODE_GALVANOSTATIC', 'POTMODE_PSEUDOGALVANOSTATIC'],
         scan_directions: ['START_TO_MAX', 'START_TO_MIN'],

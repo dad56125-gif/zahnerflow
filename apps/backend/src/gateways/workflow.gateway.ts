@@ -8,7 +8,7 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ConsoleDisplayManager } from '../common/console-display-manager.service';
 
@@ -33,8 +33,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   @WebSocketServer()
   server: Server;
 
-  private logger: Logger = new Logger('WorkflowGateway');
-  private connectedClients = new Map<string, ConnectedClient>();
+    private connectedClients = new Map<string, ConnectedClient>();
   private messageCounter = 0;
 
   constructor(
@@ -173,10 +172,17 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       workflowId,
       nodeId,
       status,
-      data,
+      data: {
+        ...data,
+        // 过滤掉executionId，前端不需要
+        executionId: undefined,
+        nodeType: data?.nodeType,
+        error: data?.error,
+        result: data?.result
+      },
       timestamp: new Date(),
     };
-    
+
     this.server.to(`workflow:${workflowId}`).emit('nodeStatusUpdate', message);
     this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Sent node status update: ${workflowId}/${nodeId} -> ${status}`);
   }
@@ -186,14 +192,15 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     const message = {
       messageId: this.generateMessageId(),
       workflowId,
-      executionId,
+      // 过滤掉executionId，前端不需要
+      // executionId,
       status,
       progress,
       timestamp: new Date(),
     };
-    
+
     this.server.to(`workflow:${workflowId}`).emit('executionUpdate', message);
-    this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Sent execution update: ${executionId} -> ${status} (${progress}%)`);
+    this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Sent execution update: ${workflowId} -> ${status} (${progress}%)`);
   }
 
   // 发送节点完成事件
