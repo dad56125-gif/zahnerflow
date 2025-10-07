@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
+﻿import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ExecutionService } from './execution.service';
 import { ExecutionResult, ExecutionStatus } from '../../interfaces/module-interfaces';
 
@@ -40,7 +40,16 @@ export class ExecutionController {
 
   @Get()
   async getAllExecutions(): Promise<ExecutionStatus[]> {
-    // 这里应该从数据库获取所有执行状态
+    // TODO: 从数据库获取所有执行状态
     return [];
   }
+
+  @Get('_hooks')
+  @HttpCode(HttpStatus.OK)
+  getHookRules() {
+    return { items: this.executionService.getLoadedHookRules() };
+  }
+
 }
+
+

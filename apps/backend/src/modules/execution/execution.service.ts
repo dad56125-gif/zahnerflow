@@ -5,6 +5,18 @@ import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
 import { SimpleEventBus } from '../../notification/simple-event-bus.service';
 import { ExecutionNotificationService } from './execution-notification.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
+import { DbService } from '../../db/db.service';
+
+type HookRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  loopBinding: { loopNodeId: string };
+  trigger: { type: 'after_node' | 'before_node'; nodeSelector: { id?: string; type?: string } };
+  cycle: { every: number; offset?: number };
+  limit?: { perIteration?: number; perRun?: number };
+  action: { type: 'insert_node'; placement: 'after' | 'before'; nodeTemplate: { type: string; params: Record<string, any> }; tag?: string; priority?: number };
+};
 
 @Injectable()
 export class ExecutionService implements IExecutionModule, OnModuleInit {
@@ -15,6 +27,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   private executionCounter = 0;
   private currentExecutionId: string | null = null;
   private currentNodeId: string | null = null;
+  private hookRules: HookRule[] = [];
 
   // 执行上下文管理 - 存储workflowId引用
   private executionContexts = new Map<string, {
@@ -28,6 +41,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     protected readonly workflowService: WorkflowService,
     protected readonly eventBus: SimpleEventBus,
     protected readonly executionNotificationService: ExecutionNotificationService,
+    private readonly db: DbService,
     private readonly consoleManager: ConsoleDisplayManager,
   ) {
     // 监听设备事件，发送节点和工作流通知
@@ -41,6 +55,35 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       version: this.version,
       timestamp: new Date()
     });
+    this.loadHookRulesFromFile();
+  }
+
+  private loadHookRulesFromFile() {
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      const candidates: string[] = [];
+      if (process.env.HOOKS_JSON_PATH && process.env.HOOKS_JSON_PATH.trim()) {
+        const p = process.env.HOOKS_JSON_PATH;
+        candidates.push(path.isAbsolute(p) ? p : path.join(process.cwd(), p));
+      }
+      // repository-root/data/hooks/hooks.json relative to dist file
+      candidates.push(path.resolve(__dirname, '../../../data/hooks/hooks.json'));
+      // cwd fallback
+      candidates.push(path.join(process.cwd(), 'data', 'hooks', 'hooks.json'));
+
+      for (const hp of candidates) {
+        if (fs.existsSync(hp)) {
+          const raw = fs.readFileSync(hp, 'utf-8');
+          const parsed = JSON.parse(raw);
+          const arr = Array.isArray(parsed) ? parsed : [parsed];
+          this.hookRules = arr.filter((r: any) => !!r && r.enabled !== false);
+          break;
+        }
+      }
+    } catch {
+      this.hookRules = [];
+    }
   }
 
   private setupDeviceEventListeners(): void {
@@ -155,7 +198,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         hasNodes: !!(workflow.definition.nodes && workflow.definition.nodes.length > 0)
       });
 
-      const completedNodes = await this.executeNodes(executionId, workflow);
+      const completedNodes = await this.executeNodesV2(executionId, workflow);
       const duration = Date.now() - startTime;
 
       // 发送执行完成通知
@@ -208,6 +251,177 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     }
   }
 
+  // 新版执行：指令队列 + 循环栈 + Hook（after_node）
+  private async executeNodesV2(executionId: string, workflowDefinition: any): Promise<string[]> {
+    const original = workflowDefinition.definition?.nodes || [];
+    const queue: any[] = original.map((n: any) => ({ ...n }));
+    const completedNodes: string[] = [];
+    this.consoleManager.log('ExecutionService', 'enableLog', `执行工作流节点 - 初始节点数: ${queue.length}`);
+
+    // 构建 loop 边界（startIp -> endIp）
+    const bounds = this.buildLoopBoundaries(queue);
+    type LoopFrame = { loopNodeId: string; depth: number; startIp: number; endIp: number; iteration: number; total: number };
+    const frames: LoopFrame[] = [];
+    const insertedMarks = new Set<string>();
+
+    let ip = 0;
+    while (ip < queue.length) {
+      const node = queue[ip];
+      this.currentNodeId = node.id;
+
+      // 进入 loop_start：若不在栈顶则压栈
+      if (node.type === 'loop_start') {
+        const { loop_id, loop_count } = this.getLoopParams(node);
+        const endIp = bounds.get(ip);
+        if (endIp != null) {
+          const top = frames[frames.length - 1];
+          if (!top || top.startIp !== ip) {
+            frames.push({ loopNodeId: String(loop_id || node.id), depth: frames.length + 1, startIp: ip, endIp, iteration: 1, total: Math.max(1, Number(loop_count) || 1) });
+          }
+        }
+      }
+
+      // 节点开始事件
+      this.consoleManager.log('ExecutionService', 'enableLog', `开始执行节点: #${ip + 1}/${queue.length} ${node.id} (type=${node.type})`);
+      this.eventBus.emit('node.started', {
+        nodeId: node.id,
+        executionId,
+        workflowId: this.getCurrentWorkflowId(executionId),
+        nodeType: node.type,
+        timestamp: new Date(),
+        context: { source: 'execution-service' }
+      });
+
+      // 执行节点
+      await this.executeNode(executionId, node);
+      completedNodes.push(node.id);
+
+      // after_node Hook：仅对非 hook 来源节点
+      if ((node as any).origin !== 'hook') {
+        await this.evaluateHooks('after_node', executionId, queue, ip, frames, insertedMarks);
+      }
+
+      this.consoleManager.log('ExecutionService', 'enableLog', `完成执行节点: ${node.id}`);
+      this.eventBus.emit('node.completed', {
+        nodeId: node.id,
+        executionId,
+        workflowId: this.getCurrentWorkflowId(executionId),
+        nodeType: node.type,
+        result: true,
+        timestamp: new Date(),
+        context: { source: 'execution-service' }
+      });
+
+      // 循环尾部处理
+      if (node.type === 'loop_end') {
+        const top = frames[frames.length - 1];
+        if (top && top.endIp === ip) {
+          if (top.iteration < top.total) {
+            top.iteration += 1;
+            ip = top.startIp; // 回到 loop_start（循环体首个节点将是 startIp+1）
+          } else {
+            frames.pop();
+          }
+        }
+      }
+
+      ip += 1;
+    }
+
+    this.consoleManager.log('ExecutionService', 'enableLog', `工作流节点执行完成 - 完成节点数 ${completedNodes.length}/${queue.length}`);
+    return completedNodes;
+  }
+
+  // 读取循环参数（兼容 data.parameters 与 config）
+  private getLoopParams(node: any): { loop_id?: string; loop_count?: number } {
+    const p = node?.data?.parameters || node?.config || {};
+    return {
+      loop_id: p.loop_id,
+      loop_count: typeof p.loop_count === 'number' ? p.loop_count : (p.loop_count ? Number(p.loop_count) : undefined)
+    };
+  }
+
+  // 扫描并配对 loop_start / loop_end，返回 startIp->endIp 映射
+  private buildLoopBoundaries(nodes: any[]): Map<number, number> {
+    const map = new Map<number, number>();
+    const stack: Array<{ ip: number; loop_id?: string }> = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (n?.type === 'loop_start') {
+        const { loop_id } = this.getLoopParams(n);
+        stack.push({ ip: i, loop_id });
+      } else if (n?.type === 'loop_end') {
+        const { loop_id } = this.getLoopParams(n);
+        for (let s = stack.length - 1; s >= 0; s--) {
+          if ((stack[s].loop_id || '') === (loop_id || '')) {
+            const start = stack[s].ip;
+            map.set(start, i);
+            stack.splice(s, 1);
+            break;
+          }
+        }
+      }
+    }
+    return map;
+  }
+
+  private async evaluateHooks(
+    trigger: 'after_node' | 'before_node',
+    executionId: string,
+    queue: any[],
+    ip: number,
+    frames: Array<{ loopNodeId: string; depth: number; startIp: number; endIp: number; iteration: number; total: number }>,
+    marks: Set<string>,
+  ): Promise<void> {
+    if (!this.hookRules || this.hookRules.length === 0) return;
+    const cur = queue[ip];
+    const workflowId = this.getCurrentWorkflowId(executionId);
+    for (const rule of this.hookRules) {
+      if (!rule?.enabled) continue;
+      if (rule.trigger?.type !== trigger) continue;
+      const frame = frames.find(f => f.loopNodeId === rule.loopBinding?.loopNodeId);
+      if (!frame) continue;
+      const sel = rule.trigger.nodeSelector || {};
+      if (sel.id && sel.id !== cur.id) continue;
+      if (sel.type && sel.type !== cur.type) continue;
+      const every = Math.max(1, Number(rule.cycle?.every) || 1);
+      const offset = Number(rule.cycle?.offset) || 0;
+      if (((frame.iteration - offset) % every) !== 0) continue;
+      const key = `${executionId}|${frame.loopNodeId}|${frame.iteration}|${rule.id}|${rule.action?.tag || ''}`;
+      if (marks.has(key)) {
+        const sup = { ruleId: rule.id, workflowId, targetNodeId: cur.id, loopContext: { loopNodeId: frame.loopNodeId, depth: frame.depth, iteration: frame.iteration }, reason: 'duplicate' };
+        this.db.emit('hook_suppressed', sup);
+        this.eventBus.emit('hook.insert.suppressed', sup);
+        continue;
+      }
+      const planned = { ruleId: rule.id, workflowId, targetNodeId: cur.id, loopContext: { loopNodeId: frame.loopNodeId, depth: frame.depth, iteration: frame.iteration } };
+      this.db.emit('hook_debug', { stage: 'before_insert', ...planned });
+      this.db.emit('hook_insert_planned', planned);
+      this.eventBus.emit('hook.insert.planned', planned);
+      const tmpNode = this.materializeNode(rule.action?.nodeTemplate);
+      (tmpNode as any).origin = 'hook';
+      (tmpNode as any).meta = { tag: rule.action?.tag, fromRule: rule.id };
+      if (rule.action?.placement === 'before') {
+        queue.splice(ip, 0, tmpNode);
+      } else {
+        queue.splice(ip + 1, 0, tmpNode);
+      }
+      marks.add(key);
+      const applied = { ruleId: rule.id, workflowId, targetNodeId: cur.id, insertedNodeId: tmpNode.id, loopContext: { loopNodeId: frame.loopNodeId, depth: frame.depth, iteration: frame.iteration } };
+      this.db.emit('hook_insert_applied', applied);
+      this.eventBus.emit('hook.insert.applied', applied);
+    }
+  }
+
+  private materializeNode(tpl: { type: string; params: Record<string, any> } | undefined): any {
+    const { type, params } = tpl || { type: 'eis_potentiostatic', params: {} } as any;
+    const id = `node_tmp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const data: any = { parameters: params };
+    if (type === 'delay' && params && typeof (params as any).duration !== 'undefined') {
+      data.duration = (params as any).duration;
+    }
+    return { id, type, name: `hook:${type}`, data };
+  }
   private async executeNodes(executionId: string, workflowDefinition: any): Promise<string[]> {
     const nodes = workflowDefinition.definition.nodes || [];
     const totalNodes = nodes.length;
@@ -476,5 +690,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       status: 'unknown',
       message: '状态查询已发送到事件总线，详细状态由 StateEventHandler 管理'
     };
+  }
+
+  // 调试：查看已加载的 Hook 规则
+  getLoadedHookRules(): any[] {
+    return Array.isArray(this.hookRules) ? this.hookRules : [];
   }
 }

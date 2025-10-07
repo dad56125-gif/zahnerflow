@@ -8,7 +8,7 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ConsoleDisplayManager } from '../common/console-display-manager.service';
 
@@ -22,11 +22,19 @@ interface ConnectedClient {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: [
+      'http://localhost:8081',
+      'http://localhost:8083',
+      'http://localhost:4173',
+      'http://localhost:3000',
+      'http://127.0.0.1:8081',
+      'http://127.0.0.1:8083',
+    ],
+    credentials: true,
   },
 })
 @Injectable()
-export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
   private static instances = 0;
   private static healthInterval: NodeJS.Timeout | null = null;
 
@@ -416,6 +424,13 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     
     // 广播健康状态
     this.broadcast('healthCheck', healthData);
+  }
+
+  onModuleDestroy() {
+    if (WorkflowGateway.healthInterval) {
+      clearInterval(WorkflowGateway.healthInterval);
+      WorkflowGateway.healthInterval = null;
+    }
   }
 
   /**

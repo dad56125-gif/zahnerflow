@@ -67,6 +67,22 @@ export class WorkflowController {
     return this.workflowService.validateWorkflow(definition);
   }
 
+  /**
+   * 批量更新节点参数
+   * body: { key: string; value: any; nodeType?: string }
+   */
+  @Post(':id/params/batch-update')
+  @HttpCode(HttpStatus.OK)
+  async batchUpdateNodeParam(
+    @Param('id') id: string,
+    @Body() body: { key: string; value: any; nodeType?: string },
+  ): Promise<Workflow> {
+    if (!body || !body.key) {
+      throw new Error('Missing parameter: key');
+    }
+    return this.workflowService.batchUpdateNodeParam(id, body.key, body.value, body.nodeType);
+  }
+
   @Get(':id/exists')
   @HttpCode(HttpStatus.OK)
   async workflowExists(@Param('id') id: string): Promise<{ exists: boolean }> {

@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "ownerName": "alice",
+      "individualName": "Cell-01",
+      "testType": "eis",
+      "prefix": "expA",
+      "cycle": 5,
+      "timestamp": "2025-10-04T15:49:26.346Z",
+      "filename": "expA-005-20251004-234926.dat",
+      "rel_path": "alice\\Cell-01\\eis"
+    }
+  ]
+}

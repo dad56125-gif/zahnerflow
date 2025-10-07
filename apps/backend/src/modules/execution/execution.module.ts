@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ExecutionService } from './execution.service';
 import { ExecutionController } from './execution.controller';
+import { HooksController } from './hooks.controller';
 import { ExecutionNotificationService } from './execution-notification.service';
 import { ZahnerDeviceService } from '../../devices/zahner-device.service';
 import { WorkflowModule } from '../workflow/workflow.module';
@@ -8,6 +9,7 @@ import { ZahnerZenniumModule } from '../zahner-zennium/zahner-zennium.module';
 import { NotificationModule } from '../../notification/notification.module';
 import { CommonModule } from '../../common/common.module';
 import { HttpModule } from '@nestjs/axios';
+import { DbModule } from '../../db/db.module';
 
 @Module({
   imports: [
@@ -16,8 +18,9 @@ import { HttpModule } from '@nestjs/axios';
     forwardRef(() => NotificationModule),
     CommonModule,
     HttpModule,
+    DbModule,
   ],
-  controllers: [ExecutionController],
+  controllers: [ExecutionController, HooksController],
   providers: [
     ExecutionService,
     ExecutionNotificationService,

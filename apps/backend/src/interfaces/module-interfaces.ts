@@ -82,6 +82,12 @@ export interface WorkflowDefinition {
   id: string;
   name: string;
   description: string;
+  /**
+   * 工作流归属人与自定义名，用于目录组织与检索。
+   * 在无鉴权场景下从请求体直接透传。
+   */
+  ownerName?: string;
+  individualName?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   version: number;
@@ -106,6 +112,11 @@ export interface Workflow {
   id: string;
   name: string;
   description: string;
+  /**
+   * 归属信息在顶层冗余一份，便于列表页与存储索引使用。
+   */
+  ownerName?: string;
+  individualName?: string;
   definition: WorkflowDefinition;
   version: number;
   createdAt: Date;

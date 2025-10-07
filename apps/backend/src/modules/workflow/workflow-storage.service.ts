@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Workflow, WorkflowDefinition } from '../../interfaces/module-interfaces';
+﻿import { Injectable } from '@nestjs/common';
+import { Workflow } from '../../interfaces/module-interfaces';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,22 +13,17 @@ export class WorkflowStorageService {
     this.storagePath = path.join(process.cwd(), 'data', 'workflows');
     this.workflowsFile = path.join(this.storagePath, 'workflows.json');
     this.counterFile = path.join(this.storagePath, 'counter.txt');
-
     this.ensureStorageDirectory();
   }
 
-  /**
-   * 确保存储目录存在
-   */
+  // 确保存储目录存在（启动时调用，一次性阻塞可接受）
   private ensureStorageDirectory(): void {
     if (!fs.existsSync(this.storagePath)) {
       fs.mkdirSync(this.storagePath, { recursive: true });
     }
   }
 
-  /**
-   * 获取下一个工作流ID计数器
-   */
+  // 兼容旧接口（已不再使用计数器）
   getNextCounter(): number {
     try {
       if (fs.existsSync(this.counterFile)) {
@@ -42,9 +37,7 @@ export class WorkflowStorageService {
     }
   }
 
-  /**
-   * 保存计数器值
-   */
+  // 兼容旧接口（已不再使用计数器）
   saveCounter(counter: number): void {
     try {
       fs.writeFileSync(this.counterFile, counter.toString());
@@ -53,49 +46,36 @@ export class WorkflowStorageService {
     }
   }
 
-  /**
-   * 保存工作流到存储
-   */
+  // 保存工作流到存储（异步I/O）
   async saveWorkflow(workflow: Workflow): Promise<void> {
     try {
       const workflows = await this.loadAllWorkflows();
       workflows.set(workflow.id, workflow);
-      
       const workflowsArray = Array.from(workflows.entries());
-      const data = {
-        workflows: workflowsArray,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      fs.writeFileSync(this.workflowsFile, JSON.stringify(data, null, 2));
-    } catch (error) {
+      const data = { workflows: workflowsArray, lastUpdated: new Date().toISOString() };
+      await fs.promises.writeFile(this.workflowsFile, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error: any) {
       console.error('Error saving workflow to storage:', error);
       throw new Error(`Failed to save workflow: ${error.message}`);
     }
   }
 
-  /**
-   * 从存储加载所有工作流
-   */
+  // 从存储加载所有工作流（异步I/O）
   async loadAllWorkflows(): Promise<Map<string, Workflow>> {
     try {
       if (!fs.existsSync(this.workflowsFile)) {
         return new Map();
       }
-      
-      const data = fs.readFileSync(this.workflowsFile, 'utf-8');
+      const data = await fs.promises.readFile(this.workflowsFile, 'utf-8');
       const parsed = JSON.parse(data);
-      
       const workflows = new Map<string, Workflow>();
       if (parsed.workflows && Array.isArray(parsed.workflows)) {
         parsed.workflows.forEach(([id, workflow]: [string, any]) => {
-          // 转换日期字符串回Date对象
           workflow.createdAt = new Date(workflow.createdAt);
           workflow.updatedAt = new Date(workflow.updatedAt);
           workflows.set(id, workflow);
         });
       }
-      
       return workflows;
     } catch (error) {
       console.error('Error loading workflows from storage:', error);
@@ -103,9 +83,7 @@ export class WorkflowStorageService {
     }
   }
 
-  /**
-   * 获取单个工作流
-   */
+  // 获取单个工作流
   async getWorkflow(id: string): Promise<Workflow | null> {
     try {
       const workflows = await this.loadAllWorkflows();
@@ -116,69 +94,52 @@ export class WorkflowStorageService {
     }
   }
 
-  /**
-   * 删除工作流
-   */
+  // 删除工作流（异步I/O）
   async deleteWorkflow(id: string): Promise<void> {
     try {
       const workflows = await this.loadAllWorkflows();
       if (workflows.delete(id)) {
         const workflowsArray = Array.from(workflows.entries());
-        const data = {
-          workflows: workflowsArray,
-          lastUpdated: new Date().toISOString()
-        };
-        
-        fs.writeFileSync(this.workflowsFile, JSON.stringify(data, null, 2));
+        const data = { workflows: workflowsArray, lastUpdated: new Date().toISOString() };
+        await fs.promises.writeFile(this.workflowsFile, JSON.stringify(data, null, 2), 'utf-8');
       } else {
         throw new Error(`Workflow ${id} not found`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error deleting workflow ${id}:`, error);
       throw new Error(`Failed to delete workflow: ${error.message}`);
     }
   }
 
-  /**
-   * 更新工作流
-   */
+  // 更新工作流（异步I/O）
   async updateWorkflow(id: string, workflow: Workflow): Promise<void> {
     try {
       const workflows = await this.loadAllWorkflows();
       if (workflows.has(id)) {
         workflows.set(id, workflow);
-        
         const workflowsArray = Array.from(workflows.entries());
-        const data = {
-          workflows: workflowsArray,
-          lastUpdated: new Date().toISOString()
-        };
-        
-        fs.writeFileSync(this.workflowsFile, JSON.stringify(data, null, 2));
+        const data = { workflows: workflowsArray, lastUpdated: new Date().toISOString() };
+        await fs.promises.writeFile(this.workflowsFile, JSON.stringify(data, null, 2), 'utf-8');
       } else {
         throw new Error(`Workflow ${id} not found`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating workflow ${id}:`, error);
       throw new Error(`Failed to update workflow: ${error.message}`);
     }
   }
 
-  /**
-   * 检查工作流是否存在
-   */
+  // 检查工作流是否存在
   async workflowExists(id: string): Promise<boolean> {
     try {
       const workflow = await this.getWorkflow(id);
       return workflow !== null;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
-  /**
-   * 列出所有工作流
-   */
+  // 列出所有工作流
   async listWorkflows(): Promise<Workflow[]> {
     try {
       const workflows = await this.loadAllWorkflows();
@@ -189,40 +150,31 @@ export class WorkflowStorageService {
     }
   }
 
-  /**
-   * 清理存储
-   */
+  // 清理存储（异步I/O）
   async clearStorage(): Promise<void> {
     try {
       if (fs.existsSync(this.workflowsFile)) {
-        fs.unlinkSync(this.workflowsFile);
+        await fs.promises.unlink(this.workflowsFile);
       }
       if (fs.existsSync(this.counterFile)) {
-        fs.unlinkSync(this.counterFile);
+        await fs.promises.unlink(this.counterFile);
       }
     } catch (error) {
       console.error('Error clearing workflow storage:', error);
     }
   }
 
-  /**
-   * 获取存储统计信息
-   */
-  async getStorageStats(): Promise<{
-    totalWorkflows: number;
-    lastUpdated: Date | null;
-    storageSize: number;
-  }> {
+  // 获取存储统计信息（异步I/O）
+  async getStorageStats(): Promise<{ totalWorkflows: number; lastUpdated: Date | null; storageSize: number; }> {
     try {
       let totalWorkflows = 0;
       let lastUpdated: Date | null = null;
       let storageSize = 0;
 
       if (fs.existsSync(this.workflowsFile)) {
-        const stats = fs.statSync(this.workflowsFile);
+        const stats = await fs.promises.stat(this.workflowsFile);
         storageSize += stats.size;
-        
-        const data = fs.readFileSync(this.workflowsFile, 'utf-8');
+        const data = await fs.promises.readFile(this.workflowsFile, 'utf-8');
         const parsed = JSON.parse(data);
         if (parsed.workflows) {
           totalWorkflows = parsed.workflows.length;
@@ -233,22 +185,14 @@ export class WorkflowStorageService {
       }
 
       if (fs.existsSync(this.counterFile)) {
-        const stats = fs.statSync(this.counterFile);
+        const stats = await fs.promises.stat(this.counterFile);
         storageSize += stats.size;
       }
 
-      return {
-        totalWorkflows,
-        lastUpdated,
-        storageSize
-      };
+      return { totalWorkflows, lastUpdated, storageSize };
     } catch (error) {
       console.error('Error getting storage stats:', error);
-      return {
-        totalWorkflows: 0,
-        lastUpdated: null,
-        storageSize: 0
-      };
+      return { totalWorkflows: 0, lastUpdated: null, storageSize: 0 };
     }
   }
 }

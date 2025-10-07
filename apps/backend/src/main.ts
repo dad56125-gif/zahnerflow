@@ -40,6 +40,18 @@ async function bootstrap() {
 
   await app.listen(port);
 
+  // 烟囱/CI 快速校验：设置 SMOKETEST=1 时，仅验证可启动并退出，不常驻进程
+  if (process.env.SMOKETEST === '1' || process.env.SMOKETEST === 'true') {
+    // 输出明确的就绪标记，供流水线抓取
+    // eslint-disable-next-line no-console
+    console.log(`[SMOKETEST] Backend started on http://localhost:${port}`);
+    await app.close();
+    // eslint-disable-next-line no-console
+    console.log('[SMOKETEST] Backend closed');
+    process.exit(0);
+    return;
+  }
+
   // 注入通知服务
   const notificationService = app.get(NotificationService);
 

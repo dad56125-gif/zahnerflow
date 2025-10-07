@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { SimpleEventBus } from '../notification/simple-event-bus.service';
 
 export interface DeviceStatus {
@@ -11,8 +11,8 @@ export interface DeviceStatus {
 @Injectable()
 export abstract class BaseDeviceService {
   protected readonly logger: Logger;
-  protected connected: boolean = false;
-  protected busy: boolean = false;
+  protected connected = false;
+  protected busy = false;
   protected lastActivity: Date = new Date();
   protected error?: string;
 
@@ -29,7 +29,7 @@ export abstract class BaseDeviceService {
       connected: this.connected,
       busy: this.busy,
       lastActivity: this.lastActivity,
-      error: this.error
+      error: this.error,
     };
   }
 
@@ -45,7 +45,7 @@ export abstract class BaseDeviceService {
 
     // 只在状态真正发生变化时才记录日志
     if (oldConnected !== connected || oldBusy !== this.busy) {
-      this.logger.log(`设备状态变更: ${this.deviceType} ${oldConnected}→${connected}, ${oldBusy}→${this.busy}`);
+      this.logger.log(`设备状态变化 ${this.deviceType} ${oldConnected}->${connected}, ${oldBusy}->${this.busy}`);
     }
 
     // 发送状态变更事件

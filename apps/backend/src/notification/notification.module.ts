@@ -5,6 +5,7 @@ import { SimpleEventBus } from './simple-event-bus.service';
 import { NotificationEventHandler } from './event-handlers/notification.handler';
 import { StateEventHandler } from './event-handlers/state.handler';
 import { MetricsEventHandler } from './event-handlers/metrics.handler';
+import { HookDbBridgeHandler } from './event-handlers/hook-db-bridge.handler';
 import { GatewayModule } from '../gateways/gateway.module';
 import { CommonModule } from '../common/common.module';
 
@@ -17,6 +18,7 @@ import { CommonModule } from '../common/common.module';
     NotificationEventHandler,      // 通知事件处理器
     StateEventHandler,            // 状态事件处理器
     MetricsEventHandler,           // 指标事件处理器
+    HookDbBridgeHandler,           // Hook 事件桥接到 DbService.emit
   ],
   exports: [
     NotificationService,

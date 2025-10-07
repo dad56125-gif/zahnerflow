@@ -3,8 +3,10 @@ import { ExecutionModule } from './modules/execution/execution.module';
 import { ZahnerZenniumModule } from './modules/zahner-zennium/zahner-zennium.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { NotificationModule } from './notification/notification.module';
+import { FilesModule } from './modules/files/files.module';
 import { GatewayModule } from './gateways/gateway.module';
 import { CommonModule } from './common/common.module';
+import { DbModule } from './db/db.module';
 import { ConsoleModule } from './modules/console/console.module';
 import { AppController } from './app.controller';
 
@@ -15,11 +17,13 @@ import { AppController } from './app.controller';
 @Module({
   imports: [
     CommonModule,
+    DbModule,
     GatewayModule,
     ExecutionModule,
     ZahnerZenniumModule,
     WorkflowModule,
     NotificationModule,
+    FilesModule,
     ConsoleModule,
   ],
   controllers: [AppController],

@@ -1,0 +1,409 @@
+{
+  "workflow": [
+    {
+      "id": "workflow_8a8d598a-e94f-434c-a39c-fc5533b0bf62",
+      "owner_name": null,
+      "individual_name": null,
+      "title": "电化学流程_2025/10/5 01:11:50",
+      "description": "通过前端界面创建的电化学测量流程",
+      "tags": null,
+      "created_at": "2025-10-04T17:11:50.704Z",
+      "updated_at": "2025-10-04T17:11:50.704Z"
+    },
+    {
+      "id": "workflow_e49aceec-572c-465d-8b88-df90899c4883",
+      "owner_name": null,
+      "individual_name": null,
+      "title": "电化学流程_2025/10/5 01:21:43",
+      "description": "通过前端界面创建的电化学测量流程",
+      "tags": null,
+      "created_at": "2025-10-04T17:21:43.120Z",
+      "updated_at": "2025-10-04T17:21:43.120Z"
+    }
+  ],
+  "node": [
+    {
+      "id": "node_node_1759597907396_8dide6iai",
+      "workflow_id": "workflow_8a8d598a-e94f-434c-a39c-fc5533b0bf62",
+      "node_key": "node_1759597907396_8dide6iai",
+      "node_type": "startup",
+      "display_name": "启动程序",
+      "sort_order": 0,
+      "enabled": 1,
+      "position_json": "{\"x\":50,\"y\":100}"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc",
+      "workflow_id": "workflow_8a8d598a-e94f-434c-a39c-fc5533b0bf62",
+      "node_key": "node_1759597908828_nyoskourc",
+      "node_type": "eis_potentiostatic",
+      "display_name": "恒电位EIS",
+      "sort_order": 1,
+      "enabled": 1,
+      "position_json": "{\"x\":250,\"y\":100}"
+    },
+    {
+      "id": "node_node_1759597909479_g7re9z5w2",
+      "workflow_id": "workflow_8a8d598a-e94f-434c-a39c-fc5533b0bf62",
+      "node_key": "node_1759597909479_g7re9z5w2",
+      "node_type": "shutdown",
+      "display_name": "停止程序",
+      "sort_order": 2,
+      "enabled": 1,
+      "position_json": "{\"x\":450,\"y\":100}"
+    },
+    {
+      "id": "node_node_1759598499812_r9gw94nk9",
+      "workflow_id": "workflow_e49aceec-572c-465d-8b88-df90899c4883",
+      "node_key": "node_1759598499812_r9gw94nk9",
+      "node_type": "startup",
+      "display_name": "启动程序",
+      "sort_order": 0,
+      "enabled": 1,
+      "position_json": "{\"x\":50,\"y\":100}"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt",
+      "workflow_id": "workflow_e49aceec-572c-465d-8b88-df90899c4883",
+      "node_key": "node_1759598501044_17q3e9qqt",
+      "node_type": "eis_potentiostatic",
+      "display_name": "恒电位EIS",
+      "sort_order": 1,
+      "enabled": 1,
+      "position_json": "{\"x\":250,\"y\":100}"
+    },
+    {
+      "id": "node_node_1759598501661_uy8sxtqnf",
+      "workflow_id": "workflow_e49aceec-572c-465d-8b88-df90899c4883",
+      "node_key": "node_1759598501661_uy8sxtqnf",
+      "node_type": "shutdown",
+      "display_name": "停止程序",
+      "sort_order": 2,
+      "enabled": 1,
+      "position_json": "{\"x\":450,\"y\":100}"
+    }
+  ],
+  "node_param": [
+    {
+      "id": "node_node_1759597907396_8dide6iai:host",
+      "node_id": "node_node_1759597907396_8dide6iai",
+      "key": "host",
+      "value_text": "localhost",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597907396_8dide6iai:workstation",
+      "node_id": "node_node_1759597907396_8dide6iai",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_lower_frequency",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_lower_frequency",
+      "value_text": null,
+      "value_num": 0.2,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_upper_frequency",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_upper_frequency",
+      "value_text": null,
+      "value_num": 100000,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_start_frequency",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_start_frequency",
+      "value_text": null,
+      "value_num": 1000,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:enable_dc_bias",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "enable_dc_bias",
+      "value_text": null,
+      "value_num": null,
+      "value_json": "false",
+      "value_type": "json",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_potential",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_potential",
+      "value_text": null,
+      "value_num": 0,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_amplitude",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_amplitude",
+      "value_text": null,
+      "value_num": 0.025,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_lower_periods",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_lower_periods",
+      "value_text": null,
+      "value_num": 4,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_upper_periods",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_upper_periods",
+      "value_text": null,
+      "value_num": 20,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.709Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_lower_steps",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_lower_steps",
+      "value_text": null,
+      "value_num": 5,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.710Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_upper_steps",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_upper_steps",
+      "value_text": null,
+      "value_num": 10,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:11:50.710Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_scan_direction",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_scan_direction",
+      "value_text": "START_TO_MIN",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:11:50.710Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:eis_scan_strategy",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "eis_scan_strategy",
+      "value_text": "SINGLE_SINE",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:11:50.710Z"
+    },
+    {
+      "id": "node_node_1759597908828_nyoskourc:workstation",
+      "node_id": "node_node_1759597908828_nyoskourc",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:11:50.710Z"
+    },
+    {
+      "id": "node_node_1759597909479_g7re9z5w2:workstation",
+      "node_id": "node_node_1759597909479_g7re9z5w2",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:11:50.710Z"
+    },
+    {
+      "id": "node_node_1759598499812_r9gw94nk9:host",
+      "node_id": "node_node_1759598499812_r9gw94nk9",
+      "key": "host",
+      "value_text": "localhost",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598499812_r9gw94nk9:workstation",
+      "node_id": "node_node_1759598499812_r9gw94nk9",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_lower_frequency",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_lower_frequency",
+      "value_text": null,
+      "value_num": 0.2,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_upper_frequency",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_upper_frequency",
+      "value_text": null,
+      "value_num": 100000,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_start_frequency",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_start_frequency",
+      "value_text": null,
+      "value_num": 1000,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:enable_dc_bias",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "enable_dc_bias",
+      "value_text": null,
+      "value_num": null,
+      "value_json": "false",
+      "value_type": "json",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_potential",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_potential",
+      "value_text": null,
+      "value_num": 0,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_amplitude",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_amplitude",
+      "value_text": null,
+      "value_num": 0.025,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_lower_periods",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_lower_periods",
+      "value_text": null,
+      "value_num": 4,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_upper_periods",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_upper_periods",
+      "value_text": null,
+      "value_num": 20,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_lower_steps",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_lower_steps",
+      "value_text": null,
+      "value_num": 5,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_upper_steps",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_upper_steps",
+      "value_text": null,
+      "value_num": 10,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_scan_direction",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_scan_direction",
+      "value_text": "START_TO_MIN",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:eis_scan_strategy",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "eis_scan_strategy",
+      "value_text": "SINGLE_SINE",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501044_17q3e9qqt:workstation",
+      "node_id": "node_node_1759598501044_17q3e9qqt",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    },
+    {
+      "id": "node_node_1759598501661_uy8sxtqnf:workstation",
+      "node_id": "node_node_1759598501661_uy8sxtqnf",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-10-04T17:21:43.124Z"
+    }
+  ],
+  "data_file": []
+}

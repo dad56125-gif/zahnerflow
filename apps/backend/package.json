@@ -8,6 +8,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
+    "smoke": "pnpm build && node -e \"process.env.SMOKETEST='1'; require('./dist/main.js')\"",
     "start:simple": "ts-node src/main-simple.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -38,6 +39,7 @@
     "class-validator": "^0.14.2",
     "express": "^5.1.0",
     "rxjs": "^7.8.2",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7"
   }
 }

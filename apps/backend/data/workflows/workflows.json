@@ -6753,7 +6753,214 @@
         "createdAt": "2025-09-25T09:12:07.409Z",
         "updatedAt": "2025-09-25T09:12:07.409Z"
       }
+    ],
+    [
+      "workflow_95_1759576027054",
+      {
+        "id": "workflow_95_1759576027054",
+        "name": "电化学流程_2025/10/4 19:07:07",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1759576027048",
+          "name": "电化学流程_2025/10/4 19:07:07",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1759576024685_usbgiprm7",
+              "type": "startup",
+              "name": "启动程序",
+              "config": {
+                "host": "localhost",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 50,
+                "y": 100
+              }
+            },
+            {
+              "id": "node_1759576025268_6znos35gu",
+              "type": "eis_potentiostatic",
+              "name": "恒电位EIS",
+              "config": {
+                "eis_lower_frequency": 0.2,
+                "eis_upper_frequency": 100000,
+                "eis_start_frequency": 1000,
+                "enable_dc_bias": false,
+                "eis_potential": 0,
+                "eis_amplitude": 0.025,
+                "eis_lower_periods": 4,
+                "eis_upper_periods": 20,
+                "eis_lower_steps": 5,
+                "eis_upper_steps": 10,
+                "eis_scan_direction": "START_TO_MIN",
+                "eis_scan_strategy": "SINGLE_SINE",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 250,
+                "y": 100
+              }
+            },
+            {
+              "id": "node_1759576026107_f4aobbfh4",
+              "type": "shutdown",
+              "name": "停止程序",
+              "config": {
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 450,
+                "y": 100
+              }
+            }
+          ],
+          "edges": [],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-10-04T11:07:07.054Z",
+        "updatedAt": "2025-10-04T11:07:07.054Z"
+      }
+    ],
+    [
+      "workflow_8a8d598a-e94f-434c-a39c-fc5533b0bf62",
+      {
+        "id": "workflow_8a8d598a-e94f-434c-a39c-fc5533b0bf62",
+        "name": "电化学流程_2025/10/5 01:11:50",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1759597910696",
+          "name": "电化学流程_2025/10/5 01:11:50",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1759597907396_8dide6iai",
+              "type": "startup",
+              "name": "启动程序",
+              "config": {
+                "host": "localhost",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 50,
+                "y": 100
+              }
+            },
+            {
+              "id": "node_1759597908828_nyoskourc",
+              "type": "eis_potentiostatic",
+              "name": "恒电位EIS",
+              "config": {
+                "eis_lower_frequency": 0.2,
+                "eis_upper_frequency": 100000,
+                "eis_start_frequency": 1000,
+                "enable_dc_bias": false,
+                "eis_potential": 0,
+                "eis_amplitude": 0.025,
+                "eis_lower_periods": 4,
+                "eis_upper_periods": 20,
+                "eis_lower_steps": 5,
+                "eis_upper_steps": 10,
+                "eis_scan_direction": "START_TO_MIN",
+                "eis_scan_strategy": "SINGLE_SINE",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 250,
+                "y": 100
+              }
+            },
+            {
+              "id": "node_1759597909479_g7re9z5w2",
+              "type": "shutdown",
+              "name": "停止程序",
+              "config": {
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 450,
+                "y": 100
+              }
+            }
+          ],
+          "edges": [],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-10-04T17:11:50.704Z",
+        "updatedAt": "2025-10-04T17:11:50.704Z"
+      }
+    ],
+    [
+      "workflow_e49aceec-572c-465d-8b88-df90899c4883",
+      {
+        "id": "workflow_e49aceec-572c-465d-8b88-df90899c4883",
+        "name": "电化学流程_2025/10/5 01:21:43",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1759598503113",
+          "name": "电化学流程_2025/10/5 01:21:43",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1759598499812_r9gw94nk9",
+              "type": "startup",
+              "name": "启动程序",
+              "config": {
+                "host": "localhost",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 50,
+                "y": 100
+              }
+            },
+            {
+              "id": "node_1759598501044_17q3e9qqt",
+              "type": "eis_potentiostatic",
+              "name": "恒电位EIS",
+              "config": {
+                "eis_lower_frequency": 0.2,
+                "eis_upper_frequency": 100000,
+                "eis_start_frequency": 1000,
+                "enable_dc_bias": false,
+                "eis_potential": 0,
+                "eis_amplitude": 0.025,
+                "eis_lower_periods": 4,
+                "eis_upper_periods": 20,
+                "eis_lower_steps": 5,
+                "eis_upper_steps": 10,
+                "eis_scan_direction": "START_TO_MIN",
+                "eis_scan_strategy": "SINGLE_SINE",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 250,
+                "y": 100
+              }
+            },
+            {
+              "id": "node_1759598501661_uy8sxtqnf",
+              "type": "shutdown",
+              "name": "停止程序",
+              "config": {
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 450,
+                "y": 100
+              }
+            }
+          ],
+          "edges": [],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-10-04T17:21:43.120Z",
+        "updatedAt": "2025-10-04T17:21:43.120Z"
+      }
     ]
   ],
-  "lastUpdated": "2025-09-25T09:12:07.411Z"
+  "lastUpdated": "2025-10-04T17:21:43.121Z"
 }

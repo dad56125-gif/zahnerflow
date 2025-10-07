@@ -1,0 +1,32 @@
+﻿{
+    "id":  "hook_delay_after_delay_every2",
+    "action":  {
+                   "placement":  "after",
+                   "tag":  "hook:test:delay",
+                   "type":  "insert_node",
+                   "nodeTemplate":  {
+                                        "params":  {
+                                                       "duration":  10
+                                                   },
+                                        "type":  "delay"
+                                    }
+               },
+    "cycle":  {
+                  "offset":  0,
+                  "every":  1
+              },
+    "name":  "每2次外层循环在delay后插入delay(10ms)",
+    "limit":  {
+                  "perIteration":  1
+              },
+    "trigger":  {
+                    "type":  "after_node",
+                    "nodeSelector":  {
+                                         "type":  "loop_start"
+                                     }
+                },
+    "enabled":  true,
+    "loopBinding":  {
+                        "loopNodeId":  "outer"
+                    }
+}
