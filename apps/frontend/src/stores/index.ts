@@ -4,11 +4,10 @@ import {
   Workflow, 
   Execution, 
   Device, 
-  NodeStatus,
-  ExecutionStatus 
 } from '@zahnerflow/types';
-import { workflowService, executionService, deviceService } from '@/services';
-import { workflowWebSocketService } from '@/services/websocket.service';
+import { workflowService, executionService } from '../services/workflowService';
+import { deviceService } from '../services/deviceService';
+import { workflowWebSocketService } from '../services/websocket.service';
 
 // 工作流状态管理
 interface WorkflowState {
@@ -29,7 +28,7 @@ interface WorkflowState {
 export const useWorkflowStore = create<WorkflowState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         workflows: [],
         currentWorkflow: null,
         isLoading: false,
@@ -127,6 +126,7 @@ interface ExecutionState {
   updateExecutionStatus: (status: any) => void;
   clearCurrentExecution: () => void;
   clearError: () => void;
+  pollExecutionStatus: (executionId: string) => void;
 }
 
 export const useExecutionStore = create<ExecutionState>()(
@@ -271,6 +271,7 @@ export const useExecutionStore = create<ExecutionState>()(
           const response = await executionService.getExecutionHistory({ limit: 50 });
           set({ executionHistory: response.items });
         } catch (error) {
+          // Silently fail, as this is not a critical operation for the user
         }
       },
 
@@ -310,7 +311,7 @@ interface DeviceState {
 
 export const useDeviceStore = create<DeviceState>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       devices: [],
       deviceStatuses: {},
       isLoading: false,
@@ -432,7 +433,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         sidebarOpen: true,
         notificationPanelOpen: false,
         theme: 'light',

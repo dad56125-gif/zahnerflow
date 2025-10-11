@@ -1,83 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { LoopStartNode } from './types';
+import '../styles/components.css';
+import { ParameterInput } from '../components/ParameterInput';
 
 interface NodeComponentProps {
   node: LoopStartNode;
   onUpdate: (node: LoopStartNode) => void;
 }
-
-interface ParameterInputProps {
-  label: string;
-  type: 'number' | 'text' | 'select';
-  value: any;
-  onChange: (value: any) => void;
-  step?: number;
-  min?: number;
-  max?: number;
-  options?: { value: string; label: string }[];
-  placeholder?: string;
-  unit?: string;
-  required?: boolean;
-}
-
-const ParameterInput: React.FC<ParameterInputProps> = ({
-  label,
-  type,
-  value,
-  onChange,
-  step = 0.001,
-  min,
-  max,
-  options,
-  placeholder,
-  unit,
-  required = false
-}) => {
-  if (type === 'select' && options) {
-    return (
-      <div className="parameter-group">
-        <label className="parameter-label">
-          {label}
-          {required && <span className="required-mark">*</span>}
-        </label>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="parameter-select"
-          required={required}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  return (
-    <div className="parameter-group">
-      <label className="parameter-label">
-        {label}
-        {required && <span className="required-mark">*</span>}
-        {unit && <span className="parameter-unit">({unit})</span>}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
-        step={step}
-        min={min}
-        max={max}
-        placeholder={placeholder}
-        className="parameter-input"
-        onWheel={(e) => e.preventDefault()} // 禁用滚轮
-        required={required}
-      />
-    </div>
-  );
-};
 
 export const LoopStartNodeComponent: React.FC<NodeComponentProps> = ({ node, onUpdate }) => {
   const [loopCount, setLoopCount] = useState<number>(node.data.parameters?.loop_count || 1);
@@ -215,105 +144,7 @@ export const LoopStartNodeComponent: React.FC<NodeComponentProps> = ({ node, onU
         </div>
       </div>
 
-      <style>{`
-        .node-content {
-          padding: 12px;
-          min-width: 280px;
-        }
-
-        .node-header {
-          margin-bottom: 16px;
-          text-align: center;
-        }
-
-        .node-title {
-          margin: 0 0 4px 0;
-          font-size: 16px;
-          font-weight: 600;
-          color: #333;
-        }
-
-        .node-description {
-          margin: 0;
-          font-size: 12px;
-          color: #666;
-        }
-
-        .node-parameters {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          margin-bottom: 16px;
-        }
-
-        .parameter-group {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .parameter-label {
-          font-size: 12px;
-          font-weight: 500;
-          color: #555;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .required-mark {
-          color: #f44336;
-          font-weight: bold;
-        }
-
-        .parameter-unit {
-          color: #888;
-          font-weight: normal;
-        }
-
-        .parameter-input,
-        .parameter-select {
-          padding: 6px 8px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 12px;
-          background: white;
-          transition: border-color 0.2s;
-        }
-
-        .parameter-input:focus,
-        .parameter-select:focus {
-          outline: none;
-          border-color: #FF9800;
-        }
-
-        .node-info {
-          background: #f5f5f5;
-          border-radius: 6px;
-          padding: 8px;
-          font-size: 11px;
-        }
-
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 4px;
-        }
-
-        .info-item:last-child {
-          margin-bottom: 0;
-        }
-
-        .info-label {
-          color: #666;
-          font-weight: 500;
-        }
-
-        .info-value {
-          color: #333;
-          font-family: monospace;
-        }
-      `}</style>
+      
     </div>
   );
 };

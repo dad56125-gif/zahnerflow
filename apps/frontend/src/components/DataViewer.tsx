@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ElectrochemicalNode } from '../nodes/types';
+import '../styles/components.css';
 
 interface DataViewerProps {
   isVisible: boolean;
@@ -43,12 +44,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
   const renderRawData = () => {
     if (!selectedNode) {
       return (
-        <div style={{
-          textAlign: 'center',
-          padding: 'var(--spacing-lg)',
-          color: 'var(--color-text-secondary)'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: 'var(--spacing-md)' }}>📊</div>
+        <div className="data-viewer-placeholder">
+          <div className="data-viewer-placeholder-icon">📊</div>
           <div>选择一个节点查看数据</div>
         </div>
       );
@@ -58,14 +55,10 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
 
     if (!rawData) {
       return (
-        <div style={{
-          textAlign: 'center',
-          padding: 'var(--spacing-lg)',
-          color: 'var(--color-text-secondary)'
-        }}>
-          <div style={{ fontSize: '32px', marginBottom: 'var(--spacing-sm)' }}>📭</div>
+        <div className="data-viewer-placeholder">
+          <div className="data-viewer-placeholder-icon-sm">📭</div>
           <div>暂无数据</div>
-          <div style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--spacing-sm)' }}>
+          <div className="data-viewer-placeholder-subtext">
             运行节点后将显示数据
           </div>
         </div>
@@ -74,33 +67,14 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
 
     return (
       <div className="raw-data-viewer">
-        <div style={{
-          marginBottom: 'var(--spacing-md)',
-          padding: 'var(--spacing-sm)',
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-medium)',
-          fontSize: 'var(--font-size-xs)'
-        }}>
+        <div className="data-viewer-summary">
           <div><strong>数据类型:</strong> {typeof rawData}</div>
           <div><strong>数据大小:</strong> {JSON.stringify(rawData).length} 字符</div>
           <div><strong>数组长度:</strong> {Array.isArray(rawData) ? rawData.length : 'N/A'}</div>
         </div>
 
-        <div style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-medium)',
-          padding: 'var(--spacing-sm)',
-          maxHeight: '400px',
-          overflow: 'auto'
-        }}>
-          <pre style={{ 
-            fontSize: 'var(--font-size-xs)', 
-            margin: 0,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-all'
-          }}>
+        <div className="data-viewer-content">
+          <pre className="data-viewer-pre">
             {JSON.stringify(rawData, null, 2)}
           </pre>
         </div>
@@ -111,12 +85,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
   const renderProcessedData = () => {
     if (!selectedNode || !selectedNode.data.results) {
       return (
-        <div style={{
-          textAlign: 'center',
-          padding: 'var(--spacing-lg)',
-          color: 'var(--color-text-secondary)'
-        }}>
-          <div style={{ fontSize: '32px', marginBottom: 'var(--spacing-sm)' }}>📈</div>
+        <div className="data-viewer-placeholder">
+          <div className="data-viewer-placeholder-icon-sm">📈</div>
           <div>暂无处理后的数据</div>
         </div>
       );
@@ -126,33 +96,14 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
     
     return (
       <div className="processed-data-viewer">
-        <div style={{
-          marginBottom: 'var(--spacing-md)',
-          padding: 'var(--spacing-sm)',
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-medium)',
-          fontSize: 'var(--font-size-xs)'
-        }}>
+        <div className="data-viewer-summary">
           <div><strong>执行时间:</strong> {(selectedNode.data as any).executionTime || 'N/A'} ms</div>
           <div><strong>状态:</strong> {selectedNode.status}</div>
           <div><strong>最后更新:</strong> {new Date(selectedNode.data.updatedAt).toLocaleString()}</div>
         </div>
 
-        <div style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-medium)',
-          padding: 'var(--spacing-sm)',
-          maxHeight: '400px',
-          overflow: 'auto'
-        }}>
-          <pre style={{ 
-            fontSize: 'var(--font-size-xs)', 
-            margin: 0,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-all'
-          }}>
+        <div className="data-viewer-content">
+          <pre className="data-viewer-pre">
             {JSON.stringify(results, null, 2)}
           </pre>
         </div>
@@ -163,14 +114,10 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
   const renderChart = () => {
     if (!chartData) {
       return (
-        <div style={{
-          textAlign: 'center',
-          padding: 'var(--spacing-lg)',
-          color: 'var(--color-text-secondary)'
-        }}>
-          <div style={{ fontSize: '32px', marginBottom: 'var(--spacing-sm)' }}>📉</div>
+        <div className="data-viewer-placeholder">
+          <div className="data-viewer-placeholder-icon-sm">📉</div>
           <div>暂无可视化数据</div>
-          <div style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--spacing-sm)' }}>
+          <div className="data-viewer-placeholder-subtext">
             需要数值型数据才能生成图表
           </div>
         </div>
@@ -197,28 +144,14 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
 
     return (
       <div className="chart-viewer">
-        <div style={{
-          marginBottom: 'var(--spacing-md)',
-          padding: 'var(--spacing-sm)',
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-medium)',
-          fontSize: 'var(--font-size-xs)'
-        }}>
+        <div className="data-viewer-summary">
           <div><strong>数据点:</strong> {chartData.y.length}</div>
           <div><strong>最大值:</strong> {maxValue.toFixed(4)}</div>
           <div><strong>最小值:</strong> {minValue.toFixed(4)}</div>
           <div><strong>平均值:</strong> {(chartData.y.reduce((a, b) => a + b, 0) / chartData.y.length).toFixed(4)}</div>
         </div>
 
-        <div style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-medium)',
-          padding: 'var(--spacing-md)',
-          display: 'flex',
-          justifyContent: 'center'
-        }}>
+        <div className="chart-svg-container">
           <svg width={width} height={height} style={{ background: 'white' }}>
             {/* 网格线 */}
             <defs>
@@ -269,57 +202,22 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
   }
 
   return (
-    <div className="data-viewer" style={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--color-glass-bg)',
-      backdropFilter: 'blur(var(--backdrop-blur))',
-      WebkitBackdropFilter: 'blur(var(--backdrop-blur))'
-    }}>
+    <div className="data-viewer data-viewer-container">
       {/* 标题 */}
-      <div style={{
-        padding: 'var(--spacing-md)',
-        borderBottom: '1px solid var(--color-border)',
-        background: 'var(--color-glass-bg)'
-      }}>
-        <h2 style={{
-          fontSize: 'var(--font-size-base)',
-          fontWeight: '600',
-          margin: 0,
-          color: 'var(--color-text-primary)'
-        }}>
+      <div className="data-viewer-header">
+        <h2 className="data-viewer-title">
           数据查看器
         </h2>
-        <div style={{
-          fontSize: 'var(--font-size-sm)',
-          color: 'var(--color-text-secondary)',
-          marginTop: '2px'
-        }}>
+        <div className="data-viewer-subtitle">
           {selectedNode ? selectedNode.name : '无选中节点'}
         </div>
       </div>
 
       {/* 标签页 */}
-      <div className="data-tabs" style={{
-        display: 'flex',
-        borderBottom: '1px solid var(--color-border)',
-        background: 'var(--color-glass-bg)'
-      }}>
+      <div className="data-tabs">
         <button
           className={`data-tab ${activeTab === 'raw' ? 'active' : ''}`}
           onClick={() => setActiveTab('raw')}
-          style={{
-            flex: 1,
-            padding: 'var(--spacing-sm)',
-            border: 'none',
-            background: 'transparent',
-            borderBottom: activeTab === 'raw' ? '2px solid var(--color-primary)' : 'none',
-            color: activeTab === 'raw' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-            cursor: 'pointer',
-            fontSize: 'var(--font-size-xs)',
-            fontWeight: activeTab === 'raw' ? '500' : '400'
-          }}
         >
           原始数据
         </button>
@@ -327,17 +225,6 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
         <button
           className={`data-tab ${activeTab === 'processed' ? 'active' : ''}`}
           onClick={() => setActiveTab('processed')}
-          style={{
-            flex: 1,
-            padding: 'var(--spacing-sm)',
-            border: 'none',
-            background: 'transparent',
-            borderBottom: activeTab === 'processed' ? '2px solid var(--color-primary)' : 'none',
-            color: activeTab === 'processed' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-            cursor: 'pointer',
-            fontSize: 'var(--font-size-xs)',
-            fontWeight: activeTab === 'processed' ? '500' : '400'
-          }}
         >
           处理结果
         </button>
@@ -345,28 +232,13 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
         <button
           className={`data-tab ${activeTab === 'chart' ? 'active' : ''}`}
           onClick={() => setActiveTab('chart')}
-          style={{
-            flex: 1,
-            padding: 'var(--spacing-sm)',
-            border: 'none',
-            background: 'transparent',
-            borderBottom: activeTab === 'chart' ? '2px solid var(--color-primary)' : 'none',
-            color: activeTab === 'chart' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-            cursor: 'pointer',
-            fontSize: 'var(--font-size-xs)',
-            fontWeight: activeTab === 'chart' ? '500' : '400'
-          }}
         >
           图表
         </button>
       </div>
 
       {/* 内容区域 */}
-      <div className="data-content" style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: 'var(--spacing-md)'
-      }}>
+      <div className="data-content-area">
         {activeTab === 'raw' && renderRawData()}
         {activeTab === 'processed' && renderProcessedData()}
         {activeTab === 'chart' && renderChart()}

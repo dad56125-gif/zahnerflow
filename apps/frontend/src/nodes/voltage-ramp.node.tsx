@@ -1,74 +1,11 @@
 import React, { useState } from 'react';
 import { MeasurementType } from '@zahnerflow/types';
+import { ParameterInput } from '../components/ParameterInput';
 
 interface NodeComponentProps {
   node: any;
   onUpdate: (node: any) => void;
 }
-
-interface ParameterInputProps {
-  label: string;
-  type: 'number' | 'text' | 'select';
-  value: any;
-  onChange: (value: any) => void;
-  step?: number;
-  min?: number;
-  max?: number;
-  options?: { value: string; label: string }[];
-  placeholder?: string;
-  unit?: string;
-}
-
-const ParameterInput: React.FC<ParameterInputProps> = ({
-  label,
-  type,
-  value,
-  onChange,
-  step = 0.001,
-  min,
-  max,
-  options,
-  placeholder,
-  unit
-}) => {
-  if (type === 'select' && options) {
-    return (
-      <div className="parameter-group">
-        <label className="parameter-label">{label}</label>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="parameter-select"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  return (
-    <div className="parameter-group">
-      <label className="parameter-label">
-        {label}
-        {unit && <span className="parameter-unit">({unit})</span>}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) : e.target.value)}
-        step={step}
-        min={min}
-        max={max}
-        className="parameter-input"
-        placeholder={placeholder}
-      />
-    </div>
-  );
-};
 
 export const VoltageRampNode: React.FC<NodeComponentProps> = ({ node, onUpdate }) => {
   const [parameters, setParameters] = useState(node.parameters || {

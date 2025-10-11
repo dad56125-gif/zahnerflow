@@ -2,7 +2,6 @@ import ReactDOM from 'react-dom/client';
 import { StrictMode } from 'react';
 import App from './App';
 import './styles/globals.css';
-import { workflowWebSocketService } from './services/websocket.service';
 
 // 创建 React 根节点
 const root = ReactDOM.createRoot(

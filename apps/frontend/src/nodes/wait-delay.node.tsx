@@ -1,73 +1,10 @@
 import React, { useState } from 'react';
+import { ParameterInput } from '../components/ParameterInput';
 
 interface NodeComponentProps {
   node: any;
   onUpdate: (node: any) => void;
 }
-
-interface ParameterInputProps {
-  label: string;
-  type: 'number' | 'text' | 'boolean';
-  value: any;
-  onChange: (value: any) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  placeholder?: string;
-  unit?: string;
-  required?: boolean;
-  maxLength?: number;
-}
-
-const ParameterInput: React.FC<ParameterInputProps> = ({
-  label,
-  type,
-  value,
-  onChange,
-  min,
-  max,
-  step,
-  placeholder,
-  unit,
-  required = false,
-  maxLength
-}) => {
-  return (
-    <div className="parameter-group">
-      <label className="parameter-label">
-        {label}
-        {unit && <span className="parameter-unit">({unit})</span>}
-        {required && <span className="required-mark">*</span>}
-      </label>
-      {type === 'boolean' ? (
-        <div className="parameter-checkbox">
-          <input
-            type="checkbox"
-            checked={value}
-            onChange={(e) => onChange(e.target.checked)}
-            className="parameter-checkbox-input"
-          />
-          <span className="parameter-checkbox-label">{value ? '是' : '否'}</span>
-        </div>
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(
-            type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-          )}
-          min={min}
-          max={max}
-          step={step}
-          className="parameter-input"
-          placeholder={placeholder}
-          required={required}
-          maxLength={maxLength}
-        />
-      )}
-    </div>
-  );
-};
 
 export const WaitDelayNode: React.FC<NodeComponentProps> = ({ node, onUpdate }) => {
   const [parameters, setParameters] = useState(node.data?.parameters || {

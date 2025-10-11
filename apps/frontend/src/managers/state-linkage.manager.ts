@@ -47,10 +47,9 @@ export class StateLinkageManager {
   private currentWorkflowId: string | null = null;
 
   constructor() {
-    // 不在构造函数中自动连接WebSocket，而是在需要时手动连接
+    // Not in constructor, connect manually when needed
   }
 
-  // 调用后端通知API发送通知
   private async sendNotification(
     type: 'info' | 'success' | 'warning' | 'error',
     title: string,
@@ -58,21 +57,12 @@ export class StateLinkageManager {
     source: string = 'state-linkage-manager'
   ): Promise<void> {
     try {
-      const response = await fetch('http://localhost:3001/api/notifications', {
+      const response = await fetch('/api/notifications', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          message,
-          type,
-          source,
-          timestamp: Date.now()
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message, type, source, timestamp: Date.now() }),
         signal: AbortSignal.timeout(5000)
       });
-
       if (!response.ok) {
         console.error('Failed to send notification:', response.status, response.statusText);
       }
@@ -81,18 +71,13 @@ export class StateLinkageManager {
     }
   }
 
-  // 检测后端服务连接状态
   private async checkBackendServices(): Promise<void> {
-    // 检测NestJS后端连接
     try {
-      const response = await fetch('http://localhost:3001/health', {
+      const response = await fetch('/api/health', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(3000)
       });
-
       if (response.ok) {
         await this.sendNotification('success', '后端连接成功', 'NestJS后端服务连接成功', 'nest-backend');
       } else {
@@ -102,16 +87,12 @@ export class StateLinkageManager {
       await this.sendNotification('error', '后端连接失败', `NestJS后端服务连接失败: ${error instanceof Error ? error.message : '网络错误'}`, 'nest-backend');
     }
 
-    // 检测FastAPI连接
     try {
       const response = await fetch('http://localhost:8000/health', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(3000)
       });
-
       if (response.ok) {
         await this.sendNotification('success', 'FastAPI连接成功', 'Python FastAPI服务连接成功', 'fastapi-backend');
       } else {
@@ -122,32 +103,17 @@ export class StateLinkageManager {
     }
   }
 
-  // 初始化WebSocket连接
   private initializeWebSocket(): void {
-    // 避免重复注册回调
     if (this.isWebSocketInitialized) {
-      // 只连接WebSocket，不重新注册回调
-      if (!workflowWebSocketService.connected) {
-        workflowWebSocketService.connect();
-      }
+      if (!workflowWebSocketService.connected) workflowWebSocketService.connect();
       return;
     }
+    if (!workflowWebSocketService.connected) workflowWebSocketService.connect();
 
-    // 连接WebSocket（如果尚未连接）
-    if (!workflowWebSocketService.connected) {
-      workflowWebSocketService.connect();
-    }
-
-    // 注册事件回调（只注册一次）
     workflowWebSocketService.onConnected(async () => {
       console.log('WebSocket connected - joining workflow room');
-
-      // 发送WebSocket连接成功通知
       await this.sendNotification('success', 'WebSocket连接成功', '与后端WebSocket服务连接成功', 'websocket-manager');
-
-      // 检测后端服务连接状态
       await this.checkBackendServices();
-
       if (this.currentWorkflowId) {
         workflowWebSocketService.joinWorkflow(this.currentWorkflowId);
       }
@@ -155,99 +121,61 @@ export class StateLinkageManager {
 
     workflowWebSocketService.onDisconnected(async () => {
       console.log('WebSocket disconnected');
-
-      // 发送WebSocket断开连接通知
       await this.sendNotification('warning', 'WebSocket连接断开', '与后端WebSocket服务连接已断开', 'websocket-manager');
     });
 
-    workflowWebSocketService.onNodeStatusUpdate((update: NodeStatusUpdate) => {
-      this.handleNodeStatusUpdate(update);
-    });
+    workflowWebSocketService.onNodeStatusUpdate(this.handleNodeStatusUpdate.bind(this));
+    workflowWebSocketService.onExecutionUpdate(this.handleExecutionUpdate.bind(this));
+    workflowWebSocketService.onNodeCompleted(this.handleNodeCompleted.bind(this));
+    workflowWebSocketService.onConsoleLog(this.handleConsoleLog.bind(this));
 
-    workflowWebSocketService.onExecutionUpdate((update: ExecutionUpdate) => {
-      this.handleExecutionUpdate(update);
-    });
-
-    workflowWebSocketService.onNodeCompleted((completed: NodeCompleted) => {
-      this.handleNodeCompleted(completed);
-    });
-
-    workflowWebSocketService.onConsoleLog((log: ConsoleLog) => {
-      this.handleConsoleLog(log);
-    });
-
-  
-    // 标记WebSocket已初始化
     this.isWebSocketInitialized = true;
   }
 
-  // 初始化WebSocket连接（公开方法）
   async initialize(): Promise<void> {
-    if (!workflowWebSocketService.connected) {
-      this.initializeWebSocket();
-    }
+    if (!workflowWebSocketService.connected) this.initializeWebSocket();
   }
 
-  // WebSocket是否已初始化
   private isWebSocketInitialized = false;
 
-  // 设置当前工作流
   setCurrentWorkflow(workflowId: string): void {
     this.currentWorkflowId = workflowId;
-
     if (workflowWebSocketService.connected) {
       workflowWebSocketService.joinWorkflow(workflowId);
     }
   }
 
-  // 设置节点更新回调
   setNodesUpdateCallback(callback: (nodes: ElectrochemicalNode[]) => void): void {
     this.onNodesUpdate = callback;
   }
 
-  // 设置执行状态更新回调
   setExecutionUpdateCallback(callback: (state: ExecutionState) => void): void {
     this.onExecutionUpdate = callback;
   }
 
-  // 设置节点
   setNodes(nodes: ElectrochemicalNode[]): void {
     this.nodes = nodes.map(node => ({
       ...node,
-      // 只有当节点状态未定义时才设置为ready，否则保持原有状态
       status: (node.status || 'ready') as NodeStatus,
     }));
-
-    if (this.onNodesUpdate) {
-      this.onNodesUpdate(this.nodes);
-    }
+    if (this.onNodesUpdate) this.onNodesUpdate(this.nodes);
   }
 
-  // 开始执行
   async startExecution(workflowId: string, nodes: ElectrochemicalNode[]): Promise<void> {
     try {
       this.setCurrentWorkflow(workflowId);
       this.setNodes(nodes);
 
-      // 调用后端API开始执行
-      const response = await fetch('http://localhost:3001/api/executions', {
+      const response = await fetch('/api/executions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          workflowId
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workflowId }),
         signal: AbortSignal.timeout(5000)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const result = await response.json();
-
-      // 初始化执行状态 - 基于后端返回的ExecutionResult结构
       this.executionState = {
         executionId: result.executionId,
         workflowId,
@@ -260,236 +188,146 @@ export class StateLinkageManager {
         error: result.error
       };
 
-      if (this.onExecutionUpdate) {
-        this.onExecutionUpdate(this.executionState);
-      }
-
+      if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
     } catch (error) {
       console.error('Failed to start execution:', error);
-      
-      // 发送执行启动失败通知 - 通过后端通知服务
-      // TODO: 调用后端API发送通知，而不是本地处理
     }
   }
 
-  // 暂停执行
   async pauseExecution(executionId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:3001/api/executions/${executionId}/pause`, {
+      const response = await fetch(`/api/executions/${executionId}/pause`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(5000)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      await response.json(); // Consume body
 
       if (this.executionState) {
         this.executionState.status = 'paused';
-        if (this.onExecutionUpdate) {
-          this.onExecutionUpdate(this.executionState);
-        }
+        if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
       }
-
     } catch (error) {
       console.error('Failed to pause execution:', error);
-      
-      // 发送暂停执行失败通知 - 通过后端通知服务
-      // TODO: 调用后端API发送通知，而不是本地处理
     }
   }
 
-  // 恢复执行
   async resumeExecution(executionId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:3001/api/executions/${executionId}/resume`, {
+      const response = await fetch(`/api/executions/${executionId}/resume`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(5000)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      await response.json(); // Consume body
 
       if (this.executionState) {
         this.executionState.status = 'running';
-        if (this.onExecutionUpdate) {
-          this.onExecutionUpdate(this.executionState);
-        }
+        if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
       }
-
     } catch (error) {
       console.error('Failed to resume execution:', error);
-      
-      // 发送恢复执行失败通知 - 通过后端通知服务
-      // TODO: 调用后端API发送通知，而不是本地处理
     }
   }
 
-  // 取消执行
   async cancelExecution(executionId: string): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:3001/api/executions/${executionId}/cancel`, {
+      const response = await fetch(`/api/executions/${executionId}/cancel`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(5000)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      await response.json(); // Consume body
 
-      const result = await response.json();
-
-      // 更新所有未完成的节点为错误状态
       this.nodes = this.nodes.map(node => {
         if (!this.executionState?.completedNodes.includes(node.id)) {
-          return { ...node, status: 'error' };
+          return { ...node, status: 'error' as NodeStatus };
         }
         return node;
       });
 
-      if (this.onNodesUpdate) {
-        this.onNodesUpdate(this.nodes);
-      }
+      if (this.onNodesUpdate) this.onNodesUpdate(this.nodes);
 
-      // 重置执行状态，通知前端执行已停止
       const workflowId = this.executionState?.workflowId || 'unknown';
       this.executionState = null;
       if (this.onExecutionUpdate) {
         this.onExecutionUpdate({
-          executionId,
-          workflowId,
-          status: 'cancelled',
-          currentNode: '',
-          completedNodes: [],
-          progress: 0,
-          startTime: new Date(),
-          endTime: new Date(),
-          error: 'Cancelled by user'
+          executionId, workflowId, status: 'cancelled', currentNode: '', completedNodes: [],
+          progress: 0, startTime: new Date(), endTime: new Date(), error: 'Cancelled by user'
         });
       }
-
     } catch (error) {
       console.error('Failed to cancel execution:', error);
-      // 即使API调用失败，也重置本地执行状态
       const workflowId = this.executionState?.workflowId || 'unknown';
       this.executionState = null;
       if (this.onExecutionUpdate) {
         this.onExecutionUpdate({
-          executionId,
-          workflowId,
-          status: 'cancelled',
-          currentNode: '',
-          completedNodes: [],
-          progress: 0,
-          startTime: new Date(),
-          endTime: new Date(),
-          error: 'Cancel failed - reset locally'
+          executionId, workflowId, status: 'cancelled', currentNode: '', completedNodes: [],
+          progress: 0, startTime: new Date(), endTime: new Date(), error: 'Cancel failed - reset locally'
         });
       }
     }
   }
 
-  // 获取当前节点状态
   getNodes(): ElectrochemicalNode[] {
     return [...this.nodes];
   }
 
-  // 获取当前执行状态
   getExecutionState(): ExecutionState | null {
     return this.executionState;
   }
 
-  // 处理节点状态更新
   private handleNodeStatusUpdate(update: NodeStatusUpdate): void {
-    
-    // 更新节点状态
     this.nodes = this.nodes.map(node => 
-      node.id === update.nodeId ? { ...node, status: update.status } : node
+      node.id === update.nodeId ? { ...node, status: update.status as NodeStatus } : node
     );
-    
-    if (this.onNodesUpdate) {
-      this.onNodesUpdate(this.nodes);
-    }
+    if (this.onNodesUpdate) this.onNodesUpdate(this.nodes);
 
-    // 如果有执行状态，更新当前节点和进度
     if (this.executionState) {
       this.executionState.currentNode = update.nodeId;
-      // 这里可以计算进度，简化处理
       if (update.status === 'completed') {
         this.executionState.completedNodes.push(update.nodeId);
         this.executionState.progress = Math.min(100, 
           Math.round((this.executionState.completedNodes.length / this.nodes.length) * 100)
         );
       }
-      
-      if (this.onExecutionUpdate) {
-        this.onExecutionUpdate(this.executionState);
-      }
+      if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
     }
   }
 
-  // 处理执行状态更新
   private handleExecutionUpdate(update: ExecutionUpdate): void {
-    
     if (this.executionState && this.executionState.executionId === update.executionId) {
       this.executionState.status = update.status;
       this.executionState.progress = update.progress;
-      
-      if (this.onExecutionUpdate) {
-        this.onExecutionUpdate(this.executionState);
-      }
+      if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
     }
   }
 
-  // 处理节点完成
   private handleNodeCompleted(completed: NodeCompleted): void {
-    
-    // 更新节点状态为完成
     this.nodes = this.nodes.map(node => 
-      node.id === completed.nodeId ? { ...node, status: 'completed' } : node
+      node.id === completed.nodeId ? { ...node, status: 'completed' as NodeStatus } : node
     );
-    
-    if (this.onNodesUpdate) {
-      this.onNodesUpdate(this.nodes);
-    }
+    if (this.onNodesUpdate) this.onNodesUpdate(this.nodes);
 
-    // 更新执行状态
     if (this.executionState) {
       this.executionState.completedNodes.push(completed.nodeId);
       this.executionState.progress = Math.min(100, 
         Math.round((this.executionState.completedNodes.length / this.nodes.length) * 100)
       );
-      
-      if (this.onExecutionUpdate) {
-        this.onExecutionUpdate(this.executionState);
-      }
+      if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
     }
   }
 
-  // 处理console日志
   private handleConsoleLog(log: ConsoleLog): void {
     console.log(`[${log.level.toUpperCase()}] ${log.message}`, log.data);
-    
-    // 这里可以将console日志添加到通知中心
-    // TODO: 实现通知中心的console日志显示
   }
 
-  
-  // 清理资源
   cleanup(): void {
     if (this.currentWorkflowId) {
       workflowWebSocketService.leaveWorkflow(this.currentWorkflowId);
@@ -501,5 +339,4 @@ export class StateLinkageManager {
   }
 }
 
-// 创建单例实例
 export const stateLinkageManager = new StateLinkageManager();

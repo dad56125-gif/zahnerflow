@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // API响应类型
 export interface ApiResponse<T = any> {
@@ -28,7 +28,7 @@ export interface PaginatedResponse<T> {
 
 // 创建API实例
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.API_BASE_URL || 'http://localhost:3001/api',
+  baseURL: process.env.API_BASE_URL || '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ const api: AxiosInstance = axios.create({
 
 // 请求拦截器
 api.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     // 添加认证token
     const token = localStorage.getItem('auth_token');
     if (token) {

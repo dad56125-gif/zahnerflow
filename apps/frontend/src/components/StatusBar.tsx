@@ -1,26 +1,24 @@
 import React from 'react';
-import { ElectrochemicalNode } from '../nodes/types';
 import { NotificationPanel } from './NotificationPanel';
+import { useCanvasStore } from '../stores/canvasStore';
 
 interface StatusBarProps {
-  nodeCount: number;
-  connectionCount: number;
   zoomLevel: number;
   isRunning: boolean;
-  selectedNode: ElectrochemicalNode | null;
   isNotificationPanelOpen: boolean;
   setIsNotificationPanelOpen: (open: boolean) => void;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
-  nodeCount,
-  connectionCount,
   zoomLevel,
   isRunning,
-  selectedNode,
   isNotificationPanelOpen,
   setIsNotificationPanelOpen
 }) => {
+  const { nodes, connections, selectedNode } = useCanvasStore();
+  const nodeCount = nodes.length;
+  const connectionCount = connections.length;
+
   const formatZoomLevel = (zoom: number): string => {
     return `${Math.round(zoom * 100)}%`;
   };

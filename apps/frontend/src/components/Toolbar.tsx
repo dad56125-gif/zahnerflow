@@ -1,37 +1,32 @@
 import React from 'react';
 import { WorkstationType } from '../nodes/types';
+import { useCanvasStore } from '../stores/canvasStore';
 
 interface ToolbarProps {
-  onNewFlow: () => void;
-  onOpenFlow: (data: any) => void;
-  onSaveFlow: () => any;
   onRunFlow: () => void;
   onStopFlow: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
   selectedWorkstation: WorkstationType | null;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
-  onNewFlow,
-  onOpenFlow,
-  onSaveFlow,
   onRunFlow,
   onStopFlow,
-  onUndo,
-  onRedo,
   onZoomIn,
   onZoomOut,
   onResetZoom,
-  canUndo,
-  canRedo,
   selectedWorkstation
 }) => {
+  const {
+    nodes,
+    connections,
+    clearCanvas,
+    setNodes,
+    setConnections
+  } = useCanvasStore();
+
   const handleFileOpen = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -39,7 +34,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target?.result as string);
-          onOpenFlow(data);
+          // TODO: Add more robust validation
+          if (data.nodes) setNodes(data.nodes);
+          if (data.connections) setConnections(data.connections);
         } catch (error) {
           console.error('文件解析失败:', error);
         }
@@ -49,14 +46,25 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handleFileSave = () => {
-    const data = onSaveFlow();
+    const data = {
+        nodes,
+        connections,
+        metadata: {
+          version: '2.0.0',
+          layout: '1d', // 一维布局
+          workstation: selectedWorkstation,
+          workstationName: selectedWorkstation === 'zahner-zennium' ? 'Zahner Zennium' : 'PP242',
+          createdAt: new Date(),
+          exportedAt: new Date()
+        }
+      };
+
     if (data) {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       
-      // 根据工作站生成文件名
       const workstationPrefix = selectedWorkstation === 'zahner-zennium' ? 'zahner_zennium' : 'zahnerflow';
       
       a.download = `${workstationPrefix}_${new Date().toISOString().slice(0, 10)}.json`;
@@ -72,7 +80,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="menu">
           <button 
             className="btn glass btn-primary" 
-            onClick={onNewFlow} 
+            onClick={clearCanvas} 
             title="新建流程"
           >
             <span className="btn-icon">📄</span>
@@ -106,26 +114,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {/* 中间：编辑操作 */}
       <div className="toolbar-section">
         <div className="edit-controls">
-          <button
-            className={`btn glass ${!canUndo ? 'disabled' : ''}`}
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="撤销 (Ctrl+Z)"
-          >
-            <span className="btn-icon">↶</span>
-            <span className="btn-text">撤销</span>
-          </button>
-          
-          <button
-            className={`btn glass ${!canRedo ? 'disabled' : ''}`}
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="重做 (Ctrl+Y)"
-          >
-            <span className="btn-icon">↷</span>
-            <span className="btn-text">重做</span>
-          </button>
-          
           <div className="divider" />
           
           <button 

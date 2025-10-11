@@ -1,42 +1,37 @@
 import React, { useState } from 'react';
-import { ElectrochemicalNode, NodeCategory, WorkstationType, getNodeConfigByWorkstation, getNodeCategoryName } from '../nodes/types';
+import { NodeCategory, WorkstationType, getNodeConfigByWorkstation, getNodeCategoryName } from '../nodes/types';
+import { useCanvasStore } from '../stores/canvasStore';
 
 interface SidebarProps {
   activePanel: 'nodes';
   onPanelChange: (panel: 'nodes') => void;
-  onNodeCreate: (type: any) => void;
   nodeGroups: Record<NodeCategory, string[]>;
-  selectedNode: ElectrochemicalNode | null;
   selectedWorkstation: WorkstationType | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  activePanel,
-  onPanelChange,
-  onNodeCreate,
   nodeGroups,
-  selectedNode,
   selectedWorkstation
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const addNode = useCanvasStore(state => state.addNode);
 
-  const handleNodeDragStart = (event: React.DragEvent, nodeType: string) => {
-    event.dataTransfer.setData('nodeType', nodeType);
-  };
-
-  const handleCanvasDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    const nodeType = event.dataTransfer.getData('nodeType');
-    if (nodeType) {
-      onNodeCreate(nodeType);
+  const handleCreateNode = (nodeType: string) => {
+    if (selectedWorkstation) {
+      const { nodes } = useCanvasStore.getState();
+      if (nodeType === 'startup' && nodes.some(n => n.type === 'startup')) {
+        alert('工作流中已存在一个启动程序节点。');
+        return;
+      }
+      if (nodeType === 'shutdown' && nodes.some(n => n.type === 'shutdown')) {
+        alert('工作流中已存在一个停止程序节点。');
+        return;
+      }
+      addNode(nodeType as any, selectedWorkstation);
     }
   };
 
-  const handleCanvasDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-  };
-
-  // 获取节点配置（带工作站支持）
+  // getNodeConfig remains a local utility function
   const getNodeConfig = (nodeType: string) => {
     if (selectedWorkstation) {
       return getNodeConfigByWorkstation(nodeType, selectedWorkstation);
@@ -109,10 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           key={nodeType}
                           className="node-item glass"
                           draggable
-                          onDragStart={(e) => handleNodeDragStart(e, nodeType)}
-                          onClick={() => {
-                            onNodeCreate(nodeType);
-                          }}
+                          onClick={() => handleCreateNode(nodeType)}
                         >
                           <div className="node-icon">
                             {config.icon}
@@ -135,12 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       
-      {/* 拖放区域 */}
-      <div
-        className="canvas-drop-zone"
-        onDrop={handleCanvasDrop}
-        onDragOver={handleCanvasDragOver}
-      />
+      {/* 拖放区域 - 已移除 */}
     </div>
   );
 };

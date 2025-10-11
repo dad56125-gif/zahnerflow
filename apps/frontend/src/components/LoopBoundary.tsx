@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LoopStartNode, LoopEndNode } from '../nodes/types';
 import { loopContextManager } from '../services/LoopContextManager';
+import '../styles/components.css';
 
 interface LoopBoundaryProps {
   startNode: LoopStartNode;
@@ -178,134 +179,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
         </div>
       </div>
 
-      <style>{`
-        .loop-boundary {
-          position: absolute;
-          pointer-events: none;
-        }
-
-        .bracket-container {
-          position: absolute;
-          border-style: solid;
-          border-width: 2px;
-          border-radius: 8px;
-          transition: all 0.3s ease;
-        }
-
-        .bracket-corner {
-          position: absolute;
-          width: 12px;
-          height: 12px;
-        }
-
-        .bracket-corner.top-left {
-          top: -2px;
-          left: -2px;
-        }
-
-        .bracket-corner.top-right {
-          top: -2px;
-          right: -2px;
-        }
-
-        .bracket-corner.bottom-left {
-          bottom: -2px;
-          left: -2px;
-        }
-
-        .bracket-corner.bottom-right {
-          bottom: -2px;
-          right: -2px;
-        }
-
-        .bracket-line {
-          position: absolute;
-          background: inherit;
-        }
-
-        .bracket-line.horizontal {
-          height: 2px;
-          width: 12px;
-        }
-
-        .bracket-line.vertical {
-          width: 2px;
-          height: 12px;
-        }
-
-        .top-left .bracket-line.horizontal {
-          top: 0;
-          left: 0;
-        }
-
-        .top-left .bracket-line.vertical {
-          top: 0;
-          left: 0;
-        }
-
-        .top-right .bracket-line.horizontal {
-          top: 0;
-          right: 0;
-        }
-
-        .top-right .bracket-line.vertical {
-          top: 0;
-          right: 0;
-        }
-
-        .bottom-left .bracket-line.horizontal {
-          bottom: 0;
-          left: 0;
-        }
-
-        .bottom-left .bracket-line.vertical {
-          bottom: 0;
-          left: 0;
-        }
-
-        .bottom-right .bracket-line.horizontal {
-          bottom: 0;
-          right: 0;
-        }
-
-        .bottom-right .bracket-line.vertical {
-          bottom: 0;
-          right: 0;
-        }
-
-        .loop-info-label {
-          position: absolute;
-          top: -25px;
-          left: 10px;
-          background: rgba(0, 0, 0, 0.8);
-          color: white;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 10px;
-          font-family: monospace;
-          white-space: nowrap;
-          z-index: 10;
-        }
-
-        .loop-id {
-          font-weight: bold;
-          color: #FFD700;
-        }
-
-        .loop-iteration {
-          color: #90EE90;
-          margin-left: 4px;
-        }
-
-        .loop-variable {
-          color: #87CEEB;
-          margin-left: 4px;
-        }
-
-        .bracket-container:hover {
-          opacity: 0.8;
-        }
-      `}</style>
+      
     </div>
   );
 };

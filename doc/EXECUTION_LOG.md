@@ -110,7 +110,7 @@
 - 内容：添加单元与集成测试，覆盖输入（写入）、查询（过滤/分页）、输出（事件流）核心路径。
 - 文件：
   - test/code/backend/db.service.test.ts：服务层单测（工作流写入、数据文件写入、查询、事件）。
-  - test/code/backend/db.controller.test.ts：控制器层集成测（直接调用方法验证返回结构与过滤）。
+  - test/code/backend/db.controller.ts：控制器层集成测（直接调用方法验证返回结构与过滤）。
 - 运行：`pnpm test:backend` 全部通过。
 
 ## 2025-10-05 前端接入评估与建议
@@ -210,3 +210,54 @@
   - 启动后端 → `GET /api/db/events/ping` → `GET /api/db/events/recent` 能看到 `ping_test`
   - `GET /api/db/events/test-hook` → `GET /api/db/events/recent` 能看到 `hook_insert_planned/applied`
   - `GET /api/hooks/rules` 能看到从 `data/hooks/hooks.json` 载入的规则（若为空，检查进程工作目录或设置 `HOOKS_JSON_PATH` 为绝对路径）
+
+## 2025-10-08 前端重构与验证
+- 内容：对前端应用进行大规模重构，解决代码冗余、高耦合和类型不安全等问题，并建立验证流程。
+  - **样式统一**：将组件内的内联样式和 style 标签提取到外部 CSS 文件中。
+  - **组件提取**：将节点定义中重复的 `ParameterInput` 提取为共享组件。
+  - **状态管理中心化**：将画布核心状态（节点、连接等）从 App.tsx 迁移到独立的 Zustand store (`canvasStore.ts`)。
+  - **构建与测试修复**：解决重构后引入的类型错误、语法错误，并配置和通过了单元测试与构建验证。
+- 文件/函数：
+  - 新增文件：
+    - `doc/FrontEnd/quality_report.md` (代码质量报告)
+    - `doc/FrontEnd/Rebuildlist.md` (重构任务清单)
+    - `apps/frontend/.eslintrc.cjs` (ESLint 配置文件)
+    - `apps/frontend/vitest.config.ts` (Vitest 配置文件)
+    - `apps/frontend/src/test/setup.ts` (测试环境设置)
+    - `apps/frontend/src/styles/components.css` (提取的组件样式)
+    - `apps/frontend/src/components/ParameterInput.tsx` (共享参数输入组件)
+    - `apps/frontend/src/stores/canvasStore.ts` (画布状态管理 store)
+    - `apps/frontend/src/components/ParameterInput.test.tsx` (单元测试文件)
+  - 主要修改：
+    - `apps/frontend/src/App.tsx`: 移除本地 state，改为从 `useCanvasStore` 获取状态和操作，大幅简化。
+    - `apps/frontend/src/components/*`: 所有子组件均被重构，以直接从 store 获取状态，解耦。
+    - `apps/frontend/src/nodes/*.node.tsx`: 所有节点组件均被重构，以使用共享的 `ParameterInput` 组件。
+    - `apps/frontend/src/managers/state-linkage.manager.ts`: 修复了因重构引入的多个 URL 和类型错误。
+    - `apps/frontend/package.json`: 调整 `lint` 脚本以允许警告。
+- 验证：
+  - **单元测试**：`npx vitest --run` 命令成功执行，`ParameterInput` 和 `canvasStore` 的测试用例全部通过。
+  - **代码规范**：`pnpm lint` 命令成功执行，修复了所有错误（Errors），并允许了警告（Warnings）。
+  - **类型检查与构建**：`pnpm --filter zahnerflow-flowgram build` 命令在修复了所有 TS 类型错误后最终执行成功。
+- 逻辑影响：
+  - **降低耦合**：`App.tsx` 与其子组件解耦，子组件不再依赖父组件的 props 传递状态。
+  - **提升内聚**：画布的核心状态和操作逻辑被封装在 `canvasStore` 中，职责更清晰。
+  - **减少冗余**：通过共享 `ParameterInput` 组件，显著减少了节点定义中的重复代码。
+  - **增强健壮性**：建立了单元测试和质量检查流程，为未来的开发和重构提供了保障。
+- 模型：gemini
+- 系统：前端
+
+## 2025-10-08 前端节点规则验证
+- 内容: 在前端实现对 `startup` 和 `shutdown` 节点的验证逻辑，以提供即时用户反馈。
+- 文件/函数:
+  - `apps/frontend/src/stores/canvasStore.ts`: 新增 `validationError` 状态和 `validateNodes()` 核心验证函数；在 `addNode`, `deleteNode`, `moveNode`, `setNodes` 中调用验证。
+  - `apps/frontend/src/components/Sidebar.tsx`: 在 `handleCreateNode` 中增加前置检查，防止用户添加重复的 `startup`/`shutdown` 节点。
+  - `apps/frontend/src/App.tsx`: 新增 UI 逻辑，用于在画布上显示 `validationError` 的内容。
+- 逻辑影响:
+  - UI/UX 提升：用户在创建不合规的工作流时会立即收到错误提示，无法执行非法操作。
+  - 前端健壮性：在状态管理层面对核心业务规则进行了校验。
+- 后端待办:
+  - 后端需要在 `workflow` 创建和更新的业务逻辑中（例如 `POST /api/workflows` 和 `PUT /api/workflows/:id`），加入同样的验证规则，以作为最终防线，确保数据完整性。规则包括：
+    1.  一个工作流中最多只能有一个 `startup` 节点。
+    2.  一个工作流中最多只能有一个 `shutdown` 节点。
+    3.  如果 `startup` 节点存在，它必须是所有节点中的第一个。
+    4.  如果 `shutdown` 节点存在，它必须在 `startup` 节点之后。

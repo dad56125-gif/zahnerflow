@@ -30,9 +30,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          charts: ['chart.js', 'react-chartjs-2'],
-          ui: ['sweetalert2', 'clsx']
+          vendor: ['react', 'react-dom', 'clsx'],
         }
       }
     }

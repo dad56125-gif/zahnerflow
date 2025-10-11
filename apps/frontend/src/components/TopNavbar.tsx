@@ -21,8 +21,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect }) => 
   // 解决磨砂效果冲突的函数
   const resolveFrostedGlassConflict = useCallback((menuElement: HTMLElement) => {
     // 简单直接的解决方案：增强磨砂效果并确保层级正确
-    menuElement.style.backdropFilter = 'blur(30px)';
-    menuElement.style.webkitBackdropFilter = 'blur(30px)';
+    (menuElement.style as any).backdropFilter = 'blur(30px)';
+    (menuElement.style as any).webkitBackdropFilter = 'blur(30px)';
     menuElement.style.background = 'rgba(0, 0, 0, 0.4)';
     menuElement.style.border = '1px solid rgba(255, 255, 255, 0.3)';
     menuElement.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.6)';

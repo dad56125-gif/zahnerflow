@@ -235,7 +235,7 @@ export class WorkflowWebSocketService {
   }
 
   // 移除回调函数
-  removeCallback(callback: Function): void {
+  removeCallback(callback: (...args: any[]) => void): void {
     Object.keys(this.callbacks).forEach((key) => {
       const index = (this.callbacks as any)[key].indexOf(callback);
       if (index > -1) {
