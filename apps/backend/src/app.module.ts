@@ -9,6 +9,9 @@ import { CommonModule } from './common/common.module';
 import { DbModule } from './db/db.module';
 import { ConsoleModule } from './modules/console/console.module';
 import { AppController } from './app.controller';
+import { FurnaceModule } from './modules/furnace/furnace.module';
+import { MfcModule } from './modules/mfc/mfc.module';
+import { SamplingModule } from './modules/sampling/sampling.module';
 
 /**
  * 应用主模块
@@ -25,6 +28,9 @@ import { AppController } from './app.controller';
     NotificationModule,
     FilesModule,
     ConsoleModule,
+    FurnaceModule,
+    MfcModule,
+    SamplingModule,
   ],
   controllers: [AppController],
 })

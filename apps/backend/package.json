@@ -10,7 +10,8 @@
     "start:prod": "node dist/main.js",
     "smoke": "pnpm build && node -e \"process.env.SMOKETEST='1'; require('./dist/main.js')\"",
     "start:simple": "ts-node src/main-simple.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:unit": "ts-node --transpile-only test/furnace.service.test.ts && ts-node --transpile-only test/mfc.service.test.ts && ts-node --transpile-only test/sampling.service.test.ts"
   },
   "keywords": [],
   "author": "",

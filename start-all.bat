@@ -1,7 +1,19 @@
 @echo off
 chcp 65001 > nul
 echo Starting ZahnerFlow applications...
-echo Killing ports 8000, 8083, 3001...
+echo Killing ports 8000, 8010, 8011, 8083, 3001...
+
+echo Killing processes on port 8010 (MFC FastAPI)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8010 ^| findstr LISTENING') do (
+    echo Found process %%a on port 8010, killing...
+    taskkill /f /pid %%a
+)
+
+echo Killing processes on port 8011 (Furnace FastAPI)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8011 ^| findstr LISTENING') do (
+    echo Found process %%a on port 8011, killing...
+    taskkill /f /pid %%a
+)
 
 echo Killing processes on port 8000 (Python API)...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') do (
@@ -30,6 +42,12 @@ start "Frontend" cmd /k "cd /d "%~dp0apps\frontend" && pnpm dev"
 echo Starting Backend on port 3001...
 start "Backend" cmd /k "cd /d "%~dp0apps\backend" && pnpm start:dev"
 
+ echo Starting MFC FastAPI Server on port 8010...
+start "MFC FastAPI" cmd /k "cd /d "%~dp0apps\backend\src\modules\mfc\fastapi" && python mfc_device.py"
+
+echo Starting Furnace FastAPI Server on port 8011...
+start "Furnace FastAPI" cmd /k "cd /d "%~dp0apps\backend\src\modules\furnace\fastapi" && python ai518p_device.py"
+
  echo Starting Python API Server on port 8000...
 start "Python API" cmd /k "cd /d C:\Users\Dushuaijia\Documents\Code\ZAHNERFLOW\apps\backend\src\modules\zahner-zennium\fastapi && python zahner_device.py"
 
@@ -38,6 +56,8 @@ echo ========================================
 echo All applications started!
 echo Frontend: http://localhost:8083
 echo Backend:  http://localhost:3001
+echo MFC FastAPI: http://localhost:8010
+echo Furnace FastAPI: http://localhost:8011
 echo Python API: http://localhost:8000
 echo ========================================
 echo.

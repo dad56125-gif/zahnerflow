@@ -1,0 +1,19 @@
+[
+  {
+    "name": "A",
+    "createdAt": "2025-10-11T09:00:17.039Z",
+    "updatedAt": "2025-10-11T09:00:27.255Z",
+    "segments": [
+      {
+        "id": 1,
+        "temperature": 200,
+        "time": 60
+      },
+      {
+        "id": 2,
+        "temperature": 300,
+        "time": 60
+      }
+    ]
+  }
+]

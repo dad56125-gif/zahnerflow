@@ -122,9 +122,10 @@
   - 新增 API 客户端与 stores：`useDbBrowserStore`（含分页/过滤状态）；
   - 新增页面/组件：`DbBrowserView`（Workflows/DataFiles/Nodes/NodeParams 四个选项卡）、`DbEventsView`（SSE 日志）；
   - 类型沿用 `@zahnerflow/types` 现有结构，纯只读不改后端。
-- 验证方式：
-  - 本地开发：`pnpm --filter frontend dev`，通过代理访问后端 `/api/db/*`；
-  - 或直接打开后端内置页面：`http://localhost:3001/db-ui.html` 进行验收。
+  - 验证方式：
+    - 本地开发：`pnpm --filter frontend dev`，通过代理访问后端 `/api/db/*`；
+    - 或直接打开后端内置页面：`http://localhost:3001/db-ui.html` 进行验收。
+
 
 ## 2025-10-04 启动后端
 - 内容：执行构建并启动后端（开发模式）。
@@ -261,3 +262,60 @@
     2.  一个工作流中最多只能有一个 `shutdown` 节点。
     3.  如果 `startup` 节点存在，它必须是所有节点中的第一个。
     4.  如果 `shutdown` 节点存在，它必须在 `startup` 节点之后。
+
+## 2025-10-11 Furnace/MFC 集成 - 第1步：共享类型补充
+- 内容：按“合并版”方案补充 Furnace/MFC 所需类型，并完成 `@zahnerflow/types` 构建。
+- 文件/函数：
+  - packages/types/src/device.types.ts：新增 `ProgramSegment`、`FurnacePresetMeta`、`FurnacePreset`、`MfcDeviceInfo`、`MfcStatus`、`MfcSetpointRequest`、`FurnaceSample`、`MfcSample`。
+- 验证：
+  - 运行 `pnpm --filter @zahnerflow/types build` 通过（TypeScript 编译成功）。
+- 单元测试：
+  - 类型定义仅静态编译校验，无运行时逻辑，按约定以“编译通过即为通过”的检查方式执行，未新增运行时测试用例。
+
+## 2025-10-11 Furnace/MFC 集成 - 第2步：后端模块与 FastAPI 基础
+- 内容：新增 Furnace 与 MFC 后端模块（NestJS），实现方案中约定的基础对外接口；新增 FastAPI（Python）占位服务，提供仅设备 I/O 的基础端点（不含预设/存储/历史）。
+- 文件/函数：
+  - 后端（NestJS）
+    - apps/backend/src/devices/furnace-device.service.ts（调用 FastAPI Furnace 基础端点）
+    - apps/backend/src/modules/furnace/*（控制器/服务，预设 CRUD/clone/apply，5s 限流，幂等与失败回滚）
+    - apps/backend/src/devices/mfc-device.service.ts（调用 FastAPI MFC 基础端点）
+    - apps/backend/src/modules/mfc/*（控制器/服务，扫描缓存与 /devices）
+    - apps/backend/src/app.module.ts（注册 FurnaceModule/MfcModule）
+    - apps/backend/src/db/db.module.ts（导入 NotificationModule 以修复 SimpleEventBus 依赖）
+  - FastAPI（Python，仅基础能力，未纳入后端构建）
+    - apps/backend/src/modules/Furnace/fastapi/ai518p_device.py
+    - apps/backend/src/modules/MFC/fastapi/mfc_device.py
+- 单元测试：
+  - apps/backend/test/furnace.service.test.ts（预设名唯一、克隆、5s 限流、应用预设幂等与失败回滚-带 Mock 设备）
+  - apps/backend/test/mfc.service.test.ts（扫描结果合并到缓存）
+  - 运行脚本：`pnpm --filter backend test:unit`（自定义 TS 轻量测试运行器）
+- 验证：
+  - 冒烟：`pnpm --filter backend smoke` 通过（SMOKETEST 非常驻退出）。
+  - 构建：`pnpm --filter backend build` 正常。
+
+## 2025-10-11 Furnace/MFC 集成 - 第3步：采样与历史查询
+- 内容：实现 1s 采样服务（内存 1h 保留、JSONL 按日滚动写入），并在设备控制器下提供历史查询端点（Furnace 温度、MFC 流量）。
+- 文件/函数：
+  - apps/backend/src/modules/sampling/sampling.service.ts（采样调度、写文件、查询聚合）
+  - apps/backend/src/modules/sampling/sampling.module.ts（导出全局服务）
+  - apps/backend/src/app.module.ts（引入 SamplingModule）
+  - apps/backend/src/modules/furnace/furnace.controller.ts（GET /api/devices/furnace/logs/temperature）
+  - apps/backend/src/modules/mfc/mfc.controller.ts（GET /api/devices/mfc/logs/flow）
+- 单元测试：
+  - apps/backend/test/sampling.service.test.ts：调用一次 tick，验证内存与文件写入并查询返回（Mock 设备，不依赖真实串口）。
+- 验证：
+  - 构建/冒烟同上，端点可用（设备离线时采样静默）。
+
+## 2025-10-11 MFC FastAPI 真实指令映射补齐（Hold/Delay/Setpoint/Softstart/Shutoff）
+- 内容：依据提供的寄存器映射与 doc/flow/mfc_gui_control.py 解析方式，补齐 MFC FastAPI 端的真实读写：
+  - 读：流量 0x68/0x01/0xB9（UFRAC16）、数字设定 0x69/0x01/0xA4、当前设定 0x69/0x01/0xA5、Hold/Follow 0x69/0x01/0x05
+  - 写：Hold/Follow 0x69/0x01/0x05（UINT8）、Delay 0x69/0x01/0xA6（UINT16）、Digital Setpoint 0x69/0x01/0xA4（UFRAC16）、Softstart 0x6A/0x01/0xA4（UFRAC16）、Shutoff 0x6A/0x01/0xA2（UFRAC16）
+- 文件：apps/backend/src/modules/MFC/fastapi/mfc_device.py（完善 _send/响应解析、状态读取与新增写入端点）
+- 验证：本地无设备环境下仅完成静态检查；实际串口需接入设备验证（按 GUI 代码解析方式读取 payload[8:10] LE）。
+
+## 2025-10-11 前端对接指南文档
+- 内容：面向前端总结后端可用接口与页面建议，区分 NestJS 对外 API 与 FastAPI 设备 I/O（内部）。
+- 文件：`doc/Todo/Furnace-MFC-前端对接指南.md`
+- 要点：
+  - Furnace/MFC 对外端点、请求/响应示例、限流说明、历史查询参数。
+  - 前端 TODO 清单与组件建议（状态卡、程序段、预设、历史曲线、设备扫描与设定）。

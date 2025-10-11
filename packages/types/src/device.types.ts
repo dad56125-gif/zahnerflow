@@ -213,3 +213,70 @@ export interface TransitionConfig {
   condition?: string;
   action?: string;
 }
+
+// --------------------
+// Furnace & MFC types
+// --------------------
+
+// 炉温程序段（仅数字组合）
+export interface ProgramSegment {
+  id: number;          // 顺序段号，从 1 开始
+  temperature: number; // 目标温度（℃），AI-518P: 以℃为单位（FastAPI 层再做 ×10）
+  time: number;        // 保温时长（秒）
+}
+
+// 炉温预设元信息
+export interface FurnacePresetMeta {
+  name: string;        // 预设名，唯一
+  createdAt: string;   // ISO 时间
+  updatedAt: string;   // ISO 时间
+  summary?: string;    // 可选摘要
+}
+
+// 炉温预设
+export interface FurnacePreset extends FurnacePresetMeta {
+  segments: ProgramSegment[];
+}
+
+// MFC 设备信息（发现缓存）
+export interface MfcDeviceInfo {
+  address: number;        // 设备地址
+  gasType: string;        // 气体类型
+  maxFlowSccm: number;    // 满量程（sccm）
+}
+
+// MFC 状态
+export interface MfcStatus {
+  address: number;
+  flowPercent: number;            // 实际流量百分比（0-100）
+  flowSccm: number;               // 实际流量（sccm）
+  digitalSetpointPercent: number; // 数字通道设定百分比（0-100）
+  activeSetpointPercent: number;  // 实际生效设定百分比（0-100）
+}
+
+// MFC 设定请求
+export interface MfcSetpointRequest {
+  address: number;
+  sccm: number; // 目标流量（sccm）
+}
+
+// Furnace 采样点
+export interface FurnaceSample {
+  ts: string;        // ISO 时间戳
+  pv: number;        // Process Value 实测温度（℃）
+  sv: number;        // Set Value 目标温度（℃）
+  mv: number;        // Manipulated Value 输出百分比（0-100）
+  segment: number;   // 当前段号
+  segmentTime: number;    // 当前段已运行时间（秒）
+  segmentTimeSet: number; // 当前段设定时间（秒）
+}
+
+// MFC 采样点
+export interface MfcSample {
+  ts: string;        // ISO 时间戳
+  address: number;   // 设备地址
+  flowSccm: number;  // 实测流量（sccm）
+  flowPercent: number;            // 实测流量百分比（0-100）
+  digitalSetpointPercent: number; // 数字通道设定百分比
+  activeSetpointPercent: number;  // 实际生效设定百分比
+}
