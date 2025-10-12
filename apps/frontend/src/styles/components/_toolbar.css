@@ -1,0 +1,136 @@
+/* 工具栏样式 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space);
+  margin: var(--space);
+  margin-bottom: 0;
+  min-height: 70px;
+  gap: var(--space);
+  position: sticky;
+  top: var(--space);
+  z-index: 100;
+  border-radius: var(--radius-lg);
+}
+
+/* 悬浮工具栏样式 */
+.floating-toolbar {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  right: 30px;
+  height: 40px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 1000;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-label {
+  display: inline-flex;
+}
+
+.floating-toolbar .toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-floating-toolbar {
+  padding: 4px 12px;
+  font-size: 11px;
+  min-width: 70px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 24px;
+  line-height: 1;
+}
+
+.floating-toolbar .btn-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.floating-toolbar .btn-text {
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.floating-toolbar .divider {
+  width: 1px;
+  height: 16px;
+  background: var(--glass-border);
+  margin: 0 4px;
+}
+
+.floating-toolbar .logo {
+  display: none;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  margin-right: var(--space);
+}
+
+.btn-main-toolbar {
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.toolbar .btn-icon {
+  font-size: 14px;
+}
+
+.toolbar .btn-text {
+  font-size: 13px;
+}
+
+.menu {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.edit-controls,
+.run-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}

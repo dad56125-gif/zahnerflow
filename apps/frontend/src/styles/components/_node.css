@@ -1,0 +1,303 @@
+/* 节点面板样式 */
+.node-panel {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+}
+
+.node-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.node-item:hover {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.node-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 16px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.node-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  line-height: 1.2;
+}
+
+.node-category {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* 画布样式 */
+.canvas-container {
+  position: relative;
+  cursor: default;
+  height: 100%;
+  overflow: hidden; /* Keep overflow hidden to contain nodes */
+}
+
+.canvas-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 节点样式 */
+.node {
+  position: absolute;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 2px solid var(--glass-border);
+  border-radius: var(--radius);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.node:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 节点状态样式 */
+.node.status-ready {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--glass-bg);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.node.status-ready .node-status-indicator {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.node.status-running {
+  border: none;
+  background: linear-gradient(to bottom,
+    rgba(25, 118, 210, 0.02) 0%,
+    rgba(25, 118, 210, 0.30) 100%
+  );
+  box-shadow:
+    0 0 3px rgba(25, 118, 210, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  animation: running-opacity-pulse 1.5s infinite;
+}
+
+@keyframes running-opacity-pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.node.status-completed {
+  border: none;
+  background: linear-gradient(to bottom,
+    rgba(46, 125, 50, 0.02) 0%,
+    rgba(46, 125, 50, 0.25) 100%
+  );
+  box-shadow:
+    0 0 3px rgba(46, 125, 50, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.node.status-failed {
+  border: none;
+  background: linear-gradient(to bottom,
+    rgba(211, 47, 47, 0.02) 0%,
+    rgba(211, 47, 47, 0.16) 100%
+  );
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  animation: failed-internal-pulse 1.5s infinite;
+}
+
+
+@keyframes failed-internal-pulse {
+  0% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      /* 上部阴影 - 透明度较低 */
+      inset 0 2px 4px rgba(211, 47, 47, 0.2),
+      /* 中部阴影 - 透明度中等 */
+      inset 0 0 8px rgba(211, 47, 47, 0.4),
+      /* 下部阴影 - 透明度较高 */
+      inset 0 -2px 6px rgba(211, 47, 47, 0.6);
+  }
+  50% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      /* 上部阴影 - 透明度较低 (增强) */
+      inset 0 2px 8px rgba(211, 47, 47, 0.4),
+      /* 中部阴影 - 透明度中等 (增强) */
+      inset 0 0 16px rgba(211, 47, 47, 0.7),
+      /* 下部阴影 - 透明度较高 (增强) */
+      inset 0 -2px 12px rgba(211, 47, 47, 0.9);
+  }
+  100% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      /* 上部阴影 - 透明度较低 */
+      inset 0 2px 4px rgba(211, 47, 47, 0.2),
+      /* 中部阴影 - 透明度中等 */
+      inset 0 0 8px rgba(211, 47, 47, 0.4),
+      /* 下部阴影 - 透明度较高 */
+      inset 0 -2px 6px rgba(211, 47, 47, 0.6);
+  }
+}
+
+.node.status-paused {
+  border: none;
+  background: linear-gradient(to bottom,
+    rgba(230, 81, 0, 0.02) 0%,
+    rgba(230, 81, 0, 0.20) 100%
+  );
+  box-shadow:
+    0 0 3px rgba(230, 81, 0, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.node.status-cancelled {
+  border: none;
+  background: linear-gradient(to bottom,
+    rgba(97, 97, 97, 0.02) 0%,
+    rgba(97, 97, 97, 0.25) 100%
+  );
+  box-shadow:
+    0 0 3px rgba(97, 97, 97, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.node.status-pending {
+  border: none;
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.005) 0%,
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 节点状态指示器 */
+.node-status-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
+  z-index: 20;
+  opacity: 1;
+  display: block;
+  visibility: visible;
+}
+
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.node.selected {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 0 20px rgba(255, 255, 255, 0.2),
+    0 16px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.node-icon-large {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.node-title {
+  text-align: center;
+  padding: 0 4px;
+  font-size: 10px;
+}
+
+/* 端口样式 - 已隐藏 */
+.node-port {
+  display: none;
+  visibility: hidden;
+  opacity: 0;
+}

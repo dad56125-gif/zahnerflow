@@ -1,0 +1,55 @@
+:root {
+  /* === 设计令牌系统 - 按项目架构规范 === */
+
+  /* 尺寸基线（16px） */
+  --space:    clamp(1rem, 0.8rem + 0.6vw, 1.75rem);
+  --navbar-h: clamp(3rem, 2.5rem + 1vw, 4rem);
+  --sidebar-w: clamp(16rem, 20vw, 22rem);
+  --property-w: clamp(16rem, 20vw, 22rem);
+
+  /* 字体与控件 */
+  --text-body:  clamp(0.95rem, 0.9rem + 0.2vw, 1.0625rem);
+  --text-title: clamp(1.25rem, 1rem + 1vw, 2rem);
+  --btn-h:      clamp(2.25rem, 2rem + 0.5vw, 2.75rem);
+
+  /* 圆角/模糊/层级（复用项目现有） */
+  --radius-sm: 0.9375rem; /* 15px */
+  --radius: 1.25rem;     /* 20px */
+  --radius-lg: 1.5625rem; /* 25px */
+  --blur-xl: 1.5rem;     /* 24px */
+  --z-navbar: 40;
+  --z-overlay: 50;
+  --z-modal: 30;
+  --z-dropdown: 1000;
+
+  /* 玻璃态系统（保持项目原有风格） */
+  --glass-bg: rgba(0, 0, 0, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: rgba(0, 0, 0, 0.2);
+
+  /* 动画 */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* === 极简断点系统（仅兜底） === */
+/* 根字号微调 - 提升超宽屏舒适度 */
+@media (min-width: 1920px) {
+  :root {
+    font-size: 17px; /* 让 rem 整体微调，提升 2K/4K 的舒适度 */
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    font-size: 18px;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  :root {
+    font-size: 15px;
+    --sidebar-w: min(80vw, 16rem);
+    --property-w: min(85vw, 18rem);
+  }
+}

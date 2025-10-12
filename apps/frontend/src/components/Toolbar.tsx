@@ -79,7 +79,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <div className="toolbar-section">
         <div className="menu">
           <button 
-            className="btn glass btn-primary" 
+            className="btn btn-floating-toolbar glass btn-primary" 
             onClick={clearCanvas} 
             title="新建流程"
           >
@@ -94,14 +94,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               className="file-input"
               onChange={handleFileOpen}
             />
-            <span className="btn glass btn-secondary" title="打开文件">
+            <span className="btn btn-floating-toolbar glass btn-secondary" title="打开文件">
               <span className="btn-icon">📂</span>
               <span className="btn-text">打开</span>
             </span>
           </label>
           
           <button 
-            className="btn glass btn-accent" 
+            className="btn btn-floating-toolbar glass btn-accent" 
             onClick={handleFileSave} 
             title="保存文件"
           >
@@ -117,7 +117,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <div className="divider" />
           
           <button 
-            className="btn glass" 
+            className="btn btn-floating-toolbar glass" 
             onClick={onZoomOut} 
             title="缩小视图"
           >
@@ -126,7 +126,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
           
           <button 
-            className="btn glass" 
+            className="btn btn-floating-toolbar glass" 
             onClick={onResetZoom} 
             title="重置缩放"
           >
@@ -135,7 +135,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
           
           <button 
-            className="btn glass" 
+            className="btn btn-floating-toolbar glass" 
             onClick={onZoomIn} 
             title="放大视图"
           >
@@ -149,7 +149,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <div className="toolbar-section">
         <div className="run-controls">
           <button
-            className="btn glass btn-primary"
+            className="btn btn-floating-toolbar glass btn-primary"
             onClick={onRunFlow}
             title="运行流程 (F5)"
           >
@@ -158,7 +158,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
           
           <button
-            className="btn glass btn-secondary"
+            className="btn btn-floating-toolbar glass btn-secondary"
             onClick={onStopFlow}
             title="停止运行"
           >

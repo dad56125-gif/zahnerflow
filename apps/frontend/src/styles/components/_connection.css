@@ -1,0 +1,29 @@
+/* 连接线样式 */
+.connection-line {
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 2;
+  fill: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.connection-arrow {
+  fill: rgba(255, 255, 255, 0.8);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* 连接模式提示 */
+.connection-hint {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(33, 150, 243, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  z-index: 100;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}

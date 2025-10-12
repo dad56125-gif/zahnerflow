@@ -1,0 +1,104 @@
+/* 右侧面板 */
+.right-panels {
+  grid-column: 3;
+  grid-row: 1;
+  inline-size: var(--property-w);
+  margin: 0; /* 贴住 main-viewport 上侧和右侧 */
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  overflow: auto;
+}
+
+/* 属性面板 */
+.property-panel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto; /* 属性面板内部滚动 */
+}
+
+.property-panel-header {
+  padding: 12px 20px 8px 20px; /* 进一步减小边距 */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px; /* 进一步减小底部边距 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.property-panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  margin: 0;
+}
+
+.property-panel-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  text-align: right;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-tabs {
+  display: flex;
+  gap: 10px;
+  padding: 0 20px;
+  margin-bottom: 1rem;
+}
+
+.btn-property-tab {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: var(--btn-h);
+}
+
+.property-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--space) var(--space) calc(var(--space) - 20px); /* 移除顶部padding，显示更多参数，左边距减少20px */
+}
+
+.property-group {
+  margin-bottom: var(--space);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.property-group:has(.property-value) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.property-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px; /* 大幅减小标题和参数之间的间距 */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: white;
+}

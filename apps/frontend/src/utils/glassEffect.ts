@@ -64,7 +64,7 @@ class GlassEffect {
   private setupElementEffects(element: Element) {
     if (element.querySelector('.glass-main-shine')) return;
 
-    if (element.classList.contains('toolbar') || 
+    if (element.classList.contains('toolbar') ||
         element.classList.contains('sidebar') ||
         element.classList.contains('right-panels') ||
         element.classList.contains('status-bar') ||
@@ -72,7 +72,10 @@ class GlassEffect {
         element.classList.contains('canvas-container') ||
         element.classList.contains('canvas-grid') ||
         element.classList.contains('floating-toolbar') ||
-        element.classList.contains('top-navbar')) {
+        element.classList.contains('top-navbar') ||
+        element.classList.contains('device-controls') ||
+        element.classList.contains('device-hover-container') ||
+        element.classList.contains('device-modal')) {
       return;
     }
 

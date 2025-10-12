@@ -1,0 +1,119 @@
+/* main.css */
+
+/* 基础样式聚合 */
+@import './base/_variables.css';
+@import './base/_reset.css';
+@import './base/_typography.css';
+@import './base/_utilities.css';
+
+/* 组件样式聚合 */
+@import './components/_glass.css';
+@import './components/_button.css';
+@import './components/_input.css';
+@import './components/_tabs.css';
+@import './components/_toolbar.css';
+@import './components/_node.css';
+@import './components/_overlay.css';
+@import './components/_device-hover.css';
+@import './components/_workstation.css';
+@import './components/_connection.css';
+@import './components/_modal.css';
+
+/* 布局样式聚合（避免与 _grid.css 冲突，不引入它） */
+@import './layout/_header.css';
+@import './layout/_sidebar.css';
+@import './layout/_panel.css';
+@import './layout/_footer.css';
+
+/* 顶层网格容器，提供命名网格线 */
+.app-root {
+  display: grid;
+  grid-template-columns:
+    [L-start] var(--sidebar-w)
+    [L-end content-start] minmax(0, 1fr)
+    [content-end R-start] var(--property-w)
+    [R-end];
+  grid-template-rows:
+    [T-start] var(--navbar-h)
+    [T-end main-start] minmax(0, 1fr)
+    [main-end];
+  min-block-size: 100dvh;
+  padding-inline: var(--space);
+  padding-block-start: var(--space);
+}
+
+.main-content {
+  position: relative;
+}
+
+/* 覆盖主内容区（不覆盖导航行） */
+.layout-overlay {
+  grid-column: L-start / R-end;
+  grid-row: main-start / main-end;
+  position: relative;
+  pointer-events: none;
+}
+
+/* 对齐工具类 */
+.align-to-L {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.align-to-R {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.align-to-canvas-top {
+  position: absolute;
+  inset-block-start: 0;   /* 对齐到内容容器顶部 */
+  inset-inline-start: 0;
+  width: 100%;
+  pointer-events: auto;
+}
+
+/* 覆盖导航条外边距，避免超出网格行导致的重叠 */
+.top-navbar { margin: 0 !important; }
+
+/* 主工作区：位于 TopNavbar 下方，宽度与其一致 */
+.main-viewport {
+  grid-column: L-start / R-end;
+  grid-row: main-start / main-end;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--property-w);
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--space);
+  padding: 0;                 /* 水平不留内边距以与 TopNavbar 对齐 */
+  padding-block-start: var(--space);               /* 顶部呼吸间距 */
+  /* 底部：预留 StatusBar 高度 + 呼吸边距，使其与 StatusBar 顶部相邻但不重合 */
+  padding-block-end: calc(var(--navbar-h) + (2 * var(--space)));
+  align-items: stretch;
+}
+
+/* 中部画布列 */
+.canvas-area {
+  grid-column: 2;
+  grid-row: 1;
+  min-block-size: 0; /* 允许内部滚动 */
+  block-size: 100%;
+  position: relative; /* 作为浮动工具栏的定位参考 */
+}
+
+/* StatusBar 固定在视口底部（不占 app-root 布局空间） */
+.status-bar {
+  position: fixed;
+  left: var(--space);
+  right: var(--space);
+  bottom: var(--space);
+  margin: 0 !important;
+  padding-inline: 0 !important;
+  block-size: var(--navbar-h);
+  z-index: 1000;
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ElectrochemicalNode } from '../nodes/types';
-import '../styles/components.css';
+
 
 interface DataViewerProps {
   isVisible: boolean;

@@ -1,0 +1,39 @@
+# Default agents to run when --agents is not specified
+# Uses case-insensitive substring matching
+default_agents = ["codex", "claude", "gemini-cli"]
+
+# --- Global MCP Server Configuration ---
+[mcp]
+# Enable/disable MCP propagation globally (default: true)
+enabled = true
+# Global merge strategy: 'merge' or 'overwrite' (default: 'merge')
+merge_strategy = "merge"
+
+# --- Global .gitignore Configuration ---
+[gitignore]
+# Enable/disable automatic .gitignore updates (default: true)
+enabled = true
+
+# --- Agent-Specific Configurations ---
+
+[agents.claude]
+enabled = true
+output_path = "CLAUDE.md"
+
+# OpenAI Codex CLI agent and MCP config
+[agents.codex]
+enabled = true
+output_path = "AGENTS.md"
+output_path_config = ".codex/config.toml"
+
+# Agent-specific MCP configuration for Codex CLI
+[agents.codex.mcp]
+enabled = true
+merge_strategy = "merge"
+
+[agents.gemini-cli]
+enabled = true
+
+[mcp_servers.playwright-mcp]
+command = "npx"
+args = ["@playwright/mcp@latest"] 

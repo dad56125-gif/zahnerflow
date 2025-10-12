@@ -1,0 +1,63 @@
+/* 侧边栏样式 */
+.sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  inline-size: var(--sidebar-w);
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space);
+  padding-top: 0;
+}
+
+/* 侧边栏标题样式 */
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.sidebar-title {
+  font-size: 1rem;
+}
+
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.node-item {
+  padding: 1rem;
+  text-align: center;
+}
+
+.node-item .node-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.node-item .node-name {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.node-item .node-description {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.category-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

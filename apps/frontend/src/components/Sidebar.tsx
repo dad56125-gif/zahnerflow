@@ -9,29 +9,25 @@ interface SidebarProps {
   selectedWorkstation: WorkstationType | null;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  nodeGroups,
-  selectedWorkstation
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstation }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const addNode = useCanvasStore(state => state.addNode);
+  const addNode = useCanvasStore((state) => state.addNode);
 
   const handleCreateNode = (nodeType: string) => {
     if (selectedWorkstation) {
       const { nodes } = useCanvasStore.getState();
-      if (nodeType === 'startup' && nodes.some(n => n.type === 'startup')) {
-        alert('工作流中已存在一个启动程序节点。');
+      if (nodeType === 'startup' && nodes.some((n) => n.type === 'startup')) {
+        alert('工作流中已存在一个启动程序节点');
         return;
       }
-      if (nodeType === 'shutdown' && nodes.some(n => n.type === 'shutdown')) {
-        alert('工作流中已存在一个停止程序节点。');
+      if (nodeType === 'shutdown' && nodes.some((n) => n.type === 'shutdown')) {
+        alert('工作流中已存在一个停止程序节点');
         return;
       }
       addNode(nodeType as any, selectedWorkstation);
     }
   };
 
-  // getNodeConfig remains a local utility function
   const getNodeConfig = (nodeType: string) => {
     if (selectedWorkstation) {
       return getNodeConfigByWorkstation(nodeType, selectedWorkstation);
@@ -41,11 +37,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className="sidebar glass">
-      {/* 标题 */}
       <div className="sidebar-header">
         <h2 className="sidebar-title">
           <span className="sidebar-icon">📦</span>
-          <span className="sidebar-text">节点库</span>
+          <span className="sidebar-text">节点</span>
           {selectedWorkstation && (
             <span className="workstation-indicator">
               ({selectedWorkstation === 'zahner-zennium' ? 'Zahner Zennium' : 'PP242'})
@@ -54,9 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </h2>
       </div>
 
-      {/* 节点面板 */}
       <div className="sidebar-content">
-        {/* 搜索框 */}
         <div className="search-section">
           <div className="search-input-wrapper">
             <span className="search-icon">🔍</span>
@@ -70,35 +63,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* 节点分类 */}
         <div className="node-categories">
           {!selectedWorkstation ? (
             <div className="no-workstation-message">
               <div className="no-workstation-icon">🔬</div>
-              <div className="no-workstation-text">
-                请先选择工作站以查看可用节点
-              </div>
+              <div className="no-workstation-text">请先选择工作站以查看可用节点</div>
             </div>
           ) : (
             Object.entries(nodeGroups).map(([category, types]) => {
-              const categoryNodes = types.filter(type => {
+              const categoryNodes = types.filter((type) => {
                 const config = getNodeConfig(type);
                 return config?.name.toLowerCase().includes(searchTerm.toLowerCase());
               });
-              
               if (categoryNodes.length === 0) return null;
 
               return (
                 <div key={category} className="node-category">
-                  <h3 className="category-title">
-                    {getNodeCategoryName(category as NodeCategory)}
-                  </h3>
-                  
+                  <h3 className="category-title">{getNodeCategoryName(category as NodeCategory)}</h3>
                   <div className="node-grid">
                     {categoryNodes.map((nodeType) => {
                       const config = getNodeConfig(nodeType);
                       if (!config) return null;
-                      
                       return (
                         <div
                           key={nodeType}
@@ -106,15 +91,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           draggable
                           onClick={() => handleCreateNode(nodeType)}
                         >
-                          <div className="node-icon">
-                            {config.icon}
-                          </div>
-                          <div className="node-name">
-                            {config.name}
-                          </div>
-                          <div className="node-description">
-                            {config.description}
-                          </div>
+                          <div className="node-icon">{config.icon}</div>
+                          <div className="node-name">{config.name}</div>
+                          <div className="node-description">{config.description}</div>
                         </div>
                       );
                     })}
@@ -125,9 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
       </div>
-
-      
-      {/* 拖放区域 - 已移除 */}
     </div>
   );
 };
+

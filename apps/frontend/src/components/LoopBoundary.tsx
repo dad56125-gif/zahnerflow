@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LoopStartNode, LoopEndNode } from '../nodes/types';
 import { loopContextManager } from '../services/LoopContextManager';
-import '../styles/components.css';
+
 
 interface LoopBoundaryProps {
   startNode: LoopStartNode;

@@ -1,0 +1,15 @@
+{
+  "context": {
+    "fileName": "AGENTS.md"
+  },
+  "mcpServers": {
+    "playwright-mcp": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ],
+      "type": "stdio"
+    }
+  },
+  "contextFileName": "AGENTS.md"
+}

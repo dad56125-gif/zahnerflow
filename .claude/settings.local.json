@@ -1,47 +1,6 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(pnpm:*)",
-      "Bash(export:*)",
-      "Bash(nest:*)",
-      "Bash(cat:*)",
-      "Bash(py -m pip install:*)",
-      "Bash(start:*)",
-      "Bash(mkdir:*)",
-      "Bash(npm run build:*)",
-      "Bash(copy:*)",
-      "Bash(npm run lint)",
-      "Bash(npm run)",
-      "Bash(node:*)",
-      "Bash(npx tsc:*)",
-      "Bash(npx ts-node:*)",
-      "Bash(npm run test)",
-      "Bash(find:*)",
-      "Bash(timeout:*)",
-      "Bash(npm test)",
-      "Bash(npm run start:*)",
-      "Bash(npm install:*)",
-      "Bash(npx nx build:*)",
-      "Bash(rm:*)",
-      "Bash(node_modules/.bin/nest build:*)",
-      "Bash(dir /b \"C:\\Users\\Dushuaijia\\Documents\\Code\\ZAHNERFLOW\\apps\\backend\\src\")",
-      "Bash(python:*)",
-      "Bash(curl:*)",
-      "Bash(taskkill:*)",
-      "Bash(netstat:*)",
-      "Bash(findstr:*)",
-      "Bash(bash:*)",
-      "Bash(dir:*)",
-      "Bash(git rm:*)",
-      "Bash(git commit:*)",
-      "Bash(git branch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git add:*)",
-      "Bash(npm run start:dev:*)",
-      "Bash(rsync:*)",
-      "Bash(powershell:*)"
-    ],
-    "deny": [],
-    "ask": []
-  }
+  "enabledMcpjsonServers": [
+    "playwright-mcp"
+  ],
+  "enableAllProjectMcpServers": true
 }

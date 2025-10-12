@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LoopEndNode } from './types';
-import '../styles/components.css';
+
 import { ParameterInput } from '../components/ParameterInput';
 
 interface NodeComponentProps {

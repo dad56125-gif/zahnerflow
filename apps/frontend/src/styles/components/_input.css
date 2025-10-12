@@ -1,0 +1,167 @@
+/* 文件输入样式 */
+.file-input-label {
+  position: relative;
+  cursor: pointer;
+}
+
+.file-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 搜索样式 */
+.search-section {
+  margin-bottom: var(--space);
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 12px 12px 40px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  transition: var(--transition);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--glass-shine);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.property-item {
+  margin-bottom: var(--space);
+}
+
+.property-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.property-input {
+  width: calc(100% - 30px); /* 减少左右间距各15px，为滚动条留出空间 */
+  padding: 6px 12px; /* 减小高度：上下内边距从8px改为6px */
+  box-sizing: border-box; /* 确保padding不会增加总宽度 */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--glass-bg);
+  color: white;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  transition: var(--transition);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.property-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.property-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.property-select {
+  width: calc(100% - 40px); /* 减少左右间距各20px */
+  padding: 6px 12px; /* 减小高度：上下内边距从8px改为6px */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px; /* 减小字号 */
+  background: var(--glass-bg);
+  color: white;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  transition: var(--transition);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.property-select:focus {
+  outline: none;
+  border-color: var(--glass-shine);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+}
+
+/* 自定义下拉箭头 */
+.property-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' opacity='0.7'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 20px;
+  padding-right: 40px; /* 为箭头留出空间 */
+  border-radius: var(--radius-sm) !important; /* 确保圆角样式生效 */
+}
+
+/* 下拉选项样式 */
+.property-select option {
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+}
+
+.property-select option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.property-select option:selected {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.property-textarea {
+  width: calc(100% - 30px); /* 减少左右间距各15px，为滚动条留出空间 */
+  padding: 10px 16px; /* 稍微减小高度 */
+  box-sizing: border-box; /* 确保padding不会增加总宽度 */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--glass-bg);
+  color: white;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  transition: var(--transition);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  resize: vertical;
+  min-height: 80px;
+}
+
+.property-textarea:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.property-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}

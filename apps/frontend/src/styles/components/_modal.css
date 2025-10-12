@@ -1,0 +1,183 @@
+/* 设备悬浮模态框样式 */
+.device-modal {
+  /* position: absolute; */
+  /* top: 0; */
+  /* left: 0; */
+  /* right: 0; */
+  /* bottom: 0; */
+  min-height: 18.75rem; /* 300px */
+  border-radius: 1.25rem;
+  z-index: var(--z-modal);
+  backdrop-filter: blur(1.5rem);
+  -webkit-backdrop-filter: blur(1.5rem);
+  background: linear-gradient(135deg,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate; /* 创建新的堆叠上下文 */
+}
+
+.device-modal-content {
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.device-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.device-header h3 {
+  margin: 0;
+  font-size: clamp(1.125rem, 1rem + 0.5vw, 1.25rem);
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
+  font-weight: 300;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: scale(1.1);
+}
+
+.device-controls-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  flex: 1;
+  align-content: start;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.control-group input,
+.control-group select {
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.control-group input:focus,
+.control-group select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.control-group input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.control-group .unit {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 8px;
+}
+
+.current-value {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.control-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  grid-column: 1 / -1; /* 跨越所有列 */
+}
+
+.control-actions .btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.control-actions .btn-primary {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.4), rgba(52, 152, 219, 0.2));
+  border: 1px solid rgba(52, 152, 219, 0.4);
+  color: white;
+}
+
+.control-actions .btn-secondary {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.4), rgba(155, 89, 182, 0.2));
+  border: 1px solid rgba(155, 89, 182, 0.4);
+  color: white;
+}
+
+.control-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
