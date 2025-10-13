@@ -11,11 +11,11 @@
   min-height: 18.75rem; /* 300px */
   border-radius: 1.25rem;
   z-index: var(--z-modal);
-  backdrop-filter: blur(1.5rem);
-  -webkit-backdrop-filter: blur(1.5rem);
+  backdrop-filter: blur(4rem);
+  -webkit-backdrop-filter: blur(4rem);
   background: linear-gradient(135deg,
-    rgba(0, 0, 0, 0.9) 0%,
-    rgba(0, 0, 0, 0.8) 100%
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.4) 100%
   );
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow:
