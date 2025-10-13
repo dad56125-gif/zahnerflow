@@ -16,13 +16,15 @@
   width: 100%;
   min-height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   color: rgba(255, 255, 255, 0.6);
   font-size: 1.2rem;
   padding: 20px;
   box-sizing: border-box;
   transform-origin: top left; /* 缩放基准点设为左上角 */
+  user-select: none; /* 防止拖动时选中文字 */
+  transition: transform 0.1s ease-out; /* 添加平滑过渡 */
 }
 
 /* 网格背景移到外层，不随缩放变化 */
@@ -172,6 +174,29 @@
 
 .btn-zoom:active {
   transform: scale(0.95);
+}
+
+/* 拖动切换按钮样式 */
+.btn-drag-toggle {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-drag-toggle.active {
+  background: rgba(33, 150, 243, 0.3);
+  border-color: rgba(33, 150, 243, 0.6);
+  box-shadow:
+    0 4px 16px var(--glass-shadow),
+    0 0 8px rgba(33, 150, 243, 0.4);
+}
+
+.btn-drag-toggle:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-drag-toggle.active:hover {
+  background: rgba(33, 150, 243, 0.4);
 }
 
 /* 拖拽时的视觉反馈 */

@@ -44,6 +44,22 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [layoutStable, setLayoutStable] = useState(true);
   const [cachedConnections, setCachedConnections] = useState<Array<{id: string, startX: number, startY: number, endX: number, endY: number, midX?: number, midY?: number, isLShape: boolean}>>([]);
 
+  // Y轴拖动相关状态
+  const [isDragEnabled, setIsDragEnabled] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [canvasOffsetY, setCanvasOffsetY] = useState(0);
+  const dragStartScrollY = useRef(0);
+
+  // 拖动切换处理
+  const toggleDragMode = () => {
+    setIsDragEnabled(!isDragEnabled);
+    // 如果取消拖动模式，重置偏移量
+    if (isDragEnabled) {
+      setCanvasOffsetY(0);
+    }
+  };
+
   const NODE_SPACING = 200;
   const CANVAS_ROW_HEIGHT = 150;
   const NODE_START_X = 50;
@@ -143,6 +159,57 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
+  // Y轴拖动事件处理
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // 只有在拖动激活状态下才能拖动
+    if (!isDragEnabled) return;
+
+    // 只响应左键点击
+    if (e.button !== 0) return;
+
+    // 检查点击的是否为canvas-inner区域（而不是节点或其他元素）
+    const target = e.target as HTMLElement;
+    if (target.closest('.node') || target.closest('.zoom-controls') || target.closest('.btn-zoom')) {
+      return;
+    }
+
+    setIsDragging(true);
+    setDragStartY(e.clientY);
+    dragStartScrollY.current = canvasOffsetY;
+
+    // 防止选中文字
+    e.preventDefault();
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+
+    // 计算Y轴移动距离
+    const deltaY = e.clientY - dragStartY;
+    const newOffsetY = dragStartScrollY.current + deltaY;
+
+    setCanvasOffsetY(newOffsetY);
+  }, [isDragging, dragStartY]);
+
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+    }
+  }, [isDragging]);
+
+  // 全局鼠标事件监听
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
   return (
     <div
       className="canvas-container"
@@ -155,6 +222,15 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       {/* 缩放控制按钮 - 外层框架，不随缩放变化 */}
       <div className="zoom-controls">
+        {/* 拖动切换按钮 */}
+        <button
+          className={`btn-zoom btn-drag-toggle ${isDragEnabled ? 'active' : ''}`}
+          onClick={toggleDragMode}
+          title={isDragEnabled ? "关闭拖动模式" : "开启拖动模式"}
+        >
+          ✋
+        </button>
+
         <button className="btn-zoom" onClick={onZoomOut} title="缩小">
           ➖
         </button>
@@ -169,7 +245,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       {/* 可缩放的内容区域 */}
       <div
         className="canvas-inner"
-        style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
+        style={{
+          transform: `scale(${zoomLevel}) translateY(${canvasOffsetY}px)`,
+          transformOrigin: 'top left',
+          cursor: isDragEnabled ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          minHeight: '300vh' // 扩大内容区域以实现无限画板效果
+        }}
+        onMouseDown={handleMouseDown}
       >
         {/* 渲染连接线 - 随内容缩放 */}
         <svg className="connections-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
