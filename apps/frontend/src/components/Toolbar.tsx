@@ -5,18 +5,12 @@ import { useCanvasStore } from '../stores/canvasStore';
 interface ToolbarProps {
   onRunFlow: () => void;
   onStopFlow: () => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onResetZoom: () => void;
   selectedWorkstation: WorkstationType | null;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
   onRunFlow,
   onStopFlow,
-  onZoomIn,
-  onZoomOut,
-  onResetZoom,
   selectedWorkstation
 }) => {
   const {
@@ -111,40 +105,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       </div>
 
-      {/* 中间：编辑操作 */}
-      <div className="toolbar-section">
-        <div className="edit-controls">
-          <div className="divider" />
-          
-          <button 
-            className="btn btn-floating-toolbar glass" 
-            onClick={onZoomOut} 
-            title="缩小视图"
-          >
-            <span className="btn-icon">➖</span>
-            <span className="btn-text">缩小</span>
-          </button>
-          
-          <button 
-            className="btn btn-floating-toolbar glass" 
-            onClick={onResetZoom} 
-            title="重置缩放"
-          >
-            <span className="btn-icon">🎯</span>
-            <span className="btn-text">100%</span>
-          </button>
-          
-          <button 
-            className="btn btn-floating-toolbar glass" 
-            onClick={onZoomIn} 
-            title="放大视图"
-          >
-            <span className="btn-icon">➕</span>
-            <span className="btn-text">放大</span>
-          </button>
-        </div>
-      </div>
-
+      
       {/* 右侧：运行和设置 */}
       <div className="toolbar-section">
         <div className="run-controls">

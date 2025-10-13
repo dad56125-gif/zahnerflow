@@ -122,9 +122,6 @@ const ZahnerFlowApp: React.FC = () => {
             <Toolbar
               onRunFlow={handleRunFlow}
               onStopFlow={handleStopFlow}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onResetZoom={handleResetZoom}
               selectedWorkstation={selectedWorkstation}
             />
             <Canvas

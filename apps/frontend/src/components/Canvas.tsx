@@ -171,8 +171,6 @@ export const Canvas: React.FC<CanvasProps> = ({
         className="canvas-inner"
         style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
       >
-        <p>Main Canvas Area</p>
-
         {/* 渲染连接线 - 随内容缩放 */}
         <svg className="connections-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
           {cachedConnections.map((conn) => (

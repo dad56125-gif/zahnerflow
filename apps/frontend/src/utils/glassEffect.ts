@@ -69,8 +69,11 @@ class GlassEffect {
         element.classList.contains('right-panels') ||
         element.classList.contains('status-bar') ||
         element.classList.contains('property-panel') ||
+        element.classList.contains('canvas-area') ||
         element.classList.contains('canvas-container') ||
         element.classList.contains('canvas-grid') ||
+        element.classList.contains('canvas-inner') ||
+        element.classList.contains('connections-layer') ||
         element.classList.contains('floating-toolbar') ||
         element.classList.contains('top-navbar') ||
         element.classList.contains('device-controls') ||
