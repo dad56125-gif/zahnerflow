@@ -18,6 +18,7 @@
 @import './components/_workstation.css';
 @import './components/_connection.css';
 @import './components/_modal.css';
+@import './components/_canvas.css';
 
 /* 布局样式聚合（避免与 _grid.css 冲突，不引入它） */
 @import './layout/_header.css';
@@ -37,7 +38,7 @@
     [T-start] var(--navbar-h)
     [T-end main-start] minmax(0, 1fr)
     [main-end];
-  min-block-size: 100dvh;
+  block-size: 100dvh;
   padding-inline: var(--space);
   padding-block-start: var(--space);
 }
@@ -93,12 +94,14 @@
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--property-w);
   grid-auto-rows: minmax(0, 1fr);
   gap: var(--space);
-  padding: 0;                 /* 水平不留内边距以与 TopNavbar 对齐 */
-  padding-block-start: var(--space);               /* 顶部呼吸间距 */
-  /* 底部：预留 StatusBar 高度 + 呼吸边距，使其与 StatusBar 顶部相邻但不重合 */
+  padding: 0;
+  padding-block-start: var(--space);
   padding-block-end: calc(var(--navbar-h) + (2 * var(--space)));
   align-items: stretch;
   position: relative; /* 浮层定位上下文 */
+  min-height: 0; /* Allow it to shrink correctly within the grid layout */
+  flex-shrink: 0 !important; /* Prevent it from shrinking */
+  overflow: hidden; /* 防止子项溢出影响主行高度计算 */
 }
 
 /* 中部画布列 */
@@ -108,6 +111,7 @@
   min-block-size: 0; /* 允许内部滚动 */
   block-size: 100%;
   position: relative; /* 作为浮动工具栏的定位参考 */
+  overflow: hidden; /* 限制内部内容不溢出 */
 }
 
 /* StatusBar 固定在视口底部（不占 app-root 布局空间） */

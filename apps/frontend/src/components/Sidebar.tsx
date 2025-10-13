@@ -47,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
             </span>
           )}
         </h2>
+        {/* 移除调试信息的 JSON 打印 */}
       </div>
 
       <div className="sidebar-content">
@@ -73,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
             Object.entries(nodeGroups).map(([category, types]) => {
               const categoryNodes = types.filter((type) => {
                 const config = getNodeConfig(type);
-                return config?.name.toLowerCase().includes(searchTerm.toLowerCase());
+                return config !== undefined;
               });
               if (categoryNodes.length === 0) return null;
 
@@ -89,6 +90,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
                           key={nodeType}
                           className="node-item glass"
                           draggable
+                          onDragStart={(e) => {
+                            try {
+                              e.dataTransfer.setData('nodeType', nodeType);
+                              e.dataTransfer.effectAllowed = 'copy';
+                              e.dataTransfer.dropEffect = 'copy';
+                            } catch {}
+                          }}
                           onClick={() => handleCreateNode(nodeType)}
                         >
                           <div className="node-icon">{config.icon}</div>
@@ -107,4 +115,3 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
     </div>
   );
 };
-

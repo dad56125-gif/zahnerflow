@@ -762,7 +762,8 @@ export const ZAHNER_NODE_GROUPS: Record<NodeCategory, ZahnerNodeType[]> = {
 // 工具函数：根据工作站获取节点配置
 export function getNodeConfigByWorkstation(type: string, workstation: WorkstationType): NodeConfig {
   if (workstation === 'zahner-zennium') {
-    return ZAHNER_NODE_CONFIGS[type as ZahnerNodeType];
+    const config = ZAHNER_NODE_CONFIGS[type as ZahnerNodeType];
+    return config;
   }
   return NODE_CONFIGS[type as NodeType];
 }
