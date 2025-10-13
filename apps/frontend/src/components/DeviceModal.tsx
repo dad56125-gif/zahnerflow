@@ -11,20 +11,11 @@ interface DeviceModalProps {
 
 export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modalTop, modalLeft, modalWidth, modalHeight }) => {
   if (!device) return null;
+  // 保持对 props 的读取以避免 TS 未使用报错，但不用于布局，布局交由 CSS 控制
+  void modalTop; void modalLeft; void modalWidth; void modalHeight;
 
   return (
-    <div
-      className="device-modal"
-      style={{
-        position: 'fixed', // Use fixed positioning for Portal
-        top: modalTop,
-        left: modalLeft,
-        width: modalWidth,
-        height: modalHeight,
-        // The z-index is already set in _modal.css using var(--z-modal)
-        // which will be sufficient when rendered via Portal.
-      }}
-    >
+    <div className="device-modal">
       <div className="device-modal-content">
         <div className="device-header">
           <h3>{device === 'furnace' ? '管式炉控制' : '流量计控制'}</h3>

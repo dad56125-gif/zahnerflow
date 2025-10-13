@@ -48,9 +48,11 @@
 
 /* 覆盖主内容区（不覆盖导航行） */
 .layout-overlay {
-  grid-column: L-start / R-end;
-  grid-row: main-start / main-end;
-  position: relative;
+  position: absolute;
+  inset-inline: 0;
+  /* 避让 main-viewport 的上下呼吸边距与固定的 StatusBar */
+  inset-block-start: var(--space);
+  inset-block-end: calc(var(--navbar-h) + (2 * var(--space)));
   pointer-events: none;
 }
 
@@ -76,6 +78,7 @@
   inset-block-start: 0;   /* 对齐到内容容器顶部 */
   inset-inline-start: 0;
   width: 100%;
+  block-size: 100%;
   pointer-events: auto;
 }
 
@@ -95,6 +98,7 @@
   /* 底部：预留 StatusBar 高度 + 呼吸边距，使其与 StatusBar 顶部相邻但不重合 */
   padding-block-end: calc(var(--navbar-h) + (2 * var(--space)));
   align-items: stretch;
+  position: relative; /* 浮层定位上下文 */
 }
 
 /* 中部画布列 */

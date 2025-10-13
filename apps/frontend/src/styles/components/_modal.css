@@ -1,5 +1,8 @@
 /* 设备悬浮模态框样式 */
 .device-modal {
+  /* 占满 main-viewport 可用空间 */
+  inline-size: 100%;
+  block-size: 100%;
   /* position: absolute; */
   /* top: 0; */
   /* left: 0; */

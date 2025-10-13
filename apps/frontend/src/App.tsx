@@ -75,22 +75,22 @@ const ZahnerFlowApp: React.FC = () => {
           <div className="right-panels">
             <PropertyPanel selectedWorkstation={selectedWorkstation} />
           </div>
+          {/* 浮层：设备模态框，吸附左侧与画布顶部（在 main-viewport 内） */}
+          {fixedDevice && (
+            <div className="layout-overlay">
+              <div className="align-to-L align-to-canvas-top">
+                <DeviceModal
+                  device={fixedDevice}
+                  onClose={() => setFixedDevice(null)}
+                  modalTop={0}
+                  modalLeft={0}
+                  modalWidth={500}
+                  modalHeight={400}
+                />
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* 浮层：设备模态框，吸附左侧与画布顶部 */}
-        {fixedDevice && (
-          <div className="layout-overlay align-to-L align-to-canvas-top">
-            <DeviceModal
-              device={fixedDevice}
-              onClose={() => setFixedDevice(null)}
-              modalTop={0}
-              modalLeft={0}
-              modalWidth={500}
-              modalHeight={400}
-            />
-          </div>
-        )}
-      </div>
 
       {/* 固定在视口底部的状态栏（不在 app-root 网格内） */}
       <StatusBar
@@ -99,9 +99,9 @@ const ZahnerFlowApp: React.FC = () => {
         isNotificationPanelOpen={isNotificationPanelOpen}
         setIsNotificationPanelOpen={setIsNotificationPanelOpen}
       />
+    </div>
     </>
   );
 };
 
 export default ZahnerFlowApp;
-
