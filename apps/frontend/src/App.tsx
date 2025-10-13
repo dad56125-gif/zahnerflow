@@ -60,6 +60,12 @@ const ZahnerFlowApp: React.FC = () => {
     useCanvasStore.getState().clearCanvas();
   };
 
+  const handleRunFlow = useCallback(() => setIsRunning(true), []);
+  const handleStopFlow = useCallback(() => setIsRunning(false), []);
+  const handleZoomIn = useCallback(() => setZoomLevel((z) => Math.min(3, +(z + 0.1).toFixed(2))), []);
+  const handleZoomOut = useCallback(() => setZoomLevel((z) => Math.max(0.2, +(z - 0.1).toFixed(2))), []);
+  const handleResetZoom = useCallback(() => setZoomLevel(1), []);
+
   useEffect(() => {
     if (!canvasRef.current) return;
     const resizeObserver = new ResizeObserver(entries => {
