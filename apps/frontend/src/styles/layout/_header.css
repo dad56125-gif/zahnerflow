@@ -8,6 +8,7 @@
   margin-bottom: 0;
   border-radius: var(--radius);
   border: 1px solid var(--glass-border);
+  z-index: 1000; /* Ensure it's above other elements */
 
   padding-inline: var(--space);
   block-size: var(--navbar-h);
