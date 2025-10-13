@@ -73,7 +73,7 @@ export class StateLinkageManager {
 
   private async checkBackendServices(): Promise<void> {
     try {
-      const response = await fetch('http://localhost:3001/api/health', {
+      const response = await fetch('http://localhost:3001/health', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(3000)
