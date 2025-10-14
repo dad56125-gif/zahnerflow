@@ -156,3 +156,61 @@
 - **Task:** 修复 `postcss-import` 错误。
   - **Change:** 修复了 `_node.css` 文件中的一个CSS语法错误，该错误导致了 `postcss-import` 插件的报错。
   - **File:** `apps/frontend/src/styles/components/_node.css`
+
+## 2025-10-13
+
+- **Task:** Canvas组件独立化重构。
+  - **Change:** 将canvas功能从App.tsx中提取为独立组件，遵循项目文件组织结构（TSX在components目录，CSS在styles/components目录）。
+  - **Files Created:**
+    - `apps/frontend/src/components/Canvas.tsx` - 独立的Canvas组件
+    - `apps/frontend/src/styles/components/_canvas.css` - Canvas组件样式文件
+  - **Files Modified:**
+    - `apps/frontend/src/App.tsx` - 简化canvas相关代码，替换为Canvas组件调用
+    - `apps/frontend/src/styles/main.css` - 添加canvas样式导入
+  - **Key Features:**
+    - 分层设计：外层框架固定，内层内容可缩放
+    - 保持功能完整性：节点渲染、连接线、拖放等交互功能正常
+    - 遵循布局原则：维持现有的网格布局结构
+
+## 2025-10-13
+
+- **Task:** Canvas布局优化和动画屏蔽。
+  - **Change:** 优化Canvas组件布局结构，实现分层架构，屏蔽canvas相关元素的玻璃态动画效果。
+  - **Files Modified:**
+    - `apps/frontend/src/components/Canvas.tsx` - 重新组织JSX结构，实现分层布局
+    - `apps/frontend/src/styles/components/_canvas.css` - 更新样式实现分层效果
+    - `apps/frontend/src/utils/glassEffect.ts` - 屏蔽canvas相关类的动画效果
+  - **Layout Architecture:**
+    - 外层框架：网格背景、缩放控制按钮（不随内容缩放）
+    - 内层内容：节点、连接线（随内容缩放）
+    - 遮挡逻辑：外部容器限制显示范围，内容被遮挡而非截断
+
+## 2025-10-13
+
+- **Task:** Toolbar简化。
+  - **Change:** 删除canvas-inner中的占位文字和Toolbar中的重复缩放按钮。
+  - **Files Modified:**
+    - `apps/frontend/src/components/Canvas.tsx` - 删除"Main Canvas Area"文字
+    - `apps/frontend/src/components/Toolbar.tsx` - 删除缩小、100%、放大按钮
+    - `apps/frontend/src/App.tsx` - 更新Toolbar组件调用，移除缩放props
+  - **Simplification:**
+    - Toolbar专注文件操作和流程控制
+    - 缩放功能统一由Canvas右下角按钮控制
+
+## 2025-10-13
+
+- **Task:** Canvas拖动功能实现。
+  - **Change:** 为canvas-inner实现仅Y轴的上下拖动功能，添加拖动激活控制。
+  - **Files Modified:**
+    - `apps/frontend/src/components/Canvas.tsx` - 添加拖动状态管理和事件处理
+    - `apps/frontend/src/styles/components/_canvas.css` - 添加拖动相关样式
+  - **Drag Features:**
+    - 拖动激活按钮：点击激活/取消拖动模式
+    - Y轴拖动：仅支持垂直方向的上下拖动
+    - 无限画板：扩大内容区域，无明显边界限制
+    - 无干扰体验：拖动时保持原有外观，无额外视觉效果
+  - **State Management:**
+    - `isDragEnabled`: 拖动模式激活状态
+    - `isDragging`: 当前拖动状态
+    - `canvasOffsetY`: Y轴偏移量
+    - 智能检测：避免与节点点击、缩放按钮冲突

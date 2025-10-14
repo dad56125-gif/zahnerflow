@@ -24,7 +24,7 @@
   box-sizing: border-box;
   transform-origin: top left; /* 缩放基准点设为左上角 */
   user-select: none; /* 防止拖动时选中文字 */
-  transition: transform 0.1s ease-out; /* 添加平滑过渡 */
+  transition: transform 0.3s ease-out; /* 添加平滑过渡 */
 }
 
 /* 网格背景移到外层，不随缩放变化 */
@@ -62,7 +62,7 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 更平滑的过渡动画 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,10 +76,25 @@
     0 4px 16px var(--glass-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   z-index: 2;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: nodeEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 节点进入动画 */
+@keyframes nodeEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .node:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
   box-shadow:
     0 8px 24px var(--glass-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);

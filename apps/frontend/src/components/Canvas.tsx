@@ -60,49 +60,167 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  const NODE_SPACING = 200;
   const CANVAS_ROW_HEIGHT = 150;
-  const NODE_START_X = 50;
+  const NODE_WIDTH = 140; // 节点默认宽度
 
   useEffect(() => {
     if (!canvasRef.current) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const DEBOUNCE_DELAY = 16; // 约60fps的微小防抖窗口
+
     const resizeObserver = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setCanvasSize(entry.contentRect.width, entry.contentRect.height);
+      // 清除之前的定时器
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
+
+      // 设置新的定时器
+      timeoutId = setTimeout(() => {
+        for (const entry of entries) {
+          setCanvasSize(entry.contentRect.width, entry.contentRect.height);
+        }
+      }, DEBOUNCE_DELAY);
     });
+
     resizeObserver.observe(canvasRef.current);
-    return () => resizeObserver.disconnect();
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      resizeObserver.disconnect();
+    };
   }, [setCanvasSize]);
 
-  useEffect(() => {
-    if (canvasSize.width > 0) {
-        setLayoutStable(false);
-        const id = setTimeout(() => {
-            recalculateNodePositions();
-            setLayoutStable(true);
-        }, 50);
-        return () => clearTimeout(id);
-    }
-  }, [canvasSize, recalculateNodePositions]);
 
-  const calculateNodePosition = useCallback((index: number) => {
-    const nodesPerRow = Math.max(1, Math.floor((canvasSize.width - 100) / NODE_SPACING));
+  // 动态计算节点布局配置 - 安全的动态宽度计算
+  const calculateDynamicLayout = useCallback(() => {
+    const padding = 100; // canvas左右预留边距
+    const availableWidth = canvasSize.width - (padding * 2); // 可用宽度
+
+    // 计算在最小间距下能容纳的最大节点数
+    const maxNodesPerRow = Math.max(1, Math.floor(availableWidth / (NODE_WIDTH + 60)));
+
+    // 根据当前节点总数决定每行实际节点数
+    const totalNodes = nodes.length;
+    const actualNodesPerRow = Math.min(maxNodesPerRow, totalNodes);
+
+    let spacing = 0;
+    let startX = padding;
+
+    if (actualNodesPerRow === 1) {
+      // 单个节点在可用范围内完全居中 - 安全访问节点
+      const firstNode = nodes[0];
+      const firstNodeWidth = firstNode?.style?.width || NODE_WIDTH;
+      startX = padding + (availableWidth - firstNodeWidth) / 2;
+      spacing = 0;
+    } else {
+      // 每行真正的两端对齐：
+      // 第一个节点左边缘距离左边框 = 最后一个节点右边缘距离右边框
+      // 节点之间间隔相等
+      // 安全计算前actualNodesPerRow个节点的实际宽度总和
+      let totalNodesWidth = 0;
+      for (let i = 0; i < actualNodesPerRow && i < nodes.length; i++) {
+        const node = nodes[i];
+        totalNodesWidth += node?.style?.width || NODE_WIDTH;
+      }
+
+      const totalSpacingWidth = availableWidth - totalNodesWidth;
+      spacing = totalSpacingWidth / (actualNodesPerRow - 1);
+
+      // 起始位置就是左padding，确保第一个节点左边缘距离canvas左边框正好是padding
+      startX = padding;
+    }
+
+    return {
+      nodesPerRow: actualNodesPerRow,
+      spacing: spacing,
+      startX: startX,
+      connectionLength: spacing
+    };
+  }, [canvasSize.width, nodes.length]);
+
+  // 重构：将节点位置计算移到 useEffect 内部，避免循环依赖
+  const calculateNodePosition = useCallback((index: number, nodesArray: ElectrochemicalNode[]) => {
+    const padding = 100; // canvas左右预留边距
+    const availableWidth = canvasSize.width - (padding * 2); // 可用宽度
+
+    const { nodesPerRow } = calculateDynamicLayout();
     const row = Math.floor(index / nodesPerRow);
     const col = index % nodesPerRow;
-    const x = NODE_START_X + (row % 2 === 0 ? col : nodesPerRow - 1 - col) * NODE_SPACING;
+
+    // 获取当前行的节点
+    const rowStartIndex = row * nodesPerRow;
+    const rowEndIndex = Math.min(rowStartIndex + nodesPerRow, nodesArray.length);
+    const nodesInThisRow = nodesArray.slice(rowStartIndex, rowEndIndex);
+
+    let x, spacing, startX;
+
+    if (nodesInThisRow.length === 1 && row === 0) {
+      // 第一行的单个节点在可用范围内完全居中
+      const nodeWidth = nodesInThisRow[0]?.style?.width || NODE_WIDTH;
+      startX = padding + (availableWidth - nodeWidth) / 2;
+      spacing = 0;
+      x = startX;
+    } else {
+      // 每行独立计算间距，实现真正的两端对齐
+      let totalNodesWidth = 0;
+      for (const node of nodesInThisRow) {
+        totalNodesWidth += node?.style?.width || NODE_WIDTH;
+      }
+
+      const totalSpacingWidth = availableWidth - totalNodesWidth;
+      spacing = totalSpacingWidth / (nodesInThisRow.length - 1);
+      startX = padding; // 第一个节点左边缘距离左边框 = padding
+
+      // 计算当前节点的X位置，考虑Z字形排列
+      if (row % 2 === 0) {
+        // 奇数行：从左到右（正常顺序）
+        x = startX;
+        for (let i = 0; i < col; i++) {
+          const nodeWidth = nodesInThisRow[i]?.style?.width || NODE_WIDTH;
+          x += nodeWidth + spacing;
+        }
+      } else {
+        // 偶数行：从右到左（反向顺序）
+        x = startX;
+        for (let i = 0; i < nodesInThisRow.length - 1 - col; i++) {
+          const nodeWidth = nodesInThisRow[i]?.style?.width || NODE_WIDTH;
+          x += nodeWidth + spacing;
+        }
+      }
+    }
+
     const y = 100 + row * CANVAS_ROW_HEIGHT;
     return { x, y };
-  }, [canvasSize.width]);
+  }, [calculateDynamicLayout, canvasSize.width]);
+
+  // 使用两端对齐算法更新节点位置 - 移除延迟，立即计算避免抽搐
+  useEffect(() => {
+    if (canvasSize.width > 0 && nodes.length > 0) {
+        setLayoutStable(false);
+        // 立即计算并设置最终位置，移除setTimeout避免视觉抽搐
+        const updatedNodes = nodes.map((node, index) => {
+            const newPosition = calculateNodePosition(index, nodes);
+            return {
+                ...node,
+                position: newPosition
+            };
+        });
+        setNodes(updatedNodes);
+        setLayoutStable(true);
+    }
+  }, [canvasSize, nodes.length, calculateNodePosition, setNodes]); // 恢复nodes.length依赖，移除延迟
 
   useEffect(() => {
     if (!layoutStable || nodes.length === 0) return;
 
     const newConnections = nodes.map((node, index) => {
       if (index >= nodes.length - 1) return null;
-      const position = calculateNodePosition(index);
-      const nextPosition = calculateNodePosition(index + 1);
-      const nodesPerRow = Math.max(1, Math.floor((canvasSize.width - 100) / NODE_SPACING));
+      const position = calculateNodePosition(index, nodes);
+      const nextPosition = calculateNodePosition(index + 1, nodes);
+      const { nodesPerRow, connectionLength } = calculateDynamicLayout();
       const currentRow = Math.floor(index / nodesPerRow);
       const nextRow = Math.floor((index + 1) / nodesPerRow);
 
@@ -115,7 +233,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         const isLeftToRight = currentRow % 2 === 0;
         const startX = isLeftToRight ? position.x + (node.style.width || 140) : position.x;
         const endX = nextRow % 2 === 0 ? nextPosition.x : nextPosition.x + (node.style.width || 140);
-        const midX = startX + (isLeftToRight ? 50 : -50);
+        const midX = startX + (isLeftToRight ? connectionLength : -connectionLength);
         return { id: `line-${index}`, startX, startY: position.y + 30, endX, endY: nextPosition.y + 30, midX, midY: nextPosition.y + 30, isLShape: true };
       }
     }).filter(Boolean) as any;
@@ -253,8 +371,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
         onMouseDown={handleMouseDown}
       >
-        {/* 渲染连接线 - 随内容缩放 */}
-        <svg className="connections-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+        {/* 渲染连接线 - 临时屏蔽 */}
+        {/* <svg className="connections-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
           {cachedConnections.map((conn) => (
             <g key={conn.id}>
               {conn.isLShape ? (
@@ -288,7 +406,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               )}
             </g>
           ))}
-        </svg>
+        </svg> */}
 
         {/* 渲染画布上的节点 - 随内容缩放 */}
         {nodes.map((node) => (
