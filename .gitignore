@@ -140,3 +140,5 @@ $RECYCLE.BIN/
 /CLAUDE.md
 /CLAUDE.md.bak
 # END Ruler Generated Files
+.jsonl/
+*.jsonl
