@@ -1,0 +1,1181 @@
+/* 循环系统样式 */
+
+/* 循环边界样式 */
+.loop-boundary {
+  animation: loop-pulse 2s ease-in-out infinite;
+}
+
+.loop-boundary.running {
+  border-color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.05);
+  animation: loop-running-pulse 1s ease-in-out infinite;
+}
+
+.loop-boundary.paused {
+  border-color: #FF9800;
+  background-color: rgba(255, 152, 0, 0.05);
+  animation: loop-paused-pulse 1.5s ease-in-out infinite;
+}
+
+.loop-boundary.error {
+  border-color: #F44336;
+  background-color: rgba(244, 67, 54, 0.05);
+  animation: loop-error-pulse 0.5s ease-in-out 3;
+}
+
+.loop-boundary.completed {
+  border-color: #2196F3;
+  background-color: rgba(33, 150, 243, 0.05);
+  animation: loop-completed-pulse 1s ease-in-out 2;
+}
+
+/* 循环标题样式 */
+.loop-title {
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loop-title.running {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.loop-title.paused {
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+}
+
+.loop-title.error {
+  background: linear-gradient(135deg, #F44336, #D32F2F);
+}
+
+.loop-title.completed {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+}
+
+/* 循环进度条样式 */
+.loop-progress-bar {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loop-progress-fill {
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  transition: width 0.3s ease;
+}
+
+.loop-progress-fill.running {
+  background: linear-gradient(90deg, #4CAF50, #45a049);
+}
+
+.loop-progress-fill.paused {
+  background: linear-gradient(90deg, #FF9800, #F57C00);
+}
+
+.loop-progress-fill.error {
+  background: linear-gradient(90deg, #F44336, #D32F2F);
+}
+
+/* 循环控制面板样式 */
+.loop-control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.loop-info h4 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.loop-parameters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.loop-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--glass-hover);
+  border-radius: var(--radius-sm);
+}
+
+.status-indicator {
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.loop-progress-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.loop-time {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.loop-error {
+  font-size: 11px;
+  padding: 4px 6px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 循环控制按钮样式 */
+.loop-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-loop-start,
+.btn-loop-pause,
+.btn-loop-resume,
+.btn-loop-cancel,
+.btn-loop-reset,
+.btn-loop-details {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.btn-loop-start:hover,
+.btn-loop-pause:hover,
+.btn-loop-resume:hover,
+.btn-loop-cancel:hover,
+.btn-loop-reset:hover,
+.btn-loop-details:hover {
+  background: var(--glass-hover);
+  transform: translateY(-1px);
+}
+
+.btn-loop-start {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.btn-loop-start:hover {
+  background: #4CAF50;
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.btn-loop-pause {
+  border-color: #FF9800;
+  color: #FF9800;
+}
+
+.btn-loop-pause:hover {
+  background: #FF9800;
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+}
+
+.btn-loop-resume {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.btn-loop-resume:hover {
+  background: #4CAF50;
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.btn-loop-cancel {
+  border-color: #F44336;
+  color: #F44336;
+}
+
+.btn-loop-cancel:hover {
+  background: #F44336;
+  color: white;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+}
+
+.btn-loop-reset {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
+.btn-loop-reset:hover {
+  background: var(--text-secondary);
+  color: white;
+}
+
+.btn-loop-details {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn-loop-details:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* 循环详细信息面板样式 */
+.loop-details-panel {
+  font-family: 'Monaco', 'Menlo', monospace;
+  line-height: 1.4;
+}
+
+.loop-details-panel > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.loop-details-panel > div:last-child {
+  border-bottom: none;
+}
+
+.loop-details-panel > div > span:first-child {
+  color: var(--text-secondary);
+}
+
+.loop-details-panel > div > span:last-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* 循环状态指示器样式 */
+.loop-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
+}
+
+.loop-stats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.stat-item {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-item.running::before {
+  content: '🟢';
+}
+
+.stat-item.completed::before {
+  content: '🔵';
+}
+
+.stat-item.error::before {
+  content: '🔴';
+}
+
+/* 循环可视化覆盖层样式 */
+.loop-visualizer-overlay {
+  pointer-events: none;
+}
+
+.loop-visualizer-overlay:hover {
+  pointer-events: auto;
+}
+
+.loop-visualizer-popup {
+  animation: loop-popup-in 0.2s ease-out;
+}
+
+/* 循环模式激活状态样式 */
+.loop-mode-active {
+  cursor: crosshair;
+}
+
+.loop-mode-active .loop-boundary {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 20px rgba(156, 39, 176, 0.3);
+}
+
+/* 循环节点高亮样式 */
+.loop-node-highlight {
+  animation: loop-node-highlight 1s ease-in-out infinite alternate;
+}
+
+/* 循环数据可视化样式 */
+.loop-data-chart {
+  width: 100%;
+  height: 120px;
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  padding: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.loop-data-chart canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* 循环导出按钮样式 */
+.btn-loop-export {
+  background: var(--glass-bg);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-loop-export:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* 动画效果 */
+@keyframes loop-pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes loop-running-pulse {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes loop-paused-pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes loop-error-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: translateX(0);
+  }
+  25% {
+    opacity: 0.9;
+    transform: translateX(-2px);
+  }
+  75% {
+    opacity: 0.9;
+    transform: translateX(2px);
+  }
+}
+
+@keyframes loop-completed-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow: none;
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+  }
+}
+
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes loop-node-highlight {
+  from {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+  }
+  to {
+    box-shadow: 0 0 0 8px rgba(33, 150, 243, 0);
+  }
+}
+
+@keyframes loop-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .loop-control-panel {
+    min-width: 200px;
+    max-width: 250px;
+  }
+
+  .loop-controls {
+    flex-direction: column;
+  }
+
+  .btn-loop-start,
+  .btn-loop-pause,
+  .btn-loop-resume,
+  .btn-loop-cancel,
+  .btn-loop-reset,
+  .btn-loop-details {
+    flex: none;
+    min-width: auto;
+  }
+}
+
+/* 深色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .loop-boundary {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .loop-visualizer-popup {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 高对比度模式适配 */
+@media (prefers-contrast: high) {
+  .loop-boundary {
+    border-width: 3px;
+    border-style: solid;
+  }
+
+  .loop-control-panel {
+    border-width: 2px;
+  }
+
+  .btn-loop-start,
+  .btn-loop-pause,
+  .btn-loop-resume,
+  .btn-loop-cancel,
+  .btn-loop-reset,
+  .btn-loop-details {
+    border-width: 2px;
+  }
+}
+
+/* 扩展的循环控制面板样式 */
+.loop-control-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.loop-control-panel.empty {
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 200px;
+}
+
+.empty-message {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.empty-hint {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 面板头部样式 */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.panel-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.panel-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.panel-stats .stat-item {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.panel-stats .stat-item.active {
+  color: var(--primary-color);
+}
+
+/* 循环列表样式 */
+.loop-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.loop-item {
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.loop-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.loop-item.selected {
+  border-color: var(--primary-color);
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.loop-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.loop-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.loop-state .state-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+}
+
+.loop-item-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.loop-info {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.loop-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 150px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* 快速控制按钮样式 */
+.loop-quick-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-quick-start,
+.btn-quick-pause,
+.btn-quick-resume,
+.btn-quick-cancel {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-quick-start:hover {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-quick-pause:hover {
+  background: #FF9800;
+  color: white;
+}
+
+.btn-quick-resume:hover {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-quick-cancel:hover {
+  background: #F44336;
+  color: white;
+}
+
+/* 详细信息面板样式 */
+.loop-details {
+  border-top: 1px solid var(--glass-border);
+  background: var(--glass-hover);
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.details-header h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tab-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-btn {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.details-content {
+  padding: 16px;
+}
+
+/* 参数编辑器样式 */
+.loop-parameter-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.parameter-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.parameter-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  flex: 1;
+  min-width: 150px;
+}
+
+.parameter-input,
+.parameter-select {
+  padding: 6px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.parameter-input:focus,
+.parameter-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.parameter-input:disabled,
+.parameter-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 循环状态监控器样式 */
+.loop-status-monitor {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--glass-hover);
+  cursor: pointer;
+}
+
+.status-indicator {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.status-progress {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.status-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-details {
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  border-top: 1px solid var(--glass-border);
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.detail-item.error {
+  color: var(--error-color);
+}
+
+.detail-label {
+  color: var(--text-secondary);
+}
+
+.detail-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* 控制按钮样式 */
+.control-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-control {
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-control:hover {
+  transform: translateY(-1px);
+}
+
+.btn-start {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.btn-start:hover {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-pause {
+  border-color: #FF9800;
+  color: #FF9800;
+}
+
+.btn-pause:hover {
+  background: #FF9800;
+  color: white;
+}
+
+.btn-resume {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.btn-resume:hover {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-cancel {
+  border-color: #F44336;
+  color: #F44336;
+}
+
+.btn-cancel:hover {
+  background: #F44336;
+  color: white;
+}
+
+.btn-reset {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
+.btn-reset:hover {
+  background: var(--text-secondary);
+  color: white;
+}
+
+/* 循环系统测试组件样式 */
+.loop-system-test {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.test-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.test-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.test-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-test {
+  padding: 6px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-test:hover:not(:disabled) {
+  background: var(--glass-hover);
+  transform: translateY(-1px);
+}
+
+.btn-test:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 测试统计样式 */
+.test-stats {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--glass-hover);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+
+.stat-item {
+  display: flex;
+  gap: 4px;
+  font-size: 12px;
+  align-items: center;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.stat-item.passed .stat-value {
+  color: #4CAF50;
+}
+
+.stat-item.failed .stat-value {
+  color: #F44336;
+}
+
+/* 测试结果样式 */
+.test-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.test-result {
+  padding: 8px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+}
+
+.test-result.pass {
+  border-color: #4CAF50;
+  background: rgba(76, 175, 80, 0.05);
+}
+
+.test-result.fail {
+  border-color: #F44336;
+  background: rgba(244, 67, 54, 0.05);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.result-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.result-status {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.result-status.pass {
+  color: #4CAF50;
+}
+
+.result-status.fail {
+  color: #F44336;
+}
+
+.result-duration {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.result-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* 检测结果样式 */
+.detection-result {
+  padding: 12px;
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+.detection-result h4 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.loops-details h5 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.loop-detail {
+  padding: 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* 测试数据信息样式 */
+.test-data-info {
+  padding: 12px;
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+.test-data-info h4 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.test-data-info > div {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}

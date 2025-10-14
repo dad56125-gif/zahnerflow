@@ -13,12 +13,15 @@
 @import './components/_tabs.css';
 @import './components/_toolbar.css';
 @import './components/_node.css';
+@import './components/_enhanced-node.css';  /* 新增：增强节点样式 */
 @import './components/_overlay.css';
 @import './components/_device-hover.css';
 @import './components/_workstation.css';
 @import './components/_connection.css';
 @import './components/_modal.css';
 @import './components/_canvas.css';
+@import './components/_loop.css';
+@import './components/_workflow.css';
 
 /* 布局样式聚合（避免与 _grid.css 冲突，不引入它） */
 @import './layout/_header.css';

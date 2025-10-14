@@ -1,13 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ElectrochemicalNode, WorkstationType, validateNodeConnection, NodeType } from '../nodes/types';
+import { ElectrochemicalNode, WorkstationType, NodeType } from '../nodes/types';
 import { useCanvasStore } from '../stores/canvasStore';
+import { NodeRenderer, NodeListRenderer } from './node-renderer';
+import { ConnectionLines } from './ConnectionLines';
+import {
+  LoopDetector,
+  LoopContextManager,
+  LoopVisualizer,
+  LoopStatusIndicator,
+  LoopInfo,
+  LoopExecutionContext
+} from './loops';
+import { WorkflowManagerUI } from './workflow';
 
-// Re-defined here for local use, though they originate from the store
-interface Connection {
-  id: string;
-  sourceId: string;
-  targetId: string;
-}
 
 interface CanvasProps {
   zoomLevel: number;
@@ -35,14 +40,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     setNodes,
     setConnections,
     addNode,
-    validationError,
   } = useCanvasStore();
 
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionStart, setConnectionStart] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutStable, setLayoutStable] = useState(true);
-  const [cachedConnections, setCachedConnections] = useState<Array<{id: string, startX: number, startY: number, endX: number, endY: number, midX?: number, midY?: number, isLShape: boolean}>>([]);
 
   // Y轴拖动相关状态
   const [isDragEnabled, setIsDragEnabled] = useState(false);
@@ -50,6 +51,24 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [dragStartY, setDragStartY] = useState(0);
   const [canvasOffsetY, setCanvasOffsetY] = useState(0);
   const dragStartScrollY = useRef(0);
+
+  // 节点拖拽交换相关状态
+  const [draggedNode, setDraggedNode] = useState<ElectrochemicalNode | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [isNodeDragging, setIsNodeDragging] = useState(false);
+
+  // 新增：节点渲染模式状态
+  const [nodeRenderMode, setNodeRenderMode] = useState<'default' | 'enhanced'>('default');
+
+  
+  // 新增：循环系统状态
+  const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
+  const [loopContexts, setLoopContexts] = useState<Map<string, LoopExecutionContext>>(new Map());
+  const [loopDetectionEnabled, setLoopDetectionEnabled] = useState(true);
+  const [loopVisualizationEnabled, setLoopVisualizationEnabled] = useState(true);
+
+  // 新增：工作流管理状态
+  const [showWorkflowManager, setShowWorkflowManager] = useState(false);
 
   // 拖动切换处理
   const toggleDragMode = () => {
@@ -211,60 +230,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         setNodes(updatedNodes);
         setLayoutStable(true);
     }
-  }, [canvasSize, nodes.length, calculateNodePosition, setNodes]); // 恢复nodes.length依赖，移除延迟
+  }, [canvasSize, nodes.length, calculateNodePosition, setNodes]); // 恢复nodes.length依赖避免无限循环
 
-  useEffect(() => {
-    if (!layoutStable || nodes.length === 0) return;
-
-    const newConnections = nodes.map((node, index) => {
-      if (index >= nodes.length - 1) return null;
-      const position = calculateNodePosition(index, nodes);
-      const nextPosition = calculateNodePosition(index + 1, nodes);
-      const { nodesPerRow, connectionLength } = calculateDynamicLayout();
-      const currentRow = Math.floor(index / nodesPerRow);
-      const nextRow = Math.floor((index + 1) / nodesPerRow);
-
-      if (currentRow === nextRow) {
-        const isLeftToRight = currentRow % 2 === 0;
-        const startX = isLeftToRight ? position.x + (node.style.width || 140) : position.x;
-        const endX = isLeftToRight ? nextPosition.x : nextPosition.x + (node.style.width || 140);
-        return { id: `line-${index}`, startX, startY: position.y + 30, endX, endY: nextPosition.y + 30, isLShape: false };
-      } else {
-        const isLeftToRight = currentRow % 2 === 0;
-        const startX = isLeftToRight ? position.x + (node.style.width || 140) : position.x;
-        const endX = nextRow % 2 === 0 ? nextPosition.x : nextPosition.x + (node.style.width || 140);
-        const midX = startX + (isLeftToRight ? connectionLength : -connectionLength);
-        return { id: `line-${index}`, startX, startY: position.y + 30, endX, endY: nextPosition.y + 30, midX, midY: nextPosition.y + 30, isLShape: true };
-      }
-    }).filter(Boolean) as any;
-
-    setCachedConnections(newConnections);
-  }, [layoutStable, nodes, canvasSize.width, calculateNodePosition]);
-
-  const startConnection = (nodeId: string) => {
-    setIsConnecting(true);
-    setConnectionStart(nodeId);
-  };
-
-  const completeConnection = (targetNodeId: string) => {
-    if (!connectionStart || connectionStart === targetNodeId) {
-      setIsConnecting(false);
-      setConnectionStart(null);
-      return;
-    }
-    const existing = connections.find(c => c.sourceId === connectionStart && c.targetId === targetNodeId);
-    if (!existing) {
-      const sourceNode = nodes.find(n => n.id === connectionStart);
-      const targetNode = nodes.find(n => n.id === targetNodeId);
-      if (sourceNode && targetNode && validateNodeConnection(sourceNode.type, targetNode.type)) {
-        const newConnection: Connection = { id: `conn_${Date.now()}`, sourceId: connectionStart, targetId: targetNodeId };
-        setConnections([...connections, newConnection]);
-      }
-    }
-    setIsConnecting(false);
-    setConnectionStart(null);
-  };
-
+  
   const handleCanvasDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const nodeType = e.dataTransfer.getData('nodeType') as NodeType;
@@ -274,6 +242,125 @@ export const Canvas: React.FC<CanvasProps> = ({
       const dropY = (e.clientY - rect.top) / zoomLevel;
       const index = useCanvasStore.getState().calculateNodeIndex({ x: dropX, y: dropY }, canvasSize.width, nodes.length);
       addNode(nodeType, selectedWorkstation, index);
+    }
+  };
+
+  // 节点拖拽交换处理函数
+  const handleNodeDragStart = (e: React.DragEvent, node: ElectrochemicalNode, index: number) => {
+    console.log(`开始拖拽节点：${node.name}，当前索引：${index}`);
+    setDraggedNode(node);
+    setIsNodeDragging(true);
+
+    // 设置拖拽图像（可选）
+    e.dataTransfer.effectAllowed = 'move';
+
+    // 立即设置透明度，避免异步执行时DOM元素为null
+    (e.currentTarget as HTMLElement).style.opacity = '0.5';
+  };
+
+  const handleNodeDragEnd = (e: React.DragEvent) => {
+    console.log('拖拽结束');
+    setIsNodeDragging(false);
+    setDraggedNode(null);
+    setDragOverIndex(null);
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+  };
+
+  const handleNodeDragOver = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedNode && dragOverIndex !== targetIndex) {
+      setDragOverIndex(targetIndex);
+    }
+  };
+
+  const handleNodeDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleNodeDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedNode) return;
+
+    const draggedIndex = nodes.findIndex(n => n.id === draggedNode.id);
+    if (draggedIndex === targetIndex || draggedIndex === -1) {
+      console.log('拖拽操作无效：源索引和目标索引相同或未找到节点');
+      setDraggedNode(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    console.log(`拖拽交换：节点 "${draggedNode.name}" 从位置 ${draggedIndex} 移动到位置 ${targetIndex}`);
+
+    // 创建新的节点数组，交换位置
+    const newNodes = [...nodes];
+    const [removedNode] = newNodes.splice(draggedIndex, 1);
+    newNodes.splice(targetIndex, 0, removedNode);
+
+    console.log('交换后的节点顺序：', newNodes.map(n => n.name));
+
+    // 更新节点状态，触发重新计算位置
+    setNodes(newNodes);
+
+    // 清理状态
+    setDraggedNode(null);
+    setDragOverIndex(null);
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+  };
+
+  // 新增：节点事件处理函数（用于新的渲染器）
+  const handleNodeClick = (node: ElectrochemicalNode) => {
+    selectNode(node);
+  };
+
+  const handleNodeDoubleClick = (node: ElectrochemicalNode) => {
+    console.log('双击节点:', node.name);
+    // 可以在这里添加双击节点的高级功能，如打开详细配置
+  };
+
+  const handleNodeContextMenu = (node: ElectrochemicalNode, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (confirm(`确定要删除节点 "${node.name}" 吗？`)) {
+      // 使用CanvasStore的deleteNode方法（如果存在）
+      const currentState = useCanvasStore.getState();
+      if (currentState.deleteNode) {
+        currentState.deleteNode(node.id);
+      } else {
+        // 如果没有deleteNode方法，手动实现
+        setNodes(prev => prev.filter(n => n.id !== node.id));
+        setConnections(prev => prev.filter(
+          conn => conn.sourceId !== node.id && conn.targetId !== node.id
+        ));
+      }
+    }
+  };
+
+  const handleNodeDragStartEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
+    console.log(`增强拖拽开始：${node.name}`);
+    setDraggedNode(node);
+    setIsNodeDragging(true);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('nodeId', node.id);
+    (event.currentTarget as HTMLElement).style.opacity = '0.5';
+  };
+
+  const handleNodeDragEndEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
+    console.log('增强拖拽结束');
+    setIsNodeDragging(false);
+    setDraggedNode(null);
+    setDragOverIndex(null);
+    (event.currentTarget as HTMLElement).style.opacity = '1';
+  };
+
+  
+  
+  const handleClearAllConnections = () => {
+    if (connections.length > 0 && confirm('确定要清除所有连接吗？')) {
+      setConnections([]);
     }
   };
 
@@ -328,6 +415,115 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  // 循环检测和管理逻辑
+  useEffect(() => {
+    if (!loopDetectionEnabled) return;
+
+    // 检测循环
+    const detectionResult = LoopDetector.detectLoops(nodes, connections);
+    setDetectedLoops(detectionResult.loops);
+
+    // 更新循环上下文
+    const newContexts = new Map<string, LoopExecutionContext>();
+    detectionResult.loops.forEach(loop => {
+      const existingContext = loopContexts.get(loop.id);
+      if (existingContext) {
+        newContexts.set(loop.id, existingContext);
+      } else {
+        const context = LoopContextManager.initializeLoop(loop);
+        newContexts.set(loop.id, context);
+      }
+    });
+
+    // 清理已删除的循环上下文
+    loopContexts.forEach((context, loopId) => {
+      if (!detectionResult.loops.some(loop => loop.id === loopId)) {
+        LoopContextManager.cleanupLoop(loopId);
+      } else {
+        newContexts.set(loopId, context);
+      }
+    });
+
+    setLoopContexts(newContexts);
+  }, [nodes, connections, loopDetectionEnabled]);
+
+  // 循环控制事件处理函数
+  const handleLoopStart = async (loopId: string) => {
+    const loop = detectedLoops.find(l => l.id === loopId);
+    if (!loop) return;
+
+    try {
+      const context = LoopContextManager.getLoopContext(loopId);
+      if (context) {
+        await LoopContextManager.startLoop(loopId, nodes, async (nodeId, iteration) => {
+          // 模拟节点执行
+          console.log(`执行节点 ${nodeId}，迭代 ${iteration}`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        });
+      }
+    } catch (error) {
+      console.error('循环执行错误:', error);
+    }
+  };
+
+  const handleLoopPause = (loopId: string) => {
+    LoopContextManager.pauseLoop(loopId);
+  };
+
+  const handleLoopResume = (loopId: string) => {
+    LoopContextManager.resumeLoop(loopId);
+  };
+
+  const handleLoopCancel = (loopId: string) => {
+    LoopContextManager.cancelLoop(loopId);
+  };
+
+  const handleLoopReset = (loopId: string) => {
+    LoopContextManager.resetLoop(loopId);
+  };
+
+  // 更新循环上下文状态
+  useEffect(() => {
+    const updateInterval = setInterval(() => {
+      const updatedContexts = new Map<string, LoopExecutionContext>();
+
+      loopContexts.forEach((context, loopId) => {
+        const currentContext = LoopContextManager.getLoopContext(loopId);
+        if (currentContext) {
+          updatedContexts.set(loopId, currentContext);
+        }
+      });
+
+      setLoopContexts(updatedContexts);
+    }, 500); // 每500ms更新一次
+
+    return () => clearInterval(updateInterval);
+  }, [loopContexts]);
+
+  // 获取节点位置信息（用于循环可视化）
+  const getNodePosition = (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return null;
+
+    return {
+      id: node.id,
+      name: node.name,
+      x: node.position.x,
+      y: node.position.y,
+      width: node.style.width || 140,
+      height: node.style.height || 60
+    };
+  };
+
+  const nodePositions = nodes.map(node => getNodePosition(node.id)).filter(Boolean) as Array<{
+    id: string;
+    name: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+
   return (
     <div
       className="canvas-container"
@@ -348,6 +544,66 @@ export const Canvas: React.FC<CanvasProps> = ({
         >
           ✋
         </button>
+
+        {/* 节点渲染模式切换按钮 - 新增 */}
+        <button
+          className={`btn-zoom btn-render-mode ${nodeRenderMode === 'enhanced' ? 'active' : ''}`}
+          onClick={() => setNodeRenderMode(nodeRenderMode === 'default' ? 'enhanced' : 'default')}
+          title={nodeRenderMode === 'default' ? "切换到增强渲染模式" : "切换到默认渲染模式"}
+        >
+          {nodeRenderMode === 'default' ? '🔧' : '⚡'}
+        </button>
+
+        
+  
+        {/* 循环检测切换按钮 - 新增 */}
+        <button
+          className={`btn-zoom btn-loop-detection ${loopDetectionEnabled ? 'active' : ''}`}
+          onClick={() => setLoopDetectionEnabled(!loopDetectionEnabled)}
+          title={loopDetectionEnabled ? "关闭循环检测" : "开启循环检测"}
+        >
+          {loopDetectionEnabled ? '🔄' : '⏸️'}
+        </button>
+
+        {/* 循环可视化切换按钮 - 新增 */}
+        <button
+          className={`btn-zoom btn-loop-visualization ${loopVisualizationEnabled ? 'active' : ''}`}
+          onClick={() => setLoopVisualizationEnabled(!loopVisualizationEnabled)}
+          title={loopVisualizationEnabled ? "关闭循环可视化" : "开启循环可视化"}
+        >
+          {loopVisualizationEnabled ? '👁️' : '🙈'}
+        </button>
+
+        {/* 循环状态指示器 - 新增 */}
+        {detectedLoops.length > 0 && (
+          <div className="loop-status-wrapper">
+            <LoopStatusIndicator
+              loops={detectedLoops}
+              contexts={loopContexts}
+              className="loop-status-indicator-inline"
+            />
+          </div>
+        )}
+
+        {/* 工作流管理按钮 - 新增 */}
+        <button
+          className={`btn-zoom btn-workflow-manager ${showWorkflowManager ? 'active' : ''}`}
+          onClick={() => setShowWorkflowManager(!showWorkflowManager)}
+          title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
+        >
+          {showWorkflowManager ? '📋' : '📄'}
+        </button>
+
+        {/* 清除所有连接按钮 - 新增 */}
+        {connections.length > 0 && (
+          <button
+            className="btn-zoom btn-clear-connections"
+            onClick={handleClearAllConnections}
+            title={`清除所有连接 (${connections.length}个)`}
+          >
+            🗑️
+          </button>
+        )}
 
         <button className="btn-zoom" onClick={onZoomOut} title="缩小">
           ➖
@@ -371,60 +627,83 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
         onMouseDown={handleMouseDown}
       >
-        {/* 渲染连接线 - 临时屏蔽 */}
-        {/* <svg className="connections-layer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-          {cachedConnections.map((conn) => (
-            <g key={conn.id}>
-              {conn.isLShape ? (
-                <>
-                  <line
-                    x1={conn.startX}
-                    y1={conn.startY}
-                    x2={conn.midX}
-                    y2={conn.midY}
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1={conn.midX}
-                    y1={conn.midY}
-                    x2={conn.endX}
-                    y2={conn.endY}
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth="2"
-                  />
-                </>
-              ) : (
-                <line
-                  x1={conn.startX}
-                  y1={conn.startY}
-                  x2={conn.endX}
-                  y2={conn.endY}
-                  stroke="rgba(255,255,255,0.5)"
-                  strokeWidth="2"
-                />
-              )}
-            </g>
-          ))}
-        </svg> */}
+        {/* 渲染连接线 - 使用ConnectionLines */}
+        <ConnectionLines
+          nodes={nodes}
+          connections={connections}
+          canvasWidth={canvasSize.width}
+          layoutStable={layoutStable}
+        />
+
+        
+        {/* 循环可视化组件 - 新增 */}
+        {loopVisualizationEnabled && detectedLoops.map(loop => {
+          const context = loopContexts.get(loop.id);
+          return (
+            <LoopVisualizer
+              key={loop.id}
+              loop={loop}
+              nodes={nodePositions}
+              context={context}
+              onLoopStart={handleLoopStart}
+              onLoopPause={handleLoopPause}
+              onLoopResume={handleLoopResume}
+              onLoopCancel={handleLoopCancel}
+              onLoopReset={handleLoopReset}
+            />
+          );
+        })}
 
         {/* 渲染画布上的节点 - 随内容缩放 */}
-        {nodes.map((node) => (
-          <div
-            key={node.id}
-            className={`node glass status-${node.status}`}
-            style={{
-              left: node.position.x,
-              top: node.position.y,
-              width: node.style.width || 140,
-              height: node.style.height || 60,
-            }}
-            onClick={() => selectNode(node)}
-          >
-            <div className="node-title">{node.name}</div>
-          </div>
-        ))}
+        {nodeRenderMode === 'enhanced' ? (
+          /* 增强渲染模式 - 使用新的节点渲染系统 */
+          <NodeListRenderer
+            nodes={nodes}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            onNodeContextMenu={handleNodeContextMenu}
+            onNodeDragStart={handleNodeDragStartEnhanced}
+            onNodeDragEnd={handleNodeDragEndEnhanced}
+          />
+        ) : (
+          /* 默认渲染模式 - 保留原有功能，确保向后兼容 */
+          nodes.map((node, index) => (
+            <div
+              key={node.id}
+              className={`node glass status-${node.status} ${
+                isNodeDragging && draggedNode?.id === node.id ? 'dragging' : ''
+              } ${
+                dragOverIndex === index ? 'drag-over' : ''
+              }`}
+              style={{
+                left: node.position.x,
+                top: node.position.y,
+                width: node.style.width || 140,
+                height: node.style.height || 60,
+                cursor: 'grab',
+              }}
+              draggable
+              onDragStart={(e) => handleNodeDragStart(e, node, index)}
+              onDragEnd={handleNodeDragEnd}
+              onDragOver={(e) => handleNodeDragOver(e, index)}
+              onDragLeave={handleNodeDragLeave}
+              onDrop={(e) => handleNodeDrop(e, index)}
+              onClick={() => selectNode(node)}
+            >
+              <div className="node-title">{node.name}</div>
+            </div>
+          ))
+        )}
       </div>
+
+      {/* 工作流管理面板 - 新增 */}
+      {showWorkflowManager && (
+        <div className="workflow-manager-overlay">
+          <div className="workflow-manager-panel">
+            <WorkflowManagerUI />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

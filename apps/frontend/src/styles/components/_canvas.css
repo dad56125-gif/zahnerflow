@@ -135,6 +135,29 @@
   cursor: not-allowed;
 }
 
+/* 节点拖拽样式 */
+.node.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: scale(1.05);
+  z-index: 1000;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: none; /* 拖拽时禁用过渡动画 */
+}
+
+.node.drag-over {
+  border-color: rgba(33, 150, 243, 0.8);
+  background: rgba(33, 150, 243, 0.2);
+  transform: translateY(-4px) scale(1.05);
+  box-shadow:
+    0 12px 32px rgba(33, 150, 243, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  outline: 2px dashed rgba(33, 150, 243, 0.6);
+  outline-offset: 4px;
+}
+
 @keyframes pulse-running {
   0%, 100% {
     box-shadow:
@@ -250,5 +273,205 @@
   .node {
     font-size: 0.8rem;
     padding: 0.4rem;
+  }
+}
+
+/* 循环检测按钮样式 */
+.btn-loop-detection {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  min-width: 40px;
+}
+
+.btn-loop-detection:hover {
+  background: var(--glass-hover);
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.btn-loop-detection.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+  box-shadow: 0 0 12px rgba(156, 39, 176, 0.4);
+  animation: loop-detection-active 2s ease-in-out infinite;
+}
+
+/* 循环可视化按钮样式 */
+.btn-loop-visualization {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  min-width: 40px;
+}
+
+.btn-loop-visualization:hover {
+  background: var(--glass-hover);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.btn-loop-visualization.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 0 12px rgba(33, 150, 243, 0.4);
+}
+
+/* 循环状态包装器样式 */
+.loop-status-wrapper {
+  position: relative;
+  margin: 0 8px;
+  padding: 4px 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(5px);
+}
+
+.loop-status-indicator-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.loop-status-indicator-inline .loop-stats {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.loop-status-indicator-inline .stat-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 500;
+}
+
+/* 循环模式激活样式 */
+.canvas-container.loop-mode-active {
+  cursor: crosshair;
+}
+
+.canvas-container.loop-mode-active .canvas-inner {
+  background: rgba(156, 39, 176, 0.02);
+}
+
+/* 循环边界容器样式 */
+.loop-boundaries-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.loop-boundaries-container.loop-visualization-enabled {
+  pointer-events: auto;
+}
+
+/* 循环相关动画 */
+@keyframes loop-detection-active {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(90deg);
+  }
+  50% {
+    transform: translateY(0) rotate(180deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(270deg);
+  }
+}
+
+/* 工作流管理按钮样式 */
+.btn-workflow-manager {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  min-width: 40px;
+}
+
+.btn-workflow-manager:hover {
+  background: var(--glass-hover);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.btn-workflow-manager.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 0 12px rgba(33, 150, 243, 0.4);
+}
+
+/* 工作流管理面板样式 */
+.workflow-manager-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: workflow-overlay-in 0.2s ease-out;
+}
+
+.workflow-manager-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  width: 90vw;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: workflow-panel-in 0.3s ease-out;
+}
+
+@keyframes workflow-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes workflow-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
