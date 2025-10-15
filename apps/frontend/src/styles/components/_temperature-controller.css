@@ -23,23 +23,41 @@
   max-height: none;
 }
 
-/* === 选项卡导航 === */
-.tab-navigation {
+/* === Header区域调整 === */
+.furnace-modal .device-header {
   display: flex;
-  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
-  padding: 0.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-tabs {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-left: 2rem;
+}
+
+/* === 选项卡导航（Header版本） === */
+.header-tabs .tab-navigation {
+  display: flex;
+  gap: 0.75rem; /* 增加间距以适应胶囊状按钮 */
+  padding: 0.5rem;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: var(--radius);
+  border-radius: 2.5rem; /* 容器也使用更圆的边角 */
   border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0;
+  align-items: center;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.5rem;
   background: transparent;
   border: none;
-  border-radius: calc(var(--radius) - 0.25rem);
+  border-radius: 2rem; /* 胶囊状，完全的圆角 */
   color: rgba(255, 255, 255, 0.7);
   font-size: var(--text-body);
   font-weight: 500;
@@ -47,6 +65,8 @@
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  white-space: nowrap; /* 确保文字在一行显示 */
+  min-width: 100px; /* 增加最小宽度 */
 }
 
 .tab-btn::before {
@@ -77,6 +97,32 @@
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-radius: 2rem; /* 确保活跃状态也是胶囊状 */
+}
+
+/* === 双列布局容器 === */
+.main-content-wrapper {
+  display: flex;
+  gap: 1.5rem;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 左侧主内容区域 (2/3宽度) */
+.content-main {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 右侧控制台区域 (1/3宽度) */
+.content-sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* === 选项卡内容区域 === */
@@ -425,10 +471,9 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* === 控制台区域 === */
-.console-section {
-  margin-top: auto;
-  max-height: 12rem;
+/* === 控制台区域（双列布局版本） === */
+.content-sidebar .console-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: var(--glass-bg);
@@ -440,6 +485,8 @@
     0 8px 32px var(--glass-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   overflow: hidden;
+  margin: 0;
+  max-height: none;
 }
 
 .console-header {
@@ -535,6 +582,17 @@
 
 /* === 响应式设计 === */
 @media (max-width: 1024px) {
+  /* 双列布局回退到单列 */
+  .main-content-wrapper {
+    flex-direction: column;
+  }
+
+  .content-main,
+  .content-sidebar {
+    flex: 1;
+    width: 100%;
+  }
+
   .status-display {
     flex-direction: column;
     gap: 1.5rem;
@@ -552,6 +610,22 @@
     flex-direction: column;
     gap: 1rem;
   }
+
+  /* Header选项卡回退 */
+  .header-tabs {
+    margin-left: 1rem;
+  }
+
+  .header-tabs .tab-navigation {
+    gap: 0.25rem;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    border-radius: 1.5rem; /* 中等屏幕使用稍小的圆角 */
+    min-width: 80px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -560,8 +634,34 @@
     height: 90vh;
   }
 
-  .tab-navigation {
+  /* 完全单列布局 */
+  .device-header {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-tabs {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-tabs .tab-navigation {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .tab-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 1.25rem; /* 小屏幕使用适中的圆角 */
+    min-width: 120px;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
   }
 
   .status-item {
@@ -581,5 +681,10 @@
 
   .segment-input {
     min-width: 3rem;
+  }
+
+  /* 控制台在小屏幕上保持合理高度 */
+  .content-sidebar {
+    max-height: 200px;
   }
 }
