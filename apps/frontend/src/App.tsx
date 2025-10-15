@@ -11,6 +11,7 @@ import { setupAutoGlassEffect } from './utils/glassEffect';
 import { stateLinkageManager } from './managers/state-linkage.manager';
 import { useCanvasStore } from './stores/canvasStore';
 import { DeviceModal } from './components/DeviceModal';
+import { workflowService } from './services/workflowService';
 
 
 
@@ -18,6 +19,7 @@ const ZahnerFlowApp: React.FC = () => {
   const {
     nodes,
     setNodes,
+    connections,
   } = useCanvasStore();
 
   const [activePanel, setActivePanel] = useState<'nodes'>('nodes');
@@ -29,6 +31,7 @@ const ZahnerFlowApp: React.FC = () => {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [loopPairs, _setLoopPairs] = useState<Map<string, { startNode: LoopStartNode; endNode: LoopEndNode; nodesInLoop: any[] }>>(new Map());
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
+  const [showWorkflowManager, setShowWorkflowManager] = useState(false);
 
   const handleWorkstationSelect = (workstation: any) => {
     const workstationType = workstation.id as WorkstationType;
@@ -37,7 +40,9 @@ const ZahnerFlowApp: React.FC = () => {
     useCanvasStore.getState().clearCanvas();
   };
 
-  const handleRunFlow = useCallback(() => setIsRunning(true), []);
+  const handleRunFlow = useCallback(async () => {
+  await runFlow();
+}, [nodes, connections, selectedWorkstation, isRunning]);
   const handleStopFlow = useCallback(() => setIsRunning(false), []);
   const handleZoomIn = useCallback(() => setZoomLevel((z) => Math.min(3, +(z + 0.1).toFixed(2))), []);
   const handleZoomOut = useCallback(() => setZoomLevel((z) => Math.max(0.2, +(z - 0.1).toFixed(2))), []);
@@ -77,13 +82,35 @@ const ZahnerFlowApp: React.FC = () => {
         return;
     }
     try {
-      const workflowId = `workflow_${Date.now()}`;
-      const workflowDefinition = { id: workflowId, name: `鐢靛寲瀛︽祦绋媉${new Date().toLocaleString()}`, nodes: nodes.map(n => ({...n.data.parameters})) }; // Simplified
-      const res = await fetch('/api/workflows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workflowDefinition) });
-      if (!res.ok) throw new Error(`鍒涘缓宸ヤ綔娴佸け璐: ${res.status}`);
-      const created = await res.json();
-      await stateLinkageManager.startExecution(created.id, nodes);
+      const workflowDefinition = {
+        id: `workflow_${Date.now()}`,
+        name: `电化学流程_${new Date().toLocaleString()}`,
+        description: '通过前端界面创建的电化学测量流程',
+        nodes: nodes.map(node => ({
+          id: node.id,
+          type: node.type,
+          name: node.name,
+          config: node.data?.parameters || {},
+          position: node.position,
+          data: node.data,
+          status: node.status
+        })),
+        edges: connections.map(conn => ({
+          id: conn.id,
+          source: conn.sourceId,
+          target: conn.targetId,
+          type: 'flow'
+        })),
+        version: 1
+      };
+
+    
+      // 直接发送WorkflowDefinition到后端
+      const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
+
+      await stateLinkageManager.startExecution(createdWorkflow.id, nodes);
     } catch (error) {
+      console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);
     }
   };
@@ -123,6 +150,8 @@ const ZahnerFlowApp: React.FC = () => {
               onRunFlow={handleRunFlow}
               onStopFlow={handleStopFlow}
               selectedWorkstation={selectedWorkstation}
+              onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
+              showWorkflowManager={showWorkflowManager}
             />
             <Canvas
               zoomLevel={zoomLevel}
@@ -130,6 +159,8 @@ const ZahnerFlowApp: React.FC = () => {
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
               onResetZoom={handleResetZoom}
+              showWorkflowManager={showWorkflowManager}
+              onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
             />
           </div>
 

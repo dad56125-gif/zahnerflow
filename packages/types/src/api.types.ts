@@ -24,7 +24,7 @@ export interface ApiError {
   details?: any;
 }
 
-// 工作流相关类型
+// 工作流相关类型 - 前后端共享
 export interface Workflow {
   id: string;
   name: string;
@@ -34,25 +34,52 @@ export interface Workflow {
   status: WorkflowStatus;
   createdAt: Date;
   updatedAt: Date;
+
+  // 后端管理字段（前端可选）
+  ownerName?: string;
+  individualName?: string;
 }
 
+// 工作流定义 - 前后端共享核心结构
 export interface WorkflowDefinition {
+  // 核心标识
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+
+  // 工作流结构
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
+
+  // 可选参数
   parameters?: Record<string, any>;
+
+  // 后端管理字段（前端可选）
+  ownerName?: string;
+  individualName?: string;
 }
 
-// 节点状态类型
+// 节点状态类型 - 前后端共享
 export type NodeStatus = 'ready' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'pending';
 
+// 工作流节点 - 前后端共享
 export interface WorkflowNode {
+  // 核心标识
   id: string;
   type: string;
+  name: string;
   position: { x: number; y: number };
-  data: any;
-  status: NodeStatus;
+
+  // 数据和配置（前后端通用）
+  data?: any;  // 前端用户数据，后端可读取
+  config?: any;  // 后端执行配置，前端可设置
+
+  // 状态管理（主要用于前端）
+  status?: NodeStatus;
 }
 
+// 工作流连接 - 前后端共享
 export interface WorkflowEdge {
   id: string;
   source: string;
@@ -60,6 +87,7 @@ export interface WorkflowEdge {
   type: string;
 }
 
+// 工作流状态 - 前后端共享
 export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
 
 // 设备相关类型

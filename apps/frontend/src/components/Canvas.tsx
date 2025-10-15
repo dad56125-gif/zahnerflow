@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../nodes/types';
 import { useCanvasStore } from '../stores/canvasStore';
-import { NodeRenderer, NodeListRenderer } from './node-renderer';
+import { NodeListRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
 import {
   LoopDetector,
@@ -20,6 +20,8 @@ interface CanvasProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
+  showWorkflowManager?: boolean;
+  onToggleWorkflowManager?: () => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -27,7 +29,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   selectedWorkstation,
   onZoomIn,
   onZoomOut,
-  onResetZoom
+  onResetZoom,
+  showWorkflowManager = false,
+  onToggleWorkflowManager
 }) => {
   const {
     nodes,
@@ -52,14 +56,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [canvasOffsetY, setCanvasOffsetY] = useState(0);
   const dragStartScrollY = useRef(0);
 
-  // 节点拖拽交换相关状态
-  const [draggedNode, setDraggedNode] = useState<ElectrochemicalNode | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [isNodeDragging, setIsNodeDragging] = useState(false);
-
-  // 新增：节点渲染模式状态
-  const [nodeRenderMode, setNodeRenderMode] = useState<'default' | 'enhanced'>('default');
-
+  
+  
   
   // 新增：循环系统状态
   const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
@@ -67,9 +65,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [loopDetectionEnabled, setLoopDetectionEnabled] = useState(true);
   const [loopVisualizationEnabled, setLoopVisualizationEnabled] = useState(true);
 
-  // 新增：工作流管理状态
-  const [showWorkflowManager, setShowWorkflowManager] = useState(false);
-
+  
   // 拖动切换处理
   const toggleDragMode = () => {
     setIsDragEnabled(!isDragEnabled);
@@ -245,72 +241,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  // 节点拖拽交换处理函数
-  const handleNodeDragStart = (e: React.DragEvent, node: ElectrochemicalNode, index: number) => {
-    console.log(`开始拖拽节点：${node.name}，当前索引：${index}`);
-    setDraggedNode(node);
-    setIsNodeDragging(true);
-
-    // 设置拖拽图像（可选）
-    e.dataTransfer.effectAllowed = 'move';
-
-    // 立即设置透明度，避免异步执行时DOM元素为null
-    (e.currentTarget as HTMLElement).style.opacity = '0.5';
-  };
-
-  const handleNodeDragEnd = (e: React.DragEvent) => {
-    console.log('拖拽结束');
-    setIsNodeDragging(false);
-    setDraggedNode(null);
-    setDragOverIndex(null);
-    (e.currentTarget as HTMLElement).style.opacity = '1';
-  };
-
-  const handleNodeDragOver = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-
-    if (draggedNode && dragOverIndex !== targetIndex) {
-      setDragOverIndex(targetIndex);
-    }
-  };
-
-  const handleNodeDragLeave = () => {
-    setDragOverIndex(null);
-  };
-
-  const handleNodeDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!draggedNode) return;
-
-    const draggedIndex = nodes.findIndex(n => n.id === draggedNode.id);
-    if (draggedIndex === targetIndex || draggedIndex === -1) {
-      console.log('拖拽操作无效：源索引和目标索引相同或未找到节点');
-      setDraggedNode(null);
-      setDragOverIndex(null);
-      return;
-    }
-
-    console.log(`拖拽交换：节点 "${draggedNode.name}" 从位置 ${draggedIndex} 移动到位置 ${targetIndex}`);
-
-    // 创建新的节点数组，交换位置
-    const newNodes = [...nodes];
-    const [removedNode] = newNodes.splice(draggedIndex, 1);
-    newNodes.splice(targetIndex, 0, removedNode);
-
-    console.log('交换后的节点顺序：', newNodes.map(n => n.name));
-
-    // 更新节点状态，触发重新计算位置
-    setNodes(newNodes);
-
-    // 清理状态
-    setDraggedNode(null);
-    setDragOverIndex(null);
-    (e.currentTarget as HTMLElement).style.opacity = '1';
-  };
-
+  
   // 新增：节点事件处理函数（用于新的渲染器）
   const handleNodeClick = (node: ElectrochemicalNode) => {
     selectNode(node);
@@ -340,30 +271,30 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const handleNodeDragStartEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
-    console.log(`增强拖拽开始：${node.name}`);
-    setDraggedNode(node);
-    setIsNodeDragging(true);
+    console.log(`节点拖拽开始：${node.name}`);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('nodeId', node.id);
     (event.currentTarget as HTMLElement).style.opacity = '0.5';
   };
 
   const handleNodeDragEndEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
-    console.log('增强拖拽结束');
-    setIsNodeDragging(false);
-    setDraggedNode(null);
-    setDragOverIndex(null);
+    console.log('节点拖拽结束');
     (event.currentTarget as HTMLElement).style.opacity = '1';
-  };
 
-  
-  
-  const handleClearAllConnections = () => {
-    if (connections.length > 0 && confirm('确定要清除所有连接吗？')) {
-      setConnections([]);
+    // 获取拖拽结束位置
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const newX = (event.clientX - rect.left) / zoomLevel;
+      const newY = (event.clientY - rect.top) / zoomLevel;
+
+      // 调用moveNode函数来处理节点位置交换
+      moveNode(node.id, { x: newX, y: newY });
     }
   };
 
+  
+  
+  
   // Y轴拖动事件处理
   const handleMouseDown = (e: React.MouseEvent) => {
     // 只有在拖动激活状态下才能拖动
@@ -545,15 +476,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           ✋
         </button>
 
-        {/* 节点渲染模式切换按钮 - 新增 */}
-        <button
-          className={`btn-zoom btn-render-mode ${nodeRenderMode === 'enhanced' ? 'active' : ''}`}
-          onClick={() => setNodeRenderMode(nodeRenderMode === 'default' ? 'enhanced' : 'default')}
-          title={nodeRenderMode === 'default' ? "切换到增强渲染模式" : "切换到默认渲染模式"}
-        >
-          {nodeRenderMode === 'default' ? '🔧' : '⚡'}
-        </button>
-
+        
         
   
         {/* 循环检测切换按钮 - 新增 */}
@@ -585,26 +508,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           </div>
         )}
 
-        {/* 工作流管理按钮 - 新增 */}
-        <button
-          className={`btn-zoom btn-workflow-manager ${showWorkflowManager ? 'active' : ''}`}
-          onClick={() => setShowWorkflowManager(!showWorkflowManager)}
-          title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
-        >
-          {showWorkflowManager ? '📋' : '📄'}
-        </button>
-
-        {/* 清除所有连接按钮 - 新增 */}
-        {connections.length > 0 && (
-          <button
-            className="btn-zoom btn-clear-connections"
-            onClick={handleClearAllConnections}
-            title={`清除所有连接 (${connections.length}个)`}
-          >
-            🗑️
-          </button>
-        )}
-
+        
+        
         <button className="btn-zoom" onClick={onZoomOut} title="缩小">
           ➖
         </button>
@@ -627,10 +532,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
         onMouseDown={handleMouseDown}
       >
-        {/* 渲染连接线 - 使用ConnectionLines */}
+        {/* 渲染工作流执行顺序连接线 */}
         <ConnectionLines
           nodes={nodes}
-          connections={connections}
           canvasWidth={canvasSize.width}
           layoutStable={layoutStable}
         />
@@ -654,46 +558,15 @@ export const Canvas: React.FC<CanvasProps> = ({
           );
         })}
 
-        {/* 渲染画布上的节点 - 随内容缩放 */}
-        {nodeRenderMode === 'enhanced' ? (
-          /* 增强渲染模式 - 使用新的节点渲染系统 */
-          <NodeListRenderer
-            nodes={nodes}
-            onNodeClick={handleNodeClick}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            onNodeContextMenu={handleNodeContextMenu}
-            onNodeDragStart={handleNodeDragStartEnhanced}
-            onNodeDragEnd={handleNodeDragEndEnhanced}
-          />
-        ) : (
-          /* 默认渲染模式 - 保留原有功能，确保向后兼容 */
-          nodes.map((node, index) => (
-            <div
-              key={node.id}
-              className={`node glass status-${node.status} ${
-                isNodeDragging && draggedNode?.id === node.id ? 'dragging' : ''
-              } ${
-                dragOverIndex === index ? 'drag-over' : ''
-              }`}
-              style={{
-                left: node.position.x,
-                top: node.position.y,
-                width: node.style.width || 140,
-                height: node.style.height || 60,
-                cursor: 'grab',
-              }}
-              draggable
-              onDragStart={(e) => handleNodeDragStart(e, node, index)}
-              onDragEnd={handleNodeDragEnd}
-              onDragOver={(e) => handleNodeDragOver(e, index)}
-              onDragLeave={handleNodeDragLeave}
-              onDrop={(e) => handleNodeDrop(e, index)}
-              onClick={() => selectNode(node)}
-            >
-              <div className="node-title">{node.name}</div>
-            </div>
-          ))
-        )}
+        {/* 渲染画布上的节点 - 使用统一的增强渲染系统 */}
+        <NodeListRenderer
+          nodes={nodes}
+          onNodeClick={handleNodeClick}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          onNodeContextMenu={handleNodeContextMenu}
+          onNodeDragStart={handleNodeDragStartEnhanced}
+          onNodeDragEnd={handleNodeDragEndEnhanced}
+        />
       </div>
 
       {/* 工作流管理面板 - 新增 */}

@@ -6,12 +6,16 @@ interface ToolbarProps {
   onRunFlow: () => void;
   onStopFlow: () => void;
   selectedWorkstation: WorkstationType | null;
+  onToggleWorkflowManager?: () => void;
+  showWorkflowManager?: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
   onRunFlow,
   onStopFlow,
-  selectedWorkstation
+  selectedWorkstation,
+  onToggleWorkflowManager,
+  showWorkflowManager = false
 }) => {
   const {
     nodes,
@@ -126,7 +130,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <span className="btn-icon">⏹️</span>
             <span className="btn-text">停止</span>
           </button>
-          
+
+          {onToggleWorkflowManager && (
+            <button
+              className={`btn btn-floating-toolbar glass ${showWorkflowManager ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={onToggleWorkflowManager}
+              title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
+            >
+              <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
+              <span className="btn-text">工作流</span>
+            </button>
+          )}
+
           </div>
       </div>
     </div>

@@ -1,34 +1,19 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { PaginatedResponse } from '@zahnerflow/types';
 
-// API响应类型
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  message?: string;
-  timestamp: string;
+// Vite环境变量类型声明
+interface ImportMetaEnv {
+  readonly VITE_API_BASE_URL: string;
+  // 其他环境变量可以在这里添加
 }
 
-// 分页响应类型
-export interface PaginatedResponse<T> {
-  items: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
 }
 
 // 创建API实例
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -59,7 +44,7 @@ api.interceptors.request.use(
 
 // 响应拦截器
 api.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
+  (response: AxiosResponse) => {
     // 调试信息
     console.log({
       status: response.status,
@@ -76,21 +61,21 @@ api.interceptors.response.use(
       data: error.response?.data,
       message: error.message,
     });
-    
+
     // 处理特定错误
     if (error.response?.status === 401) {
       // 未授权，清除token并跳转到登录页
       localStorage.removeItem('auth_token');
       window.location.href = '/login';
     }
-    
+
     return Promise.reject(error);
   }
 );
 
 // 生成请求ID
 function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 // 导出API实例
@@ -100,46 +85,31 @@ export default api;
 export const apiHelpers = {
   // 通用GET请求
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await api.get<ApiResponse<T>>(url, config);
-    if (response.data.success) {
-      return response.data.data as T;
-    }
-    throw new Error(response.data.error?.message || '请求失败');
+    const response = await api.get<T>(url, config);
+    return response.data;
   },
 
   // 通用POST请求
   async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await api.post<ApiResponse<T>>(url, data, config);
-    if (response.data.success) {
-      return response.data.data as T;
-    }
-    throw new Error(response.data.error?.message || '请求失败');
+    const response = await api.post<T>(url, data, config);
+    return response.data;
   },
 
   // 通用PUT请求
   async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await api.put<ApiResponse<T>>(url, data, config);
-    if (response.data.success) {
-      return response.data.data as T;
-    }
-    throw new Error(response.data.error?.message || '请求失败');
+    const response = await api.put<T>(url, data, config);
+    return response.data;
   },
 
   // 通用DELETE请求
   async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await api.delete<ApiResponse<T>>(url, config);
-    if (response.data.success) {
-      return response.data.data as T;
-    }
-    throw new Error(response.data.error?.message || '请求失败');
+    const response = await api.delete<T>(url, config);
+    return response.data;
   },
 
   // 分页GET请求
   async getPaginated<T = any>(url: string, config?: AxiosRequestConfig): Promise<PaginatedResponse<T>> {
-    const response = await api.get<ApiResponse<PaginatedResponse<T>>>(url, config);
-    if (response.data.success) {
-      return response.data.data as PaginatedResponse<T>;
-    }
-    throw new Error(response.data.error?.message || '请求失败');
+    const response = await api.get<PaginatedResponse<T>>(url, config);
+    return response.data;
   },
 };

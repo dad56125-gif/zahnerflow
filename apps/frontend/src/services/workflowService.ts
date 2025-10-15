@@ -35,13 +35,8 @@ export const workflowService = {
   },
 
   // 创建工作流
-  createWorkflow: (data: {
-    name: string;
-    description?: string;
-    workstation: string;
-    definition: WorkflowDefinition;
-  }): Promise<Workflow> => {
-    return apiHelpers.post<Workflow>('/workflows', data);
+  createWorkflow: (definition: WorkflowDefinition): Promise<Workflow> => {
+    return apiHelpers.post<Workflow>('/workflows', definition);
   },
 
   // 更新工作流

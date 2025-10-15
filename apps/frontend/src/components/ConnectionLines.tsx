@@ -1,8 +1,8 @@
 /**
  * 连接线组件
  *
- * 从Canvas.tsx中解耦出来的传统连接线功能
- * 提供S形布局的连接线渲染，包括自动连接线和手动连接线
+ * 提供S形布局的自动连接线渲染，用于可视化工作流的执行顺序
+ * 只显示节点间的顺序连接，不支持用户自定义连接
  */
 
 import React from 'react';
@@ -10,11 +10,6 @@ import { ElectrochemicalNode } from '../nodes/types';
 
 export interface ConnectionLinesProps {
   nodes: ElectrochemicalNode[];
-  connections: Array<{
-    id: string;
-    sourceId: string;
-    targetId: string;
-  }>;
   canvasWidth: number;
   layoutStable: boolean;
   className?: string;
@@ -33,7 +28,6 @@ export interface CachedConnection {
 
 export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
   nodes,
-  connections,
   canvasWidth,
   layoutStable,
   className = ''
@@ -208,7 +202,7 @@ export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
         </marker>
       </defs>
 
-      {/* 渲染自动连接线 */}
+      {/* 渲染工作流执行顺序连接线 */}
       {layoutStable && cachedConnections.map((conn) => (
         <g key={conn.id}>
           {conn.isLShape ? (
@@ -257,56 +251,7 @@ export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
         </g>
       ))}
 
-      {/* 渲染用户自定义连接线 */}
-      {connections.map(connection => {
-        const sourceNode = nodes.find(n => n.id === connection.sourceId);
-        const targetNode = nodes.find(n => n.id === connection.targetId);
-
-        if (!sourceNode || !targetNode) return null;
-
-        const sourcePosition = calculateNodePosition(
-          nodes.findIndex(n => n.id === connection.sourceId),
-          nodes
-        );
-        const targetPosition = calculateNodePosition(
-          nodes.findIndex(n => n.id === connection.targetId),
-          nodes
-        );
-
-        const sourceX = sourcePosition.x + (sourceNode.style.width || NODE_WIDTH);
-        const sourceY = sourcePosition.y + 30;
-        const targetX = targetPosition.x;
-        const targetY = targetPosition.y + 30;
-
-        return (
-          <g key={connection.id}>
-            <line
-              x1={sourceX}
-              y1={sourceY}
-              x2={targetX}
-              y2={targetY}
-              className="manual-connection-line"
-              stroke="rgba(100, 200, 255, 0.8)"
-              strokeWidth="2"
-              strokeDasharray="5,5"
-              markerEnd="url(#arrowhead)"
-            />
-            <circle
-              cx={sourceX}
-              cy={sourceY}
-              r="4"
-              fill="#64C8FF"
-            />
-            <circle
-              cx={targetX}
-              cy={targetY}
-              r="4"
-              fill="#4CAF50"
-            />
-          </g>
-        );
-      })}
-    </svg>
+          </svg>
   );
 };
 

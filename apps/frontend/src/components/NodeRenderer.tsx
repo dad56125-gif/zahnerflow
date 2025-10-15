@@ -1,14 +1,14 @@
 /**
- * 默认节点渲染器
+ * 节点渲染器
  *
- * 保留现有的节点渲染功能，作为没有专门组件的节点类型的后备渲染器
- * 这确保了向后兼容性，所有现有功能都得到保留
+ * 统一的节点渲染系统，从配置获取显示信息
+ * 参数编辑功能完全转移到 PropertyPanel 中
  */
 
 import React from 'react';
-import { ElectrochemicalNode } from '../../nodes/types';
+import { ElectrochemicalNode, getNodeConfig } from '../nodes/types';
 
-export interface DefaultNodeRendererProps {
+export interface NodeRendererProps {
   node: ElectrochemicalNode;
   index?: number;
   isSelected?: boolean;
@@ -22,10 +22,10 @@ export interface DefaultNodeRendererProps {
 }
 
 /**
- * 默认节点渲染器组件
- * 保持与现有Canvas中节点渲染完全一致的功能
+ * 节点渲染器组件
+ * 从配置获取节点的显示信息，统一处理所有节点类型
  */
-export const DefaultNodeRenderer: React.FC<DefaultNodeRendererProps> = ({
+export const NodeRenderer: React.FC<NodeRendererProps> = ({
   node,
   index,
   isSelected = false,
@@ -37,8 +37,32 @@ export const DefaultNodeRenderer: React.FC<DefaultNodeRendererProps> = ({
   onNodeDragStart,
   onNodeDragEnd
 }) => {
-  // 节点拖拽交换相关状态（从现有Canvas复制）
+  // 从配置获取节点信息
+  const config = getNodeConfig(node.type);
+  const displayName = config.name;
+  const icon = config.icon;
+
+  // 节点拖拽交换相关状态
   const [isDragOver, setIsDragOver] = React.useState(false);
+
+  // 节点点击处理
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onNodeClick?.(node);
+  };
+
+  // 节点双击处理
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onNodeDoubleClick?.(node);
+  };
+
+  // 节点右键菜单处理
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onNodeContextMenu?.(node, e);
+  };
 
   // 节点拖拽开始处理
   const handleDragStart = (e: React.DragEvent) => {
@@ -71,7 +95,6 @@ export const DefaultNodeRenderer: React.FC<DefaultNodeRendererProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    // 这里可以添加节点交换逻辑，但现在先保持简单
     (e.currentTarget as HTMLElement).style.opacity = '1';
   };
 
@@ -92,9 +115,9 @@ export const DefaultNodeRenderer: React.FC<DefaultNodeRendererProps> = ({
         height: node.style.height || 60,
         cursor: 'grab',
       }}
-      onClick={onNodeClick}
-      onDoubleClick={onNodeDoubleClick}
-      onContextMenu={onNodeContextMenu}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -107,12 +130,12 @@ export const DefaultNodeRenderer: React.FC<DefaultNodeRendererProps> = ({
 
       {/* 节点图标 */}
       <div className="node-icon-large">
-        {node.style.icon || '🔧'}
+        {icon}
       </div>
 
       {/* 节点标题 */}
       <div className="node-title">
-        {node.name}
+        {displayName}
       </div>
 
       {/* 节点端口（占位，后续在端口系统中实现） */}
@@ -135,9 +158,56 @@ export const DefaultNodeRenderer: React.FC<DefaultNodeRendererProps> = ({
 };
 
 /**
- * 简化的默认节点渲染器（用于特殊场景）
+ * 批量节点渲染器
  */
-export const SimpleDefaultNodeRenderer: React.FC<{
+export interface NodeListRendererProps {
+  nodes: ElectrochemicalNode[];
+  selectedNodeId?: string | null;
+  isConnecting?: boolean;
+  connectionStart?: string | null;
+  onNodeClick?: (node: ElectrochemicalNode) => void;
+  onNodeDoubleClick?: (node: ElectrochemicalNode) => void;
+  onNodeContextMenu?: (node: ElectrochemicalNode, event: React.MouseEvent) => void;
+  onNodeDragStart?: (node: ElectrochemicalNode, event: React.DragEvent) => void;
+  onNodeDragEnd?: (node: ElectrochemicalNode, event: React.DragEvent) => void;
+}
+
+export const NodeListRenderer: React.FC<NodeListRendererProps> = ({
+  nodes,
+  selectedNodeId,
+  isConnecting = false,
+  connectionStart = null,
+  onNodeClick,
+  onNodeDoubleClick,
+  onNodeContextMenu,
+  onNodeDragStart,
+  onNodeDragEnd
+}) => {
+  return (
+    <>
+      {nodes.map((node, index) => (
+        <NodeRenderer
+          key={node.id}
+          node={node}
+          index={index}
+          isSelected={selectedNodeId === node.id}
+          isConnecting={isConnecting}
+          connectionStart={connectionStart}
+          onNodeClick={onNodeClick}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onNodeContextMenu={onNodeContextMenu}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDragEnd={onNodeDragEnd}
+        />
+      ))}
+    </>
+  );
+};
+
+/**
+ * 简化的节点渲染器（用于特殊场景）
+ */
+export const SimpleNodeRenderer: React.FC<{
   node: ElectrochemicalNode;
   isSelected?: boolean;
   onClick?: () => void;
@@ -177,4 +247,4 @@ export const SimpleDefaultNodeRenderer: React.FC<{
   );
 };
 
-export default DefaultNodeRenderer;
+export default NodeRenderer;
