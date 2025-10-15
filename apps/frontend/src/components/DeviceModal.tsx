@@ -1,5 +1,117 @@
 import React, { useState } from 'react';
 
+// MFC设备卡片组件
+const MFCDeviceCard: React.FC<{ device: any }> = ({ device }) => {
+  const getFlowBarHeight = () => {
+    if (device.max_flow === 0) return 0;
+    return (device.current_flow / device.max_flow) * 100;
+  };
+
+  const getSetFlowBarHeight = () => {
+    if (device.max_flow === 0) return 0;
+    return (device.set_flow / device.max_flow) * 100;
+  };
+
+  const getStatusColor = () => {
+    switch (device.status) {
+      case 'connected': return '#4CAF50';
+      case 'warning': return '#FF9800';
+      case 'error': return '#F44336';
+      default: return '#9E9E9E';
+    }
+  };
+
+  return (
+    <div className="mfc-device-card glass">
+      <div className="mfc-card-header">
+        <div className="mfc-device-info">
+          <span className="mfc-device-id">MFC {device.id}</span>
+          <span className="mfc-gas-type">{device.gas_type} ({device.max_flow} sccm)</span>
+        </div>
+        <div className="mfc-status-indicator">
+          <div className="status-light" style={{ backgroundColor: getStatusColor() }} />
+          <span className="status-text">
+            {device.status === 'connected' ? '已连接' :
+             device.status === 'warning' ? '警告' :
+             device.status === 'error' ? '错误' : '断开'}
+          </span>
+        </div>
+      </div>
+
+      <div className="mfc-card-body">
+        {/* 左侧参数区 */}
+        <div className="mfc-left-panel">
+          <div className="mfc-flow-display">
+            <div className="flow-value-display">
+              <div className="flow-actual">
+                <span className="flow-label">实际流量</span>
+                <span className="flow-value">{device.current_flow.toFixed(1)}</span>
+              </div>
+              <div className="flow-setpoint">
+                <span className="flow-label">设定流量</span>
+                <span className="flow-value">{device.set_flow.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mfc-card-controls">
+            <div className="flow-input-group">
+              <label>设定 (sccm)</label>
+              <input
+                type="number"
+                defaultValue={device.set_flow}
+                min="0"
+                max={device.max_flow}
+                step="0.1"
+              />
+            </div>
+            <div className="control-buttons">
+              <button className={`btn ${device.mode === 'hold' ? 'btn-primary' : 'btn-secondary'}`}>
+                HOLD
+              </button>
+              <button className={`btn ${device.mode === 'follow' ? 'btn-primary' : 'btn-secondary'}`}>
+                FOLLOW
+              </button>
+            </div>
+          </div>
+
+                  </div>
+
+        {/* 右侧图表区 */}
+        <div className="mfc-right-panel">
+          <div className="flow-charts-container">
+            {/* 实际流量柱状图 */}
+            <div className="flow-chart-item">
+              <div className="chart-title">实际</div>
+              <div className="flow-bar-container">
+                <div className="flow-bar-wrapper">
+                  <div className="flow-bar-background">
+                    <div className="flow-bar-actual" style={{ height: `${getFlowBarHeight()}%` }} />
+                  </div>
+                </div>
+                <div className="flow-bar-value">{device.current_flow.toFixed(1)}</div>
+              </div>
+            </div>
+
+            {/* 设定流量柱状图 */}
+            <div className="flow-chart-item">
+              <div className="chart-title">设定</div>
+              <div className="flow-bar-container">
+                <div className="flow-bar-wrapper">
+                  <div className="flow-bar-background">
+                    <div className="flow-bar-setpoint" style={{ height: `${getSetFlowBarHeight()}%` }} />
+                  </div>
+                </div>
+                <div className="flow-bar-value">{device.set_flow.toFixed(1)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface DeviceModalProps {
   device: 'furnace' | 'mfc' | null;
   onClose: () => void;
@@ -15,31 +127,35 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
   // 当前选项卡状态
   const [activeTab, setActiveTab] = useState<'monitoring' | 'program' | 'presets' | 'recording' | 'history'>('monitoring');
 
+  // MFC设备数据 - 移动到条件判断之前
+  const [mfcDevices] = useState([
+    { id: 1, gas_type: 'Ar', max_flow: 100, current_flow: 0, set_flow: 0, mode: 'hold', status: 'disconnected' },
+    { id: 2, gas_type: 'N2', max_flow: 200, current_flow: 0, set_flow: 0, mode: 'hold', status: 'disconnected' },
+    { id: 3, gas_type: 'O2', max_flow: 50, current_flow: 0, set_flow: 0, mode: 'hold', status: 'disconnected' },
+    { id: 4, gas_type: 'H2', max_flow: 30, current_flow: 0, set_flow: 0, mode: 'hold', status: 'disconnected' },
+    { id: 5, gas_type: 'CO2', max_flow: 80, current_flow: 0, set_flow: 0, mode: 'hold', status: 'disconnected' },
+    { id: 6, gas_type: 'He', max_flow: 60, current_flow: 0, set_flow: 0, mode: 'hold', status: 'disconnected' }
+  ]);
+
   // 保持对 props 的读取以避免 TS 未使用报错
   void modalTop; void modalLeft; void modalWidth; void modalHeight;
 
-  // 如果不是furnace设备，显示简单界面
+  // MFC设备 - 使用card-based布局
   if (device !== 'furnace') {
+
     return (
-      <div className="device-modal">
+      <div className="device-modal furnace-modal">
         <div className="device-modal-content">
           <div className="device-header">
-            <h3>流量计控制</h3>
+            <h3>质量流量控制器 (MFC)</h3>
             <button className="close-btn" onClick={onClose}>×</button>
           </div>
-          <div className="device-controls-panel">
-            <div className="control-group">
-              <label>当前状态</label>
-              <span className="current-value">未连接</span>
-            </div>
-            <div className="control-group">
-              <label>设定值</label>
-              <input type="number" placeholder="输入设定值" />
-              <span className="unit">sccm</span>
-            </div>
-            <div className="control-actions">
-              <button className="btn btn-primary">应用</button>
-              <button className="btn btn-secondary">读取</button>
+
+          <div className="mfc-modal-content">
+            <div className="mfc-cards-container">
+              {mfcDevices.map((device) => (
+                <MFCDeviceCard key={device.id} device={device} />
+              ))}
             </div>
           </div>
         </div>

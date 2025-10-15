@@ -1,0 +1,494 @@
+/* MFC Card-based Layout Styles */
+
+/* MFC Modal Content - 使用与furnace相同的结构和样式 */
+.mfc-modal-content {
+  padding: 1rem;
+  height: calc(100% - 60px); /* 减去header高度 */
+  overflow-y: auto;
+}
+
+/* MFC Cards Container - Grid Layout */
+.mfc-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  height: 100%;
+  align-content: start;
+}
+
+/* MFC Device Card */
+.mfc-device-card {
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 280px;
+}
+
+/* Card Body - 左右布局容器 */
+.mfc-card-body {
+  display: flex;
+  gap: 1.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 左侧参数区 */
+.mfc-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  height: 100%;
+}
+
+/* 右侧图表区 */
+.mfc-right-panel {
+  flex: 0 0 5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  min-height: 0;
+  padding: 0;
+}
+
+/* 流量图表容器 - 并排布局 */
+.flow-charts-container {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  width: 100%;
+  height: 100%;
+  align-items: flex-end;
+  justify-content: stretch;
+}
+
+/* 单个图表项 */
+.flow-chart-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  height: 100%;
+  min-width: 1.5rem;
+  max-width: 2rem;
+}
+
+.chart-title {
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  text-align: center;
+}
+
+.flow-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  width: 100%;
+  flex: 1;
+  height: 100%;
+}
+
+
+.flow-bar-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  flex: 1;
+  width: 100%;
+  min-height: 2rem;
+}
+
+.flow-bar-background {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.125rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.flow-bar-actual {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(to top, #4CAF50, #81C784);
+  border-radius: 0.125rem 0.125rem 0 0;
+  transition: height 0.3s ease;
+  min-height: 2px;
+}
+
+.flow-bar-setpoint {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(to top, #2196F3, #64B5F6);
+  border-radius: 0.125rem 0.125rem 0 0;
+  transition: height 0.3s ease;
+  min-height: 2px;
+}
+
+.flow-bar-value {
+  font-size: 0.625rem;
+  color: white;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.mfc-device-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Card Header */
+.mfc-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mfc-device-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mfc-device-id {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.mfc-gas-type {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.mfc-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-light {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.status-text {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+/* Flow Display - 优化自适应 */
+.mfc-flow-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.125rem 0;
+  flex-shrink: 0;
+}
+
+.flow-value-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.flow-actual,
+.flow-setpoint {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.flow-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.flow-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+
+/* Card Controls - 优化自适应 */
+.mfc-card-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.flow-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 100%;
+}
+
+.flow-input-group label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.flow-input-group input {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 0.75rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flow-input-group input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.flow-input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.control-buttons {
+  display: flex;
+  gap: 0.375rem;
+  width: 100%;
+}
+
+.control-buttons .btn {
+  flex: 1;
+  padding: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Max Flow Display - 减少高度 */
+.mfc-max-flow-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+}
+
+.max-flow-label {
+  font-size: 0.625rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.max-flow-value {
+  font-size: 0.75rem;
+  color: white;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .mfc-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: 1rem;
+  }
+
+  .mfc-device-card {
+    min-height: 16rem;
+  }
+
+  .mfc-card-body {
+    gap: 1rem;
+  }
+
+  .mfc-right-panel {
+    flex: 0 0 4rem;
+  }
+
+  .mfc-left-panel {
+    gap: 0.625rem;
+  }
+
+  .mfc-card-controls {
+    gap: 0.5rem;
+  }
+
+  .flow-chart-item {
+    min-width: 1.25rem;
+    max-width: 1.75rem;
+  }
+
+  .flow-bar-wrapper {
+    min-height: 1.5rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .mfc-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  }
+
+  .mfc-device-card {
+    min-height: 15rem;
+  }
+
+  .mfc-right-panel {
+    flex: 0 0 3.5rem;
+  }
+
+  .mfc-left-panel {
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mfc-card-controls {
+    gap: 0.375rem;
+    flex-shrink: 0;
+  }
+
+  .flow-input-group {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .flow-input-group input {
+    padding: 0.3125rem 0.4375rem;
+    font-size: 0.6875rem;
+  }
+
+  .control-buttons {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .control-buttons .btn {
+    padding: 0.3125rem;
+    font-size: 0.5625rem;
+  }
+
+  .flow-value-display {
+    gap: 0.4375rem;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .mfc-flow-display {
+    flex-shrink: 0;
+    padding: 0.0625rem 0;
+  }
+
+  .flow-actual,
+  .flow-setpoint {
+    padding: 0.3125rem 0.4375rem;
+  }
+
+  .flow-label {
+    font-size: 0.6875rem;
+  }
+
+  .flow-value {
+    font-size: 0.75rem;
+  }
+
+  .flow-chart-item {
+    min-width: 1rem;
+    max-width: 1.5rem;
+  }
+
+  .flow-bar-wrapper {
+    min-height: 1.25rem;
+  }
+}
+
+
+/* Animation for status light */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  }
+}
+
+.status-light {
+  animation: pulse 2s infinite;
+}
+
+/* Different status colors */
+.status-light.connected {
+  background-color: #4CAF50;
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.6);
+}
+
+.status-light.warning {
+  background-color: #FF9800;
+  box-shadow: 0 0 12px rgba(255, 152, 0, 0.6);
+}
+
+.status-light.error {
+  background-color: #F44336;
+  box-shadow: 0 0 12px rgba(244, 67, 54, 0.6);
+}
+
+.status-light.disconnected {
+  background-color: #9E9E9E;
+  box-shadow: 0 0 8px rgba(158, 158, 158, 0.3);
+}
