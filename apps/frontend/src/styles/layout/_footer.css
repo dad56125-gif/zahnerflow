@@ -22,6 +22,14 @@
   gap: var(--space);
 }
 
+.status-left {
+  padding-left: var(--space); /* 左侧trigger与sidebar内容对齐 */
+}
+
+.status-right {
+  padding-right: var(--space); /* 右侧与property面板对齐 */
+}
+
 .status-item {
   display: flex;
   align-items: center;
@@ -76,11 +84,53 @@
 
 .selected-node-info {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  flex-direction: column;
+  gap: 1px;
   padding: var(--space-sm);
+  padding-left: 8px;
+  padding-right: 8px;
   border-radius: var(--radius-sm);
   font-size: 11px;
+  text-align: left;
+  min-width: 180px;
+  max-width: 200px;
+}
+
+.selected-node-info .node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.selected-node-info .node-divider {
+  width: 60%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 1px 0 -2px 0;
+}
+
+.selected-node-info .node-id {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.selected-node-info .node-type {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.selected-node-info .node-status {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+}
+
+.selected-node-info .node-id-row {
+  justify-content: flex-start;
+}
+
+.selected-node-info .node-details-row {
+  justify-content: flex-start;
 }
 
 .separator {

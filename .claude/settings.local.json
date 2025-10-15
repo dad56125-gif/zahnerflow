@@ -5,7 +5,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx eslint:*)",
       "Bash(npm run build:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(git grep:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

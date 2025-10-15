@@ -27,6 +27,18 @@
   --glass-border: rgba(255, 255, 255, 0.12);
   --glass-shadow: rgba(0, 0, 0, 0.2);
 
+  /* 布局边界位置变量（相对于viewport） */
+  --sidebar-l: var(--space);  /* 左侧边栏左边距（viewport） */
+  --sidebar-content-l: calc(var(--space) - var(--space));  /* 左侧边栏内容左边缘（viewport） */
+  --sidebar-r: calc(var(--space) + var(--sidebar-w));  /* 左侧边栏右边距（viewport） */
+  --property-l: calc(100vw - var(--space) - var(--property-w));  /* 右侧面板左边距（viewport） */
+  --property-r: calc(100vw - var(--space));  /* 右侧面板右边距（viewport） */
+
+  /* 通知面板专用变量 */
+  --notification-panel-width: 400px;
+  --notification-panel-max-height: 500px;
+  --notification-panel-z-index: 1000;
+
   /* 动画 */
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

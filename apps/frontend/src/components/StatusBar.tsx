@@ -52,11 +52,15 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         {/* 选中节点信息 */}
         {selectedNode && (
           <div className="selected-node-info glass">
-            <span className="node-id">ID: {selectedNode.id.substring(0, 8)}...</span>
-            <span className="separator">|</span>
-            <span className="node-type">{selectedNode.type}</span>
-            <span className="separator">|</span>
-            <span className="node-status">{selectedNode.status}</span>
+            <div className="node-row node-id-row">
+              <span className="node-id">ID: {selectedNode.id.substring(0, 50)}...</span>
+            </div>
+            <div className="node-divider"></div>
+            <div className="node-row node-details-row">
+              <span className="node-type">{selectedNode.type}</span>
+              <span className="separator">|</span>
+              <span className="node-status">{selectedNode.status}</span>
+            </div>
           </div>
         )}
       </div>

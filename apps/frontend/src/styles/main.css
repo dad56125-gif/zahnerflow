@@ -22,6 +22,7 @@
 @import './components/_canvas.css';
 @import './components/_loop.css';
 @import './components/_workflow.css';
+@import './components/_notification.css';  /* 新增：通知面板样式 */
 
 /* 布局样式聚合（避免与 _grid.css 冲突，不引入它） */
 @import './layout/_header.css';

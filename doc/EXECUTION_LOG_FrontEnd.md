@@ -698,3 +698,49 @@
     - 开发体验：减少了混淆，开发者可以清楚地知道数据格式
   - **Backward Compatibility:** 不影响现有功能，工作流创建和执行仍然正常工作
   - **Testing:** 建议测试工作流创建功能以确保简化后的 API 调用正常工作
+
+## 2025-10-15 (续2)
+
+- **Task:** 通知面板样式修复与状态栏优化。
+  - **Description:** 从git节点 28f9779a6f9048e9aaf9f8331c3ea3800b5d15c4 中恢复通知面板的完整样式系统，并优化状态栏的布局和显示效果。
+  - **Problem Analysis:**
+    - 通知面板样式丢失：当前版本缺少完整的通知面板CSS样式定义
+    - 状态栏布局问题：selected-node-info信息显示拥挤，需要优化布局
+    - 位置对齐问题：通知面板和状态栏元素的位置需要与整体布局对齐
+    - 坐标系不一致：fixed定位元素与grid布局元素的坐标系存在差异
+  - **Implementation:**
+    - 从指定git节点分析通知面板的完整实现，包括组件结构、样式文件和依赖关系
+    - 创建模块化的通知面板样式文件，适配现有的CSS变量系统
+    - 添加布局边界位置变量，解决fixed定位与grid布局的坐标系对齐问题
+    - 优化状态栏的selected-node-info布局，改为两行显示并添加分割线
+    - 调整状态栏内部元素的对齐方式，与sidebar和property面板对齐
+  - **Files Created:**
+    - `apps/frontend/src/styles/components/_notification.css` - 完整的通知面板样式文件
+  - **Files Modified:**
+    - `apps/frontend/src/styles/base/_variables.css` - 添加布局边界位置变量
+    - `apps/frontend/src/styles/main.css` - 导入通知面板样式文件
+    - `apps/frontend/src/styles/layout/_footer.css` - 优化状态栏布局和样式
+    - `apps/frontend/src/components/StatusBar.tsx` - 更新selected-node-info的HTML结构
+  - **Key Improvements:**
+    - 通知面板样式恢复：完整恢复了通知面板的视觉效果和交互功能
+    - 布局变量系统：添加了精确的布局边界变量，确保元素对齐
+    - 状态栏布局优化：selected-node-info改为两行显示，信息层次更清晰
+    - 视觉一致性：所有元素与整体布局系统保持一致的对齐和间距
+    - 模块化设计：通知面板样式独立文件，便于维护和扩展
+  - **Technical Details:**
+    - 通知面板定位：使用 `--sidebar-content-l` 确保与sidebar内容区域对齐
+    - 状态栏对齐：左侧trigger与sidebar内容对齐，右侧信息与property面板对齐
+    - 响应式设计：支持移动端适配，不同屏幕尺寸下的显示优化
+    - 动画效果：保留了原有的slideUpLeft动画和pulse动画效果
+  - **Visual Enhancements:**
+    - 玻璃态效果：完整的通知面板玻璃态背景和模糊效果
+    - 分割线设计：selected-node-info两行间的精致分割线
+    - 颜色层次：不同类型通知的颜色区分和视觉权重
+    - 交互反馈：hover效果、按钮状态和过渡动画
+  - **Files Created/Deleted/Modified Summary:**
+    - Created: 1个新文件 (_notification.css)
+    - Modified: 4个文件 (variables.css, main.css, footer.css, StatusBar.tsx)
+    - Deleted: 0个文件
+    - Total lines added: ~300行样式代码
+  - **Backward Compatibility:** 完全向后兼容，不影响现有功能
+  - **Testing:** 建议测试通知面板的显示、交互和状态栏的信息显示效果
