@@ -1,4 +1,4 @@
-import { apiHelpers } from './api';
+import { apiHelpers } from './api/zahnerApi';
 import { 
   Workflow, 
   WorkflowDefinition, 

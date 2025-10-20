@@ -22,6 +22,11 @@ export class FurnaceDeviceService {
     return data;
   }
 
+  async getCommLog(): Promise<any> {
+    const { data } = await this.http.get('/comm-log');
+    return data;
+  }
+
   async connect(body: { port: string; baudrate?: number; address?: number; stopbits?: number; timeout?: number }): Promise<any> {
     const { data } = await this.http.post('/connect', body);
     return data;

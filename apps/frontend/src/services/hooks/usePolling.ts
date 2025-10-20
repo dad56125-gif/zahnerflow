@@ -1,75 +1,77 @@
 ﻿/**
- * 閫氱敤杞 Hook
+ * 通用轮询 Hook
  *
- * 鎻愪緵鑷姩杞鍔熻兘锛屾敮鎸佸惎鍋滄帶鍒躲€侀敊璇噸璇曘€侀槻鎶栫瓑鐗规€? */
+ * 提供自动轮询功能，支持启停控制、错误重试、防抖等特性
+ */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { DeviceError } from '../api';
 import { isRetryableError } from '../utils/apiUtils';
 
 /**
- * 杞閰嶇疆閫夐」
+ * 轮询配置选项
  */
 export interface PollingOptions<T> {
-  /** 杞闂撮殧鏃堕棿锛堟绉掞級 */
+  /** 轮询间隔时间（毫秒） */
   interval: number;
-  /** 鏄惁绔嬪嵆鎵ц绗竴娆?*/
+  /** 是否立即执行第一次 */
   immediate?: boolean;
-  /** 鏄惁鍦ㄧ粍浠跺彲瑙佹椂鎵嶈疆璇?*/
+  /** 是否在组件可见时才轮询 */
   onlyWhenVisible?: boolean;
-  /** 鏈€澶ч噸璇曟鏁?*/
+  /** 最大重试次数 */
   maxRetries?: number;
-  /** 閲嶈瘯寤惰繜鏃堕棿锛堟绉掞級 */
+  /** 重试延迟时间（毫秒） */
   retryDelay?: number;
-  /** 鎸囨暟閫€閬垮洜瀛?*/
+  /** 指数退避因子 */
   backoffFactor?: number;
-  /** 閿欒鍥炶皟 */
+  /** 错误回调 */
   onError?: (error: DeviceError) => void;
-  /** 鎴愬姛鍥炶皟 */
+  /** 成功回调 */
   onSuccess?: (data: T) => void;
-  /** 杞鐘舵€佸彉鍖栧洖璋?*/
+  /** 轮询状态变化回调 */
   onPollingStateChange?: (isPolling: boolean) => void;
-  /** 渚濊禆鏁扮粍锛屽綋渚濊禆鍙樺寲鏃堕噸鏂板紑濮嬭疆璇?*/
+  /** 依赖数组，当依赖变化时重新开始轮询 */
   deps?: React.DependencyList;
-  /** 鏄惁鍦ㄦ寕杞芥椂鑷姩鍚姩杞锛堥粯璁?true锛?/
+  /** 是否在挂载时自动启动轮询（默认 true）*/
   auto_start?: boolean;
 }
 
 /**
- * 杞鐘舵€? */
+ * 轮询状态
+ */
 export interface PollingState<T> {
-  /** 鏁版嵁 */
+  /** 数据 */
   data: T | null;
-  /** 鏄惁姝ｅ湪鍔犺浇 */
+  /** 是否正在加载 */
   isLoading: boolean;
-  /** 鏄惁姝ｅ湪杞 */
+  /** 是否正在轮询 */
   isPolling: boolean;
-  /** 閿欒淇℃伅 */
+  /** 错误信息 */
   error: DeviceError | null;
-  /** 鏈€鍚庢洿鏂版椂闂?*/
+  /** 最后更新时间 */
   lastUpdate: Date | null;
-  /** 閲嶈瘯娆℃暟 */
+  /** 重试次数 */
   retryCount: number;
-  /** 杞娆℃暟 */
+  /** 轮询次数 */
   pollCount: number;
 }
 
 /**
- * 杞鎺у埗鏂规硶
+ * 轮询控制方法
  */
 export interface PollingControls {
-  /** 寮€濮嬭疆璇?*/
+  /** 开始轮询 */
   start: () => void;
-  /** 鍋滄杞 */
+  /** 停止轮询 */
   stop: () => void;
-  /** 鎵嬪姩鍒锋柊 */
+  /** 手动刷新 */
   refresh: () => Promise<void>;
-  /** 閲嶇疆鐘舵€?*/
+  /** 重置状态 */
   reset: () => void;
 }
 
 /**
- * 閫氱敤杞 Hook
+ * 通用轮询 Hook
  */
 export function usePolling<T>(
   fetchFn: () => Promise<T>,
@@ -89,7 +91,8 @@ export function usePolling<T>(
     auto_start = true,
   } = options;
 
-  // 鐘舵€佺鐞?  const [state, setState] = useState<PollingState<T>>({
+  // 状态管理
+  const [state, setState] = useState<PollingState<T>>({
     data: null,
     isLoading: false,
     isPolling: false,
@@ -99,13 +102,13 @@ export function usePolling<T>(
     pollCount: 0,
   });
 
-  // 寮曠敤绠＄悊
+  // 引用管理
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 娓呯悊鎵€鏈夊畾鏃跺櫒
+  // 清理所有定时器
   const clearTimers = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -121,14 +124,14 @@ export function usePolling<T>(
     }
   }, []);
 
-  // 鏇存柊鐘舵€佺殑杈呭姪鍑芥暟
+  // 更新状态的辅助函数
   const updateState = useCallback((updates: Partial<PollingState<T>>) => {
     if (mountedRef.current) {
       setState(prev => ({ ...prev, ...updates }));
     }
   }, []);
 
-  // 鎵ц鏁版嵁鑾峰彇
+  // 执行数据获取
   const fetchData = useCallback(async (isRetry = false): Promise<void> => {
     try {
       updateState({ isLoading: true, error: null });
@@ -137,17 +140,17 @@ export function usePolling<T>(
 
       if (!mountedRef.current) return;
 
-      // 鎴愬姛鑾峰彇鏁版嵁
+      // 成功获取数据
       updateState({
         data,
         isLoading: false,
         error: null,
         lastUpdate: new Date(),
         retryCount: 0,
-        pollCount: (prev as number) + 1,
+        pollCount: prev => prev + 1,
       });
 
-      // 璋冪敤鎴愬姛鍥炶皟
+      // 调用成功回调
       if (onSuccess) {
         onSuccess(data);
       }
@@ -157,19 +160,21 @@ export function usePolling<T>(
 
       const deviceError = error as DeviceError;
 
-      // 鏇存柊閿欒鐘舵€?      updateState({
+      // 更新错误状态
+      updateState({
         data: null,
         isLoading: false,
         error: deviceError,
-        retryCount: isRetry ? (state.retryCount + 1) : 1,
+        retryCount: prev => isRetry ? prev + 1 : 1,
       });
 
-      // 璋冪敤閿欒鍥炶皟
+      // 调用错误回调
       if (onError) {
         onError(deviceError);
       }
 
-      // 濡傛灉鍙互閲嶈瘯涓旀湭杈惧埌鏈€澶ч噸璇曟鏁?      if (isRetryableError(deviceError) && state.retryCount < maxRetries) {
+      // 如果可以重试且未达到最大重试次数
+      if (apiUtils.isRetryableError(deviceError) && state.retryCount < maxRetries) {
         const nextRetryDelay = retryDelay * Math.pow(backoffFactor, state.retryCount);
 
         retryTimeoutRef.current = setTimeout(() => {
@@ -178,25 +183,30 @@ export function usePolling<T>(
           }
         }, nextRetryDelay);
       } else {
-        // 鏃犳硶閲嶈瘯鎴栬揪鍒版渶澶ч噸璇曟鏁帮紝鍋滄杞
+        // 无法重试或达到最大重试次数，停止轮询
         stop();
       }
     }
   }, [fetchFn, onError, onSuccess, retryDelay, backoffFactor, maxRetries, state.retryCount, updateState]);
 
-  // 寮€濮嬭疆璇?  const start = useCallback(() => {
-    if (intervalRef.current) return; // 宸茬粡鍦ㄨ疆璇?
-    // 妫€鏌ラ〉闈㈠彲瑙佹€?    if (onlyWhenVisible && typeof document !== 'undefined' && document.hidden) {
+  // 开始轮询
+  const start = useCallback(() => {
+    if (intervalRef.current) return; // 已经在轮询
+
+    // 检查页面可见性
+    if (onlyWhenVisible && typeof document !== 'undefined' && document.hidden) {
       return;
     }
 
-    // 绔嬪嵆鎵ц绗竴娆?    if (immediate) {
+    // 立即执行第一次
+    if (immediate) {
       fetchData();
     }
 
-    // 璁剧疆瀹氭椂杞
+    // 设置定时轮询
     intervalRef.current = setInterval(() => {
-      // 妫€鏌ラ〉闈㈠彲瑙佹€?      if (onlyWhenVisible && typeof document !== 'undefined' && document.hidden) {
+      // 检查页面可见性
+      if (onlyWhenVisible && typeof document !== 'undefined' && document.hidden) {
         return;
       }
 
@@ -205,27 +215,30 @@ export function usePolling<T>(
 
     updateState({ isPolling: true });
 
-    // 璋冪敤杞鐘舵€佸彉鍖栧洖璋?    if (onPollingStateChange) {
+    // 调用轮询状态变化回调
+    if (onPollingStateChange) {
       onPollingStateChange(true);
     }
   }, [interval, immediate, onlyWhenVisible, fetchData, updateState, onPollingStateChange]);
 
-  // 鍋滄杞
+  // 停止轮询
   const stop = useCallback(() => {
     clearTimers();
     updateState({ isPolling: false, isLoading: false });
 
-    // 璋冪敤杞鐘舵€佸彉鍖栧洖璋?    if (onPollingStateChange) {
+    // 调用轮询状态变化回调
+    if (onPollingStateChange) {
       onPollingStateChange(false);
     }
   }, [clearTimers, updateState, onPollingStateChange]);
 
-  // 鎵嬪姩鍒锋柊
+  // 手动刷新
   const refresh = useCallback(async (): Promise<void> => {
     await fetchData();
   }, [fetchData]);
 
-  // 閲嶇疆鐘舵€?  const reset = useCallback(() => {
+  // 重置状态
+  const reset = useCallback(() => {
     stop();
     updateState({
       data: null,
@@ -236,16 +249,19 @@ export function usePolling<T>(
     });
   }, [stop, updateState]);
 
-  // 椤甸潰鍙鎬у彉鍖栧鐞?  useEffect(() => {
+  // 页面可见性变化处理
+  useEffect(() => {
     if (!onlyWhenVisible) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // 椤甸潰闅愯棌鏃舵殏鍋滆疆璇?        if (intervalRef.current) {
+        // 页面隐藏时暂停轮询
+        if (intervalRef.current) {
           stop();
         }
       } else {
-        // 椤甸潰鏄剧ず鏃舵仮澶嶈疆璇?        if (!intervalRef.current) {
+        // 页面显示时恢复轮询
+        if (!intervalRef.current) {
           start();
         }
       }
@@ -258,7 +274,8 @@ export function usePolling<T>(
     };
   }, [onlyWhenVisible, start, stop]);
 
-  // 渚濊禆鍙樺寲鏃堕噸鏂板紑濮嬭疆璇?  useEffect(() => {
+  // 依赖变化时重新开始轮询
+  useEffect(() => {
     reset();
     if (auto_start) {
       start();
@@ -269,14 +286,15 @@ export function usePolling<T>(
     };
   }, deps);
 
-  // 缁勪欢鍗歌浇鏃舵竻鐞?  useEffect(() => {
+  // 组件卸载时清理
+  useEffect(() => {
     return () => {
       mountedRef.current = false;
       clearTimers();
     };
   }, [clearTimers]);
 
-  // 鎺у埗鏂规硶
+  // 控制方法
   const controls: PollingControls = {
     start,
     stop,
@@ -288,7 +306,7 @@ export function usePolling<T>(
 }
 
 /**
- * 绠€鍖栫殑杞 Hook锛岄€傜敤浜庡ぇ澶氭暟鍦烘櫙
+ * 简化的轮询 Hook，适用于大多数场景
  */
 export function useSimplePolling<T>(
   fetchFn: () => Promise<T>,
@@ -314,7 +332,7 @@ export function useSimplePolling<T>(
 }
 
 /**
- * 甯︽湁鏉′欢杞鐨?Hook
+ * 带有条件轮询的 Hook
  */
 export function useConditionalPolling<T>(
   fetchFn: () => Promise<T>,
@@ -323,16 +341,15 @@ export function useConditionalPolling<T>(
   options: Partial<PollingOptions<T>> = {}
 ): [PollingState<T>, PollingControls] {
   const [state, controls] = usePolling(fetchFn, {
-    ...options,
     interval,
     immediate: false,
-    auto_start: false,
     onlyWhenVisible: true,
     maxRetries: 3,
     retryDelay: 1000,
+    ...options,
   });
 
-  // 鏍规嵁鏉′欢鑷姩鍚姩/鍋滄杞
+  // 根据条件自动启动/停止轮询
   useEffect(() => {
     if (shouldPoll()) {
       controls.start();
@@ -345,7 +362,7 @@ export function useConditionalPolling<T>(
 }
 
 /**
- * 澶氭暟鎹簮杞 Hook
+ * 多数据源轮询 Hook
  */
 export function useMultiPolling<T extends Record<string, any>>(
   fetchers: {
@@ -364,9 +381,9 @@ export function useMultiPolling<T extends Record<string, any>>(
     error: null,
   });
 
-  const fetchAllData = useCallback(async (): Promise<Partial<T>> => {
+  const fetchAllData = useCallback(async () => {
     try {
-      
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       const promises = Object.entries(fetchers).map(async ([key, fetcher]) => {
         const value = await fetcher();
@@ -391,14 +408,23 @@ export function useMultiPolling<T extends Record<string, any>>(
         }
       });
 
-      return data;
+      setState({
+        data,
+        isLoading: false,
+        error: hasError ? firstError : null,
+      });
 
     } catch (error) {
-      throw error;
+      setState({
+        data: null,
+        isLoading: false,
+        error: error as DeviceError,
+      });
     }
   }, [fetchers]);
 
-  // 浣跨敤绠€鍗曡疆璇?  const [data, isLoading, error] = useSimplePolling<Partial<T>>(
+  // 使用简单轮询
+  const [data, isLoading, error, refresh] = useSimplePolling(
     fetchAllData,
     interval,
     options
@@ -408,11 +434,3 @@ export function useMultiPolling<T extends Record<string, any>>(
 }
 
 export default usePolling;
-
-
-
-
-
-
-
-

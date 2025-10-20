@@ -50,6 +50,8 @@ export class FurnaceService implements OnModuleInit {
   }
 
   async status() { return this.device.status(); }
+  async ports() { return this.device.ports(); }
+  async getCommLog() { return this.device.getCommLog(); }
   async setSv(sv: number) { return this.device.setSv(sv); }
   async setSegment(segment: number) { return this.device.setSegment(segment); }
   async getProgramSegments(): Promise<ProgramSegment[]> { return this.device.getProgramSegments(); }

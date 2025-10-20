@@ -59,8 +59,8 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
         sv: Number(st.sv ?? 0),
         mv: Number(st.mv ?? 0),
         segment: Number(st.segment ?? 0),
-        segmentTime: Number(st.segmentTime ?? 0),
-        segmentTimeSet: Number(st.segmentTimeSet ?? 0),
+        segmentTime: Number(st.segment_time ?? 0),
+        segmentTimeSet: Number(st.segment_time_set ?? 0),
       };
       this.furnaceBuf.push(sample);
       await this.appendJsonl(path.join(this.baseDir, 'furnace', `${isoDate(now)}.jsonl`), sample);

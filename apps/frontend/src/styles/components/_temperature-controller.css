@@ -123,6 +123,242 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  gap: 1rem;
+}
+
+/* 设备连接区域 */
+.device-connection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.device-connection-panel {
+  padding: 1.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px var(--glass-shadow);
+}
+
+.device-connection-panel h4 {
+  margin: 0 0 1rem 0;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  font-size: clamp(0.875rem, 0.8rem + 0.2vw, 1rem);
+}
+
+.device-connection-panel .connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.device-connection-panel .connection-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.device-connection-panel .connection-header .status-message {
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.device-connection-panel .control-group {
+  margin-bottom: 1rem;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.device-connection-panel .control-group .port-select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: var(--transition);
+}
+
+.device-connection-panel .control-group .port-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.device-connection-panel .control-group .port-select option {
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+}
+
+.device-connection-panel .control-group .refresh-btn {
+  margin: 0;
+  white-space: nowrap;
+  padding: 8px 16px;
+  font-size: 14px;
+  border: 1px solid rgba(52, 152, 219, 0.4);
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.4), rgba(52, 152, 219, 0.2));
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.device-connection-panel .control-group .refresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.6), rgba(52, 152, 219, 0.3));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+}
+
+.device-connection-panel .control-group .refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 实时监控页面的程序段输入框样式 */
+.monitoring-segment-input {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px var(--glass-shadow);
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.monitoring-segment-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: var(--glass-bg);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.monitoring-segment-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.monitoring-segment-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.device-connection-panel select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.device-connection-panel select option {
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+}
+
+.device-connection-panel .control-actions {
+  margin-top: 1rem;
+}
+
+.device-connection-panel button:not(.control-group button) {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid rgba(52, 152, 219, 0.4);
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.4), rgba(52, 152, 219, 0.2));
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.device-connection-panel button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.6), rgba(52, 152, 219, 0.3));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+}
+
+.device-connection-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.device-connection-panel button.disconnect-btn {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.4), rgba(220, 53, 69, 0.2));
+  border: 1px solid rgba(220, 53, 69, 0.4);
+}
+
+.device-connection-panel button.disconnect-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.6), rgba(220, 53, 69, 0.3));
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+}
+
+.device-connection-panel .status-message {
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.device-connection-panel .status-message.warning {
+  color: rgba(255, 193, 7, 0.9);
+}
+
+.device-connection-panel .status-message.info {
+  color: rgba(23, 162, 184, 0.9);
+}
+
+.device-connection-panel .status-message.connecting {
+  color: rgba(23, 162, 184, 0.9);
+}
+
+.device-connection-panel.connected {
+  border: 1px solid rgba(40, 167, 69, 0.3);
+  background: rgba(40, 167, 69, 0.1);
+  box-shadow: 0 8px 32px rgba(40, 167, 69, 0.2);
+}
+
+.device-connection-panel.connected h4 {
+  color: rgba(40, 167, 69, 1);
+}
+
+.device-connection-panel.connected p {
+  margin: 0 0 1rem 0;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+}
+
+.device-connection-panel.connected strong {
+  color: rgba(40, 167, 69, 1);
 }
 
 /* === 选项卡内容区域 === */
@@ -554,6 +790,136 @@
 .console-log.error .log-message {
   color: #e74c3c;
   text-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+}
+
+/* === 通信日志特有样式 === */
+.console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.console-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.console-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.25rem 0.5rem;
+  border-radius: calc(var(--radius-sm) - 1px);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.console-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.comm-log-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 通信日志方向颜色 */
+.console-log.tx .log-direction {
+  color: #2196F3; /* 蓝色表示发送 */
+  font-weight: 600;
+}
+
+.console-log.rx .log-direction {
+  color: #4CAF50; /* 绿色表示接收 */
+  font-weight: 600;
+}
+
+.log-direction {
+  min-width: 2.5rem;
+  font-weight: 600;
+}
+
+.log-data {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Courier New', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  word-break: break-all;
+}
+
+/* === 操作日志样式 === */
+.log-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 操作日志级别样式 */
+.console-log.operation.success .log-message {
+  color: #2ecc71; /* 绿色 - 成功 */
+  font-weight: 500;
+}
+
+.console-log.operation.error .log-message {
+  color: #e74c3c; /* 红色 - 错误 */
+  font-weight: 500;
+}
+
+.console-log.operation.warning .log-message {
+  color: #f39c12; /* 黄色 - 警告 */
+  font-weight: 500;
+}
+
+.console-log.operation.info .log-message {
+  color: rgba(255, 255, 255, 0.8); /* 白色 - 信息 */
+  font-weight: 400;
+}
+
+/* 操作日志图标和消息样式 */
+.console-log.operation .log-message {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* 日志类型区分样式 */
+.console-log.comm {
+  background: rgba(0, 0, 0, 0.1);
+  border-left: 2px solid transparent;
+}
+
+.console-log.comm.tx {
+  border-left-color: #2196F3; /* 蓝色边框 - 发送 */
+}
+
+.console-log.comm.rx {
+  border-left-color: #4CAF50; /* 绿色边框 - 接收 */
+}
+
+.console-log.operation {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid transparent;
+}
+
+.console-log.operation.success {
+  border-left-color: #2ecc71; /* 绿色边框 - 成功 */
+}
+
+.console-log.operation.error {
+  border-left-color: #e74c3c; /* 红色边框 - 错误 */
+}
+
+.console-log.operation.warning {
+  border-left-color: #f39c12; /* 黄色边框 - 警告 */
+}
+
+.console-log.operation.info {
+  border-left-color: rgba(255, 255, 255, 0.3); /* 浅色边框 - 信息 */
 }
 
 /* === 滚动条样式 === */

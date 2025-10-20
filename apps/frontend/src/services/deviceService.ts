@@ -1,4 +1,4 @@
-import { apiHelpers } from './api';
+import { apiHelpers } from './api/zahnerApi';
 import { Device, DeviceStatus } from '@zahnerflow/types';
 
 // 设备管理API

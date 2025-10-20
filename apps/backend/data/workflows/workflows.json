@@ -7742,7 +7742,119 @@
         "createdAt": "2025-10-15T03:13:13.183Z",
         "updatedAt": "2025-10-15T03:13:13.183Z"
       }
+    ],
+    [
+      "workflow_4612c639-6fde-43c4-9f1e-3b528a25057a",
+      {
+        "id": "workflow_4612c639-6fde-43c4-9f1e-3b528a25057a",
+        "name": "电化学流程_2025/10/16 11:10:17",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1760584217072",
+          "name": "电化学流程_2025/10/16 11:10:17",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1760584215063_9jmu9xyme",
+              "type": "startup",
+              "name": "启动程序",
+              "config": {
+                "host": "localhost",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 100,
+                "y": 100
+              },
+              "data": {
+                "name": "启动程序",
+                "description": "启动电化学工作站程序 (FastAPI)",
+                "parameters": {
+                  "host": "localhost",
+                  "workstation": "zahner-zennium"
+                },
+                "createdAt": "2025-10-16T03:10:15.063Z",
+                "updatedAt": "2025-10-16T03:10:15.063Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1760584215561_sml0949dv",
+              "type": "eis_potentiostatic",
+              "name": "恒电位EIS",
+              "config": {
+                "eis_lower_frequency": 0.2,
+                "eis_upper_frequency": 100000,
+                "eis_start_frequency": 1000,
+                "enable_dc_bias": false,
+                "eis_potential": 0,
+                "eis_amplitude": 0.025,
+                "eis_lower_periods": 4,
+                "eis_upper_periods": 20,
+                "eis_lower_steps": 5,
+                "eis_upper_steps": 10,
+                "eis_scan_direction": "START_TO_MIN",
+                "eis_scan_strategy": "SINGLE_SINE",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 441.125,
+                "y": 100
+              },
+              "data": {
+                "name": "恒电位EIS",
+                "description": "恒电位电化学阻抗谱测量 (FastAPI)",
+                "parameters": {
+                  "eis_lower_frequency": 0.2,
+                  "eis_upper_frequency": 100000,
+                  "eis_start_frequency": 1000,
+                  "enable_dc_bias": false,
+                  "eis_potential": 0,
+                  "eis_amplitude": 0.025,
+                  "eis_lower_periods": 4,
+                  "eis_upper_periods": 20,
+                  "eis_lower_steps": 5,
+                  "eis_upper_steps": 10,
+                  "eis_scan_direction": "START_TO_MIN",
+                  "eis_scan_strategy": "SINGLE_SINE",
+                  "workstation": "zahner-zennium"
+                },
+                "createdAt": "2025-10-16T03:10:15.561Z",
+                "updatedAt": "2025-10-16T03:10:15.561Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1760584215960_wn18gfeh0",
+              "type": "shutdown",
+              "name": "停止程序",
+              "config": {
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 100,
+                "y": 250
+              },
+              "data": {
+                "name": "停止程序",
+                "description": "停止电化学工作站程序",
+                "parameters": {
+                  "workstation": "zahner-zennium"
+                },
+                "createdAt": "2025-10-16T03:10:15.960Z",
+                "updatedAt": "2025-10-16T03:10:15.960Z"
+              },
+              "status": "ready"
+            }
+          ],
+          "edges": [],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-10-16T03:10:17.080Z",
+        "updatedAt": "2025-10-16T03:10:17.080Z"
+      }
     ]
   ],
-  "lastUpdated": "2025-10-15T03:13:13.185Z"
+  "lastUpdated": "2025-10-16T03:10:17.082Z"
 }
