@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useFurnace } from '../services/hooks/useFurnace';
+import type { FurnaceState, FurnaceControls } from '../services/hooks/useFurnace';
 import { useMfc } from '../services/hooks/useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { FurnaceApi } from '../services/api';
@@ -13,16 +13,16 @@ interface DeviceModalProps {
   modalLeft: number;
   modalWidth: number;
   modalHeight: number;
+  furnaceState: FurnaceState;
+  furnaceControls: FurnaceControls;
 }
 
-export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modalTop, modalLeft, modalWidth, modalHeight }) => {
+export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modalTop, modalLeft, modalWidth, modalHeight, furnaceState, furnaceControls }) => {
   if (!device) return null;
 
   // 当前选项卡状态
   const [activeTab, setActiveTab] = useState<'monitoring' | 'program' | 'presets' | 'recording' | 'history'>('monitoring');
 
-  // 使用Hook管理设备状态
-  const [furnaceState, furnaceControls] = useFurnace();
   const [mfcState, mfcControls] = useMfc();
 
   // Furnace连接配置状态

@@ -32,8 +32,8 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   // 计算流量柱状图高度
   const getFlowBarHeight = useCallback(() => {
     if (device.max_flow_sccm === 0) return 0;
-    return (device.current_flow / device.max_flow_sccm) * 100;
-  }, [device.current_flow, device.max_flow_sccm]);
+    return (device.flow_sccm / device.max_flow_sccm) * 100;
+  }, [device.flow_sccm, device.max_flow_sccm]);
 
   const getSetFlowBarHeight = useCallback(() => {
     if (device.max_flow_sccm === 0) return 0;
@@ -159,7 +159,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               <div className="flow-actual">
                 <span className="flow-label">实际流量</span>
                 <span className="flow-value">
-                  {formatFlow(device.current_flow)} sccm
+                  {formatFlow(device.flow_sccm)} sccm
                 </span>
               </div>
               <div className="flow-setpoint">
@@ -241,7 +241,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
                   </div>
                 </div>
                 <div className="flow-bar-value">
-                  {formatFlow(device.current_flow)}
+                  {formatFlow(device.flow_sccm)}
                 </div>
               </div>
             </div>
@@ -271,7 +271,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               <span className="percentage-label">实际:</span>
               <span className="percentage-value">
                 {device.max_flow_sccm > 0
-                  ? ((device.current_flow / device.max_flow_sccm) * 100).toFixed(1)
+                  ? ((device.flow_sccm / device.max_flow_sccm) * 100).toFixed(1)
                   : '0.0'
                 }%
               </span>

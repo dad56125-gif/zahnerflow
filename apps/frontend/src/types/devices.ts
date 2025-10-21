@@ -66,8 +66,11 @@ export interface ApplyPresetResult {
 
 // 前端扩展类型定义
 export interface MfcDevice extends MfcDeviceInfo {
-  current_flow: number;
-  set_flow: number;
+  flow_sccm: number;               // 实际流量（sccm）
+  set_flow: number;                // 设定流量（sccm）
+  flow_percent: number;            // 实际流量百分比
+  digital_setpoint_percent: number; // 数字通道设定百分比
+  active_setpoint_percent: number;  // 实际生效设定百分比
   mode: 'hold' | 'follow';
   status: 'connected' | 'warning' | 'error' | 'disconnected';
 }

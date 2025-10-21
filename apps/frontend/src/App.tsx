@@ -12,6 +12,7 @@ import { stateLinkageManager } from './managers/state-linkage.manager';
 import { useCanvasStore } from './stores/canvasStore';
 import { DeviceModal } from './components/DeviceModal';
 import { workflowService } from './services/workflowService';
+import { useFurnace } from './services/hooks/useFurnace';
 
 
 
@@ -22,6 +23,7 @@ const ZahnerFlowApp: React.FC = () => {
     connections,
   } = useCanvasStore();
 
+  const [furnaceState, furnaceControls] = useFurnace();
   const [activePanel, setActivePanel] = useState<'nodes'>('nodes');
   const [selectedWorkstation, setSelectedWorkstation] = useState<WorkstationType | null>(null);
   const [workstationNodeGroups, setWorkstationNodeGroups] = useState<any>({} as any);
@@ -180,6 +182,8 @@ const ZahnerFlowApp: React.FC = () => {
               modalLeft={0}
               modalWidth={500}
               modalHeight={400}
+              furnaceState={furnaceState}
+              furnaceControls={furnaceControls}
             />
           </div>
         )}

@@ -241,17 +241,17 @@ export interface FurnacePreset extends FurnacePresetMeta {
 // MFC 设备信息（发现缓存）
 export interface MfcDeviceInfo {
   address: number;        // 设备地址
-  gasType: string;        // 气体类型
-  maxFlowSccm: number;    // 满量程（sccm）
+  gas_type: string;       // 气体类型
+  max_flow_sccm: number;  // 满量程（sccm）
 }
 
 // MFC 状态
 export interface MfcStatus {
   address: number;
-  flowPercent: number;            // 实际流量百分比（0-100）
-  flowSccm: number;               // 实际流量（sccm）
-  digitalSetpointPercent: number; // 数字通道设定百分比（0-100）
-  activeSetpointPercent: number;  // 实际生效设定百分比（0-100）
+  flow_percent: number;              // 实际流量百分比（0-100）
+  flow_sccm: number;                 // 实际流量（sccm）
+  digital_setpoint_percent: number;  // 数字通道设定百分比（0-100）
+  active_setpoint_percent: number;   // 实际生效设定百分比（0-100）
 }
 
 // MFC 设定请求
@@ -273,10 +273,10 @@ export interface FurnaceSample {
 
 // MFC 采样点
 export interface MfcSample {
-  ts: string;        // ISO 时间戳
-  address: number;   // 设备地址
-  flowSccm: number;  // 实测流量（sccm）
-  flowPercent: number;            // 实测流量百分比（0-100）
-  digitalSetpointPercent: number; // 数字通道设定百分比
-  activeSetpointPercent: number;  // 实际生效设定百分比
+  ts: string;         // ISO 时间戳
+  address: number;    // 设备地址
+  flow_sccm: number;  // 实测流量（sccm）
+  flow_percent: number;              // 实测流量百分比（0-100）
+  digital_setpoint_percent: number;  // 数字通道设定百分比
+  active_setpoint_percent: number;   // 实际生效设定百分比
 }
