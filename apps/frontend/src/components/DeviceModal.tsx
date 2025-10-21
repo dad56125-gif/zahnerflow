@@ -3,6 +3,7 @@ import { useFurnace } from '../services/hooks/useFurnace';
 import { useMfc } from '../services/hooks/useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { FurnaceApi } from '../services/api';
+import { CommLog, OperationLog } from '../types/devices';
 
 
 interface DeviceModalProps {
@@ -339,14 +340,14 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                       }
                       disabled={furnaceState.connectionState.status !== 'connected' || furnaceState.isLoading}
                     >
-                      {furnaceState.operationState === 'running' ? '暂停' : '运行'}
+                      {furnaceState.operationState === 'running' ? '保温' : '运行'}
                     </button>
 
                     <button
                       className="btn btn-danger"
                       onClick={furnaceControls.stop}
                       disabled={furnaceState.connectionState.status !== 'connected' ||
-                               furnaceState.operationState === 'idle' ||
+                               furnaceState.operationState === 'stopped' ||
                                furnaceState.isLoading}
                     >
                       停止
@@ -389,14 +390,31 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                   {/* 程序段控制按钮 */}
                   <div className="program-controls">
                     <button
-                      className="btn btn-primary"
+                      className={`btn btn-primary ${furnaceState.segmentOperation?.operation === 'reading' ? 'btn-progress' : ''}`}
                       onClick={furnaceControls.loadSegments}
                       disabled={furnaceState.connectionState.status !== 'connected' || furnaceState.isLoading}
                     >
-                      {furnaceState.isLoading ? '读取中...' : '读取程序段'}
+                      {furnaceState.segmentOperation?.operation === 'reading' ? (
+                        <>
+                          <div className="btn-progress-bar">
+                            <div
+                              className="btn-progress-fill"
+                              style={{ left: `${(furnaceState.segmentOperation.currentSegment - 1) * 100 / 30}%` }}
+                            />
+                          </div>
+                          <div className="btn-progress-content">
+                            <div className="btn-text">读取程序段</div>
+                            <div className="btn-progress-text">
+                              {furnaceState.segmentOperation.currentSegment}/30
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        '读取程序段'
+                      )}
                     </button>
                     <button
-                      className="btn btn-success"
+                      className={`btn btn-success ${furnaceState.segmentOperation?.operation === 'writing' ? 'btn-progress' : ''}`}
                       onClick={() => {
                         // 这里收集所有输入的值并写入
                         const inputs = document.querySelectorAll('.segment-input');
@@ -421,7 +439,24 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                       }}
                       disabled={furnaceState.connectionState.status !== 'connected' || furnaceState.isLoading}
                     >
-                      写入程序段
+                      {furnaceState.segmentOperation?.operation === 'writing' ? (
+                        <>
+                          <div className="btn-progress-bar">
+                            <div
+                              className="btn-progress-fill"
+                              style={{ left: `${(furnaceState.segmentOperation.currentSegment - 1) * 100 / 30}%` }}
+                            />
+                          </div>
+                          <div className="btn-progress-content">
+                            <div className="btn-text">写入程序段</div>
+                            <div className="btn-progress-text">
+                              {furnaceState.segmentOperation.currentSegment}/30
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        '写入程序段'
+                      )}
                     </button>
                   </div>
 

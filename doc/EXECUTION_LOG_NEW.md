@@ -1,4 +1,4 @@
-# Frontend Execution Log
+﻿# Frontend Execution Log
 
 ## 2025-10-18
 
@@ -100,3 +100,49 @@
     - `apps/frontend/src/styles/components/_temperature-controller.css` - 操作日志样式
   - **Documentation:** `doc/Furnace/EXTENDED_LOGGING_SYSTEM.md` - 完整技术文档和MFC扩展指南
   - **Result:** 完整的设备操作透明度解决方案，既有用户操作概览又有详细通信调试数据
+## 2025-10-20
+
+- **Task:** Furnace前端连接态管理修复 - 按钮禁用问题消除
+  - **Version:** 5
+  - **Files Modified:**
+    - `apps/frontend/src/services/hooks/useFurnace.ts`
+  - **Problem Analysis:**
+    - 连接成功后 `set_loading(true)` 未复位, `furnace_state.is_loading` 始终为 `true`
+    - DeviceModal 按钮禁用条件依赖 `furnace_state.is_loading`, 运行/停止无法触发
+  - **Fix Implementation:**
+    - 所有调用 `set_loading(true)` 的方法统一补充 `finally { set_loading(false); }`
+    - 连接/运行/暂停/停止/程序段/预设/历史等入口均补齐 loading 复位
+  - **Result:**
+    - 连接后 loading 及时清零, 控制按钮恢复可用
+    - 状态刷新与实际请求生命周期保持一致
+
+- **Task:** Furnace接口Body嵌入修复
+  - **Version:** 6
+  - **Files Modified:**
+    - `apps/backend/src/modules/furnace/fastapi/ai518p_device.py`
+  - **Problem Analysis:**
+    - FastAPI `/segment/set` 与 `/sv` 使用 `Body(...)` 默认解析裸值, 前端提交 JSON 触发 422, Nest 转为 500
+    - 程序段/温度设置按钮因此报 "Internal server error", 连接状态被重置
+  - **Fix Implementation:**
+    - 为 `set_sv`、`set_segment` 增加 `embed=True`, 与前端 `{ sv: ... }`、`{ segment: ... }` 请求格式对齐
+    - 保持其余逻辑不变, 不影响现有调用方
+  - **Result:**
+    - 设置程序段与设定温度接口稳定返回 200, 设备连接不再被打断
+    - 按钮操作恢复成功反馈
+- **Task:** Furnace运行/hold状态同步修复
+  - **Version:** 6
+  - **Files Modified:**
+    - apps/frontend/src/services/hooks/useFurnace.ts
+    - apps/frontend/src/components/DeviceModal.tsx
+  - **Problem Analysis:**
+    - 后端返回 
+un/pause/stop，前端使用 
+unning/paused/stopped；状态未对齐导致按钮文案始终显示“运行”
+    - “暂停”文案与设备面板不一致，需改为“hold”
+  - **Fix Implementation:**
+    - 在轮询阶段新增状态归一化，统一映射 
+un→running、pause/hold→paused
+    - UI 按钮改为 hold，并同步操作日志提示
+  - **Result:**
+    - 运行按钮在设备进入 hold 时即时切换文字
+    - 前端状态与炉体面板保持一致

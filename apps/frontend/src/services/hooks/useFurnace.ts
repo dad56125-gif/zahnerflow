@@ -40,6 +40,14 @@ export interface FurnaceState {
   // 程序段数据
   segments: ProgramSegment[];
 
+  // 程序段操作进度
+  segmentOperation: {
+    isLoading: boolean;
+    operation: 'reading' | 'writing' | null;
+    progress: number; // 0-100
+    currentSegment: number; // 1-30
+  };
+
   // 预设数据
   presets: FurnacePresetMeta[];
   selectedPreset: FurnacePreset | null;
@@ -124,6 +132,12 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     },
     operationState: 'idle',
     segments: [],
+    segmentOperation: {
+      isLoading: false,
+      operation: null,
+      progress: 0,
+      currentSegment: 0,
+    },
     presets: [],
     selectedPreset: null,
     historyData: [],
@@ -147,6 +161,41 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   // 设置加载状态
   const setLoading = useCallback((isLoading: boolean) => {
     updateState({ isLoading });
+  }, [updateState]);
+
+  // 更新程序段操作进度
+  const updateSegmentOperation = useCallback((operation: 'reading' | 'writing' | null, currentSegment: number, progress: number) => {
+    updateState({
+      segmentOperation: {
+        isLoading: operation !== null,
+        operation,
+        currentSegment,
+        progress,
+      }
+    });
+  }, [updateState]);
+
+  // 完成程序段操作
+  const completeSegmentOperation = useCallback(() => {
+    updateState({
+      segmentOperation: {
+        isLoading: false,
+        operation: null,
+        progress: 100,
+        currentSegment: 0,
+      }
+    });
+    // 2秒后重置进度显示
+    setTimeout(() => {
+      updateState({
+        segmentOperation: {
+          isLoading: false,
+          operation: null,
+          progress: 0,
+          currentSegment: 0,
+        }
+      });
+    }, 2000);
   }, [updateState]);
 
   // 设置错误状态
@@ -207,24 +256,41 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     async () => {
       try {
         const status = await FurnaceApi.getStatus();
+        const rawStatus = String(status?.status ?? '').toLowerCase();
+        const displayStatus =
+          rawStatus === 'pause' || rawStatus === 'hold' ? 'hold' :
+          rawStatus === 'paused' ? 'hold' :
+          rawStatus === 'run' ? 'run' :
+          rawStatus === 'running' ? 'run' :
+          rawStatus === 'stop' ? 'stop' :
+          rawStatus === 'stopped' ? 'stop' :
+          rawStatus || 'unknown';
 
         // 数据验证和默认值处理
         const validatedStatus: FurnaceStatus = {
           pv: status?.pv ?? 0,
           sv: status?.sv ?? 0,
           mv: status?.mv ?? 0,
-          status: status?.status ?? 'unknown',
+          status: displayStatus,
           segment: status?.segment ?? 0,
           segment_time: status?.segment_time ?? 0,
           segment_time_set: status?.segment_time_set ?? 0,
         };
+        const derivedOperationState: DeviceOperationStatus =
+          rawStatus === 'run' || rawStatus === 'running' ? 'running' :
+          rawStatus === 'pause' || rawStatus === 'paused' || rawStatus === 'hold' ? 'paused' :
+          rawStatus === 'stop' || rawStatus === 'stopped' ? 'stopped' :
+          (() => {
+            console.warn(`[Furnace] 未知状态: "${rawStatus}"，按停止处理`);
+            addOperationLog('warning', `未知状态: ${rawStatus || 'null'}`);
+            return 'stopped' as DeviceOperationStatus;
+          })();
 
         // 更新设备状态
         updateState({
           status: validatedStatus,
           // 保持 connection_state 不变，由 connect()/disconnect() 控制
-          operationState: validatedStatus.status === 'running' ? 'running' :
-                        validatedStatus.status === 'paused' ? 'paused' : 'stopped',
+          operationState: derivedOperationState,
           lastUpdate: new Date(),
         });
 
@@ -302,6 +368,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls, updateState, addOperationLog]);
 
@@ -324,6 +392,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, updateState]);
 
@@ -344,6 +414,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
 
@@ -358,6 +430,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls]);
 
@@ -378,6 +452,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
 
@@ -389,13 +465,15 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       await FurnaceApi.pause();
 
       // 添加操作日志
-      addOperationLog('info', '程序已暂停');
+      addOperationLog('info', '程序已进入hold状态');
 
       await statusControls.refresh();
 
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
 
@@ -414,6 +492,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
 
@@ -421,31 +501,59 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
 
   const loadSegments = useCallback(async (): Promise<void> => {
     try {
-      setLoading(true);
       clearError();
+
+      // 开始读取程序段
+      updateSegmentOperation('reading', 0, 0);
+
+      // 模拟进度更新 (1-30段)
+      for (let i = 1; i <= 30; i++) {
+        updateSegmentOperation('reading', i, Math.floor((i / 30) * 100));
+        // 添加小延迟以显示进度效果
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
 
       const segments = await FurnaceApi.getProgramSegments();
       updateState({ segments });
+      completeSegmentOperation();
+
+      // 添加操作日志
+      addOperationLog('success', '已读取程序段数据');
 
     } catch (error) {
       handleApiError(error);
+      updateSegmentOperation(null, 0, 0);
       throw error;
     }
-  }, [setLoading, clearError, handleApiError, updateState]);
+  }, [clearError, handleApiError, updateState, updateSegmentOperation, completeSegmentOperation, addOperationLog]);
 
   const writeSegments = useCallback(async (segments: ProgramSegment[]): Promise<void> => {
     try {
-      setLoading(true);
       clearError();
+
+      // 开始写入程序段
+      updateSegmentOperation('writing', 0, 0);
+
+      // 模拟写入进度更新 (1-30段)
+      for (let i = 1; i <= 30; i++) {
+        updateSegmentOperation('writing', i, Math.floor((i / 30) * 100));
+        // 添加小延迟以显示进度效果
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
 
       await FurnaceApi.writeProgramSegments(segments);
       updateState({ segments });
+      completeSegmentOperation();
+
+      // 添加操作日志
+      addOperationLog('success', `已写入 ${segments.length} 个程序段`);
 
     } catch (error) {
       handleApiError(error);
+      updateSegmentOperation(null, 0, 0);
       throw error;
     }
-  }, [setLoading, clearError, handleApiError, updateState]);
+  }, [clearError, handleApiError, updateState, updateSegmentOperation, completeSegmentOperation, addOperationLog]);
 
   // ==================== 预设管理 ====================
 
@@ -460,6 +568,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, updateState]);
 
@@ -474,6 +584,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, updateState]);
 
@@ -488,6 +600,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, loadPresets]);
 
@@ -507,6 +621,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, loadPresets, selectPreset, state.selectedPreset]);
 
@@ -526,6 +642,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, loadPresets, updateState, state.selectedPreset]);
 
@@ -540,6 +658,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, loadPresets]);
 
@@ -557,6 +677,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls]);
 
@@ -578,6 +700,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, updateState, state.historyParams]);
 

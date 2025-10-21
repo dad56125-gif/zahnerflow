@@ -17,6 +17,30 @@ comm_log = []  # 最多保存500条通信日志
 debug_log = []  # 保存详细的调试信息
 
 
+@app.middleware("http")
+async def log_requests(request, call_next):
+    """记录所有HTTP请求的调试信息"""
+    import time
+    start_time = time.time()
+
+    # 记录请求信息
+    request_info = f"请求: {request.method} {request.url.path}"
+    if request.query_params:
+        request_info += f"?{request.query_params}"
+
+    add_debug_log(request_info, "INFO")
+
+    # 处理请求
+    response = await call_next(request)
+
+    # 记录响应信息
+    process_time = time.time() - start_time
+    response_info = f"响应: {response.status_code} ({process_time:.3f}s)"
+    add_debug_log(response_info, "INFO")
+
+    return response
+
+
 def add_comm_log(direction: str, data_hex: str, timestamp=None):
     """添加通信日志到缓冲区
 
@@ -175,6 +199,10 @@ class AI518PController:
         # 状态字节A（报警状态等）
         self.status_byte_a = 0
 
+        # 历史数据存储
+        self.temperature_history = []  # 保存最近1000个数据点
+        self.max_history_points = 1000
+
         # 启动温度模拟线程
         self._temp_simulation_active = True
         self._temp_thread = threading.Thread(target=self._temperature_simulation, daemon=True)
@@ -248,6 +276,9 @@ class AI518PController:
                     if self.segment_elapsed_time >= current_seg_data['time']:
                         self._advance_to_next_segment()
 
+                # 记录历史数据点
+                self._add_history_point()
+
                 time.sleep(1)  # 每秒更新一次
 
             except Exception as e:
@@ -271,6 +302,110 @@ class AI518PController:
             self.program_status = "stop"
             self.current_segment = 0
             add_debug_log("程序执行完毕，自动停止", "INFO")
+
+    def _add_history_point(self):
+        """添加历史数据点"""
+        try:
+            data_point = {
+                "timestamp": datetime.now().isoformat(),
+                "pv": round(self.pv, 1),
+                "sv": round(self.sv, 1),
+                "mv": self.mv,
+                "segment": self.current_segment,
+                "status": self.program_status
+            }
+
+            self.temperature_history.append(data_point)
+
+            # 保持最多1000个数据点
+            if len(self.temperature_history) > self.max_history_points:
+                self.temperature_history.pop(0)
+
+        except Exception as e:
+            add_debug_log(f"添加历史数据点异常: {str(e)}", "ERROR")
+
+    def get_temperature_history(self, from_time=None, to_time=None, limit=None, downsample=None):
+        """获取温度历史数据
+
+        Args:
+            from_time: 开始时间 (ISO string)
+            to_time: 结束时间 (ISO string)
+            limit: 数据点数量限制
+            downsample: 降采样因子
+
+        Returns:
+            list: 历史数据点列表
+        """
+        try:
+            if not self.temperature_history:
+                # 如果没有历史数据，生成一些模拟数据
+                return self._generate_mock_history(limit or 100)
+
+            # 过滤时间范围
+            filtered_data = self.temperature_history.copy()
+
+            if from_time:
+                from_dt = datetime.fromisoformat(from_time.replace('Z', '+00:00'))
+                filtered_data = [d for d in filtered_data if datetime.fromisoformat(d['timestamp'].replace('Z', '+00:00')) >= from_dt]
+
+            if to_time:
+                to_dt = datetime.fromisoformat(to_time.replace('Z', '+00:00'))
+                filtered_data = [d for d in filtered_data if datetime.fromisoformat(d['timestamp'].replace('Z', '+00:00')) <= to_dt]
+
+            # 应用限制
+            if limit and limit > 0:
+                filtered_data = filtered_data[-limit:]
+
+            # 应用降采样
+            if downsample and downsample > 1:
+                filtered_data = filtered_data[::downsample]
+
+            add_debug_log(f"返回历史数据: {len(filtered_data)} 个数据点", "DEBUG")
+            return filtered_data
+
+        except Exception as e:
+            add_debug_log(f"获取历史数据异常: {str(e)}", "ERROR")
+            return []
+
+    def _generate_mock_history(self, count=100):
+        """生成模拟历史数据"""
+        try:
+            now = datetime.now()
+            mock_data = []
+
+            for i in range(count):
+                timestamp = now - timedelta(seconds=count - i)
+                # 基于当前状态生成合理的温度值
+                base_temp = 25.0
+
+                # 模拟温度变化
+                if i < count * 0.3:  # 前30%：升温阶段
+                    pv = base_temp + (i / (count * 0.3)) * 15.0 + random.uniform(-0.5, 0.5)
+                    sv = base_temp + (i / (count * 0.3)) * 18.0 + random.uniform(-0.2, 0.2)
+                elif i < count * 0.7:  # 中间40%：稳定阶段
+                    pv = base_temp + 15.0 + random.uniform(-0.8, 0.8)
+                    sv = base_temp + 18.0 + random.uniform(-0.3, 0.3)
+                else:  # 后30%：降温阶段
+                    pv = base_temp + 15.0 * (1 - (i - count * 0.7) / (count * 0.3)) + random.uniform(-0.5, 0.5)
+                    sv = base_temp + 18.0 * (1 - (i - count * 0.7) / (count * 0.3)) + random.uniform(-0.2, 0.2)
+
+                mv = max(-100, min(100, int((sv - pv) * 5))) if pv < sv else random.randint(-5, 5)
+
+                mock_data.append({
+                    "timestamp": timestamp.isoformat(),
+                    "pv": round(pv, 1),
+                    "sv": round(sv, 1),
+                    "mv": mv,
+                    "segment": 1 if i > count * 0.2 else 0,
+                    "status": "run" if i > count * 0.1 and i < count * 0.9 else "stop"
+                })
+
+            add_debug_log(f"生成模拟历史数据: {len(mock_data)} 个数据点", "DEBUG")
+            return mock_data
+
+        except Exception as e:
+            add_debug_log(f"生成模拟历史数据异常: {str(e)}", "ERROR")
+            return []
 
     def _checksum_read(self, param_code: int):
         """计算读取命令的校验和
@@ -839,7 +974,7 @@ def stop():
 
 
 @app.post("/sv")
-def set_sv(sv: float = Body(...)):  # 摄氏度
+def set_sv(sv: float = Body(..., embed=True)):  # 摄氏度
     """设定目标温度"""
     if not controller:
         return {"error": "not connected"}
@@ -850,7 +985,7 @@ def set_sv(sv: float = Body(...)):  # 摄氏度
 
 
 @app.post("/segment/set")
-def set_segment(segment: int = Body(...)):
+def set_segment(segment: int = Body(..., embed=True)):
     """设置当前程序段"""
     if not controller:
         return {"error": "not connected"}
@@ -881,6 +1016,49 @@ def set_program_segments(items: List[ProgramSegment]):
         return {"ok": bool(ok), "count": len(items)}
     except Exception as e:
         return {"ok": False, "error": str(e), "count": len(items)}
+
+
+@app.get("/logs/temperature")
+def get_temperature_history(
+    from_time: Optional[str] = None,
+    to_time: Optional[str] = None,
+    limit: Optional[int] = None,
+    downsample: Optional[int] = None
+):
+    """获取温度历史数据"""
+    try:
+        # 参数验证
+        if limit is not None and (limit < 1 or limit > 10000):
+            return {"error": "Limit must be between 1 and 10000"}
+
+        if downsample is not None and downsample < 1:
+            return {"error": "Downsample must be positive"}
+
+        if not controller:
+            # 即使没有连接控制器，也返回一些模拟数据
+            mock_data = []
+            if limit and limit > 0:
+                for i in range(min(limit, 100)):
+                    mock_data.append({
+                        "timestamp": (datetime.now() - timedelta(seconds=limit-i)).isoformat(),
+                        "pv": round(25.0 + random.uniform(-2, 2), 1),
+                        "sv": round(25.0 + random.uniform(-1, 1), 1),
+                        "mv": random.randint(-5, 5),
+                        "segment": 0,
+                        "status": "stop"
+                    })
+            return mock_data
+
+        # 获取历史数据
+        history_data = controller.get_temperature_history(from_time, to_time, limit, downsample)
+
+        add_debug_log(f"历史数据API请求: from={from_time}, to={to_time}, limit={limit}, downsample={downsample}, 返回{len(history_data)}条数据", "INFO")
+
+        return history_data
+
+    except Exception as e:
+        add_debug_log(f"历史数据API异常: {str(e)}", "ERROR")
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":

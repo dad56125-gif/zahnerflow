@@ -138,13 +138,13 @@ export type DeviceConnectionStatus =
   | 'timeout';
 
 // 设备操作状态
+// AI-518P 温控器只支持 3 种基本控制状态：run/pause/stop
+// 注意：pause/hold 在硬件层面是同一种状态（保温/暂停）
 export type DeviceOperationStatus =
-  | 'idle'
-  | 'running'
-  | 'paused'
-  | 'stopped'
-  | 'error'
-  | 'unknown';
+  | 'running'  // 运行状态 (对应后端 run)
+  | 'paused'   // 保温/暂停状态 (对应后端 pause/hold)
+  | 'stopped'  // 停止状态 (对应后端 stop)
+  | 'unknown'; // 未知状态（后端返回无效状态时的fallback）
 
 // UI状态类型
 export interface LoadingState {

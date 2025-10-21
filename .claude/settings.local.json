@@ -6,7 +6,13 @@
       "Bash(npx eslint:*)",
       "Bash(npm run build:*)",
       "Bash(git ls-tree:*)",
-      "Bash(git grep:*)"
+      "Bash(git grep:*)",
+      "Bash(npm run start:dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
