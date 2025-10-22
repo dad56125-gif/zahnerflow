@@ -211,25 +211,30 @@ class MfcVirtualSession:
         """扫描虚拟设备"""
         out: List[DeviceInfo] = []
 
-        # 模拟找到3-5个设备
-        num_devices = random.randint(3, 5)
-        addresses = random.sample(range(start, end + 1), num_devices)
+        # 清除之前的设备，重新生成
+        self.devices.clear()
 
+        # 使用固定的设备地址，避免每次扫描产生不同设备
+        fixed_addresses = [33, 37, 42, 58, 65]  # 固定5个设备地址
         gas_types = ["N2", "O2", "Ar", "He", "H2", "CO2", "CH4"]
         max_flows = [50, 100, 200, 500, 1000, 2000]
 
-        for addr in sorted(addresses):
-            gas = random.choice(gas_types)
-            max_flow = random.choice(max_flows)
+        # 只返回在扫描范围内的固定设备
+        for i, addr in enumerate(fixed_addresses):
+            if start <= addr <= end:
+                gas = gas_types[i % len(gas_types)]
+                max_flow = max_flows[i % len(max_flows)]
 
-            device = VirtualMfcDevice(addr, gas, max_flow)
-            # 添加一些随机噪声
-            device.flow_percent = random.uniform(0, 5)
-            device.flow_sccm = device.flow_percent * max_flow / 100.0
+                device = VirtualMfcDevice(addr, gas, max_flow)
+                # 添加一些随机噪声作为初始流量
+                device.flow_percent = random.uniform(1, 8)  # 1-8%的初始流量
+                device.flow_sccm = device.flow_percent * max_flow / 100.0
+                device.active_setpoint_percent = device.flow_percent
+                device.digital_setpoint_percent = device.flow_percent
 
-            self.devices[addr] = device
-            info = DeviceInfo(address=addr, gas_type=gas, max_flow_sccm=max_flow)
-            out.append(info)
+                self.devices[addr] = device
+                info = DeviceInfo(address=addr, gas_type=gas, max_flow_sccm=max_flow)
+                out.append(info)
 
         return out
 
@@ -331,7 +336,7 @@ def disconnect():
 
 @app.post("/scan")
 def scan(start: int = Body(32), end: int = Body(80)):
-    return [d.dict() for d in session.scan(start, end)]
+    return [d.model_dump() for d in session.scan(start, end)]
 
 
 @app.get("/status")

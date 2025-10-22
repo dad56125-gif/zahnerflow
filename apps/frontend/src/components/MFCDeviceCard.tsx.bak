@@ -10,6 +10,7 @@ import { MfcDevice, DeviceCardProps } from '../types/devices';
 interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   device: MfcDevice;
   onSetFlow?: (address: number, sccm: number) => Promise<void>;
+  onSetMode?: (address: number, mode: 'hold' | 'follow') => Promise<void>;
 }
 
 /**
@@ -18,12 +19,14 @@ interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
 export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   device,
   onSetFlow,
+  onSetMode,
   loading = false,
   disabled = false,
 }) => {
   // 组件内部状态
   const [flowInputValue, setFlowInputValue] = useState<string>(device.set_flow.toString());
   const [isSettingFlow, setIsSettingFlow] = useState(false);
+  const [isSettingMode, setIsSettingMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 计算流量柱状图高度
@@ -93,7 +96,22 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
     }
   }, [flowInputValue, device.address, device.max_flow_sccm, device.set_flow, onSetFlow]);
 
-  
+  // 处理模式切换
+  const handleSetMode = useCallback(async (mode: 'hold' | 'follow') => {
+    if (device.mode === mode) return;
+
+    setIsSettingMode(true);
+    setError(null);
+
+    try {
+      await onSetMode?.(device.address, mode);
+    } catch (error) {
+      setError(`${mode.toUpperCase()} 模式设置失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsSettingMode(false);
+    }
+  }, [device.mode, device.address, onSetMode]);
+
   // 处理键盘事件
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -113,18 +131,6 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
       return '0.0';
     }
     return flow.toFixed(1);
-  }, []);
-
-  // 安全获取百分比
-  const safeGetPercentage = useCallback((flow: number, maxFlow: number) => {
-    if (maxFlow === undefined || maxFlow === null || maxFlow === 0 || isNaN(maxFlow)) {
-      return '0.0';
-    }
-    if (flow === undefined || flow === null || isNaN(flow)) {
-      return '0.0';
-    }
-    const percentage = (flow / maxFlow) * 100;
-    return percentage.toFixed(1);
   }, []);
 
   return (
@@ -198,7 +204,28 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               )}
             </div>
 
-                      </div>
+            {/* 模式控制按钮 */}
+            <div className="control-buttons">
+              <button
+                className={`btn btn-sm ${
+                  device.mode === 'hold' ? 'btn-primary' : 'btn-secondary'
+                } ${isSettingMode ? 'btn-loading' : ''}`}
+                onClick={() => handleSetMode('hold')}
+                disabled={disabled || isSettingMode || loading || device.status !== 'connected'}
+              >
+                HOLD
+              </button>
+              <button
+                className={`btn btn-sm ${
+                  device.mode === 'follow' ? 'btn-primary' : 'btn-secondary'
+                } ${isSettingMode ? 'btn-loading' : ''}`}
+                onClick={() => handleSetMode('follow')}
+                disabled={disabled || isSettingMode || loading || device.status !== 'connected'}
+              >
+                FOLLOW
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* 右侧图表区 */}
@@ -246,13 +273,19 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
             <div className="percentage-item">
               <span className="percentage-label">实际:</span>
               <span className="percentage-value">
-                {safeGetPercentage(device.flow_sccm, device.max_flow_sccm)}%
+                {device.max_flow_sccm > 0
+                  ? ((device.flow_sccm / device.max_flow_sccm) * 100).toFixed(1)
+                  : '0.0'
+                }%
               </span>
             </div>
             <div className="percentage-item">
               <span className="percentage-label">设定:</span>
               <span className="percentage-value">
-                {safeGetPercentage(device.set_flow, device.max_flow_sccm)}%
+                {device.max_flow_sccm > 0
+                  ? ((device.set_flow / device.max_flow_sccm) * 100).toFixed(1)
+                  : '0.0'
+                }%
               </span>
             </div>
           </div>
@@ -260,7 +293,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
       </div>
 
       {/* 加载遮罩 */}
-      {(loading || isSettingFlow) && (
+      {(loading || isSettingFlow || isSettingMode) && (
         <div className="loading-overlay">
           <div className="loading-spinner" />
         </div>

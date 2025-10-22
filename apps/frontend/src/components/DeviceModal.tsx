@@ -29,20 +29,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
   const [availablePorts, setAvailablePorts] = useState<string[]>([]);
   const [selectedPort, setSelectedPort] = useState<string>('');
 
-  // MFC模式设置处理函数
-  const handleMfcModeChange = useCallback(async (address: number, mode: 'hold' | 'follow') => {
-    try {
-      if (mode === 'hold') {
-        await mfcControls.setHoldMode(address, true);
-      } else {
-        await mfcControls.setFollowMode(address, true);
-      }
-    } catch (error) {
-      console.error(`Failed to set MFC ${address} to ${mode} mode:`, error);
-      throw error;
-    }
-  }, [mfcControls]);
-
+  
   // 加载可用端口
   const loadAvailablePorts = useCallback(async () => {
     try {
@@ -164,7 +151,6 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                     key={device.address}
                     device={device}
                     onSetFlow={mfcControls.setFlowRate}
-                    onSetMode={handleMfcModeChange}
                     loading={mfcState.isLoading}
                     disabled={mfcState.isScanning}
                   />
@@ -333,28 +319,47 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                   {/* 控制按钮 */}
                   <div className="control-panel">
                     <button
-                      className={`btn btn-success ${furnaceState.operationState === 'running' ? 'btn-warning' : ''}`}
-                      onClick={() => furnaceState.operationState === 'running'
-                        ? furnaceControls.pause()
-                        : furnaceControls.run()
+                      className="btn btn-success"
+                      onClick={furnaceControls.run}
+                      disabled={
+                        furnaceState.connectionState.status !== 'connected' ||
+                        furnaceState.isLoading ||
+                        furnaceState.operationState === 'running'
                       }
-                      disabled={furnaceState.connectionState.status !== 'connected' || furnaceState.isLoading}
                     >
-                      {furnaceState.operationState === 'running' ? '保温' : '运行'}
+                      运行
+                    </button>
+
+                    <button
+                      className="btn btn-warning"
+                      style={{ marginLeft: '8px' }}
+                      onClick={furnaceControls.pause}
+                      disabled={
+                        furnaceState.connectionState.status !== 'connected' ||
+                        furnaceState.isLoading ||
+                        furnaceState.operationState === 'paused' ||
+                        furnaceState.operationState === 'stopped'
+                      }
+                    >
+                      保温
                     </button>
 
                     <button
                       className="btn btn-danger"
+                      style={{ marginLeft: '8px' }}
                       onClick={furnaceControls.stop}
-                      disabled={furnaceState.connectionState.status !== 'connected' ||
-                               furnaceState.operationState === 'stopped' ||
-                               furnaceState.isLoading}
+                      disabled={
+                        furnaceState.connectionState.status !== 'connected' ||
+                        furnaceState.isLoading ||
+                        furnaceState.operationState === 'stopped'
+                      }
                     >
                       停止
                     </button>
 
                     <button
                       className="btn btn-secondary"
+                      style={{ marginLeft: '8px' }}
                       onClick={async () => {
                         const input = document.getElementById('monitoringSegmentInput') as HTMLInputElement;
                         const segment = parseInt(input.value);
@@ -368,9 +373,13 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                           alert('程序段号必须在1-30之间');
                         }
                       }}
-                      disabled={furnaceState.connectionState.status !== 'connected' || furnaceState.isLoading}
+                      disabled={
+                        furnaceState.connectionState.status !== 'connected' ||
+                        furnaceState.isLoading ||
+                        furnaceState.operationState === 'stopped'
+                      }
                     >
-                      设置程序段
+                      更改程序段
                     </button>
                     <input
                       type="number"
@@ -379,7 +388,10 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                       placeholder="1-30"
                       className="monitoring-segment-input"
                       id="monitoringSegmentInput"
-                      disabled={furnaceState.connectionState.status !== 'connected' || furnaceState.isLoading}
+                      disabled={
+                        furnaceState.connectionState.status !== 'connected' ||
+                        furnaceState.isLoading
+                      }
                       style={{ marginLeft: '8px', width: '80px' }}
                     />
                   </div>

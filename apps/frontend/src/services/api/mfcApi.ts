@@ -118,6 +118,34 @@ export class MfcApi {
     return apiRequest<MfcDeviceInfo[]>('/devices');
   }
 
+  // ==================== 设备连接 ====================
+
+  /**
+   * 连接到MFC虚拟设备
+   */
+  static async connect(port: string = 'COM1', baudrate: number = 19200, timeout: number = 1.0): Promise<void> {
+    return apiRequest<void>('/connect', {
+      method: 'POST',
+      body: JSON.stringify({ port, baudrate, timeout }),
+    });
+  }
+
+  /**
+   * 断开MFC设备连接
+   */
+  static async disconnect(): Promise<void> {
+    return apiRequest<void>('/disconnect', {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * 获取可用端口列表
+   */
+  static async getPorts(): Promise<string[]> {
+    return apiRequest<string[]>('/ports');
+  }
+
   // ==================== 设备状态 ====================
 
   /**
@@ -225,84 +253,8 @@ export class MfcApi {
 
   // ==================== 高级控制功能（如果后端支持） ====================
 
-  /**
-   * 设置Hold模式
-   * 注意：此功能需要后端支持，如果暂时不支持，会抛出错误
-   */
-  static async setHoldMode(address: number, enable: boolean): Promise<void> {
-    if (typeof address !== 'number' || address < 1 || address > 127) {
-      throw {
-        code: 'INVALID_PARAMETER',
-        message: 'Device address must be between 1 and 127',
-        status: 400,
-      } as DeviceError;
-    }
-
-    if (typeof enable !== 'boolean') {
-      throw {
-        code: 'INVALID_PARAMETER',
-        message: 'Enable parameter must be a boolean',
-        status: 400,
-      } as DeviceError;
-    }
-
-    try {
-      return apiRequest<void>('/hold', {
-        method: 'POST',
-        body: JSON.stringify({ address, enable }),
-      });
-    } catch (error) {
-      const deviceError = error as DeviceError;
-      if (deviceError.status === 404) {
-        throw {
-          code: 'FEATURE_NOT_SUPPORTED',
-          message: 'Hold mode control is not supported by the backend',
-          status: 501,
-        } as DeviceError;
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * 设置Follow模式
-   * 注意：此功能需要后端支持，如果暂时不支持，会抛出错误
-   */
-  static async setFollowMode(address: number, enable: boolean): Promise<void> {
-    if (typeof address !== 'number' || address < 1 || address > 127) {
-      throw {
-        code: 'INVALID_PARAMETER',
-        message: 'Device address must be between 1 and 127',
-        status: 400,
-      } as DeviceError;
-    }
-
-    if (typeof enable !== 'boolean') {
-      throw {
-        code: 'INVALID_PARAMETER',
-        message: 'Enable parameter must be a boolean',
-        status: 400,
-      } as DeviceError;
-    }
-
-    try {
-      return apiRequest<void>('/follow', {
-        method: 'POST',
-        body: JSON.stringify({ address, enable }),
-      });
-    } catch (error) {
-      const deviceError = error as DeviceError;
-      if (deviceError.status === 404) {
-        throw {
-          code: 'FEATURE_NOT_SUPPORTED',
-          message: 'Follow mode control is not supported by the backend',
-          status: 501,
-        } as DeviceError;
-      }
-      throw error;
-    }
-  }
-
+  
+  
   // ==================== 历史数据查询 ====================
 
   /**

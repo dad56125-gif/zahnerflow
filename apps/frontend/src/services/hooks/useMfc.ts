@@ -53,14 +53,15 @@ export interface MfcControls {
   scanDevices: (params?: MfcScanRequest) => Promise<void>;
   refreshDevices: () => Promise<void>;
 
+  // 设备连接
+  connect: (port?: string, baudrate?: number, timeout?: number) => Promise<void>;
+  disconnect: () => Promise<void>;
+
   // 设备控制
   setFlowRate: (address: number, sccm: number) => Promise<void>;
-  setHoldMode: (address: number, enable: boolean) => Promise<void>;
-  setFollowMode: (address: number, enable: boolean) => Promise<void>;
 
   // 批量操作
   setAllFlowRates: (settings: { address: number; sccm: number }[]) => Promise<void>;
-  setAllHoldMode: (enable: boolean) => Promise<void>;
 
   // 历史数据
   loadHistoryData: (address: number, params?: HistoryQueryParams) => Promise<void>;
@@ -137,18 +138,28 @@ export function useMfc(): [MfcState, MfcControls] {
     // 更新设备列表中的状态信息
     const updatedDevices = state.devices.map(device => {
       const status = statusMap.get(device.address);
-      if (status) {
+      if (!status) {
         return {
           ...device,
-          current_flow: status.flow_sccm,
-          set_flow: status.active_setpoint_percent * device.max_flow_sccm / 100,
-          mode: status.digital_setpoint_percent > status.active_setpoint_percent ? 'hold' : 'follow',
-          status: 'connected', // 能够获取状态表示设备已连接
+          status: 'disconnected',
         };
       }
+
+      const digitalSetpointPercent = status.digital_setpoint_percent ?? 0;
+      const activeSetpointPercent = status.active_setpoint_percent ?? 0;
+      const computedSetFlow = device.max_flow_sccm > 0
+        ? (digitalSetpointPercent * device.max_flow_sccm) / 100
+        : 0;
+
       return {
         ...device,
-        status: 'disconnected', // 无法获取状态表示设备断开
+        flow_sccm: status.flow_sccm,
+        flow_percent: status.flow_percent ?? device.flow_percent,
+        set_flow: computedSetFlow,
+        digital_setpoint_percent: digitalSetpointPercent,
+        active_setpoint_percent: activeSetpointPercent,
+        mode: digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow',
+        status: 'connected',
       };
     });
 
@@ -187,6 +198,54 @@ export function useMfc(): [MfcState, MfcControls] {
     }
   );
 
+  // ==================== 设备连接 ====================
+
+  const connect = useCallback(async (
+    port: string = 'COM1',
+    baudrate: number = 19200,
+    timeout: number = 1.0
+  ): Promise<void> => {
+    try {
+      setLoading(true);
+      clearError();
+
+      await MfcApi.connect(port, baudrate, timeout);
+
+      // 连接成功后刷新状态
+      await statusControls.refresh();
+
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, clearError, handleApiError, statusControls]);
+
+  const disconnect = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      clearError();
+
+      await MfcApi.disconnect();
+
+      // 断开后更新设备状态为disconnected
+      updateState(prev => ({
+        ...prev,
+        devices: prev.devices.map(device => ({
+          ...device,
+          status: 'disconnected' as const,
+        })),
+      }));
+
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, clearError, handleApiError, updateState]);
+
   // ==================== 设备发现 ====================
 
   const scanDevices = useCallback(async (params: MfcScanRequest = {}): Promise<void> => {
@@ -199,9 +258,12 @@ export function useMfc(): [MfcState, MfcControls] {
       // 将发现的设备转换为MfcDevice格式
       const mfcDevices: MfcDevice[] = devices.map(device => ({
         ...device,
-        current_flow: 0,
+        flow_sccm: 0,
         set_flow: 0,
-        mode: 'hold' as const,
+        flow_percent: 0,
+        digital_setpoint_percent: 0,
+        active_setpoint_percent: 0,
+        mode: 'follow' as const,
         status: 'disconnected' as const,
       }));
 
@@ -210,6 +272,17 @@ export function useMfc(): [MfcState, MfcControls] {
         devices: mfcDevices,
         deviceStatuses: new Map(),
       });
+
+      // 如果发现了设备，自动连接到第一个可用端口
+      if (devices.length > 0) {
+        try {
+          await MfcApi.connect('COM1');
+          console.log('MFC设备连接成功，模拟已启动');
+        } catch (connectError) {
+          console.warn('MFC设备连接失败，但可以继续读取基本状态:', connectError);
+          // 连接失败不影响基本功能，只是流量不会动态更新
+        }
+      }
 
       // 立即刷新状态
       await statusControls.refresh();
@@ -233,12 +306,36 @@ export function useMfc(): [MfcState, MfcControls] {
       // 更新设备列表
       const mfcDevices: MfcDevice[] = devices.map(device => {
         const status = statuses.find(s => s.address === device.address);
+        const previous = state.devices.find(d => d.address === device.address);
+
+        if (!status) {
+          return {
+            ...device,
+            flow_sccm: previous?.flow_sccm ?? 0,
+            flow_percent: previous?.flow_percent ?? 0,
+            set_flow: previous?.set_flow ?? 0,
+            digital_setpoint_percent: previous?.digital_setpoint_percent ?? 0,
+            active_setpoint_percent: previous?.active_setpoint_percent ?? 0,
+            mode: previous?.mode ?? 'follow',
+            status: 'disconnected',
+          };
+        }
+
+        const digitalSetpointPercent = status.digital_setpoint_percent ?? 0;
+        const activeSetpointPercent = status.active_setpoint_percent ?? 0;
+        const computedSetFlow = device.max_flow_sccm > 0
+          ? (digitalSetpointPercent * device.max_flow_sccm) / 100
+          : 0;
+
         return {
           ...device,
-          current_flow: status?.flow_sccm || 0,
-          set_flow: status ? status.active_setpoint_percent * device.max_flow_sccm / 100 : 0,
-          mode: status && status.digital_setpoint_percent > status.active_setpoint_percent ? 'hold' : 'follow',
-          status: status ? 'connected' : 'disconnected',
+          flow_sccm: status.flow_sccm,
+          flow_percent: status.flow_percent ?? previous?.flow_percent ?? 0,
+          set_flow: computedSetFlow,
+          digital_setpoint_percent: digitalSetpointPercent,
+          active_setpoint_percent: activeSetpointPercent,
+          mode: digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow',
+          status: 'connected',
         };
       });
 
@@ -252,8 +349,10 @@ export function useMfc(): [MfcState, MfcControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState]);
+  }, [setLoading, clearError, handleApiError, updateState, state.devices]);
 
   // ==================== 设备控制 ====================
 
@@ -270,55 +369,13 @@ export function useMfc(): [MfcState, MfcControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls]);
 
-  const setHoldMode = useCallback(async (address: number, enable: boolean): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await MfcApi.setHoldMode(address, enable);
-
-      // 立即刷新状态
-      await statusControls.refresh();
-
-    } catch (error) {
-      // 如果后端不支持此功能，静默处理
-      const deviceError = error as DeviceError;
-      if (deviceError.code === 'FEATURE_NOT_SUPPORTED') {
-        console.warn('Hold mode not supported by backend');
-        return;
-      }
-
-      handleApiError(error);
-      throw error;
-    }
-  }, [setLoading, clearError, handleApiError, statusControls]);
-
-  const setFollowMode = useCallback(async (address: number, enable: boolean): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await MfcApi.setFollowMode(address, enable);
-
-      // 立即刷新状态
-      await statusControls.refresh();
-
-    } catch (error) {
-      // 如果后端不支持此功能，静默处理
-      const deviceError = error as DeviceError;
-      if (deviceError.code === 'FEATURE_NOT_SUPPORTED') {
-        console.warn('Follow mode not supported by backend');
-        return;
-      }
-
-      handleApiError(error);
-      throw error;
-    }
-  }, [setLoading, clearError, handleApiError, statusControls]);
-
+  
+  
   // ==================== 批量操作 ====================
 
   const setAllFlowRates = useCallback(async (
@@ -341,36 +398,13 @@ export function useMfc(): [MfcState, MfcControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, statusControls]);
 
-  const setAllHoldMode = useCallback(async (enable: boolean): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      // 并行设置所有设备的Hold模式
-      const promises = state.devices.map(device =>
-        MfcApi.setHoldMode(device.address, enable).catch(error => {
-          // 静默处理不支持的功能
-          if ((error as DeviceError).code === 'FEATURE_NOT_SUPPORTED') {
-            return null;
-          }
-          throw error;
-        })
-      );
-
-      await Promise.all(promises);
-
-      // 立即刷新状态
-      await statusControls.refresh();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    }
-  }, [setLoading, clearError, handleApiError, statusControls, state.devices]);
-
+  
+  
   // ==================== 历史数据 ====================
 
   const loadHistoryData = useCallback(async (
@@ -396,6 +430,8 @@ export function useMfc(): [MfcState, MfcControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, updateState, state.historyParams]);
 
@@ -418,6 +454,8 @@ export function useMfc(): [MfcState, MfcControls] {
     } catch (error) {
       handleApiError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   }, [setLoading, clearError, handleApiError, updateState, state.historyParams]);
 
@@ -481,11 +519,10 @@ export function useMfc(): [MfcState, MfcControls] {
   const controls: MfcControls = {
     scanDevices,
     refreshDevices,
+    connect,
+    disconnect,
     setFlowRate,
-    setHoldMode,
-    setFollowMode,
     setAllFlowRates,
-    setAllHoldMode,
     loadHistoryData,
     loadMultipleHistoryData,
     updateHistoryParams,

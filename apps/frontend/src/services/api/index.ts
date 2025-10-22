@@ -140,10 +140,11 @@ export const api = {
     scanDevices: MfcApi.scanDevices,
     getDevices: MfcApi.getDevices,
     getStatus: MfcApi.getStatus,
+    connect: MfcApi.connect,
+    disconnect: MfcApi.disconnect,
+    getPorts: MfcApi.getPorts,
     setFlowRate: MfcApi.setFlowRate,
     getFlowHistory: MfcApi.getFlowHistory,
-    setHoldMode: MfcApi.setHoldMode,
-    setFollowMode: MfcApi.setFollowMode,
   },
 };
 
