@@ -526,17 +526,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                     </div>
                   </div>
 
-                  {/* 程序段说明 */}
-                  <div className="segments-info">
-                    <h5>说明</h5>
-                    <ul>
-                      <li>Cxx: 程序段编号 (1-30)</li>
-                      <li>温度: 设定温度 (℃)</li>
-                      <li>时间: 运行时间 (秒)</li>
-                      <li>温度为0的程序段将被忽略</li>
-                    </ul>
                   </div>
-                </div>
               ) : activeTab === 'presets' ? (
                 <div className="presets-tab">
                   <div className="presets-header">

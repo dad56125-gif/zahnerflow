@@ -14,9 +14,11 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
   private readonly intervalMs = 1000;
   private readonly maxKeepMs = 3600 * 1000; // 1h
+  private readonly idle_timeout_ms = 30_000;
   private furnaceBuf: FurnaceSample[] = [];
   private mfcBuf: MfcSample[] = [];
   private readonly baseDir: string;
+  private active_devices = new Map<'furnace'|'mfc', number>();
 
   constructor(
     private readonly furnace: FurnaceDeviceService,
@@ -28,7 +30,6 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await fs.mkdir(this.baseDir, { recursive: true });
-    this.start();
   }
   onModuleDestroy() { this.stop(); }
 
@@ -38,9 +39,34 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
   }
   stop() { if (this.timer) { clearInterval(this.timer); this.timer = undefined; } }
 
+  mark_device_activity(device: 'furnace'|'mfc') {
+    this.active_devices.set(device, Date.now());
+    this.start();
+  }
+  mark_device_inactive(device: 'furnace'|'mfc') {
+    this.active_devices.delete(device);
+    if (!this.active_devices.size) this.stop();
+  }
+
+  private collect_active_devices(now_ms: number): Set<'furnace'|'mfc'> {
+    const active = new Set<'furnace'|'mfc'>();
+    for (const [device, last] of this.active_devices.entries()) {
+      if (now_ms - last <= this.idle_timeout_ms) active.add(device);
+      else this.active_devices.delete(device);
+    }
+    if (!active.size) this.stop();
+    return active;
+  }
+
   private async tick() {
+    const active = this.collect_active_devices(Date.now());
+    if (!active.size) return;
     const now = new Date();
-    await Promise.allSettled([ this.sampleFurnace(now), this.sampleMfc(now) ]);
+    const tasks: Promise<void>[] = [];
+    if (active.has('furnace')) tasks.push(this.sampleFurnace(now));
+    if (active.has('mfc')) tasks.push(this.sampleMfc(now));
+    if (!tasks.length) return;
+    await Promise.allSettled(tasks);
     this.trimBuffers(now);
   }
 

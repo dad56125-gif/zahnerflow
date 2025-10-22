@@ -7,13 +7,29 @@ export class FurnaceController {
   constructor(private readonly svc: FurnaceService, private readonly sampling: SamplingService) {}
 
   // Passthrough device controls
-  @Post('connect') connect(@Body() body: any) { return this.svc.passthrough('connect', body); }
-  @Post('disconnect') disconnect() { return this.svc.passthrough('disconnect'); }
+  @Post('connect')
+  async connect(@Body() body: any) {
+    const result = await this.svc.passthrough('connect', body);
+    this.sampling.mark_device_activity('furnace');
+    return result;
+  }
+  @Post('disconnect')
+  async disconnect() {
+    try {
+      return await this.svc.passthrough('disconnect');
+    } finally {
+      this.sampling.mark_device_inactive('furnace');
+    }
+  }
   @Post('run') run() { return this.svc.passthrough('run'); }
   @Post('pause') pause() { return this.svc.passthrough('pause'); }
   @Post('stop') stop() { return this.svc.passthrough('stop'); }
 
-  @Get('status') status() { return this.svc.status(); }
+  @Get('status')
+  status() {
+    this.sampling.mark_device_activity('furnace');
+    return this.svc.status();
+  }
   @Get('health') health() { return this.svc['device'].health(); }
   @Get('ports') ports() { return this.svc.ports(); }
   @Get('comm-log') getCommLog() { return this.svc.getCommLog(); }

@@ -28,6 +28,10 @@ export class MfcService implements OnModuleInit {
   }
 
   getDevices(): MfcDeviceInfo[] { return [...this.discovered]; }
+  async connect(request_body: { port: string; baudrate?: number; timeout?: number }) {
+    return this.device.connect(request_body);
+  }
+  async disconnect() { return this.device.disconnect(); }
   async status(address?: number) { return this.device.status(address); }
   async setpoint(address: number, sccm: number) { return this.device.setpoint(address, sccm); }
 }

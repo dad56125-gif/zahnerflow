@@ -28,25 +28,26 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.25rem;
+  margin-bottom: 0.875rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 2.5rem;
 }
 
 .header-tabs {
   display: flex;
   align-items: center;
   flex: 1;
-  margin-left: 2rem;
+  margin-left: 1.25rem;
 }
 
 /* === 选项卡导航（Header版本） === */
 .header-tabs .tab-navigation {
   display: flex;
-  gap: 0.75rem; /* 增加间距以适应胶囊状按钮 */
-  padding: 0.5rem;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 2.5rem; /* 容器也使用更圆的边角 */
+  border-radius: 1.75rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 0;
   align-items: center;
@@ -54,19 +55,19 @@
 
 .tab-btn {
   flex: 1;
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1rem;
   background: transparent;
   border: none;
-  border-radius: 2rem; /* 胶囊状，完全的圆角 */
+  border-radius: 1.5rem;
   color: rgba(255, 255, 255, 0.7);
-  font-size: var(--text-body);
+  font-size: clamp(0.75rem, 0.7rem + 0.3vw, 0.875rem);
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
-  white-space: nowrap; /* 确保文字在一行显示 */
-  min-width: 100px; /* 增加最小宽度 */
+  white-space: nowrap;
+  min-width: 80px;
 }
 
 .tab-btn::before {
@@ -97,13 +98,13 @@
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  border-radius: 2rem; /* 确保活跃状态也是胶囊状 */
+  border-radius: 1.5rem;
 }
 
 /* === 双列布局容器 === */
 .main-content-wrapper {
   display: flex;
-  gap: 1.5rem;
+  gap: 0;
   flex: 1;
   height: 100%;
   overflow: hidden;
@@ -123,7 +124,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 /* 设备连接区域 */
@@ -134,13 +135,15 @@
 }
 
 .device-connection-panel {
-  padding: 1.5rem;
+  padding: 1rem;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-xl));
   -webkit-backdrop-filter: blur(var(--blur-xl));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  box-shadow: 0 8px 32px var(--glass-shadow);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .device-connection-panel h4 {
@@ -148,19 +151,19 @@
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   font-weight: 600;
-  font-size: clamp(0.875rem, 0.8rem + 0.2vw, 1rem);
+  font-size: clamp(0.75rem, 0.7rem + 0.2vw, 0.875rem);
 }
 
 .device-connection-panel .connection-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.875rem;
 }
 
 .device-connection-panel .connection-header h4 {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.95);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -175,7 +178,6 @@
 }
 
 .device-connection-panel .control-group {
-  margin-bottom: 1rem;
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
@@ -186,12 +188,12 @@
 
 .device-connection-panel .control-group .port-select {
   flex: 1;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 15px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
   color: white;
-  font-size: 14px;
+  font-size: 12px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: var(--transition);
@@ -211,10 +213,10 @@
 .device-connection-panel .control-group .refresh-btn {
   margin: 0;
   white-space: nowrap;
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
   border: 1px solid rgba(52, 152, 219, 0.4);
-  border-radius: 15px;
+  border-radius: 12px;
   background: linear-gradient(135deg, rgba(52, 152, 219, 0.4), rgba(52, 152, 219, 0.2));
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -280,15 +282,15 @@
 }
 
 .device-connection-panel .control-actions {
-  margin-top: 1rem;
+  margin-top: 0.875rem;
 }
 
 .device-connection-panel button:not(.control-group button) {
   width: 100%;
-  padding: 10px 16px;
+  padding: 8px 12px;
   border: 1px solid rgba(52, 152, 219, 0.4);
-  border-radius: 15px;
-  font-size: 14px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   background: linear-gradient(135deg, rgba(52, 152, 219, 0.4), rgba(52, 152, 219, 0.2));
@@ -362,25 +364,26 @@
 }
 
 /* === 选项卡内容区域 === */
-.tab-content {
+.furnace-modal .tab-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 1.5rem;
+  gap: 0;
+  padding: 0 1rem 0 0;
 }
 
 /* === 实时监控界面 === */
 .monitoring-tab {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.75rem;
   height: 100%;
 }
 
 /* 状态显示区域 */
 .status-display {
-  padding: 1.5rem;
+  padding: 1rem;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-xl));
   -webkit-backdrop-filter: blur(var(--blur-xl));
@@ -396,8 +399,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
 }
 
 .status-row:last-child {
@@ -409,8 +412,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
 }
 
 /* 第二行：程序状态/程序段/时间 */
@@ -418,35 +421,35 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: 0.625rem;
   margin-bottom: 0;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex: 1;
 }
 
 .status-label {
-  font-size: clamp(0.9rem, 0.85rem + 0.15vw, 1rem);
+  font-size: clamp(0.75rem, 0.7rem + 0.12vw, 0.875rem);
   font-weight: 600;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: rgba(255, 255, 255, 0.9);
-  min-width: 6rem;
+  min-width: 5rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .status-value {
-  font-size: clamp(0.9rem, 0.85rem + 0.15vw, 1rem);
+  font-size: clamp(0.75rem, 0.7rem + 0.12vw, 0.875rem);
   font-weight: 700;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  padding: 0.25rem 0.5rem;
+  padding: 0.1875rem 0.375rem;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: calc(var(--radius-sm) - 0.25rem);
-  min-width: 4rem;
+  border-radius: calc(var(--radius-sm) - 0.375rem);
+  min-width: 3.5rem;
   text-align: center;
   flex: 1;
 }
@@ -514,13 +517,16 @@
 }
 
 .chart-header {
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .chart-header h4 {
   margin: 0;
-  font-size: clamp(1rem, 0.9rem + 0.3vw, 1.125rem);
+  font-size: clamp(0.875rem, 0.8rem + 0.2vw, 1rem);
   font-weight: 600;
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -636,7 +642,8 @@
 /* 程序段网格 */
 .segments-grid {
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
+  width: 100%;
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
@@ -654,7 +661,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  min-width: 0; /* 允许列缩小 */
 }
 
 .segment-row {
@@ -665,6 +672,7 @@
   background: rgba(0, 0, 0, 0.1);
   border-radius: calc(var(--radius-sm) - 0.25rem);
   transition: var(--transition);
+  width: 100%;
 }
 
 .segment-row:hover {
@@ -676,19 +684,22 @@
   font-size: clamp(0.75rem, 0.7rem + 0.2vw, 0.875rem);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
-  min-width: 2rem;
+  min-width: 1.5rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
 }
 
 .segment-input {
-  flex: 1;
-  padding: 0.5rem;
+  flex: 2;
+  min-width: 2rem;
+  padding: 0.25rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: calc(var(--radius-sm) - 0.5rem);
   color: white;
   font-size: clamp(0.75rem, 0.7rem + 0.2vw, 0.875rem);
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: var(--transition);
@@ -961,7 +972,7 @@
 
   .status-display {
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
   }
 
   .control-panel {
@@ -972,6 +983,17 @@
     min-width: auto;
   }
 
+  /* chart-header响应式调整 */
+  .chart-header {
+    padding: 0.875rem 1.25rem;
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .chart-header h4 {
+    font-size: clamp(0.75rem, 0.7rem + 0.15vw, 0.875rem);
+  }
+
   .segments-grid {
     flex-direction: column;
     gap: 1rem;
@@ -979,18 +1001,62 @@
 
   /* Header选项卡回退 */
   .header-tabs {
-    margin-left: 1rem;
+    margin-left: 0.75rem;
   }
 
   .header-tabs .tab-navigation {
     gap: 0.25rem;
+    padding: 0.25rem 0.375rem;
   }
 
   .tab-btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.875rem;
-    border-radius: 1.5rem; /* 中等屏幕使用稍小的圆角 */
-    min-width: 80px;
+    padding: 0.375rem 0.75rem;
+    font-size: clamp(0.7rem, 0.65rem + 0.25vw, 0.8rem);
+    border-radius: 1.25rem;
+    min-width: 70px;
+  }
+
+  /* device-connection-panel响应式调整 */
+  .device-connection-panel {
+    padding: 0.875rem;
+  }
+
+  .device-connection-panel .connection-header {
+    margin-bottom: 0.75rem;
+  }
+
+  .device-connection-panel .connection-header h4 {
+    font-size: clamp(0.75rem, 0.7rem + 0.15vw, 0.875rem);
+  }
+
+  .device-connection-panel .control-group {
+    margin-bottom: 0.75rem;
+  }
+
+  .device-connection-panel .control-group .port-select {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+
+  .device-connection-panel .control-group .refresh-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+
+  .device-connection-panel button:not(.control-group button) {
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+
+  .device-connection-panel .status-message {
+    font-size: 11px;
+  }
+
+  .device-connection-panel .control-actions {
+    margin-top: 0.75rem;
   }
 }
 
@@ -1004,7 +1070,8 @@
   .device-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 0.75rem;
+    min-height: auto;
   }
 
   .header-tabs {
@@ -1014,30 +1081,92 @@
 
   .header-tabs .tab-navigation {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.375rem;
+    padding: 0.25rem;
+    border-radius: 1rem;
   }
 
   .tab-btn {
-    padding: 0.75rem 1.25rem;
-    font-size: 1rem;
-    border-radius: 1.25rem; /* 小屏幕使用适中的圆角 */
-    min-width: 120px;
+    padding: 0.5rem 1rem;
+    font-size: clamp(0.8rem, 0.75rem + 0.2vw, 0.9rem);
+    border-radius: 1rem;
+    min-width: 100px;
   }
 
   .close-btn {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: clamp(0.875rem, 0.8rem + 0.3vw, 1rem);
   }
 
   .status-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 
   .status-label {
     min-width: auto;
+    font-size: clamp(0.7rem, 0.65rem + 0.1vw, 0.8rem);
+  }
+
+  .status-value {
+    font-size: clamp(0.7rem, 0.65rem + 0.1vw, 0.8rem);
+    min-width: 3rem;
+  }
+
+  /* device-connection-panel移动端响应式调整 */
+  .device-connection-panel {
+    padding: 0.75rem;
+  }
+
+  .device-connection-panel .connection-header {
+    margin-bottom: 0.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+  }
+
+  .device-connection-panel .connection-header h4 {
+    font-size: clamp(0.7rem, 0.65rem + 0.1vw, 0.8rem);
+  }
+
+  .device-connection-panel .control-group {
+    margin-bottom: 0.5rem;
+    flex-direction: column !important;
+    gap: 0.375rem;
+  }
+
+  .device-connection-panel .control-group .port-select {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 10px;
+    width: 100%;
+  }
+
+  .device-connection-panel .control-group .refresh-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 10px;
+    width: 100%;
+  }
+
+  .device-connection-panel button:not(.control-group button) {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+
+  .device-connection-panel .status-message {
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .device-connection-panel .control-actions {
+    margin-top: 0.5rem;
   }
 
   .segment-row {
@@ -1047,6 +1176,17 @@
 
   .segment-input {
     min-width: 3rem;
+  }
+
+  /* chart-header移动端响应式调整 */
+  .chart-header {
+    padding: 0.75rem 1rem;
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .chart-header h4 {
+    font-size: clamp(0.7rem, 0.65rem + 0.1vw, 0.8rem);
   }
 
   /* 控制台在小屏幕上保持合理高度 */
