@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { FurnaceState, FurnaceControls } from '../services/hooks/useFurnace';
 import { useMfc } from '../services/hooks/useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
@@ -25,6 +25,21 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
   const [activeTab, setActiveTab] = useState<'monitoring' | 'program' | 'presets' | 'recording' | 'history'>('monitoring');
 
   const [mfcState, mfcControls] = useMfc();
+
+  // 程序段输入状态 - 使用受控组件
+  const [segmentInputs, setSegmentInputs] = useState<{ [key: string]: string }>({});
+
+  // 当segments数据更新时，同步更新输入框的值
+  useEffect(() => {
+    if (furnaceState.segments && furnaceState.segments.length > 0) {
+      const newInputs: { [key: string]: string } = {};
+      furnaceState.segments.forEach(segment => {
+        newInputs[`temp_${segment.id}`] = segment.temperature.toString();
+        newInputs[`time_${segment.id}`] = segment.time.toString();
+      });
+      setSegmentInputs(prev => ({ ...prev, ...newInputs }));
+    }
+  }, [furnaceState.segments]);
 
   // Furnace连接配置状态
   const [availablePorts, setAvailablePorts] = useState<string[]>([]);
@@ -423,24 +438,19 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                     <button
                       className={`btn btn-success ${furnaceState.segmentOperation?.operation === 'writing' ? 'btn-progress' : ''}`}
                       onClick={() => {
-                        // 这里收集所有输入的值并写入
-                        const inputs = document.querySelectorAll('.segment-input');
+                        // 从受控组件状态中收集数据
                         const segments: any[] = [];
 
-                        inputs.forEach((input, index) => {
-                          const row = Math.floor(index / 2);
-                          const isTemp = index % 2 === 0;
+                        for (let i = 1; i <= 30; i++) {
+                          const temperature = parseFloat(segmentInputs[`temp_${i}`] || '0') || 0;
+                          const time = parseInt(segmentInputs[`time_${i}`] || '0') || 0;
 
-                          if (!segments[row]) {
-                            segments[row] = { id: row + 1, temperature: 0, time: 0 };
-                          }
-
-                          if (isTemp) {
-                            segments[row].temperature = parseFloat((input as HTMLInputElement).value) || 0;
-                          } else {
-                            segments[row].time = parseInt((input as HTMLInputElement).value) || 0;
-                          }
-                        });
+                          segments.push({
+                            id: i,
+                            temperature,
+                            time
+                          });
+                        }
 
                         furnaceControls.writeSegments(segments.filter(s => s.temperature > 0 || s.time > 0));
                       }}
@@ -479,16 +489,18 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                             <input
                               type="number"
                               className="segment-input temp-input"
-                              defaultValue={segment?.temperature || 0}
+                              value={segmentInputs[`temp_${segId}`] || (segment?.temperature?.toString() || '0')}
                               step="0.1"
                               disabled={furnaceState.connectionState.status !== 'connected'}
+                              onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
                             />
                             <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
                             <input
                               type="number"
                               className="segment-input time-input"
-                              defaultValue={segment?.time || 0}
+                              value={segmentInputs[`time_${segId}`] || (segment?.time?.toString() || '0')}
                               disabled={furnaceState.connectionState.status !== 'connected'}
+                              onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`time_${segId}`]: e.target.value }))}
                             />
                           </div>
                         );
@@ -504,16 +516,18 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                             <input
                               type="number"
                               className="segment-input temp-input"
-                              defaultValue={segment?.temperature || 0}
+                              value={segmentInputs[`temp_${segId}`] || (segment?.temperature?.toString() || '0')}
                               step="0.1"
                               disabled={furnaceState.connectionState.status !== 'connected'}
+                              onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
                             />
                             <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
                             <input
                               type="number"
                               className="segment-input time-input"
-                              defaultValue={segment?.time || 0}
+                              value={segmentInputs[`time_${segId}`] || (segment?.time?.toString() || '0')}
                               disabled={furnaceState.connectionState.status !== 'connected'}
+                              onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`time_${segId}`]: e.target.value }))}
                             />
                           </div>
                         );

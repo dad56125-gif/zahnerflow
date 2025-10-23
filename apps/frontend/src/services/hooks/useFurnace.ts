@@ -522,22 +522,26 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     try {
       clearError();
 
+      // 添加调试信息
+      console.log('开始读取程序段...');
+
       // 开始读取程序段
       updateSegmentOperation('reading', 0, 0);
 
-      // 模拟进度更新 (1-30段)
-      for (let i = 1; i <= 30; i++) {
-        updateSegmentOperation('reading', i, Math.floor((i / 30) * 100));
-        // 添加小延迟以显示进度效果
-        await new Promise(resolve => setTimeout(resolve, 30));
+      // 先获取实际数据，不要模拟进度
+      const segments = await FurnaceApi.getProgramSegments();
+
+      // 添加验证日志
+      console.log('API返回的段数据:', segments);
+      if (segments.length > 0) {
+        console.log('第一个段的数据:', segments[0]);
       }
 
-      const segments = await FurnaceApi.getProgramSegments();
       updateState({ segments });
       completeSegmentOperation();
 
       // 添加操作日志
-      addOperationLog('success', '已读取程序段数据');
+      addOperationLog('success', `已读取程序段数据，共${segments.length}个段`);
 
     } catch (error) {
       handleApiError(error);

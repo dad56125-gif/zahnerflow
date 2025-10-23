@@ -16,7 +16,7 @@ interface NormalizedSample {
   mv: number | null;
 }
 
-type ReactEChartsInstance = React.ComponentRef<typeof ReactECharts>;
+type ReactEChartsInstance = React.RefObject<typeof ReactECharts>;
 
 const chart_colors = ['#ef4444', '#3b82f6', '#10b981'];
 
@@ -43,14 +43,14 @@ const base_option: EChartsOption = {
   ],
   xAxis: {
     type: 'time',
-    boundaryGap: false,
+    boundaryGap: [0, 0],
     axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.15)' } },
     axisLabel: {
       color: 'rgba(255, 255, 255, 0.7)',
       formatter: (value: number | string) => new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(typeof value === 'number' ? value : Number(value)),
     },
     splitLine: { show: false },
-  },
+  } as any,
   yAxis: {
     type: 'value',
     scale: true,
@@ -59,9 +59,9 @@ const base_option: EChartsOption = {
     axisLabel: { color: 'rgba(255, 255, 255, 0.7)' },
   },
   series: [
-    { name: 'PV(实际温度)', type: 'line', showSymbol: false, smooth: false, large: true, sampling: 'lttb', data: [], lineStyle: { width: 2 } },
-    { name: 'SV(设定温度)', type: 'line', showSymbol: false, smooth: false, large: true, sampling: 'lttb', data: [], lineStyle: { width: 2 } },
-    { name: 'MV(输出功率)', type: 'line', showSymbol: false, smooth: false, large: true, sampling: 'lttb', data: [], lineStyle: { width: 2 }, yAxisIndex: 0 },
+    { name: 'PV(实际温度)', type: 'line', showSymbol: false, smooth: false, sampling: 'lttb', data: [], lineStyle: { width: 2 } } as any,
+    { name: 'SV(设定温度)', type: 'line', showSymbol: false, smooth: false, sampling: 'lttb', data: [], lineStyle: { width: 2 } } as any,
+    { name: 'MV(输出功率)', type: 'line', showSymbol: false, smooth: false, sampling: 'lttb', data: [], lineStyle: { width: 2 }, yAxisIndex: 0 } as any,
   ],
 };
 
@@ -85,16 +85,16 @@ const format_value = (value: number | null, fraction_digits = 1): string => {
 };
 
 export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loading = false, on_refresh, }) => {
-  const chart_ref = useRef<ReactEChartsInstance | null>(null);
+  const chart_ref = useRef<any>(null);
   const previous_length_ref = useRef<number>(0);
 
-  const normalized_samples = useMemo(() => normalize_samples(data), [data]);
+  const nomalized_samples = useMemo(() => normalize_samples(data), [data]);
 
   useEffect(() => {
-    const chart_instance: ECharts | undefined = chart_ref.current?.getEchartsInstance();
+    const chart_instance: ECharts | undefined = (chart_ref.current as any)?.getEchartsInstance?.();
     if (!chart_instance) return;
 
-    const total_length = normalized_samples.length;
+    const total_length = nomalized_samples.length;
     const previous_length = previous_length_ref.current;
 
     const build_series_payload = (samples: NormalizedSample[]) => ({
@@ -116,7 +116,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
     }
 
     if (previous_length === 0 || total_length <= previous_length) {
-      const payload = build_series_payload(normalized_samples);
+      const payload = build_series_payload(nomalized_samples);
       chart_instance.setOption({
         series: [
           { name: 'PV(实际温度)', data: payload.pv },
@@ -128,7 +128,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
       return;
     }
 
-    const appended_samples = normalized_samples.slice(previous_length);
+    const appended_samples = nomalized_samples.slice(previous_length);
     if (appended_samples.length === 0) {
       previous_length_ref.current = total_length;
       return;
@@ -148,7 +148,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
         chart_instance.appendData({ seriesIndex: 1, data: append_payload.sv });
         chart_instance.appendData({ seriesIndex: 2, data: append_payload.mv });
       } catch (e) {
-        const payload = build_series_payload(normalized_samples);
+        const payload = build_series_payload(nomalized_samples);
         chart_instance.setOption({
           series: [
             { name: 'PV(实际温度)', data: payload.pv },
@@ -158,7 +158,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
         });
       }
     } else {
-      const payload = build_series_payload(normalized_samples);
+      const payload = build_series_payload(nomalized_samples);
       chart_instance.setOption({
         series: [
           { name: 'PV(实际温度)', data: payload.pv },
@@ -169,9 +169,9 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
     }
 
     previous_length_ref.current = total_length;
-  }, [normalized_samples]);
+  }, [nomalized_samples]);
 
-  const latest_sample = normalized_samples.at(-1);
+  const latest_sample = nomalized_samples[nomalized_samples.length - 1];
   void on_refresh;
 
   return (
@@ -191,7 +191,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
           </div>
         )}
 
-        {!is_loading && normalized_samples.length === 0 && (
+        {!is_loading && nomalized_samples.length === 0 && (
           <div className="chart-empty">
             <div className="loading-spinner" />
             <p>暂无温度历史数据</p>
@@ -200,7 +200,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({ data, is_loa
       </div>
 
       <div className="chart-stats">
-        <span>数据点：{normalized_samples.length}</span>
+        <span>数据点：{nomalized_samples.length}</span>
         {latest_sample && (
           <>
             <span>最新PV：{format_value(latest_sample.pv)}°C</span>
