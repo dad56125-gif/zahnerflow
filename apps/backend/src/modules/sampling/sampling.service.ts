@@ -20,6 +20,12 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
   private readonly baseDir: string;
   private active_devices = new Map<'furnace'|'mfc', number>();
 
+  // 超时处理相关
+  private lastFurnaceErrorTime = 0;
+  private readonly furnaceErrorBackoffMs = 3000; // 炉温采样错误退避时间
+  private consecutiveFurnaceErrors = 0;
+  private readonly maxConsecutiveErrors = 3; // 最大连续错误次数
+
   constructor(
     private readonly furnace: FurnaceDeviceService,
     private readonly mfc: MfcDeviceService,
@@ -77,6 +83,15 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async sampleFurnace(now: Date) {
+    // 检查是否需要跳过采样（退避策略）
+    const currentTime = now.getTime();
+    if (currentTime - this.lastFurnaceErrorTime < this.furnaceErrorBackoffMs) {
+      if (this.consecutiveFurnaceErrors > 0) {
+        this.logger.debug(`跳过炉温采样，退避中 (${this.furnaceErrorBackoffMs}ms)`);
+        return;
+      }
+    }
+
     try {
       const st = await this.furnace.status();
       const sample: FurnaceSample = {
@@ -90,8 +105,27 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
       };
       this.furnaceBuf.push(sample);
       await this.appendJsonl(path.join(this.baseDir, 'furnace', `${isoDate(now)}.jsonl`), sample);
-    } catch (e) {
-      // ignore if device offline
+
+      // 成功采样后重置错误计数
+      if (this.consecutiveFurnaceErrors > 0) {
+        this.logger.log(`炉温采样恢复正常，重置错误计数`);
+        this.consecutiveFurnaceErrors = 0;
+      }
+    } catch (e: any) {
+      // 处理超时错误
+      if (e.code === 'ECONNABORTED' && e.message.includes('timeout')) {
+        this.consecutiveFurnaceErrors++;
+        this.lastFurnaceErrorTime = currentTime;
+
+        if (this.consecutiveFurnaceErrors === 1) {
+          this.logger.warn(`炉温采样超时，启动退避策略 (${this.furnaceErrorBackoffMs}ms)`);
+        } else if (this.consecutiveFurnaceErrors >= this.maxConsecutiveErrors) {
+          this.logger.error(`炉温采样连续超时 ${this.consecutiveFurnaceErrors} 次，可能设备正在进行程序段操作`);
+        }
+      } else {
+        // 其他错误，设备可能离线
+        this.logger.debug(`炉温采样失败，设备可能离线: ${e.message}`);
+      }
     }
   }
 
