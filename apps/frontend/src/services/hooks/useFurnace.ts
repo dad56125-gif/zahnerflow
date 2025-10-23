@@ -1,923 +1,624 @@
-﻿/**
- * Furnace 状态管理 Hook
+/**
+ * Furnace 状态管理 Hook - 最终优化版本
  *
- * 封装加热炉设备的所有状态管理和操作逻辑
+ * 完全基于WebSocket实时更新，最小化状态管理，严格遵循snake_case参数命名规范
+ * 高性能、低复杂性、类型安全
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useConditionalPolling } from './usePolling';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { FurnaceApi } from '../api';
+import { furnaceWebSocketService } from '../furnace-websocket.service';
 import {
   FurnaceStatus,
   ProgramSegment,
   FurnacePresetMeta,
   FurnacePreset,
   CreatePresetRequest,
-  ApplyPresetResult,
-  FurnaceSample,
+  FurnaceConnectRequest,
   HistoryQueryParams,
   DeviceError,
-  ConnectionState,
   DeviceOperationStatus,
-  DEFAULT_FURNACE_CONFIG,
-  FurnaceConnectRequest,
-  CommLog,
-  OperationLog,
   LogEntry,
-  LogType,
 } from '../../types/devices';
-import { isRetryableError } from '../utils/apiUtils';
 
 /**
- * Furnace Hook 状态
+ * 完全优化的状态接口 - 严格snake_case命名
  */
 export interface FurnaceState {
-  // 设备状态
-  status: FurnaceStatus | null;
-  connectionState: ConnectionState;
-  operationState: DeviceOperationStatus;
+  // 核心设备状态 - 最小化状态变量
+  device_status: FurnaceStatus | null;
+  connection_status: 'connected' | 'disconnected';
+  operation_status: DeviceOperationStatus;
 
-  // 程序段数据
+  // 核心数据
   segments: ProgramSegment[];
-
-  // 程序段操作进度
-  segmentOperation: {
-    isLoading: boolean;
-    operation: 'reading' | 'writing' | null;
-    progress: number; // 0-100
-    currentSegment: number; // 1-30
-  };
-
-  // 预设数据
   presets: FurnacePresetMeta[];
-  selectedPreset: FurnacePreset | null;
-
-  // 历史数据
-  historyData: FurnaceSample[];
-  historyParams: HistoryQueryParams;
+  selected_preset: FurnacePreset | null;
+  history_data: Array<{
+    timestamp: string;
+    temperature: number;
+    sv: number;
+    mv: number;
+  }>;
+  history_params: HistoryQueryParams;
+  logs: LogEntry[];
 
   // UI状态
-  isLoading: boolean;
+  loading: boolean;
   error: DeviceError | null;
 
-  // 限流信息
-  rateLimitInfo: {
-    isLimited: boolean;
-    retryAfter: number;
+  // 操作进度 - 简化进度管理
+  operation_progress: {
+    active: boolean;
+    type: 'reading' | 'writing' | null;
+    progress: number;
   };
-
-  // 统计信息
-  lastUpdate: Date | null;
-  pollCount: number;
-
-  // 日志（包含通信日志和操作日志）
-  logs: LogEntry[];
 }
 
 /**
- * Furnace Hook 控制方法
+ * 优化后的控制方法接口 - 严格snake_case命名
  */
 export interface FurnaceControls {
-  // 连接控制
-  connect: (config?: FurnaceConnectRequest) => Promise<void>;
+  // 设备连接管理
+  connect: (config: FurnaceConnectRequest) => Promise<void>;
   disconnect: () => Promise<void>;
 
-  // 基本控制
-  setTemperature: (sv: number) => Promise<void>;
-  setSegment: (segment: number) => Promise<void>;
-
-  // 程序控制
+  // 基本设备控制
+  set_temperature: (sv: number) => Promise<void>;
+  set_segment: (segment: number) => Promise<void>;
   run: () => Promise<void>;
   pause: () => Promise<void>;
   stop: () => Promise<void>;
 
-  // 程序段管理
-  loadSegments: () => Promise<void>;
-  writeSegments: (segments: ProgramSegment[]) => Promise<void>;
+  // 程序段操作
+  load_segments: () => Promise<void>;
+  write_segments: (segments: ProgramSegment[]) => Promise<void>;
 
   // 预设管理
-  loadPresets: () => Promise<void>;
-  selectPreset: (name: string) => Promise<void>;
-  createPreset: (preset: CreatePresetRequest) => Promise<void>;
-  updatePreset: (name: string, segments: ProgramSegment[]) => Promise<void>;
-  deletePreset: (name: string) => Promise<void>;
-  clonePreset: (name: string, newName: string) => Promise<void>;
-  applyPreset: (name: string) => Promise<void>;
+  load_presets: () => Promise<void>;
+  select_preset: (name: string) => Promise<void>;
+  create_preset: (preset: CreatePresetRequest) => Promise<void>;
+  update_preset: (name: string, segments: ProgramSegment[]) => Promise<void>;
+  delete_preset: (name: string) => Promise<void>;
+  clone_preset: (name: string, new_name: string) => Promise<void>;
+  apply_preset: (name: string) => Promise<void>;
 
-  // 历史数据
-  loadHistoryData: (params?: HistoryQueryParams) => Promise<void>;
-  updateHistoryParams: (params: Partial<HistoryQueryParams>) => void;
-
-  // 日志管理
-  refreshLogs: () => Promise<void>;
-  clearLogs: () => void;
-  addOperationLog: (level: 'success' | 'info' | 'warning' | 'error', message: string) => void;
+  // 数据管理
+  load_history_data: (params?: HistoryQueryParams) => Promise<void>;
+  update_history_params: (params: Partial<HistoryQueryParams>) => void;
+  refresh_logs: () => Promise<void>;
+  clear_logs: () => void;
+  add_log: (level: 'success' | 'info' | 'warning' | 'error', message: string) => void;
 
   // 状态管理
   reset: () => void;
-  clearError: () => void;
-  refresh: () => Promise<void>;
+  clear_error: () => void;
 }
 
 /**
- * Furnace Hook
+ * 状态更新的类型定义
+ */
+type StateUpdate = Partial<FurnaceState>;
+
+/**
+ * 最终优化的Furnace Hook
  */
 export function useFurnace(): [FurnaceState, FurnaceControls] {
-  // 状态初始化
-  const [state, setState] = useState<FurnaceState>({
-    status: null,
-    connectionState: {
-      status: 'disconnected',
-      reconnectAttempts: 0,
-    },
-    operationState: 'idle',
+  // 初始状态 - 严格snake_case命名
+  const initial_state: FurnaceState = {
+    device_status: null,
+    connection_status: 'disconnected',
+    operation_status: 'unknown',
     segments: [],
-    segmentOperation: {
-      isLoading: false,
-      operation: null,
-      progress: 0,
-      currentSegment: 0,
-    },
     presets: [],
-    selectedPreset: null,
-    historyData: [],
-    historyParams: FurnaceApi.getDefaultHistoryParams(),
-    isLoading: false,
-    error: null,
-    rateLimitInfo: {
-      isLimited: false,
-      retryAfter: 0,
-    },
-    lastUpdate: null,
-    pollCount: 0,
+    selected_preset: null,
+    history_data: [],
+    history_params: FurnaceApi.getDefaultHistoryParams(),
     logs: [],
+    loading: false,
+    error: null,
+    operation_progress: {
+      active: false,
+      type: null,
+      progress: 0,
+    },
+  };
+
+  // 单一状态对象 - 最小化重渲染
+  const [state, set_state] = useState<FurnaceState>(initial_state);
+
+  // WebSocket状态引用 - 避免不必要的重连接
+  const web_socket_status = useRef({
+    connected: false,
+    subscribed: false,
   });
 
-  // 更新状态的辅助函数
-  const updateState = useCallback((updates: Partial<FurnaceState> | ((prevState: FurnaceState) => Partial<FurnaceState>)) => {
-    setState(prev => {
-      const updatesToApply = typeof updates === 'function' ? updates(prev) : updates;
-      return { ...prev, ...updatesToApply };
-    });
+  // 批量状态更新 - 减少重渲染次数
+  const update_state = useCallback((updates: StateUpdate): void => {
+    set_state(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // 设置加载状态
-  const setLoading = useCallback((isLoading: boolean) => {
-    updateState({ isLoading });
-  }, [updateState]);
+  // 加载状态管理
+  const set_loading = useCallback((loading: boolean): void => {
+    update_state({ loading });
+  }, [update_state]);
 
-  // 更新程序段操作进度
-  const updateSegmentOperation = useCallback((operation: 'reading' | 'writing' | null, currentSegment: number, progress: number) => {
-    updateState({
-      segmentOperation: {
-        isLoading: operation !== null,
-        operation,
-        currentSegment,
-        progress,
-      }
+  // 错误处理
+  const handle_error = useCallback((error: any): void => {
+    const device_error: DeviceError = error as DeviceError;
+    update_state({
+      error: device_error,
+      loading: false,
+      connection_status: 'disconnected',
     });
-  }, [updateState]);
-
-  // 完成程序段操作
-  const completeSegmentOperation = useCallback(() => {
-    updateState({
-      segmentOperation: {
-        isLoading: false,
-        operation: null,
-        progress: 100,
-        currentSegment: 0,
-      }
-    });
-    // 2秒后重置进度显示
-    const timer = setTimeout(() => {
-      updateState({
-        segmentOperation: {
-          isLoading: false,
-          operation: null,
-          progress: 0,
-          currentSegment: 0,
-        }
-      });
-    }, 2000);
-
-    // 返回清理函数
-    return () => clearTimeout(timer);
-  }, [updateState]);
-
-  // 设置错误状态
-  const setError = useCallback((error: DeviceError | null) => {
-    updateState({ error, isLoading: false });
-  }, [updateState]);
+  }, [update_state]);
 
   // 清除错误
-  const clearError = useCallback(() => {
-    updateState({ error: null });
-  }, [updateState]);
+  const clear_error = useCallback((): void => {
+    update_state({ error: null });
+  }, [update_state]);
 
-  // 用于存储定时器的引用
-  const rateLimitTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const samplingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // 进度管理 - 简化进度状态
+  const set_progress = useCallback((type: 'reading' | 'writing' | null, progress: number): void => {
+    update_state({
+      operation_progress: {
+        active: type !== null,
+        type,
+        progress,
+      },
+    });
+  }, [update_state]);
 
-  // 处理API错误的通用函数
-  const handleApiError = useCallback((error: any): void => {
-    const deviceError = error as DeviceError;
-
-    // 处理429限流错误
-    if (deviceError.code === 'RATE_LIMIT') {
-      updateState({
-        rateLimitInfo: {
-          isLimited: true,
-          retryAfter: deviceError.retry_after || 5,
-        },
-      });
-
-      // 清除之前的限流定时器
-      const timerKey = 'rate_limit';
-      const existingTimer = rateLimitTimers.current.get(timerKey);
-      if (existingTimer) {
-        clearTimeout(existingTimer);
-      }
-
-      // 设置新的倒计时，结束后解除限流状态
-      const timer = setTimeout(() => {
-        updateState({
-          rateLimitInfo: {
-            isLimited: false,
-            retryAfter: 0,
-          },
-        });
-        rateLimitTimers.current.delete(timerKey);
-      }, deviceError.retry_after * 1000);
-
-      rateLimitTimers.current.set(timerKey, timer);
-      setError(deviceError);
-      return;
-    }
-
-    // 处理网络错误或连接错误
-    if (deviceError.code === 'NETWORK_ERROR' ||
-        deviceError.status === 404 ||
-        deviceError.status === 500 ||
-        (deviceError.status && deviceError.status >= 400)) {
-      updateState({
-        connectionState: {
-          status: 'disconnected',
-          reconnectAttempts: prev => prev + 1,
-        },
-      });
-    }
-
-    setError(deviceError);
-  }, [updateState, setError]);
-
-  // 设备状态轮询 - 只在设备连接时才轮询
-  const [, statusControls] = useConditionalPolling(
-    async () => {
-      try {
-        const status = await FurnaceApi.getStatus();
-        const rawStatus = String(status?.status ?? '').toLowerCase();
-        const displayStatus =
-          rawStatus === 'pause' || rawStatus === 'hold' ? 'hold' :
-          rawStatus === 'paused' ? 'hold' :
-          rawStatus === 'run' ? 'run' :
-          rawStatus === 'running' ? 'run' :
-          rawStatus === 'stop' ? 'stop' :
-          rawStatus === 'stopped' ? 'stop' :
-          rawStatus || 'unknown';
-
-        // 数据验证和默认值处理
-        const validatedStatus: FurnaceStatus = {
-          pv: status?.pv ?? 0,
-          sv: status?.sv ?? 0,
-          mv: status?.mv ?? 0,
-          status: displayStatus,
-          segment: status?.segment ?? 0,
-          segment_time: status?.segment_time ?? 0,
-          segment_time_set: status?.segment_time_set ?? 0,
-        };
-        const derivedOperationState: DeviceOperationStatus =
-          rawStatus === 'run' || rawStatus === 'running' ? 'running' :
-          rawStatus === 'pause' || rawStatus === 'paused' || rawStatus === 'hold' ? 'paused' :
-          rawStatus === 'stop' || rawStatus === 'stopped' ? 'stopped' :
-          (() => {
-            console.warn(`[Furnace] 未知状态: "${rawStatus}"，按停止处理`);
-            addOperationLog('warning', `未知状态: ${rawStatus || 'null'}`);
-            return 'stopped' as DeviceOperationStatus;
-          })();
-
-        // 更新设备状态
-        updateState({
-          status: validatedStatus,
-          // 保持 connection_state 不变，由 connect()/disconnect() 控制
-          operationState: derivedOperationState,
-          lastUpdate: new Date(),
-        });
-
-        return validatedStatus;
-      } catch (error) {
-        handleApiError(error);
-        throw error;
-      }
-    },
-    () => state.connectionState.status === 'connected',
-    DEFAULT_FURNACE_CONFIG.polling_interval,
-    {
-      immediate: true,
-      onlyWhenVisible: true,
-      maxRetries: DEFAULT_FURNACE_CONFIG.retry_attempts,
-      retryDelay: DEFAULT_FURNACE_CONFIG.retry_delay,
-      onError: handleApiError,
-    }
-  );
-
-  // ==================== 日志管理 ====================
-
-  const addOperationLog = useCallback((
+  // 日志管理 - 限制日志数量
+  const add_log = useCallback((
     level: 'success' | 'info' | 'warning' | 'error',
     message: string
   ): void => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry: LogEntry = {
+    const log_entry: LogEntry = {
       id: Date.now().toString(),
-      timestamp,
+      timestamp: new Date().toLocaleTimeString(),
       type: 'operation',
       data: {
-        timestamp,
+        timestamp: new Date().toISOString(),
         level,
-        message
-      } as OperationLog
+        message,
+      },
     };
 
-    updateState((prevState) => ({
-      logs: [...(prevState.logs || []), logEntry].slice(-500)
+    update_state(prev => ({
+      ...prev,
+      logs: [...prev.logs, log_entry].slice(-200), // 限制日志数量
     }));
-  }, [updateState]);
+  }, [update_state]);
 
-  // ==================== 连接控制 ====================
-
-  const connect = useCallback(async (config?: FurnaceConnectRequest): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      if (!config) {
-        throw {
-          code: 'INVALID_PARAMETER',
-          message: 'Connection configuration is required',
-          status: 400,
-        } as DeviceError;
-      }
-
-      await FurnaceApi.connect(config);
-
-      updateState({
-        connectionState: {
-          status: 'connected',
-          lastConnected: new Date().toISOString(),
-          reconnectAttempts: 0,
-        },
+  // WebSocket事件处理器 - 使用useMemo缓存
+  const web_socket_handlers = useMemo(() => ({
+    on_status_update: (data: any): void => {
+      update_state({
+        device_status: data.status,
+        connection_status: data.connection_state.status,
+        operation_status: data.operation_state,
       });
+    },
 
-      // 添加操作日志
-      addOperationLog('success', `设备已连接到 ${config.port}`);
+    on_sampling_data: (data: any): void => {
+      const sample = {
+        timestamp: data.timestamp,
+        temperature: data.temperature,
+        sv: data.sv,
+        mv: data.mv,
+      };
 
-      // 等待状态更新
-      await statusControls.refresh();
+      update_state(prev => ({
+        ...prev,
+        history_data: [...prev.history_data, sample].slice(-1000), // 限制历史数据
+      }));
+    },
 
+    on_notification: (data: any): void => {
+      add_log(data.type, `[${data.title}] ${data.message}`);
+    },
+
+    on_error: handle_error,
+  }), [update_state, add_log, handle_error]);
+
+  // WebSocket连接管理
+  const ensure_web_socket = useCallback((): void => {
+    if (!web_socket_status.current.connected) {
+      furnaceWebSocketService.connect();
+      web_socket_status.current.connected = true;
+
+      // 注册事件处理器
+      furnaceWebSocketService.onStatusUpdate(web_socket_handlers.on_status_update);
+      furnaceWebSocketService.onSamplingData(web_socket_handlers.on_sampling_data);
+      furnaceWebSocketService.onNotification(web_socket_handlers.on_notification);
+      furnaceWebSocketService.onError(web_socket_handlers.on_error);
+      furnaceWebSocketService.onConnected(() => {
+        furnaceWebSocketService.subscribeToFurnace();
+        web_socket_status.current.subscribed = true;
+      });
+      furnaceWebSocketService.onDisconnected(() => {
+        web_socket_status.current.subscribed = false;
+      });
+    } else if (!web_socket_status.current.subscribed) {
+      furnaceWebSocketService.subscribeToFurnace();
+      web_socket_status.current.subscribed = true;
+    }
+  }, [web_socket_handlers]);
+
+  // 统一设备操作处理 - 减少重复代码
+  const execute_device_operation = useCallback(async (
+    operation: () => Promise<void>,
+    success_message?: string
+  ): Promise<void> => {
+    if (state.connection_status !== 'connected') {
+      const error: DeviceError = {
+        code: 'DEVICE_NOT_CONNECTED',
+        message: '设备未连接，无法执行操作',
+        status: 400,
+      };
+      handle_error(error);
+      throw error;
+    }
+
+    try {
+      set_loading(true);
+      clear_error();
+      await operation();
+      if (success_message) {
+        add_log('info', success_message);
+      }
     } catch (error) {
-      handleApiError(error);
+      handle_error(error);
       throw error;
     } finally {
-      setLoading(false);
+      set_loading(false);
     }
-  }, [setLoading, clearError, handleApiError, statusControls, updateState, addOperationLog]);
+  }, [state.connection_status, set_loading, clear_error, add_log, handle_error]);
+
+  // ==================== 控制方法实现 ====================
+
+  // 设备连接
+  const connect = useCallback(async (config: FurnaceConnectRequest): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+
+      await FurnaceApi.connect(config);
+      update_state({
+        connection_status: 'connected',
+      });
+
+      add_log('success', `设备已连接到 ${config.port}`);
+      ensure_web_socket();
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, update_state, add_log, ensure_web_socket, handle_error]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
-      setLoading(true);
-      clearError();
+      set_loading(true);
+      clear_error();
 
       await FurnaceApi.disconnect();
 
-      updateState({
-        connectionState: {
-          status: 'disconnected',
-          reconnectAttempts: 0,
-        },
-        operationState: 'stopped',
-        status: null,
+      // 清理WebSocket连接
+      if (web_socket_status.current.subscribed) {
+        furnaceWebSocketService.unsubscribeFromFurnace();
+        web_socket_status.current.subscribed = false;
+      }
+
+      update_state({
+        connection_status: 'disconnected',
+        operation_status: 'stopped',
+        device_status: null,
       });
 
     } catch (error) {
-      handleApiError(error);
+      handle_error(error);
       throw error;
     } finally {
-      setLoading(false);
+      set_loading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState]);
-
-  // ==================== 基本控制 ====================
-
-  const setTemperature = useCallback(async (sv: number): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.setTemperature(sv);
-
-      // 添加操作日志
-      addOperationLog('info', `温度设置为 ${sv}°C`);
-
-      await statusControls.refresh();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
-
-  const setSegment = useCallback(async (segment: number): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.setSegment(segment);
-      await statusControls.refresh();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, statusControls]);
-
-  // ==================== 程序控制 ====================
-
-  const run = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.run();
-
-      // 添加操作日志
-      addOperationLog('success', '程序已开始运行');
-
-      await statusControls.refresh();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
-
-  const pause = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.pause();
-
-      // 添加操作日志
-      addOperationLog('info', '程序已进入hold状态');
-
-      await statusControls.refresh();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
-
-  const stop = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.stop();
-
-      // 添加操作日志
-      addOperationLog('info', '程序已停止');
-
-      await statusControls.refresh();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, statusControls, addOperationLog]);
-
-  // ==================== 程序段管理 ====================
-
-  const loadSegments = useCallback(async (): Promise<void> => {
-    try {
-      clearError();
-
-      // 添加调试信息
-      console.log('开始读取程序段...');
-
-      // 开始读取程序段
-      updateSegmentOperation('reading', 0, 0);
-
-      // 先获取实际数据，不要模拟进度
-      const segments = await FurnaceApi.getProgramSegments();
-
-      // 添加验证日志
-      console.log('API返回的段数据:', segments);
-      if (segments.length > 0) {
-        console.log('第一个段的数据:', segments[0]);
-      }
-
-      updateState({ segments });
-      completeSegmentOperation();
-
-      // 添加操作日志
-      addOperationLog('success', `已读取程序段数据，共${segments.length}个段`);
-
-    } catch (error) {
-      handleApiError(error);
-      updateSegmentOperation(null, 0, 0);
-      throw error;
-    }
-  }, [clearError, handleApiError, updateState, updateSegmentOperation, completeSegmentOperation, addOperationLog]);
-
-  const writeSegments = useCallback(async (segments: ProgramSegment[]): Promise<void> => {
-    try {
-      clearError();
-
-      // 开始写入程序段
-      updateSegmentOperation('writing', 0, 0);
-
-      // 模拟写入进度更新 (1-30段)
-      for (let i = 1; i <= 30; i++) {
-        updateSegmentOperation('writing', i, Math.floor((i / 30) * 100));
-        // 添加小延迟以显示进度效果
-        await new Promise(resolve => setTimeout(resolve, 30));
-      }
-
-      await FurnaceApi.writeProgramSegments(segments);
-      updateState({ segments });
-      completeSegmentOperation();
-
-      // 添加操作日志
-      addOperationLog('success', `已写入 ${segments.length} 个程序段`);
-
-    } catch (error) {
-      handleApiError(error);
-      updateSegmentOperation(null, 0, 0);
-      throw error;
-    }
-  }, [clearError, handleApiError, updateState, updateSegmentOperation, completeSegmentOperation, addOperationLog]);
-
-  // ==================== 预设管理 ====================
-
-  const loadPresets = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      const presets = await FurnaceApi.getPresets();
-      updateState({ presets });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, updateState]);
-
-  const selectPreset = useCallback(async (name: string): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      const preset = await FurnaceApi.getPreset(name);
-      updateState({ selectedPreset: preset });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, updateState]);
-
-  const createPreset = useCallback(async (preset: CreatePresetRequest): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.createPreset(preset);
-      await loadPresets();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, loadPresets]);
-
-  const updatePreset = useCallback(async (name: string, segments: ProgramSegment[]): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.updatePreset(name, segments);
-      await loadPresets();
-
-      // 如果更新的是当前选中的预设，也更新选中状态
-      updateState((prevState) => {
-        if (prevState.selectedPreset?.name === name) {
-          // 异步更新预设，不在这里等待
-          selectPreset(name);
-        }
-        return {};
-      });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, loadPresets, selectPreset, state.selectedPreset]);
-
-  const deletePreset = useCallback(async (name: string): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.deletePreset(name);
-      await loadPresets();
-
-      // 如果删除的是当前选中的预设，清除选中状态
-      updateState((prevState) => {
-        if (prevState.selectedPreset?.name === name) {
-          return { selectedPreset: null };
-        }
-        return {};
-      });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, loadPresets, updateState, state.selectedPreset]);
-
-  const clonePreset = useCallback(async (name: string, newName: string): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      await FurnaceApi.clonePreset(name, newName);
-      await loadPresets();
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, loadPresets]);
-
-  const applyPreset = useCallback(async (name: string): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      const result = await FurnaceApi.applyPreset(name);
-
-      if (result.changed) {
-        await statusControls.refresh();
-      }
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, statusControls]);
-
-  // ==================== 历史数据 ====================
-
-  const loadHistoryData = useCallback(async (params?: HistoryQueryParams): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      updateState((prevState) => {
-        const finalParams = params || prevState.historyParams;
-
-        // 异步加载数据
-        FurnaceApi.getTemperatureHistory(finalParams)
-          .then(historyData => {
-            updateState({
-              historyData,
-              historyParams: finalParams,
-            });
-          })
-          .catch(handleApiError);
-
-        return {};
-      });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, updateState]);
-
-  const updateHistoryParams = useCallback((params: Partial<HistoryQueryParams>): void => {
-    updateState((prevState) => ({
-      historyParams: {
-        ...prevState.historyParams,
-        ...params,
-      },
-    }));
-  }, [updateState]);
-
-  // ==================== 状态管理 ====================
-
-  const reset = useCallback((): void => {
-    setState({
-      status: null,
-      connectionState: {
-        status: 'disconnected',
-        reconnectAttempts: 0,
-      },
-      operationState: 'idle',
-      segments: [],
-      presets: [],
-      selectedPreset: null,
-      historyData: [],
-      historyParams: FurnaceApi.getDefaultHistoryParams(),
-      isLoading: false,
-      error: null,
-      rateLimitInfo: {
-        isLimited: false,
-        retryAfter: 0,
-      },
-      lastUpdate: null,
-      pollCount: 0,
-      logs: [],
-    });
-  }, []);
-
-  // 日志管理方法
-
-  const refreshLogs = useCallback(async (): Promise<void> => {
-    try {
-      const response = await FurnaceApi.getCommLog();
-
-      // 将通信日志转换为LogEntry格式
-      const commLogEntries: LogEntry[] = response.logs.map((log: CommLog) => ({
-        id: `comm_${log.timestamp}_${Math.random()}`,
-        timestamp: log.timestamp,
-        type: 'comm' as LogType,
-        data: log
-      }));
-
-      updateState((prevState) => ({
-        // 合并现有操作日志和新通信日志，保持最多500条
-        logs: [...(prevState.logs || []).filter((log: LogEntry) => log.type === 'operation'), ...commLogEntries].slice(-500)
-      }));
-    } catch (error) {
-      handleApiError(error);
-    }
-  }, [updateState, handleApiError]);
-
-  const clearLogs = useCallback((): void => {
-    updateState({ logs: [] });
-  }, [updateState]);
-
-  const refresh = useCallback(async (): Promise<void> => {
-    try {
-      await statusControls.refresh();
-    } catch (error) {
-      handleApiError(error);
-    }
-  }, [statusControls, handleApiError]);
-
-  // ==================== 初始化 ====================
-
-  // 组件挂载时加载基础数据
-  useEffect(() => {
-    loadPresets();
-    loadSegments();
-  }, []);
-
-  // 清理所有定时器的effect
-  useEffect(() => {
-    return () => {
-      // 组件卸载时清理所有定时器
-      rateLimitTimers.current.forEach(timer => clearTimeout(timer));
-      rateLimitTimers.current.clear();
-
-      if (samplingTimerRef.current) {
-        clearInterval(samplingTimerRef.current);
-        samplingTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  // 实时采样：连接状态下按轮询间隔追加温度样本到 historyData
-  useEffect(() => {
-    if (state.connectionState.status !== 'connected') {
+  }, [set_loading, clear_error, update_state, handle_error]);
+
+  // 基本控制方法
+  const set_temperature = useCallback((sv: number): Promise<void> => {
+    return execute_device_operation(
+      () => FurnaceApi.setTemperature(sv),
+      `温度设置为 ${sv}°C`
+    );
+  }, [execute_device_operation]);
+
+  const set_segment = useCallback((segment: number): Promise<void> => {
+    return execute_device_operation(
+      () => FurnaceApi.setSegment(segment)
+    );
+  }, [execute_device_operation]);
+
+  const run = useCallback((): Promise<void> => {
+    return execute_device_operation(
+      () => FurnaceApi.run(),
+      '程序已开始运行'
+    );
+  }, [execute_device_operation]);
+
+  const pause = useCallback((): Promise<void> => {
+    return execute_device_operation(
+      () => FurnaceApi.pause(),
+      '程序已暂停'
+    );
+  }, [execute_device_operation]);
+
+  const stop = useCallback((): Promise<void> => {
+    return execute_device_operation(
+      () => FurnaceApi.stop(),
+      '程序已停止'
+    );
+  }, [execute_device_operation]);
+
+  // 程序段操作
+  const load_segments = useCallback(async (): Promise<void> => {
+    if (state.connection_status !== 'connected') {
       return;
     }
-    let alive = true;
 
-    // 清除之前的采样定时器
-    if (samplingTimerRef.current) {
-      clearInterval(samplingTimerRef.current);
+    try {
+      clear_error();
+      set_progress('reading', 10);
+
+      const segments = await FurnaceApi.getProgramSegments();
+      update_state({ segments });
+      set_progress(null, 100);
+
+      add_log('success', `已读取程序段数据，共${segments.length}个段`);
+
+      // 2秒后清除进度显示
+      setTimeout(() => set_progress(null, 0), 2000);
+
+    } catch (error) {
+      set_progress(null, 0);
+      handle_error(error);
+      throw error;
     }
+  }, [state.connection_status, clear_error, set_progress, update_state, add_log, handle_error]);
 
-    samplingTimerRef.current = setInterval(async () => {
-      try {
-        const s = await FurnaceApi.getStatus();
-        if (!alive) return;
+  const write_segments = useCallback(async (segments: ProgramSegment[]): Promise<void> => {
+    try {
+      set_progress('writing', 10);
 
-        const sample: FurnaceSample = {
-          timestamp: new Date().toISOString(),
-          temperature: (s?.pv as number) ?? 0,
-          sv: (s?.sv as number) ?? 0,
-          mv: (s?.mv as number) ?? 0,
-        };
+      await FurnaceApi.writeProgramSegments(segments);
+      update_state({ segments });
+      set_progress(null, 100);
 
-        setState(prev => ({
-          ...prev,
-          status: {
-            pv: (s?.pv as number) ?? (prev.status?.pv ?? 0),
-            sv: (s?.sv as number) ?? (prev.status?.sv ?? 0),
-            mv: (s?.mv as number) ?? (prev.status?.mv ?? 0),
-            status: (s?.status as string) ?? prev.status?.status ?? 'unknown',
-            segment: (s?.segment as number) ?? (prev.status?.segment ?? 0),
-            segment_time: (s?.segment_time as number) ?? (prev.status?.segment_time ?? 0),
-            segment_time_set: (s?.segment_time_set as number) ?? (prev.status?.segment_time_set ?? 0),
-          },
-          lastUpdate: new Date(),
-          historyData: [...(prev.historyData || []), sample],
-        }));
-      } catch (e) {
-        // 静默处理实时轮询错误，避免打断 UI
+      add_log('success', `已写入 ${segments.length} 个程序段`);
+
+      // 2秒后清除进度显示
+      setTimeout(() => set_progress(null, 0), 2000);
+
+    } catch (error) {
+      set_progress(null, 0);
+      handle_error(error);
+      throw error;
+    }
+  }, [set_progress, update_state, add_log, handle_error]);
+
+  // 预设管理
+  const load_presets = useCallback(async (): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      const presets = await FurnaceApi.getPresets();
+      update_state({ presets });
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, update_state, handle_error]);
+
+  const select_preset = useCallback(async (name: string): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      const preset = await FurnaceApi.getPreset(name);
+      update_state({ selected_preset: preset });
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, update_state, handle_error]);
+
+  const create_preset = useCallback(async (preset: CreatePresetRequest): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      await FurnaceApi.createPreset(preset);
+      await load_presets();
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, load_presets, handle_error]);
+
+  const update_preset = useCallback(async (name: string, segments: ProgramSegment[]): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      await FurnaceApi.updatePreset(name, segments);
+      await load_presets();
+
+      // 更新当前选中的预设
+      if (state.selected_preset?.name === name) {
+        await select_preset(name);
       }
-    }, DEFAULT_FURNACE_CONFIG.polling_interval);
 
-    return () => {
-      alive = false;
-      if (samplingTimerRef.current) {
-        clearInterval(samplingTimerRef.current);
-        samplingTimerRef.current = null;
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, load_presets, select_preset, state.selected_preset, handle_error]);
+
+  const delete_preset = useCallback(async (name: string): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      await FurnaceApi.deletePreset(name);
+      await load_presets();
+
+      // 清除选中状态
+      if (state.selected_preset?.name === name) {
+        update_state({ selected_preset: null });
       }
-    };
-  }, [state.connectionState.status]);
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, load_presets, state.selected_preset, update_state, handle_error]);
+
+  const clone_preset = useCallback(async (name: string, new_name: string): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      await FurnaceApi.clonePreset(name, new_name);
+      await load_presets();
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, load_presets, handle_error]);
+
+  const apply_preset = useCallback(async (name: string): Promise<void> => {
+    return execute_device_operation(
+      () => FurnaceApi.applyPreset(name)
+    );
+  }, [execute_device_operation]);
+
+  // 数据管理
+  const load_history_data = useCallback(async (params?: HistoryQueryParams): Promise<void> => {
+    try {
+      set_loading(true);
+      clear_error();
+      const final_params = params || state.history_params;
+      const history_data = await FurnaceApi.getTemperatureHistory(final_params);
+      update_state({ history_data, history_params: final_params });
+
+    } catch (error) {
+      handle_error(error);
+      throw error;
+    } finally {
+      set_loading(false);
+    }
+  }, [set_loading, clear_error, state.history_params, update_state, handle_error]);
+
+  const update_history_params = useCallback((params: Partial<HistoryQueryParams>): void => {
+    update_state(prev => ({
+      history_params: { ...prev.history_params, ...params },
+    }));
+  }, [update_state]);
+
+  const refresh_logs = useCallback(async (): Promise<void> => {
+    try {
+      const response = await FurnaceApi.getCommLog();
+      const comm_logs = response.logs.map(log => ({
+        id: `comm_${log.timestamp}_${Math.random()}`,
+        timestamp: log.timestamp,
+        type: 'comm' as const,
+        data: log,
+      }));
+
+      update_state(prev => ({
+        ...prev,
+        logs: [...prev.logs.filter(log => log.type === 'operation'), ...comm_logs].slice(-500),
+      }));
+    } catch (error) {
+      handle_error(error);
+    }
+  }, [update_state, handle_error]);
+
+  const clear_logs = useCallback((): void => {
+    update_state({ logs: [] });
+  }, [update_state]);
+
+  // 状态管理
+  const reset = useCallback((): void => {
+    set_state(initial_state);
+  }, []);
 
   // 控制方法集合
   const controls: FurnaceControls = {
     connect,
     disconnect,
-    setTemperature,
-    setSegment,
+    set_temperature,
+    set_segment,
     run,
     pause,
     stop,
-    loadSegments,
-    writeSegments,
-    loadPresets,
-    selectPreset,
-    createPreset,
-    updatePreset,
-    deletePreset,
-    clonePreset,
-    applyPreset,
-    loadHistoryData,
-    updateHistoryParams,
-    refreshLogs,
-    clearLogs,
-    addOperationLog,
+    load_segments,
+    write_segments,
+    load_presets,
+    select_preset,
+    create_preset,
+    update_preset,
+    delete_preset,
+    clone_preset,
+    apply_preset,
+    load_history_data,
+    update_history_params,
+    refresh_logs,
+    clear_logs,
+    add_log,
     reset,
-    clearError,
-    refresh,
+    clear_error,
   };
+
+  // ==================== 初始化和清理 ====================
+
+  // 组件挂载时加载预设数据
+  useEffect(() => {
+    load_presets();
+  }, []);
+
+  // 设备连接时自动加载程序段
+  useEffect(() => {
+    if (state.connection_status === 'connected') {
+      load_segments();
+    }
+  }, [state.connection_status, load_segments]);
+
+  // 清理WebSocket连接
+  useEffect(() => {
+    return () => {
+      if (web_socket_status.current.connected) {
+        furnaceWebSocketService.disconnect();
+        web_socket_status.current.connected = false;
+        web_socket_status.current.subscribed = false;
+      }
+    };
+  }, []);
 
   return [state, controls];
 }
 
 export default useFurnace;
-

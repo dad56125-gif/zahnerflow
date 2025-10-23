@@ -17,7 +17,17 @@
       "Bash(pnpm add:*)",
       "Bash(mv:*)",
       "Bash(cp:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(npm run build:backend:*)",
+      "Bash(npm run)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run start)",
+      "Bash(timeout 10 npm start:*)",
+      "Bash(timeout 15 npm start:*)",
+      "Bash(git log:*)",
+      "Bash(rm:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

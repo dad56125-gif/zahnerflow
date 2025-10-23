@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { WorkflowGateway } from './workflow.gateway';
-import { ConsoleDisplayManager } from '../common/console-display-manager.service';
+import { GatewaysModule } from '../modules/shared/gateways.module';
+import { FurnaceModule } from '../modules/furnace/furnace.module';
 
 @Module({
-  imports: [],
-  providers: [WorkflowGateway, ConsoleDisplayManager],
-  exports: [WorkflowGateway],
+  imports: [
+    GatewaysModule,
+    FurnaceModule,
+  ],
 })
 export class GatewayModule {}

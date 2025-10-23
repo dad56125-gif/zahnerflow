@@ -225,4 +225,34 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
     }
     return out;
   }
+
+  /**
+   * 添加熔炉采样数据（用于轮询管理器）
+   */
+  async addFurnaceSample(samplingData: {
+    device_name: string;
+    timestamp: string;
+    temperature: number;
+    sv: number;
+    mv: number;
+  }): Promise<void> {
+    const sample: FurnaceSample = {
+      ts: samplingData.timestamp,
+      pv: samplingData.temperature,
+      sv: samplingData.sv,
+      mv: samplingData.mv,
+      segment: 0,
+      segmentTime: 0,
+      segmentTimeSet: 0,
+    };
+
+    // 添加到内存缓冲区
+    this.furnaceBuf.push(sample);
+
+    // 写入文件
+    const now = new Date(samplingData.timestamp);
+    await this.appendJsonl(path.join(this.baseDir, 'furnace', `${isoDate(now)}.jsonl`), [sample]);
+
+    this.logger.debug(`Added furnace sample: ${samplingData.temperature}°C at ${samplingData.timestamp}`);
+  }
 }
