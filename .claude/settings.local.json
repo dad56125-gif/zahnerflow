@@ -16,7 +16,8 @@
       "Bash(npm install:*)",
       "Bash(pnpm add:*)",
       "Bash(mv:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(tasklist:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

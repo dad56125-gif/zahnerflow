@@ -354,16 +354,41 @@ class AI518PController:
         Returns:
             List[ProgramSegment]: 程序段列表，包含30个程序段的温度和时间设置
         """
+        print(f"[FURNACE API] 开始读取程序段 (设备地址: {self.address}, 串口: {self.port})")
+        start_time = time.time()
+
         segs: List[ProgramSegment] = []
+        success_count = 0
+        error_count = 0
+
         for i in range(30):
             seg_id = i + 1
             temp_code = 0x1A + i * 2
             time_code = 0x1B + i * 2
+
+            # 读取温度参数
             td = self.read_parameter(temp_code)
+            # 读取时间参数
             vd = self.read_parameter(time_code)
+
             temp_c = (td["param_value"] / 10.0) if td else 0.0
             t_min = vd["param_value"] if vd else 0
+
+            # 记录每个段的读取结果
+            if td and vd:
+                success_count += 1
+                if temp_c > 0 or t_min > 0:  # 只记录有效的程序段
+                    print(f"[FURNACE API] 段{seg_id}: 温度={temp_c}°C, 时间={t_min}分钟")
+            else:
+                error_count += 1
+                print(f"[FURNACE API] 段{seg_id}: 读取失败 (温度码:0x{temp_code:02X}, 时间码:0x{time_code:02X})")
+
             segs.append(ProgramSegment(id=seg_id, temperature=temp_c, time=int(t_min * 60)))
+
+        end_time = time.time()
+        duration = (end_time - start_time) * 1000  # 转换为毫秒
+
+        print(f"[FURNACE API] 程序段读取完成 - 成功:{success_count}/30, 失败:{error_count}/30, 耗时:{duration:.1f}ms")
         return segs
 
     def write_program_segments(self, items: List[ProgramSegment]):
@@ -375,17 +400,59 @@ class AI518PController:
         Returns:
             bool: 所有段都写入成功返回True，否则返回False
         """
+        print(f"[FURNACE API] 开始写入程序段 (设备地址: {self.address}, 串口: {self.port}, 段数: {len(items)})")
+        start_time = time.time()
+
         ok = True
+        success_count = 0
+        error_count = 0
+
+        # 先打印要写入的所有段信息
+        print(f"[FURNACE API] 准备写入的程序段:")
+        for it in items:
+            print(f"  段{it.id}: 温度={it.temperature}°C, 时间={it.time//60}分钟")
+
         for it in items:
             idx = it.id - 1
             if idx < 0 or idx > 29:
+                print(f"[FURNACE API] 段{it.id}: 跳过无效段号")
                 continue
+
             temp_code = 0x1A + idx * 2
             time_code = 0x1B + idx * 2
             temp_int = int(round(it.temperature * 10))
             time_min = int(round((it.time or 0) / 60))
-            ok = self.write_parameter(temp_code, temp_int) and ok
-            ok = self.write_parameter(time_code, time_min) and ok
+
+            print(f"[FURNACE API] 段{it.id}: 写入温度={it.temperature}°C (编码:{temp_int}), 时间={time_min}分钟")
+
+            # 写入温度参数
+            temp_ok = self.write_parameter(temp_code, temp_int)
+            if temp_ok:
+                print(f"[FURNACE API] 段{it.id}: 温度写入成功 (代码:0x{temp_code:02X}, 值:{temp_int})")
+            else:
+                print(f"[FURNACE API] 段{it.id}: 温度写入失败 (代码:0x{temp_code:02X}, 值:{temp_int})")
+
+            # 写入时间参数
+            time_ok = self.write_parameter(time_code, time_min)
+            if time_ok:
+                print(f"[FURNACE API] 段{it.id}: 时间写入成功 (代码:0x{time_code:02X}, 值:{time_min})")
+            else:
+                print(f"[FURNACE API] 段{it.id}: 时间写入失败 (代码:0x{time_code:02X}, 值:{time_min})")
+
+            segment_ok = temp_ok and time_ok
+            if segment_ok:
+                success_count += 1
+                print(f"[FURNACE API] 段{it.id}: 写入完成 ✓")
+            else:
+                error_count += 1
+                print(f"[FURNACE API] 段{it.id}: 写入失败 ✗")
+
+            ok = ok and segment_ok
+
+        end_time = time.time()
+        duration = (end_time - start_time) * 1000  # 转换为毫秒
+
+        print(f"[FURNACE API] 程序段写入完成 - 成功:{success_count}/{len(items)}, 失败:{error_count}/{len(items)}, 耗时:{duration:.1f}ms")
         return ok
 
 
@@ -515,23 +582,41 @@ def set_segment(segment: int = Body(...)):
 @app.get("/program/segments")
 def get_program_segments():
     """获取所有程序段设置"""
+    print(f"[FURNACE API] 接收到程序段读取请求")
+
     if not controller:
+        print(f"[FURNACE API] 设备未连接，无法读取程序段")
         return {"error": "not connected"}
+
     try:
-        return [s.model_dump() for s in controller.read_program_segments()]
+        segments = controller.read_program_segments()
+        result = [s.model_dump() for s in segments]
+        print(f"[FURNACE API] 程序段读取API成功返回，返回{len(result)}个段")
+        return result
     except Exception as e:
+        print(f"[FURNACE API] 程序段读取API异常: {str(e)}")
         return {"error": str(e)}
 
 
 @app.post("/program/segments")
 def set_program_segments(items: List[ProgramSegment]):
     """设置程序段"""
+    print(f"[FURNACE API] 接收到程序段写入请求，包含{len(items)}个段")
+
     if not controller:
+        print(f"[FURNACE API] 设备未连接，无法写入程序段")
         return {"error": "not connected"}
+
     try:
+        # 打印接收到的数据概览
+        valid_segments = [s for s in items if 1 <= s.id <= 30]
+        print(f"[FURNACE API] 有效程序段数: {len(valid_segments)} (总共接收到{len(items)}个段)")
+
         ok = controller.write_program_segments(items)
+        print(f"[FURNACE API] 程序段写入API完成，结果: {'成功' if ok else '失败'}")
         return {"ok": bool(ok), "count": len(items)}
     except Exception as e:
+        print(f"[FURNACE API] 程序段写入API异常: {str(e)}")
         return {"ok": False, "error": str(e), "count": len(items)}
 
 
