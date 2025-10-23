@@ -103,10 +103,10 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
         ? arr.map((s: any) => ({
             ts: now.toISOString(),
             address: Number(s.address ?? 0),
-            flowSccm: Number(s.flowSccm ?? 0),
-            flowPercent: Number(s.flowPercent ?? 0),
-            digitalSetpointPercent: Number(s.digitalSetpointPercent ?? 0),
-            activeSetpointPercent: Number(s.activeSetpointPercent ?? 0),
+            flow_sccm: Number(s.flowSccm ?? 0),
+            flow_percent: Number(s.flowPercent ?? 0),
+            digital_setpoint_percent: Number(s.digitalSetpointPercent ?? 0),
+            active_setpoint_percent: Number(s.activeSetpointPercent ?? 0),
           }))
         : [];
       if (list.length) {
