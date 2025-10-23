@@ -130,7 +130,6 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       status: 'disconnected',
       reconnectAttempts: 0,
     },
-    operationState: 'stopped',
     operationState: 'idle',
     segments: [],
     segmentOperation: {
@@ -724,7 +723,6 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         status: 'disconnected',
         reconnectAttempts: 0,
       },
-      operationState: 'stopped',
       operationState: 'idle',
       segments: [],
       presets: [],
@@ -785,46 +783,6 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     loadPresets();
     loadSegments();
   }, []);
-
-  // 实时采样：连接状态下按轮询间隔追加温度样本到 historyData
-  useEffect(() => {
-    if (state.connectionState.status !== 'connected') {
-      return;
-    }
-    let alive = true;
-    const timer = setInterval(async () => {
-      try {
-        const s = await FurnaceApi.getStatus();
-        if (!alive) return;
-
-        const sample: FurnaceSample = {
-          timestamp: new Date().toISOString(),
-          temperature: (s?.pv as number) ?? 0,
-          sv: (s?.sv as number) ?? 0,
-          mv: (s?.mv as number) ?? 0,
-        };
-
-        setState(prev => ({
-          ...prev,
-          status: {
-            pv: (s?.pv as number) ?? (prev.status?.pv ?? 0),
-            sv: (s?.sv as number) ?? (prev.status?.sv ?? 0),
-            mv: (s?.mv as number) ?? (prev.status?.mv ?? 0),
-            status: (s?.status as string) ?? prev.status?.status ?? 'unknown',
-            segment: (s?.segment as number) ?? (prev.status?.segment ?? 0),
-            segment_time: (s?.segment_time as number) ?? (prev.status?.segment_time ?? 0),
-            segment_time_set: (s?.segment_time_set as number) ?? (prev.status?.segment_time_set ?? 0),
-          },
-          lastUpdate: new Date(),
-          historyData: [...(prev.historyData || []), sample],
-        }));
-      } catch (e) {
-        // 静默处理实时轮询错误，避免打断 UI
-      }
-    }, DEFAULT_FURNACE_CONFIG.polling_interval);
-
-    return () => { alive = false; clearInterval(timer); };
-  }, [state.connectionState.status]);
 
   // 控制方法集合
   const controls: FurnaceControls = {

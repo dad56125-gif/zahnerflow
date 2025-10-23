@@ -360,7 +360,15 @@ export class FurnaceApi {
     }
 
     const query = searchParams.toString();
-    return apiRequest<FurnaceSample[]>(`/logs/temperature${query ? `?${query}` : ''}`);
+    const rawData = await apiRequest<any[]>(`/logs/temperature${query ? `?${query}` : ''}`);
+
+    // 数据格式转换：后端格式 -> 前端类型
+    return rawData.map(item => ({
+      timestamp: item.ts,        // ts -> timestamp
+      temperature: item.pv,      // pv -> temperature
+      sv: item.sv,               // sv 保持不变
+      mv: item.mv,               // mv 保持不变
+    }));
   }
 
   // ==================== 设备控制 ====================

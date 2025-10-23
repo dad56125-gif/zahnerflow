@@ -3,6 +3,7 @@ import type { FurnaceState, FurnaceControls } from '../services/hooks/useFurnace
 import { useMfc } from '../services/hooks/useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { FurnaceApi } from '../services/api';
+import { TemperatureChart } from './TemperatureChart';
 import { CommLog, OperationLog } from '../types/devices';
 
 
@@ -301,17 +302,11 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({ device, onClose, modal
                         刷新数据
                       </button>
                     </div>
-                    <div className="chart-placeholder">
-                      {furnaceState.historyData.length > 0 ? (
-                        <div className="chart-data-available">
-                          <p>已加载 {furnaceState.historyData.length} 个数据点</p>
-                          {/* 这里可以集成图表库如 Chart.js */}
-                        </div>
-                      ) : (
-                        <div className="no-data">
-                          {furnaceState.isLoading ? '加载中...' : '等待数据...'}
-                        </div>
-                      )}
+                    <div className="chart-content">
+                      <TemperatureChart
+                        data={furnaceState.historyData}
+                        is_loading={furnaceState.isLoading}
+                      />
                     </div>
                   </div>
 

@@ -12,7 +12,9 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(npm run dev:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
