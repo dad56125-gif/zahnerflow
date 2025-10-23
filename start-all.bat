@@ -49,7 +49,7 @@ echo Starting Furnace FastAPI Server on port 8011...
 start "Furnace FastAPI" cmd /k "cd /d "%~dp0apps\backend\src\modules\furnace\fastapi" && python ai518p_device.py"
 
  echo Starting Python API Server on port 8000...
-start "Python API" cmd /k "cd /d C:\Users\Dushuaijia\Documents\Code\ZAHNERFLOW\apps\backend\src\modules\zahner-zennium\fastapi && python zahner_device.py"
+start "Python API" cmd /k "cd /d "%~dp0apps\backend\src\modules\zahner-zennium\fastapi" && python zahner_device.py"
 
 echo.
 echo ========================================
