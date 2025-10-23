@@ -14,7 +14,9 @@
       "Bash(npm run dev:*)",
       "Bash(curl:*)",
       "Bash(npm install:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
