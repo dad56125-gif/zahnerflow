@@ -94,6 +94,12 @@ export class SamplingService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const st = await this.furnace.status();
+
+      // 如果轮询被暂停，status()会返回undefined，跳过本次采样
+      if (st === undefined) {
+        return; // 静默跳过，不记录日志避免噪音
+      }
+
       const sample: FurnaceSample = {
         ts: now.toISOString(),
         pv: Number(st.pv ?? 0),

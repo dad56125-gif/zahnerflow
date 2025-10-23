@@ -11,6 +11,7 @@ export class FurnaceDeviceService {
   private isBusy = false;
   private lastBusyTime = 0;
   private readonly busyCooldownMs = 3000; // 3秒冷却时间
+  private isPollingPaused = false; // 新增：轮询暂停标志
 
   constructor() {
     this.baseURL = process.env.FURNACE_FASTAPI_URL || 'http://127.0.0.1:8011';
@@ -43,6 +44,12 @@ export class FurnaceDeviceService {
   }
 
   async status(): Promise<any> {
+    // 如果轮询被暂停，直接跳过本次请求
+    if (this.isPollingPaused) {
+      this.logger.debug('轮询已暂停，跳过status请求');
+      return;
+    }
+
     // 检查是否需要使用扩展超时
     const needsExtendedTimeout = this.isBusy ||
       (Date.now() - this.lastBusyTime < this.busyCooldownMs);
@@ -66,6 +73,23 @@ export class FurnaceDeviceService {
     }
   }
 
+  // 新增：暂停轮询的方法
+  pausePolling(): void {
+    this.isPollingPaused = true;
+    this.logger.debug('轮询已暂停');
+  }
+
+  // 新增：恢复轮询的方法
+  resumePolling(): void {
+    this.isPollingPaused = false;
+    this.logger.debug('轮询已恢复');
+  }
+
+  // 新增：检查轮询是否暂停
+  isPollingPausedState(): boolean {
+    return this.isPollingPaused;
+  }
+
   async run(): Promise<any> { const { data } = await this.http.post('/run', {}); return data; }
   async pause(): Promise<any> { const { data } = await this.http.post('/pause', {}); return data; }
   async stop(): Promise<any> { const { data } = await this.http.post('/stop', {}); return data; }
@@ -81,10 +105,8 @@ export class FurnaceDeviceService {
   }
 
   async getProgramSegments(): Promise<any> {
-    // 程序段读取期间，标记为忙碌状态
-    this.isBusy = true;
-    this.lastBusyTime = Date.now();
-    this.logger.debug('开始读取程序段，设备进入忙碌状态');
+    // 暂停轮询
+    this.pausePolling();
 
     try {
       this.http.defaults.timeout = this.extendedTimeout;
@@ -93,19 +115,15 @@ export class FurnaceDeviceService {
     } catch (error) {
       throw error;
     } finally {
-      // 程序段读取完成后，保持忙碌状态一段时间以避免立即轮询
-      setTimeout(() => {
-        this.isBusy = false;
-        this.logger.debug('程序段读取完成，设备退出忙碌状态');
-      }, this.busyCooldownMs);
+      // 程序段读取完成后，立即恢复轮询
+      this.resumePolling();
+      this.logger.debug('程序段读取完成，恢复轮询');
     }
   }
 
   async setProgramSegments(segments: Array<{ id: number; temperature: number; time: number }>): Promise<any> {
-    // 程序段写入期间，标记为忙碌状态
-    this.isBusy = true;
-    this.lastBusyTime = Date.now();
-    this.logger.debug('开始写入程序段，设备进入忙碌状态');
+    // 暂停轮询
+    this.pausePolling();
 
     try {
       this.http.defaults.timeout = this.extendedTimeout;
@@ -114,11 +132,9 @@ export class FurnaceDeviceService {
     } catch (error) {
       throw error;
     } finally {
-      // 程序段写入完成后，保持忙碌状态一段时间以避免立即轮询
-      setTimeout(() => {
-        this.isBusy = false;
-        this.logger.debug('程序段写入完成，设备退出忙碌状态');
-      }, this.busyCooldownMs);
+      // 程序段写入完成后，立即恢复轮询
+      this.resumePolling();
+      this.logger.debug('程序段写入完成，恢复轮询');
     }
   }
 }
