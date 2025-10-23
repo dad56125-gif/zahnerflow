@@ -4,7 +4,7 @@
  * 封装加热炉设备的所有状态管理和操作逻辑
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useConditionalPolling } from './usePolling';
 import { FurnaceApi } from '../api';
 import {
@@ -130,7 +130,6 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       status: 'disconnected',
       reconnectAttempts: 0,
     },
-    operationState: 'stopped',
     operationState: 'idle',
     segments: [],
     segmentOperation: {
@@ -155,8 +154,11 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   });
 
   // 更新状态的辅助函数
-  const updateState = useCallback((updates: Partial<FurnaceState>) => {
-    setState(prev => ({ ...prev, ...updates }));
+  const updateState = useCallback((updates: Partial<FurnaceState> | ((prevState: FurnaceState) => Partial<FurnaceState>)) => {
+    setState(prev => {
+      const updatesToApply = typeof updates === 'function' ? updates(prev) : updates;
+      return { ...prev, ...updatesToApply };
+    });
   }, []);
 
   // 设置加载状态
@@ -187,7 +189,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       }
     });
     // 2秒后重置进度显示
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       updateState({
         segmentOperation: {
           isLoading: false,
@@ -197,6 +199,9 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         }
       });
     }, 2000);
+
+    // 返回清理函数
+    return () => clearTimeout(timer);
   }, [updateState]);
 
   // 设置错误状态
@@ -208,6 +213,10 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const clearError = useCallback(() => {
     updateState({ error: null });
   }, [updateState]);
+
+  // 用于存储定时器的引用
+  const rateLimitTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const samplingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 处理API错误的通用函数
   const handleApiError = useCallback((error: any): void => {
@@ -222,16 +231,25 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         },
       });
 
-      // 设置倒计时，结束后解除限流状态
-      setTimeout(() => {
+      // 清除之前的限流定时器
+      const timerKey = 'rate_limit';
+      const existingTimer = rateLimitTimers.current.get(timerKey);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      // 设置新的倒计时，结束后解除限流状态
+      const timer = setTimeout(() => {
         updateState({
           rateLimitInfo: {
             isLimited: false,
             retryAfter: 0,
           },
         });
+        rateLimitTimers.current.delete(timerKey);
       }, deviceError.retry_after * 1000);
 
+      rateLimitTimers.current.set(timerKey, timer);
       setError(deviceError);
       return;
     }
@@ -330,10 +348,10 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       } as OperationLog
     };
 
-    updateState({
-      logs: [...(state.logs || []), logEntry].slice(-500)
-    });
-  }, [updateState, state.logs]);
+    updateState((prevState) => ({
+      logs: [...(prevState.logs || []), logEntry].slice(-500)
+    }));
+  }, [updateState]);
 
   // ==================== 连接控制 ====================
 
@@ -615,9 +633,13 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       await loadPresets();
 
       // 如果更新的是当前选中的预设，也更新选中状态
-      if (state.selectedPreset?.name === name) {
-        await selectPreset(name);
-      }
+      updateState((prevState) => {
+        if (prevState.selectedPreset?.name === name) {
+          // 异步更新预设，不在这里等待
+          selectPreset(name);
+        }
+        return {};
+      });
 
     } catch (error) {
       handleApiError(error);
@@ -636,9 +658,12 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       await loadPresets();
 
       // 如果删除的是当前选中的预设，清除选中状态
-      if (state.selectedPreset?.name === name) {
-        updateState({ selectedPreset: null });
-      }
+      updateState((prevState) => {
+        if (prevState.selectedPreset?.name === name) {
+          return { selectedPreset: null };
+        }
+        return {};
+      });
 
     } catch (error) {
       handleApiError(error);
@@ -690,12 +715,20 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       setLoading(true);
       clearError();
 
-      const finalParams = params || state.historyParams;
-      const historyData = await FurnaceApi.getTemperatureHistory(finalParams);
+      updateState((prevState) => {
+        const finalParams = params || prevState.historyParams;
 
-      updateState({
-        historyData,
-        historyParams: finalParams,
+        // 异步加载数据
+        FurnaceApi.getTemperatureHistory(finalParams)
+          .then(historyData => {
+            updateState({
+              historyData,
+              historyParams: finalParams,
+            });
+          })
+          .catch(handleApiError);
+
+        return {};
       });
 
     } catch (error) {
@@ -704,16 +737,16 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState, state.historyParams]);
+  }, [setLoading, clearError, handleApiError, updateState]);
 
   const updateHistoryParams = useCallback((params: Partial<HistoryQueryParams>): void => {
-    updateState({
+    updateState((prevState) => ({
       historyParams: {
-        ...state.historyParams,
+        ...prevState.historyParams,
         ...params,
       },
-    });
-  }, [updateState, state.historyParams]);
+    }));
+  }, [updateState]);
 
   // ==================== 状态管理 ====================
 
@@ -724,7 +757,6 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         status: 'disconnected',
         reconnectAttempts: 0,
       },
-      operationState: 'stopped',
       operationState: 'idle',
       segments: [],
       presets: [],
@@ -757,10 +789,10 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         data: log
       }));
 
-      updateState({
+      updateState((prevState) => ({
         // 合并现有操作日志和新通信日志，保持最多500条
-        logs: [...(state.logs || []).filter((log: LogEntry) => log.type === 'operation'), ...commLogEntries].slice(-500)
-      });
+        logs: [...(prevState.logs || []).filter((log: LogEntry) => log.type === 'operation'), ...commLogEntries].slice(-500)
+      }));
     } catch (error) {
       handleApiError(error);
     }
@@ -786,13 +818,33 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     loadSegments();
   }, []);
 
+  // 清理所有定时器的effect
+  useEffect(() => {
+    return () => {
+      // 组件卸载时清理所有定时器
+      rateLimitTimers.current.forEach(timer => clearTimeout(timer));
+      rateLimitTimers.current.clear();
+
+      if (samplingTimerRef.current) {
+        clearInterval(samplingTimerRef.current);
+        samplingTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // 实时采样：连接状态下按轮询间隔追加温度样本到 historyData
   useEffect(() => {
     if (state.connectionState.status !== 'connected') {
       return;
     }
     let alive = true;
-    const timer = setInterval(async () => {
+
+    // 清除之前的采样定时器
+    if (samplingTimerRef.current) {
+      clearInterval(samplingTimerRef.current);
+    }
+
+    samplingTimerRef.current = setInterval(async () => {
       try {
         const s = await FurnaceApi.getStatus();
         if (!alive) return;
@@ -823,7 +875,13 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       }
     }, DEFAULT_FURNACE_CONFIG.polling_interval);
 
-    return () => { alive = false; clearInterval(timer); };
+    return () => {
+      alive = false;
+      if (samplingTimerRef.current) {
+        clearInterval(samplingTimerRef.current);
+        samplingTimerRef.current = null;
+      }
+    };
   }, [state.connectionState.status]);
 
   // 控制方法集合
