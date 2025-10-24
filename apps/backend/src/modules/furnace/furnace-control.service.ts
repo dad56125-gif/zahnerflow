@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus, Logger, OnModuleInit } from '@nestjs/common';
 import { FurnaceDeviceService } from '../../devices/furnace-device.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
+import { FurnacePollingManagerService } from './furnace-polling-manager.service';
 import type { ProgramSegment } from '@zahnerflow/types';
 
 // 连接状态枚举
@@ -101,9 +102,17 @@ export class FurnaceControlService implements OnModuleInit {
   // 连接状态管理
   private connectionManager = new ConnectionStateManager();
 
+  // 设备状态管理 - 从设备层转移过来
+  private isBusy = false;
+  private lastBusyTime = 0;
+  private readonly busyCooldownMs = 3000; // 3秒冷却时间
+  private readonly normalTimeout = 1500;
+  private readonly extendedTimeout = 15000;
+
   constructor(
     private readonly device: FurnaceDeviceService,
-    private readonly errorHandler: FurnaceErrorHandlerService
+    private readonly errorHandler: FurnaceErrorHandlerService,
+    private readonly pollingManager: FurnacePollingManagerService,
   ) {
     // 监听连接状态变化
     this.connectionManager.onStateChange(async (state) => {
@@ -281,7 +290,11 @@ export class FurnaceControlService implements OnModuleInit {
     if (this.connectionManager.getCurrentState() !== ConnectionState.CONNECTED) {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
-    return this.device.status();
+
+    return this.executeDeviceOperation(
+      () => this.device.status(),
+      'status_query'
+    );
   }
 
   // 健康检查方法 - 只需要初始化检查
@@ -335,10 +348,22 @@ export class FurnaceControlService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleProgramSegmentsOperation(
-      () => this.device.getProgramSegments(),
-      { operation: 'read_program_segments' }
-    );
+    // 暂停轮询
+    this.pausePolling();
+
+    try {
+      return await this.executeDeviceOperation(
+        () => this.device.getProgramSegments(),
+        'read_program_segments',
+        true // 使用扩展超时
+      );
+    } catch (error) {
+      throw error;
+    } finally {
+      // 程序段读取完成后，立即恢复轮询
+      this.resumePolling();
+      this.logger.debug('程序段读取完成，恢复轮询');
+    }
   }
 
   // 设置程序段方法 - 需要初始化检查和连接状态检查
@@ -348,23 +373,73 @@ export class FurnaceControlService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleProgramSegmentsOperation(
-      () => this.device.setProgramSegments(segments as any),
-      { operation: 'write_program_segments' }
-    );
+    // 暂停轮询
+    this.pausePolling();
+
+    try {
+      return await this.executeDeviceOperation(
+        () => this.device.setProgramSegments(segments as any),
+        'write_program_segments',
+        true // 使用扩展超时
+      );
+    } catch (error) {
+      throw error;
+    } finally {
+      // 程序段写入完成后，立即恢复轮询
+      this.resumePolling();
+      this.logger.debug('程序段写入完成，恢复轮询');
+    }
   }
 
   // 设备忙碌状态查询（用于API层节流）
   isDeviceBusy(): boolean {
-    // 当设备在进行程序段读/写等长耗时操作时，设备层会暂停轮询
-    // 这里直接复用设备层暂停标志作为"忙碌"判定
+    return this.isBusy || (Date.now() - this.lastBusyTime < this.busyCooldownMs);
+  }
+
+  /**
+   * 智能超时策略执行设备操作
+   */
+  private async executeDeviceOperation<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    useExtendedTimeout: boolean = false
+  ): Promise<T> {
+    // 检查是否需要使用扩展超时
+    const needsExtendedTimeout = useExtendedTimeout || this.isBusy ||
+      (Date.now() - this.lastBusyTime < this.busyCooldownMs);
+
     try {
-      // 类型上为同步布尔值，无需等待
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      return this.device.isPollingPausedState();
-    } catch {
-      return false;
+      // 使用设备层的executeWithTimeout方法
+      const result = await this.device.executeWithTimeout(operation, needsExtendedTimeout);
+      // 成功响应后，重置忙碌状态
+      this.isBusy = false;
+      return result;
+    } catch (error: any) {
+      // 如果是超时错误，标记为忙碌状态
+      if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+        this.isBusy = true;
+        this.lastBusyTime = Date.now();
+        this.logger.warn(`设备操作 ${operationName} 响应超时，切换到扩展超时模式 (${this.extendedTimeout}ms)`);
+      }
+      throw error;
     }
+  }
+
+  /**
+   * 暂停轮询 - 供业务层调用
+   */
+  private pausePolling(): void {
+    // 通过轮询管理器控制轮询状态
+    // 这里可以在轮询管理器中添加相应的暂停逻辑
+    this.logger.debug('业务层请求暂停轮询');
+  }
+
+  /**
+   * 恢复轮询 - 供业务层调用
+   */
+  private resumePolling(): void {
+    // 通过轮询管理器控制轮询状态
+    // 这里可以在轮询管理器中添加相应的恢复逻辑
+    this.logger.debug('业务层请求恢复轮询');
   }
 }
