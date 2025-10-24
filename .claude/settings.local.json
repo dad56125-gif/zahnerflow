@@ -27,7 +27,13 @@
       "Bash(timeout 10 npm start:*)",
       "Bash(timeout 15 npm start:*)",
       "Bash(git log:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(pkill:*)",
+      "Bash(awk:*)",
+      "Bash(pnpm:*)",
+      "Bash(cmd:*)",
+      "Bash(wmic:*)",
+      "Bash(powershell:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

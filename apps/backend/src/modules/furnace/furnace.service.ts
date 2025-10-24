@@ -73,6 +73,10 @@ export class FurnaceService implements OnModuleInit {
     return this.furnaceControl.getStatus();
   }
 
+  async health(): Promise<any> {
+    return this.furnaceControl.getHealth();
+  }
+
   async ports(): Promise<string[]> {
     return this.furnaceControl.getPorts();
   }

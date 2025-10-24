@@ -7,7 +7,7 @@ import { MfcService } from '../mfc/mfc.service';
 @Global()
 @Module({
   providers: [SamplingService, FurnaceDeviceService, MfcDeviceService, MfcService],
-  exports: [SamplingService],
+  exports: [SamplingService, FurnaceDeviceService],
 })
 export class SamplingModule {}
 

@@ -284,6 +284,12 @@ export class FurnaceControlService implements OnModuleInit {
     return this.device.status();
   }
 
+  // 健康检查方法 - 只需要初始化检查
+  async getHealth(): Promise<any> {
+    await this.ensureInitialized();
+    return this.device.health();
+  }
+
   // 端口方法 - 只需要初始化检查
   async getPorts(): Promise<string[]> {
     await this.ensureInitialized();

@@ -4,6 +4,42 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { NotificationService } from './notification/notification.service';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { BadRequestException, ExceptionFilter, Catch, Logger, ArgumentsHost, HttpException } from '@nestjs/common';
+
+/**
+ * 自定义异常过滤器 - 简化 Axios 错误输出
+ */
+@Catch()
+export class SimplifiedAxiosExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(SimplifiedAxiosExceptionFilter.name);
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    // 只处理 Axios 错误，简化输出
+    if (this.isAxiosError(exception)) {
+      const axiosError = exception as any;
+      this.logger.error(`❌ API Error: ${axiosError.code} | ${axiosError.message} | ${this.extractEndpoint(axiosError)}`);
+      return;
+    }
+
+    // 其他异常保持默认处理
+    this.logger.error('❌ Unexpected Error:', exception);
+  }
+
+  private isAxiosError(exception: unknown): boolean {
+    return exception &&
+           typeof exception === 'object' &&
+           'code' in exception &&
+           ('config' in exception || 'request' in exception);
+  }
+
+  private extractEndpoint(axiosError: any): string {
+    try {
+      return axiosError.config?.url?.split('/').pop() || 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  }
+}
 
 /**
  * 应用程序启动类
@@ -13,6 +49,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
+
+  // 应用自定义异常过滤器，简化 Axios 错误输出
+  app.useGlobalFilters(new SimplifiedAxiosExceptionFilter());
 
   // 启用WebSocket适配器（在服务器启动之前）
   app.useWebSocketAdapter(new IoAdapter(app));

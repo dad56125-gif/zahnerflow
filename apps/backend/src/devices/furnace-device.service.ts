@@ -14,6 +14,7 @@ export class FurnaceDeviceService {
   private isPollingPaused = false; // 新增：轮询暂停标志
 
   constructor() {
+    // 连接到Python FastAPI服务端口
     this.baseURL = process.env.FURNACE_FASTAPI_URL || 'http://127.0.0.1:8011';
     this.http = axios.create({ baseURL: this.baseURL, timeout: this.normalTimeout });
   }

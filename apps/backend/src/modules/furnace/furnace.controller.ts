@@ -47,7 +47,7 @@ export class FurnaceController {
     }
     return this.svc.status();
   }
-  @Get('health') health() { return this.svc['device'].health(); }
+  @Get('health') health() { return this.svc.health(); }
   @Get('ports') ports() { return this.svc.ports(); }
   @Get('comm-log') getCommLog() { return this.svc.getCommLog(); }
   @Post('sv') sv(@Body() body: { sv: number }) { return this.svc.setSv(body.sv); }

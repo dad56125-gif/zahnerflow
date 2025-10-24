@@ -372,21 +372,42 @@ export class ErrorMonitor {
   }
 
   private handleBySeverity(error: ErrorInfo): void {
+    // 生成简洁的错误信息，专注关键业务信息
+    const errorSummary = this.formatErrorSummary(error);
+
     switch (error.severity) {
       case ErrorSeverity.CRITICAL:
-        console.error('🚨 CRITICAL ERROR:', error);
+        console.error(`🚨 CRITICAL: ${errorSummary}`);
         // 可以添加告警通知逻辑
         break;
       case ErrorSeverity.HIGH:
-        console.error('⚠️ HIGH SEVERITY ERROR:', error);
+        console.error(`⚠️ HIGH: ${errorSummary}`);
         break;
       case ErrorSeverity.MEDIUM:
-        console.warn('⚡ MEDIUM SEVERITY ERROR:', error);
+        console.warn(`⚡ MEDIUM: ${errorSummary}`);
         break;
       case ErrorSeverity.LOW:
-        console.log('ℹ️ LOW SEVERITY ERROR:', error);
+        console.log(`ℹ️ LOW: ${errorSummary}`);
         break;
     }
+
+    // 仅在开发环境显示详细错误信息
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('Detailed error info:', error);
+    }
+  }
+
+  /**
+   * 格式化错误摘要，只包含关键业务信息
+   */
+  private formatErrorSummary(error: ErrorInfo): string {
+    const parts = [
+      error.code,
+      error.category,
+      error.suggested_action ? `Action: ${error.suggested_action}` : null
+    ].filter(Boolean);
+
+    return parts.join(' | ');
   }
 
   getErrorStats() {

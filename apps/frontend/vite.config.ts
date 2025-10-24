@@ -18,8 +18,9 @@ export default defineConfig({
     port: 8083,
     host: true,
     proxy: {
+      // 所有设备 API 都通过统一的后端访问
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true
       }
     }
