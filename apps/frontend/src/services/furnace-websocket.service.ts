@@ -57,7 +57,7 @@ export class FurnaceWebSocketService {
     error: [] as ((error: any) => void)[],
   };
 
-  constructor(private serverUrl: string = 'http://localhost:3001') {}
+  constructor(private serverUrl: string = window.location.origin) {}
 
   /**
    * 连接WebSocket服务器

@@ -73,7 +73,7 @@ export class StateLinkageManager {
 
   private async checkBackendServices(): Promise<void> {
     try {
-      const response = await fetch('http://localhost:3001/health', {
+      const response = await fetch('/health', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(3000)
@@ -88,7 +88,7 @@ export class StateLinkageManager {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/health', {
+      const response = await fetch('/api/devices/zahner-zennium/health', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(3000)

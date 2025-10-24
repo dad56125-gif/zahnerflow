@@ -22,6 +22,12 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true
+      },
+      // WebSocket连接也通过代理
+      '/socket.io': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+        ws: true
       }
     }
   },
