@@ -36,7 +36,12 @@
       "Bash(powershell:*)",
       "Bash(python:*)",
       "Read(//c/Users/Dushuaijia/.claude/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx nest build:*)",
+      "Bash(npx nest info:*)",
+      "Bash(npm --version:*)",
+      "Bash(SMOKETEST=1 node:*)",
+      "Bash(npx nest:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
