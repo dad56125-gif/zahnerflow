@@ -1,10 +1,9 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { MfcService } from './mfc.service';
-import { SamplingService } from '../sampling/sampling.service';
 
 @Controller('/api/devices/mfc')
 export class MfcController {
-  constructor(private readonly svc: MfcService, private readonly sampling: SamplingService) {}
+  constructor(private readonly svc: MfcService) {}
 
   @Post('scan') scan(@Body() body: { start?: number; end?: number }) { return this.svc.scan(body?.start, body?.end); }
   @Get('devices') devices() { return this.svc.getDevices(); }
@@ -16,7 +15,7 @@ export class MfcController {
       timeout: body?.timeout,
     };
     const result = await this.svc.connect(connect_payload);
-    this.sampling.mark_device_activity('mfc');
+    // 数据管理移除，MFC现在自管理
     return result;
   }
   @Post('disconnect')
@@ -24,11 +23,11 @@ export class MfcController {
     try {
       return await this.svc.disconnect();
     } finally {
-      this.sampling.mark_device_inactive('mfc');
+      // 数据管理移除，MFC现在自管理
     }
   }
   @Get('status') status(@Query('address') address?: string) {
-    this.sampling.mark_device_activity('mfc');
+    // 数据管理移除，MFC现在自管理
     return this.svc.status(address != null ? Number(address) : undefined);
   }
   @Get('health') health() { return (this as any).svc['device'].health(); }
@@ -42,6 +41,10 @@ export class MfcController {
     @Query('limit') limit?: string,
     @Query('downsample') downsample?: string,
   ) {
-    return this.sampling.queryMfc(address != null ? Number(address) : undefined, from, to, limit ? Number(limit) : undefined, downsample ? Number(downsample) : undefined);
+    // 数据查询移除，MFC现在自管理
+    return {
+      data: [],
+      message: 'MFC data logging has been removed'
+    };
   }
 }

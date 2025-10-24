@@ -8,10 +8,10 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ConsoleDisplayManager } from '../common/console-display-manager.service';
-import { FurnacePollingManagerService } from '../modules/furnace/furnace-polling-manager.service';
+import { FurnaceService } from '../modules/furnace/furnace.service';
 
 interface FurnaceClient {
   id: string;
@@ -41,7 +41,8 @@ export class FurnaceGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   private readonly logger = new ConsoleDisplayManager();
 
   constructor(
-    private readonly furnacePollingManager: FurnacePollingManagerService,
+    @Inject(forwardRef(() => FurnaceService))
+    private readonly furnaceService: FurnaceService,
   ) {}
 
   afterInit(server: Server) {
@@ -75,7 +76,7 @@ export class FurnaceGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     const clientInfo = this.clients.get(client.id);
     if (clientInfo?.isSubscribedToFurnace) {
       // 取消订阅熔炉更新
-      this.furnacePollingManager.unsubscribe(client.id);
+      this.furnaceService.unsubscribe_from_furnace_updates(client.id);
     }
 
     this.clients.delete(client.id);
@@ -93,7 +94,7 @@ export class FurnaceGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     clientInfo.lastActivity = new Date();
 
     // 订阅熔炉轮询管理器的更新
-    this.furnacePollingManager.subscribe(client.id);
+    this.furnaceService.subscribe_to_furnace_updates(client.id);
 
     this.logger.log('FurnaceGateway', 'enableLog', `Client ${client.id} subscribed to furnace updates`);
 
@@ -115,7 +116,7 @@ export class FurnaceGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     clientInfo.lastActivity = new Date();
 
     // 取消订阅熔炉轮询管理器的更新
-    this.furnacePollingManager.unsubscribe(client.id);
+    this.furnaceService.unsubscribe_from_furnace_updates(client.id);
 
     this.logger.log('FurnaceGateway', 'enableLog', `Client ${client.id} unsubscribed from furnace updates`);
 

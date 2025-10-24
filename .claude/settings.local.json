@@ -35,7 +35,8 @@
       "Bash(wmic:*)",
       "Bash(powershell:*)",
       "Bash(python:*)",
-      "Read(//c/Users/Dushuaijia/.claude/**)"
+      "Read(//c/Users/Dushuaijia/.claude/**)",
+      "Bash(find:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

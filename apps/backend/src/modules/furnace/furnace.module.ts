@@ -1,35 +1,30 @@
 import { Module } from '@nestjs/common';
 import { FurnaceController } from './furnace.controller';
 import { FurnaceService } from './furnace.service';
-import { FurnaceControlService } from './furnace-control.service';
 import { FurnaceDataService } from './furnace-data.service';
-import { FurnacePollingManagerService } from './furnace-polling-manager.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
-import { SamplingModule } from '../sampling/sampling.module';
 import { GatewaysModule } from '../shared/gateways.module';
 import { FurnaceGateway } from '../../gateways/furnace.gateway';
+import { WorkflowGateway } from '../../gateways/workflow.gateway';
 
 @Module({
   imports: [
-    SamplingModule,
     GatewaysModule,
   ],
   controllers: [FurnaceController],
   providers: [
     FurnaceService,
-    FurnaceControlService,
     FurnaceDataService,
-    FurnacePollingManagerService,
     FurnaceErrorHandlerService,
     FurnaceGateway,
+    WorkflowGateway,
   ],
   exports: [
     FurnaceService,
-    FurnaceControlService,
     FurnaceDataService,
-    FurnacePollingManagerService,
     FurnaceErrorHandlerService,
     FurnaceGateway,
+    WorkflowGateway,
   ],
 })
 export class FurnaceModule {}

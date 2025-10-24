@@ -1,7 +1,7 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger, OnModuleInit } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import type { FurnacePreset, ProgramSegment } from '@zahnerflow/types';
+import type { FurnacePreset, ProgramSegment, FurnaceSample } from '@zahnerflow/types';
 
 /**
  * 预设写入限制器
@@ -25,20 +25,33 @@ class PresetWriteLimiter {
   }
 }
 
+function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+
 /**
  * 熔炉数据管理服务
  * 负责所有数据管理相关逻辑：预设管理、历史数据、数据持久化等
  */
 @Injectable()
-export class FurnaceDataService {
+export class FurnaceDataService implements OnModuleInit {
   private readonly logger = new Logger(FurnaceDataService.name);
   private readonly dataDir: string;
   private readonly presetFile: string;
+  private readonly samplesDir: string;
   private writeLimiter = new PresetWriteLimiter();
+
+  // 采样数据缓冲区
+  private furnaceBuf: FurnaceSample[] = [];
+  private readonly maxKeepMs = 3600 * 1000; // 1h
 
   constructor() {
     this.dataDir = path.join(process.cwd(), 'apps', 'backend', 'data', 'furnace');
     this.presetFile = path.join(this.dataDir, 'presets.json');
+    this.samplesDir = path.join(this.dataDir, 'samples');
+  }
+
+  async onModuleInit() {
+    await fs.mkdir(this.dataDir, { recursive: true });
+    await fs.mkdir(this.samplesDir, { recursive: true });
   }
 
   // ---------- 数据目录管理 ----------
@@ -218,10 +231,110 @@ export class FurnaceDataService {
     return true;
   }
 
+  // ---------- 采样数据管理 ----------
+  /**
+   * 添加熔炉采样数据（用于轮询管理器）
+   */
+  async addFurnaceSample(samplingData: {
+    device_name: string;
+    timestamp: string;
+    temperature: number;
+    sv: number;
+    mv: number;
+  }): Promise<void> {
+    const sample: FurnaceSample = {
+      ts: samplingData.timestamp,
+      pv: samplingData.temperature,
+      sv: samplingData.sv,
+      mv: samplingData.mv,
+      segment: 0,
+      segmentTime: 0,
+      segmentTimeSet: 0,
+    };
+
+    // 添加到内存缓冲区
+    this.furnaceBuf.push(sample);
+
+    // 写入文件
+    const now = new Date(samplingData.timestamp);
+    await this.appendJsonl(path.join(this.samplesDir, `${isoDate(now)}.jsonl`), [sample]);
+
+    this.logger.debug(`Added furnace sample: ${samplingData.temperature}°C at ${samplingData.timestamp}`);
+  }
+
+  /**
+   * 查询熔炉历史数据
+   */
+  async queryFurnace(from?: string, to?: string, limit?: number, downsample?: number) {
+    return this.queryGeneric(this.furnaceBuf, from, to, limit, downsample);
+  }
+
+  private async appendJsonl(filePath: string, data: any | any[]) {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    const lines = Array.isArray(data) ? data.map((x) => JSON.stringify(x)).join('\n') + '\n' : JSON.stringify(data) + '\n';
+    await fs.appendFile(filePath, lines, 'utf-8');
+  }
+
+  private async queryGeneric(mem: any[], from?: string, to?: string, limit?: number, downsample?: number) {
+    const fromMs = from ? new Date(from).getTime() : 0;
+    const toMs = to ? new Date(to).getTime() : Date.now();
+    // from..to day files
+    const days = this.enumerateDays(fromMs, toMs);
+    const fileData = await this.readFiles(days, fromMs, toMs);
+    const memData = mem.filter((s) => {
+      const t = new Date(s.ts).getTime();
+      return t >= fromMs && t <= toMs;
+    });
+    let merged = [...fileData, ...memData];
+    merged.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+    if (downsample && downsample > 1) {
+      merged = merged.filter((_, i) => i % downsample === 0);
+    }
+    if (limit && limit > 0 && merged.length > limit) {
+      merged = merged.slice(-limit);
+    }
+    return merged;
+  }
+
+  private enumerateDays(fromMs: number, toMs: number): string[] {
+    const days: string[] = [];
+    const d = new Date(fromMs);
+    d.setUTCHours(0, 0, 0, 0);
+    while (d.getTime() <= toMs) {
+      days.push(d.toISOString().slice(0, 10));
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return days;
+  }
+
+  private async readFiles(days: string[], fromMs: number, toMs: number): Promise<any[]> {
+    const out: any[] = [];
+    for (const day of days) {
+      const p = path.join(this.samplesDir, `${day}.jsonl`);
+      try {
+        const raw = await fs.readFile(p, 'utf-8');
+        for (const line of raw.split(/\r?\n/)) {
+          const s = line.trim(); if (!s) continue;
+          try {
+            const obj = JSON.parse(s);
+            const t = new Date(obj.ts).getTime();
+            if (t >= fromMs && t <= toMs) out.push(obj);
+          } catch {}
+        }
+      } catch {}
+    }
+    return out;
+  }
+
+  private trimBuffers(now: Date) {
+    const cutoff = now.getTime() - this.maxKeepMs;
+    this.furnaceBuf = this.furnaceBuf.filter(s => new Date(s.ts).getTime() >= cutoff);
+  }
+
   // ---------- 历史数据管理 ----------
   /**
    * 获取历史数据
-   * TODO: 集成采样服务实现历史数据查询
    */
   async getHistoryData(params: {
     start_date?: string;
@@ -229,13 +342,10 @@ export class FurnaceDataService {
     limit?: number;
     offset?: number;
   }): Promise<any> {
-    // 这里应该调用采样服务获取历史数据
-    this.logger.log(`Getting history data with params: ${JSON.stringify(params)}`);
-
-    // 临时返回空数组，实际实现中需要集成采样服务
+    const data = await this.queryFurnace(params.start_date, params.end_date, params.limit);
     return {
-      data: [],
-      total: 0,
+      data,
+      total: data.length,
       params
     };
   }

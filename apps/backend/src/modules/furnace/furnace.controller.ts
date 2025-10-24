@@ -1,7 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { FurnaceService } from './furnace.service';
-import { FurnacePollingManagerService } from './furnace-polling-manager.service';
-import { SamplingService } from '../sampling/sampling.service';
+import { FurnaceDataService } from './furnace-data.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
 
 // 导入连接状态枚举 - 从FurnaceService导出
@@ -11,8 +10,7 @@ import { ConnectionState } from './furnace.service';
 export class FurnaceController {
   constructor(
     private readonly svc: FurnaceService,
-    private readonly pollingManager: FurnacePollingManagerService,
-    private readonly sampling: SamplingService,
+    private readonly furnaceData: FurnaceDataService,
     private readonly errorHandler: FurnaceErrorHandlerService,
   ) {}
 
@@ -20,7 +18,7 @@ export class FurnaceController {
   @Post('connect')
   async connect(@Body() body: any) {
     const result = await this.svc.passthrough('connect', body);
-    this.sampling.mark_device_activity('furnace');
+    // 数据管理由FurnaceDataService自动处理
     return result;
   }
   @Post('disconnect')
@@ -28,7 +26,7 @@ export class FurnaceController {
     try {
       return await this.svc.passthrough('disconnect');
     } finally {
-      this.sampling.mark_device_inactive('furnace');
+      // 数据管理由FurnaceDataService自动处理
     }
   }
   @Post('run') run() { return this.svc.passthrough('run'); }
@@ -37,7 +35,7 @@ export class FurnaceController {
 
   @Get('status')
   status() {
-    this.sampling.mark_device_activity('furnace');
+    // 数据管理由FurnaceDataService自动处理
     // API 层增加忙碌检查：当设备正在执行长耗时操作时，直接给出忙碌响应，避免产生冲突
     if (this.svc.is_device_busy()) {
       return {
@@ -73,7 +71,7 @@ export class FurnaceController {
     @Query('limit') limit?: string,
     @Query('downsample') downsample?: string,
   ) {
-    return this.sampling.queryFurnace(from, to, limit ? Number(limit) : undefined, downsample ? Number(downsample) : undefined);
+    return this.furnaceData.queryFurnace(from, to, limit ? Number(limit) : undefined, downsample ? Number(downsample) : undefined);
   }
 
   // 连接状态
@@ -97,8 +95,8 @@ export class FurnaceController {
 
   // 轮询管理器状态
   @Get('polling/status')
-  pollingStatus() {
-    return this.pollingManager.getStatus();
+  polling_status() {
+    return this.svc.get_polling_status();
   }
 
   // 错误处理统计信息
