@@ -47,7 +47,7 @@ export interface CircuitBreakerConfig {
 }
 
 export enum CircuitBreakerState {
-  CLOSED = 'CLOSEED',           // 关闭状态，正常工作
+  CLOSED = 'CLOSED',             // 关闭状态，正常工作
   OPEN = 'OPEN',                 // 打开状态，熔断中
   HALF_OPEN = 'HALF_OPEN'        // 半开状态，尝试恢复
 }

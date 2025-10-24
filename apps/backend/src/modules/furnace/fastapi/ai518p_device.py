@@ -7,8 +7,6 @@ import time
 import threading
 import uuid
 from datetime import datetime
-from contextlib import contextmanager
-import random
 import logging
 from enum import Enum
 
@@ -17,12 +15,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ErrorCategory(Enum):
-    NETWORK = "NETWORK"
     DEVICE = "DEVICE"
-    PROTOCOL = "PROTOCOL"
     TIMEOUT = "TIMEOUT"
-    VALIDATION = "VALIDATION"
-    BUSINESS = "BUSINESS"
     SYSTEM = "SYSTEM"
 
 class FurnaceError(Exception):
@@ -33,132 +27,6 @@ class FurnaceError(Exception):
         self.retryable = retryable
         self.context = context or {}
         self.timestamp = datetime.now()
-
-class RetryHandler:
-    """重试处理器 - 实现指数退避算法"""
-    def __init__(self, max_attempts: int = 3, base_delay: float = 1.0, max_delay: float = 30.0, backoff_factor: float = 2.0):
-        self.max_attempts = max_attempts
-        self.base_delay = base_delay
-        self.max_delay = max_delay
-        self.backoff_factor = backoff_factor
-
-    def execute(self, operation, is_retryable=None):
-        """执行操作，在失败时自动重试"""
-        last_error = None
-
-        for attempt in range(1, self.max_attempts + 1):
-            try:
-                return operation()
-            except Exception as e:
-                last_error = e
-
-                # 如果是最后一次尝试，直接抛出错误
-                if attempt >= self.max_attempts:
-                    break
-
-                # 检查是否可重试
-                if is_retryable and not is_retryable(e):
-                    break
-
-                # 默认重试条件
-                if not self._is_retryable_error(e):
-                    break
-
-                # 计算延迟时间
-                delay = self._calculate_delay(attempt)
-                logger.warning(f"操作失败，{delay:.1f}秒后重试 (尝试 {attempt}/{self.max_attempts}): {str(e)}")
-                time.sleep(delay)
-
-        raise last_error
-
-    def _calculate_delay(self, attempt: int) -> float:
-        """计算指数退避延迟时间"""
-        delay = min(self.base_delay * (self.backoff_factor ** (attempt - 1)), self.max_delay)
-        # 添加随机抖动，避免雷群效应
-        delay = delay * (0.5 + random.random() * 0.5)
-        return delay
-
-    def _is_retryable_error(self, error: Exception) -> bool:
-        """判断错误是否可重试"""
-        if isinstance(error, FurnaceError):
-            return error.retryable
-
-        # 串口通信错误通常可重试
-        if "serial" in str(type(error)).lower():
-            return True
-
-        # 超时错误可重试
-        if "timeout" in str(error).lower():
-            return True
-
-        # 连接相关错误可重试
-        if any(keyword in str(error).lower() for keyword in ["connection", "disconnected", "refused"]):
-            return True
-
-        return False
-
-class CircuitBreaker:
-    """熔断器实现"""
-    def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 60.0):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.failure_count = 0
-        self.last_failure_time = None
-        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
-
-    def execute(self, operation):
-        """在熔断器保护下执行操作"""
-        if self.state == "OPEN":
-            if self._should_attempt_reset():
-                self.state = "HALF_OPEN"
-                logger.info("熔断器进入半开状态")
-            else:
-                raise FurnaceError("熔断器开启，拒绝执行操作", ErrorCategory.SYSTEM, retryable=False)
-
-        try:
-            result = operation()
-            self._on_success()
-            return result
-        except Exception as e:
-            self._on_failure()
-            raise e
-
-    def _on_success(self):
-        """操作成功时的处理"""
-        self.failure_count = 0
-        if self.state == "HALF_OPEN":
-            self.state = "CLOSED"
-            logger.info("熔断器已关闭")
-
-    def _on_failure(self):
-        """操作失败时的处理"""
-        self.failure_count += 1
-        self.last_failure_time = time.time()
-
-        if self.failure_count >= self.failure_threshold:
-            self.state = "OPEN"
-            logger.warning(f"熔断器已开启 (失败次数: {self.failure_count})")
-
-    def _should_attempt_reset(self) -> bool:
-        """判断是否应该尝试重置熔断器"""
-        if self.last_failure_time is None:
-            return False
-        return time.time() - self.last_failure_time >= self.recovery_timeout
-
-    def get_state(self):
-        """获取熔断器状态"""
-        return {
-            "state": self.state,
-            "failure_count": self.failure_count,
-            "last_failure_time": self.last_failure_time
-        }
-
-    def reset(self):
-        """重置熔断器"""
-        self.failure_count = 0
-        self.last_failure_time = None
-        self.state = "CLOSED"
-        logger.info("熔断器已重置")
 
 class EnhancedCommLogManager:
     """增强的通信日志管理器，包含错误分类和统计"""
@@ -227,25 +95,22 @@ class EnhancedCommLogManager:
 app = FastAPI(title="AI-518P温控器FastAPI接口")
 
 
-# 使用增强的日志管理器替代原来的简单版本
+# 使用增强的日志管理器
 CommLogManager = EnhancedCommLogManager
 
 
-class ConnectionPool:
-    """连接池管理器 - 线程安全的连接管理，集成错误处理"""
+class FurnaceDeviceManager:
+    """简化的熔炉设备管理器 - 单连接模式，移除过度设计的复杂性"""
 
     def __init__(self):
-        self._connections: Dict[str, 'AI518PController'] = {}
+        self._controller: Optional['AI518PController'] = None
+        self._connection_id: Optional[str] = None
         self._lock = threading.Lock()
         self.comm_log = CommLogManager()
-        # 为不同类型的操作创建重试处理器和熔断器
-        self.retry_handler = RetryHandler(max_attempts=3, base_delay=1.0, max_delay=10.0)
-        self.connection_circuit_breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=30.0)
-        self.operation_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=15.0)
 
-    def create_connection(self, port: str, baudrate: int = 9600, address: int = 1,
-                         stopbits: int = 2, timeout: float = 1.0) -> str:
-        """创建新连接
+    def connect(self, port: str, baudrate: int = 9600, address: int = 1,
+                stopbits: int = 2, timeout: float = 1.0) -> str:
+        """连接设备（单连接模式）
 
         Args:
             port: 串口号
@@ -258,247 +123,135 @@ class ConnectionPool:
             connection_id: 连接ID
 
         Raises:
-            Exception: 连接失败时抛出异常
-        """
-        connection_id = str(uuid.uuid4())
-        context = {"port": port, "address": address, "baudrate": baudrate}
-
-        def _create_connection():
-            with self._lock:
-                # 检查是否已存在相同端口的连接
-                for existing_id, controller in self._connections.items():
-                    if controller.port == port and controller.address == address:
-                        # 关闭现有连接
-                        try:
-                            controller.disconnect()
-                        except Exception:
-                            pass
-                        del self._connections[existing_id]
-                        self.comm_log.clear_logs(existing_id)
-                        break
-
-                # 创建新控制器实例
-                controller = AI518PController(
-                    port=port,
-                    baudrate=baudrate,
-                    address=address,
-                    stopbits=stopbits,
-                    timeout=timeout,
-                    comm_log=self.comm_log,
-                    connection_id=connection_id
-                )
-
-                # 尝试连接
-                try:
-                    controller.connect()
-                    self._connections[connection_id] = controller
-                    logger.info(f"成功创建连接: {connection_id} ({port}:{address})")
-                    return connection_id
-                except Exception as e:
-                    # 转换为FurnaceError并添加到日志
-                    furnace_error = FurnaceError(
-                        f"连接失败 {port}:{address}: {str(e)}",
-                        ErrorCategory.DEVICE,
-                        retryable=True,
-                        context=context
-                    )
-                    self.comm_log.add_log('ERROR', 'CONNECTION_FAILED', connection_id=connection_id, error=furnace_error)
-                    raise furnace_error
-
-        # 使用熔断器和重试机制保护连接操作
-        try:
-            return self.connection_circuit_breaker.execute(
-                lambda: self.retry_handler.execute(_create_connection)
-            )
-        except Exception as e:
-            logger.error(f"创建连接最终失败: {connection_id}, 错误: {str(e)}")
-            raise
-
-    def get_connection(self, connection_id: str) -> Optional['AI518PController']:
-        """获取连接
-
-        Args:
-            connection_id: 连接ID
-
-        Returns:
-            控制器实例，如果不存在返回None
+            FurnaceError: 连接失败时抛出异常
         """
         with self._lock:
-            return self._connections.get(connection_id)
-
-    def remove_connection(self, connection_id: str) -> bool:
-        """移除连接
-
-        Args:
-            connection_id: 连接ID
-
-        Returns:
-            是否成功移除
-        """
-        with self._lock:
-            controller = self._connections.pop(connection_id, None)
-            if controller:
+            # 如果已有连接，先断开
+            if self._controller:
                 try:
-                    controller.disconnect()
+                    self._controller.disconnect()
                 except Exception:
                     pass
-                self.comm_log.clear_logs(connection_id)
-                return True
-            return False
+                self.comm_log.clear_logs(self._connection_id)
 
-    def get_all_connections(self) -> Dict[str, Dict]:
-        """获取所有连接信息
+            # 生成新的连接ID
+            self._connection_id = str(uuid.uuid4())
+
+            # 创建新控制器实例
+            self._controller = AI518PController(
+                port=port,
+                baudrate=baudrate,
+                address=address,
+                stopbits=stopbits,
+                timeout=timeout,
+                comm_log=self.comm_log,
+                connection_id=self._connection_id
+            )
+
+            # 尝试连接
+            try:
+                self._controller.connect()
+                logger.info(f"成功连接到设备: {port}:{address}")
+                return self._connection_id
+            except Exception as e:
+                self._controller = None
+                self._connection_id = None
+                furnace_error = FurnaceError(
+                    f"连接失败 {port}:{address}: {str(e)}",
+                    ErrorCategory.DEVICE,
+                    retryable=True
+                )
+                self.comm_log.add_log('ERROR', 'CONNECTION_FAILED', connection_id=self._connection_id, error=furnace_error)
+                raise furnace_error
+
+    def disconnect(self) -> bool:
+        """断开设备连接
 
         Returns:
-            连接信息字典
+            是否成功断开
         """
         with self._lock:
-            result = {}
-            for conn_id, controller in self._connections.items():
-                result[conn_id] = {
-                    'port': controller.port,
-                    'address': controller.address,
-                    'baudrate': controller.baudrate,
-                    'connected': controller.serial is not None and controller.serial.is_open if controller.serial else False
-                }
-            return result
+            if not self._controller:
+                return False
 
-    @contextmanager
-    def get_controller(self, connection_id: str):
-        """上下文管理器，用于安全地获取和使用控制器
-
-        Args:
-            connection_id: 连接ID
-
-        Yields:
-            控制器实例
-
-        Raises:
-            Exception: 连接不存在或连接失败时抛出异常
-        """
-        controller = self.get_connection(connection_id)
-        if not controller:
-            raise Exception(f"Connection {connection_id} not found")
-
-        # 检查连接健康状态
-        if not self._is_connection_healthy(controller):
             try:
-                # 尝试重新连接
-                controller.connect()
-                self.comm_log.add_log('RECONNECT', f"Reconnected {connection_id}", connection_id=connection_id)
+                self._controller.disconnect()
+                self.comm_log.clear_logs(self._connection_id)
+                logger.info("设备已断开连接")
+                return True
             except Exception as e:
-                self.comm_log.add_log('ERROR', f"Reconnect failed {connection_id}: {str(e)}", connection_id=connection_id)
-                raise Exception(f"Connection {connection_id} lost and reconnect failed: {str(e)}")
+                logger.error(f"断开连接时发生错误: {str(e)}")
+                return False
+            finally:
+                self._controller = None
+                self._connection_id = None
 
-        try:
-            yield controller
-        except Exception as e:
-            # 记录错误但不关闭连接，让调用者决定
-            self.comm_log.add_log('ERROR', f"Operation failed {connection_id}: {str(e)}", connection_id=connection_id)
-            raise
+    def get_connection_id(self) -> Optional[str]:
+        """获取当前连接ID
 
-    def _is_connection_healthy(self, controller: 'AI518PController') -> bool:
+        Returns:
+            连接ID，如果没有连接返回None
+        """
+        return self._connection_id
+
+    def get_connection_info(self) -> Optional[Dict]:
+        """获取连接信息
+
+        Returns:
+            连接信息字典，如果没有连接返回None
+        """
+        with self._lock:
+            if not self._controller:
+                return None
+
+            return {
+                'connection_id': self._connection_id,
+                'port': self._controller.port,
+                'address': self._controller.address,
+                'baudrate': self._controller.baudrate,
+                'connected': self._controller.serial is not None and self._controller.serial.is_open if self._controller.serial else False
+            }
+
+    def get_controller(self) -> Optional['AI518PController']:
+        """获取控制器实例
+
+        Returns:
+            控制器实例，如果没有连接返回None
+        """
+        with self._lock:
+            if not self._controller:
+                return None
+
+            # 简单的连接健康检查
+            if not self._is_connection_healthy():
+                try:
+                    # 尝试重新连接
+                    self._controller.connect()
+                    self.comm_log.add_log('RECONNECT', f"Reconnected {self._connection_id}", connection_id=self._connection_id)
+                except Exception as e:
+                    self.comm_log.add_log('ERROR', f"Reconnect failed: {str(e)}", connection_id=self._connection_id)
+                    return None
+
+            return self._controller
+
+    def _is_connection_healthy(self) -> bool:
         """检查连接是否健康
-
-        Args:
-            controller: 控制器实例
 
         Returns:
             连接是否健康
         """
+        if not self._controller:
+            return False
+
         try:
-            return (controller.serial is not None and
-                   controller.serial.is_open and
-                   self._is_connection_available(controller))
+            return (self._controller.serial is not None and
+                   self._controller.serial.is_open)
         except Exception:
             return False
 
-    def _is_connection_available(self, controller: 'AI518PController') -> bool:
-        """检查连接是否超时（通过简单的读取测试）
 
-        Args:
-            controller: 控制器实例
-
-        Returns:
-            连接是否超时
-        """
-        try:
-            # 使用一个安全的参数（如状态参数）进行测试读取
-            # 设置较短的超时时间
-            original_timeout = controller.timeout
-            controller.timeout = 0.3  # 300ms超时
-
-            # 尝试读取参数0x00（通常总是可读的状态参数）
-            result = controller.read_parameter(0x00)
-
-            # 恢复原始超时时间
-            controller.timeout = original_timeout
-
-            return result is not None
-        except Exception:
-            # 恢复原始超时时间
-            try:
-                controller.timeout = original_timeout
-            except Exception:
-                pass
-            return False
-
-    def cleanup_dead_connections(self) -> int:
-        """清理死亡连接
-
-        Returns:
-            清理的连接数量
-        """
-        dead_connections = []
-
-        with self._lock:
-            for conn_id, controller in list(self._connections.items()):
-                if not self._is_connection_healthy(controller):
-                    dead_connections.append(conn_id)
-
-        # 移除死亡连接
-        cleaned_count = 0
-        for conn_id in dead_connections:
-            if self.remove_connection(conn_id):
-                cleaned_count += 1
-                self.comm_log.add_log('CLEANUP', f"Removed dead connection {conn_id}", connection_id=conn_id)
-
-        return cleaned_count
-
-    def get_connection_stats(self) -> Dict:
-        """获取连接统计信息
-
-        Returns:
-            连接统计信息
-        """
-        with self._lock:
-            stats = {
-                "total_connections": len(self._connections),
-                "healthy_connections": 0,
-                "unhealthy_connections": 0,
-                "connections": {}
-            }
-
-            for conn_id, controller in self._connections.items():
-                is_healthy = self._is_connection_healthy(controller)
-                if is_healthy:
-                    stats["healthy_connections"] += 1
-                else:
-                    stats["unhealthy_connections"] += 1
-
-                stats["connections"][conn_id] = {
-                    "port": controller.port,
-                    "address": controller.address,
-                    "baudrate": controller.baudrate,
-                    "healthy": is_healthy,
-                    "connected": controller.serial is not None and controller.serial.is_open if controller.serial else False
-                }
-
-            return stats
-
-
-# 全局连接池实例
-connection_pool = ConnectionPool()
+# 全局设备管理器实例
+device_manager = FurnaceDeviceManager()
 
 
 
@@ -743,7 +496,7 @@ class AI518PController:
             else:
                 error = FurnaceError(
                     f"参数读取失败，响应数据不完整 (代码: 0x{code:02X})",
-                    ErrorCategory.PROTOCOL,
+                    ErrorCategory.SYSTEM,
                     retryable=True
                 )
                 self.comm_log.add_log('ERROR', 'PROTOCOL_ERROR', connection_id=self.connection_id, error=error)
@@ -873,73 +626,32 @@ class AI518PController:
         return self.write_parameter(0x00, int(sv_celsius * 10))
 
     def read_program_segments(self) -> List[ProgramSegment]:
-        """读取所有程序段设置
-
-        Returns:
-            List[ProgramSegment]: 程序段列表，包含30个程序段的温度和时间设置
-        """
-        print(f"[FURNACE API] 开始读取程序段 (设备地址: {self.address}, 串口: {self.port})")
-        start_time = time.time()
-
+        """读取所有程序段设置"""
         segs: List[ProgramSegment] = []
-        success_count = 0
-        error_count = 0
 
         for i in range(30):
             seg_id = i + 1
             temp_code = 0x1A + i * 2
             time_code = 0x1B + i * 2
 
-            # 读取温度参数
+            # 读取温度和时间参数
             td = self.read_parameter(temp_code)
-            # 读取时间参数
             vd = self.read_parameter(time_code)
 
             temp_c = (td["param_value"] / 10.0) if td else 0.0
             t_min = vd["param_value"] if vd else 0
 
-            # 记录每个段的读取结果
-            if td and vd:
-                success_count += 1
-                if temp_c > 0 or t_min > 0:  # 只记录有效的程序段
-                    print(f"[FURNACE API] 段{seg_id}: 温度={temp_c}°C, 时间={t_min}分钟")
-            else:
-                error_count += 1
-                print(f"[FURNACE API] 段{seg_id}: 读取失败 (温度码:0x{temp_code:02X}, 时间码:0x{time_code:02X})")
-
             segs.append(ProgramSegment(id=seg_id, temperature=temp_c, time=int(t_min * 60)))
 
-        end_time = time.time()
-        duration = (end_time - start_time) * 1000  # 转换为毫秒
-
-        print(f"[FURNACE API] 程序段读取完成 - 成功:{success_count}/30, 失败:{error_count}/30, 耗时:{duration:.1f}ms")
         return segs
 
     def write_program_segments(self, items: List[ProgramSegment]):
-        """写入程序段设置
-
-        Args:
-            items: 程序段列表
-
-        Returns:
-            bool: 所有段都写入成功返回True，否则返回False
-        """
-        print(f"[FURNACE API] 开始写入程序段 (设备地址: {self.address}, 串口: {self.port}, 段数: {len(items)})")
-        start_time = time.time()
-
+        """写入程序段设置"""
         ok = True
-        success_count = 0
-        error_count = 0
-
-        # 先打印要写入的所有段信息
-        print(f"[FURNACE API] 准备写入的程序段:")
-        for it in items:
-            print(f"  段{it.id}: 温度={it.temperature}°C, 时间={it.time//60}分钟")
 
         for it in items:
             idx = it.id - 1
             if idx < 0 or idx > 29:
-                print(f"[FURNACE API] 段{it.id}: 跳过无效段号")
                 continue
 
             temp_code = 0x1A + idx * 2
@@ -947,37 +659,129 @@ class AI518PController:
             temp_int = int(round(it.temperature * 10))
             time_min = int(round((it.time or 0) / 60))
 
-            print(f"[FURNACE API] 段{it.id}: 写入温度={it.temperature}°C (编码:{temp_int}), 时间={time_min}分钟")
-
-            # 写入温度参数
+            # 写入温度和时间参数
             temp_ok = self.write_parameter(temp_code, temp_int)
-            if temp_ok:
-                print(f"[FURNACE API] 段{it.id}: 温度写入成功 (代码:0x{temp_code:02X}, 值:{temp_int})")
-            else:
-                print(f"[FURNACE API] 段{it.id}: 温度写入失败 (代码:0x{temp_code:02X}, 值:{temp_int})")
-
-            # 写入时间参数
             time_ok = self.write_parameter(time_code, time_min)
-            if time_ok:
-                print(f"[FURNACE API] 段{it.id}: 时间写入成功 (代码:0x{time_code:02X}, 值:{time_min})")
-            else:
-                print(f"[FURNACE API] 段{it.id}: 时间写入失败 (代码:0x{time_code:02X}, 值:{time_min})")
 
             segment_ok = temp_ok and time_ok
-            if segment_ok:
-                success_count += 1
-                print(f"[FURNACE API] 段{it.id}: 写入完成 ✓")
-            else:
-                error_count += 1
-                print(f"[FURNACE API] 段{it.id}: 写入失败 ✗")
-
             ok = ok and segment_ok
 
-        end_time = time.time()
-        duration = (end_time - start_time) * 1000  # 转换为毫秒
-
-        print(f"[FURNACE API] 程序段写入完成 - 成功:{success_count}/{len(items)}, 失败:{error_count}/{len(items)}, 耗时:{duration:.1f}ms")
         return ok
+
+
+@app.post("/connect")
+def connect(request: ConnectRequest):
+    """连接熔炉设备"""
+    connection_id = device_manager.connect(
+        port=request.port,
+        baudrate=request.baudrate,
+        address=request.address,
+        stopbits=request.stopbits,
+        timeout=request.timeout
+    )
+    logger.info(f"设备连接成功: {connection_id} ({request.port}:{request.address})")
+    return {
+        "connection_id": connection_id,
+        "connected": True,
+        "port": request.port,
+        "error": None
+    }
+
+
+@app.post("/disconnect")
+def disconnect():
+    """断开熔炉设备连接"""
+    success = device_manager.disconnect()
+    if success:
+        logger.info("设备已断开连接")
+    return {
+        "success": success,
+        "disconnected_count": 1 if success else 0,
+        "error": None
+    }
+
+
+@app.get("/status")
+def get_status():
+    """获取温控器状态"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"error": "No active connection"}
+
+    s = controller.get_all_status()
+    return s or {"error": "no response"}
+
+
+@app.post("/run")
+def run_program():
+    """启动程序运行"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"ok": False, "error": "No active connection"}
+
+    return {"ok": bool(controller.set_program_run())}
+
+
+@app.post("/pause")
+def pause_program():
+    """暂停程序运行"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"ok": False, "error": "No active connection"}
+
+    return {"ok": bool(controller.set_program_pause())}
+
+
+@app.post("/stop")
+def stop_program():
+    """停止程序运行"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"ok": False, "error": "No active connection"}
+
+    return {"ok": bool(controller.set_program_stop())}
+
+
+@app.post("/sv")
+def set_sv(sv: float = Body(...)):  # 摄氏度
+    """设定目标温度"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"ok": False, "error": "No active connection"}
+
+    return {"ok": bool(controller.set_sv(sv))}
+
+
+@app.post("/segment/set")
+def set_segment(segment: int = Body(...)):
+    """设置当前程序段"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"ok": False, "error": "No active connection"}
+
+    return {"ok": bool(controller.set_segment(segment))}
+
+
+@app.get("/program/segments")
+def get_program_segments():
+    """获取所有程序段设置"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"error": "No active connection"}
+
+    segments = controller.read_program_segments()
+    return [s.model_dump() for s in segments]
+
+
+@app.post("/program/segments")
+def set_program_segments(items: List[ProgramSegment]):
+    """设置程序段"""
+    controller = device_manager.get_controller()
+    if not controller:
+        return {"ok": False, "error": "No active connection", "count": len(items)}
+
+    ok = controller.write_program_segments(items)
+    return {"ok": bool(ok), "count": len(items)}
 
 
 @app.get("/health")
@@ -987,9 +791,10 @@ def health():
 
 
 @app.get("/comm-log")
-def get_comm_log(connection_id: Optional[str] = None):
+def get_comm_log():
     """获取通信日志"""
-    logs = connection_pool.comm_log.get_logs(connection_id)
+    connection_id = device_manager.get_connection_id()
+    logs = device_manager.comm_log.get_logs(connection_id)
     return {
         "logs": logs,
         "total": len(logs),
@@ -997,62 +802,7 @@ def get_comm_log(connection_id: Optional[str] = None):
     }
 
 
-@app.get("/connections")
-def get_connections():
-    """获取所有连接信息"""
-    return connection_pool.get_all_connections()
-
-
-@app.post("/connection")
-def create_connection(req: ConnectRequest):
-    """创建新连接"""
-    try:
-        connection_id = connection_pool.create_connection(
-            port=req.port,
-            baudrate=req.baudrate,
-            address=req.address,
-            stopbits=req.stopbits,
-            timeout=req.timeout
-        )
-        return {"connection_id": connection_id, "connected": True, "port": req.port}
-    except Exception as e:
-        return {"connected": False, "error": str(e), "port": req.port}
-
-
-@app.delete("/connection/{connection_id}")
-def delete_connection(connection_id: str):
-    """删除连接"""
-    success = connection_pool.remove_connection(connection_id)
-    return {"success": success, "connection_id": connection_id}
-
-
-@app.get("/connection/stats")
-def get_connection_stats():
-    """获取连接统计信息"""
-    return connection_pool.get_connection_stats()
-
-
-@app.post("/connection/cleanup")
-def cleanup_dead_connections():
-    """清理死亡连接"""
-    cleaned_count = connection_pool.cleanup_dead_connections()
-    return {"cleaned_count": cleaned_count}
-
-
-@app.get("/connection/{connection_id}/health")
-def check_connection_health(connection_id: str):
-    """检查单个连接的健康状态"""
-    controller = connection_pool.get_connection(connection_id)
-    if not controller:
-        return {"healthy": False, "error": "Connection not found", "connection_id": connection_id}
-
-    is_healthy = connection_pool._is_connection_healthy(controller)
-    return {
-        "healthy": is_healthy,
-        "connection_id": connection_id,
-        "port": controller.port,
-        "address": controller.address
-    }
+# 简化架构：单连接模式，删除过度设计的连接池功能
 
 
 @app.get("/ports")
@@ -1061,100 +811,8 @@ def ports():
     return [p.device for p in serial.tools.list_ports.comports()]
 
 
-@app.get("/status/{connection_id}")
-def get_status(connection_id: str):
-    """获取温控器状态"""
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            s = controller.get_all_status()
-            return s or {"error": "no response"}
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.post("/{connection_id}/run")
-def run_program(connection_id: str):
-    """启动程序运行"""
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            return {"ok": bool(controller.set_program_run())}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-@app.post("/{connection_id}/pause")
-def pause_program(connection_id: str):
-    """暂停程序运行"""
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            return {"ok": bool(controller.set_program_pause())}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-@app.post("/{connection_id}/stop")
-def stop_program(connection_id: str):
-    """停止程序运行"""
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            return {"ok": bool(controller.set_program_stop())}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-@app.post("/{connection_id}/sv")
-def set_sv(connection_id: str, sv: float = Body(...)):  # 摄氏度
-    """设定目标温度"""
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            return {"ok": bool(controller.set_sv(sv))}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-@app.post("/{connection_id}/segment/set")
-def set_segment(connection_id: str, segment: int = Body(...)):
-    """设置当前程序段"""
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            return {"ok": bool(controller.set_segment(segment))}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-@app.get("/{connection_id}/program/segments")
-def get_program_segments(connection_id: str):
-    """获取所有程序段设置"""
-    print(f"[FURNACE API] 接收到程序段读取请求，连接ID: {connection_id}")
-
-    try:
-        with connection_pool.get_controller(connection_id) as controller:
-            segments = controller.read_program_segments()
-            result = [s.model_dump() for s in segments]
-            print(f"[FURNACE API] 程序段读取API成功返回，返回{len(result)}个段")
-            return result
-    except Exception as e:
-        print(f"[FURNACE API] 程序段读取API异常: {str(e)}")
-        return {"error": str(e)}
-
-
-@app.post("/{connection_id}/program/segments")
-def set_program_segments(connection_id: str, items: List[ProgramSegment]):
-    """设置程序段"""
-    print(f"[FURNACE API] 接收到程序段写入请求，连接ID: {connection_id}，包含{len(items)}个段")
-
-    try:
-        # 打印接收到的数据概览
-        valid_segments = [s for s in items if 1 <= s.id <= 30]
-        print(f"[FURNACE API] 有效程序段数: {len(valid_segments)} (总共接收到{len(items)}个段)")
-
-        with connection_pool.get_controller(connection_id) as controller:
-            ok = controller.write_program_segments(items)
-            print(f"[FURNACE API] 程序段写入API完成，结果: {'成功' if ok else '失败'}")
-            return {"ok": bool(ok), "count": len(items)}
-    except Exception as e:
-        print(f"[FURNACE API] 程序段写入API异常: {str(e)}")
-        return {"ok": False, "error": str(e), "count": len(items)}
+# 删除所有带connection_id的冗余API端点
+# 简化设计，只使用无connection_id的API端点
 
 
 if __name__ == "__main__":
