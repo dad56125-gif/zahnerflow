@@ -24,11 +24,9 @@ interface FurnaceClient {
 @WebSocketGateway({
   cors: {
     origin: [
-      'http://localhost:8081',
       'http://localhost:8083',
       'http://localhost:4173',
       'http://localhost:3000',
-      'http://127.0.0.1:8081',
       'http://127.0.0.1:8083',
     ],
     credentials: true,

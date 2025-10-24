@@ -62,11 +62,9 @@ async function bootstrap() {
   // CORS配置 - 允许前端开发服务器和打包后的应用访问
   app.enableCors({
     origin: [
-      'http://localhost:8081',     // Vite开发服务器
       'http://localhost:8083',     // 当前前端运行端口
       'http://localhost:4173',     // Vite预览服务器
       'http://localhost:3000',     // 可能的前端端口
-      'http://127.0.0.1:8081',     // 本地访问
       'http://127.0.0.1:8083',     // 本地访问8083端口
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -102,7 +100,7 @@ async function bootstrap() {
 
   // 前端开发服务器配置通知
   notificationService.notifySystem(
-    `Frontend development server should run on: http://localhost:8081`,
+    `Frontend development server should run on: http://localhost:8083`,
     '前端开发服务器配置'
   );
 

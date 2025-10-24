@@ -8,6 +8,11 @@ import { MeasurementType } from '@zahnerflow/types';
 export class ZahnerZenniumController {
   constructor(private readonly zahnerZenniumService: ZahnerZenniumService) {}
 
+  @Get('health')
+  async health(): Promise<any> {
+    return this.zahnerZenniumService.health();
+  }
+
   @Post('connect')
   @HttpCode(HttpStatus.OK)
   async connect(): Promise<{ message: string }> {

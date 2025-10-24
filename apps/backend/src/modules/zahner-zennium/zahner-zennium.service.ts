@@ -333,6 +333,29 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // 健康检查方法
+  async health(): Promise<any> {
+    try {
+      const deviceStatus = await this.getDeviceStatus();
+      return {
+        status: 'success',
+        device: 'zahner-zennium',
+        connected: deviceStatus.connected,
+        timestamp: new Date().toISOString(),
+        health: deviceStatus.connected ? 'healthy' : 'unhealthy'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        device: 'zahner-zennium',
+        connected: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        health: 'unhealthy'
+      };
+    }
+  }
+
   // 获取模块状态（兼容接口）
   async getModuleStatus(): Promise<ModuleStatus> {
     const deviceStatus = await this.getDeviceStatus();

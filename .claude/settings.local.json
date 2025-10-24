@@ -33,7 +33,8 @@
       "Bash(pnpm:*)",
       "Bash(cmd:*)",
       "Bash(wmic:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(python:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

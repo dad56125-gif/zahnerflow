@@ -48,7 +48,7 @@ app = FastAPI(title="Zahner设备API")
 # 添加CORS中间件以支持跨域请求
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8083", "http://localhost:8081", "http://localhost:3000", "http://127.0.0.1:8083"],
+    allow_origins=["http://localhost:8083", "http://localhost:3000", "http://127.0.0.1:8083"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -216,7 +216,7 @@ GET /api/devices/furnace/polling/status
 
 ### 2. 端口和CORS配置
 - WebSocket服务端口：3001
-- 支持的开发环境端口：8081, 8083, 4173, 3000
+- 支持的开发环境端口：8083, 4173, 3000
 
 ## 测试建议
 
