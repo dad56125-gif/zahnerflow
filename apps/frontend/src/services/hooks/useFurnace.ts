@@ -185,7 +185,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       },
     };
 
-    update_state(prev => ({
+    set_state(prev => ({
       ...prev,
       logs: [...prev.logs, log_entry].slice(-200), // 限制日志数量
     }));
@@ -205,11 +205,11 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       const sample = {
         timestamp: data.timestamp,
         temperature: data.temperature,
-        sv: data.sv,
+        sv: data.sv || 0,
         mv: data.mv,
       };
 
-      update_state(prev => ({
+      set_state(prev => ({
         ...prev,
         history_data: [...prev.history_data, sample].slice(-1000), // 限制历史数据
       }));
@@ -510,7 +510,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   }, [set_loading, clear_error, load_presets, handle_error]);
 
   const apply_preset = useCallback(async (name: string): Promise<void> => {
-    return execute_device_operation(
+    await execute_device_operation(
       () => FurnaceApi.applyPreset(name)
     );
   }, [execute_device_operation]);
@@ -522,7 +522,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       clear_error();
       const final_params = params || state.history_params;
       const history_data = await FurnaceApi.getTemperatureHistory(final_params);
-      update_state({ history_data, history_params: final_params });
+      set_state(prev => ({ ...prev, history_data, history_params: final_params }));
 
     } catch (error) {
       handle_error(error);
@@ -533,10 +533,10 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   }, [set_loading, clear_error, state.history_params, update_state, handle_error]);
 
   const update_history_params = useCallback((params: Partial<HistoryQueryParams>): void => {
-    update_state(prev => ({
+    set_state(prev => ({
       history_params: { ...prev.history_params, ...params },
     }));
-  }, [update_state]);
+  }, []);
 
   const refresh_logs = useCallback(async (): Promise<void> => {
     try {
@@ -548,7 +548,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         data: log,
       }));
 
-      update_state(prev => ({
+      set_state(prev => ({
         ...prev,
         logs: [...prev.logs.filter(log => log.type === 'operation'), ...comm_logs].slice(-500),
       }));
@@ -558,8 +558,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   }, [update_state, handle_error]);
 
   const clear_logs = useCallback((): void => {
-    update_state({ logs: [] });
-  }, [update_state]);
+    set_state(prev => ({ ...prev, logs: [] }));
+  }, []);
 
   // 状态管理
   const reset = useCallback((): void => {

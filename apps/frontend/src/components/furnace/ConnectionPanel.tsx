@@ -95,7 +95,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
               <select
                 value={selectedPort}
                 onChange={(e) => handlePortSelection(e.target.value)}
-                disabled={furnaceState.connection_status === 'connecting'}
+                disabled={furnaceState.loading}
                 className="port-select"
               >
                 <option value="">-- 请选择端口 --</option>
@@ -105,13 +105,13 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
               </select>
               <button
                 onClick={loadAvailablePorts}
-                disabled={furnaceState.connection_status === 'connecting'}
+                disabled={furnaceState.loading}
                 className="btn btn-secondary btn-sm refresh-btn"
               >
                 刷新端口
               </button>
             </div>
-            {furnaceState.connection_status === 'connecting' && (
+            {furnaceState.loading && (
               <div className="status-message connecting">
                 🔄 正在连接中...
               </div>
