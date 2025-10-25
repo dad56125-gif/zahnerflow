@@ -55,13 +55,13 @@ export class FurnaceController {
   @Post('program/segments') setSegments(@Body() segments: Array<{ id: number; temperature: number; time: number }>) { return this.svc.setProgramSegments(segments as any); }
 
   // Presets CRUD
-  @Get('presets') list() { return this.svc.listPresets(); }
-  @Post('presets') create(@Body() body: { name: string; segments: any[]; summary?: string }) { return this.svc.createPreset(body.name, body.segments as any, body.summary); }
-  @Get('presets/:name') one(@Param('name') name: string) { return this.svc.getPreset(name); }
-  @Put('presets/:name') update(@Param('name') name: string, @Body() body: { segments: any[] }) { return this.svc.updatePreset(name, body.segments as any); }
-  @Delete('presets/:name') @HttpCode(204) remove(@Param('name') name: string) { return this.svc.deletePreset(name); }
-  @Post('presets/:name/clone') clone(@Param('name') name: string, @Body() body: { newName: string }) { return this.svc.clonePreset(name, body.newName); }
-  @Post('presets/:name/apply') apply(@Param('name') name: string) { return this.svc.applyPreset(name); }
+  @Get('presets') list() { return this.svc.list_presets(); }
+  @Post('presets') create(@Body() body: { name: string; segments: any[]; summary?: string }) { return this.svc.create_preset(body.name, body.segments as any, body.summary); }
+  @Get('presets/:name') one(@Param('name') name: string) { return this.svc.get_preset(name); }
+  @Put('presets/:name') update(@Param('name') name: string, @Body() body: { segments: any[] }) { return this.svc.update_preset(name, body.segments as any); }
+  @Delete('presets/:name') @HttpCode(204) remove(@Param('name') name: string) { return this.svc.delete_preset(name); }
+  @Post('presets/:name/clone') clone(@Param('name') name: string, @Body() body: { newName: string }) { return this.svc.clone_preset(name, body.newName); }
+  @Post('presets/:name/apply') apply(@Param('name') name: string) { return this.svc.apply_preset(name); }
 
   // History
   @Get('logs/temperature')
@@ -78,18 +78,18 @@ export class FurnaceController {
   @Get('connection/status')
   connectionStatus() {
     return {
-      state: this.svc.getConnectionState(),
-      connected: this.svc.isDeviceConnected()
+      state: this.svc.get_connection_state(),
+      connected: this.svc.is_device_connected()
     };
   }
 
   // 尝试重连
   @Post('connection/reconnect')
   async reconnect() {
-    const success = await this.svc.attemptReconnection();
+    const success = await this.svc.attempt_reconnection();
     return {
       success,
-      state: this.svc.getConnectionState()
+      state: this.svc.get_connection_state()
     };
   }
 

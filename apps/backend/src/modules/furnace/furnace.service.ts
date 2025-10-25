@@ -136,11 +136,11 @@ export class FurnaceService implements OnModuleInit {
   private connectionManager = new ConnectionStateManager();
 
   // 设备状态管理 - 从设备层转移过来
-  private isBusy = false;
-  private lastBusyTime = 0;
-  private readonly busyCooldownMs = 3000; // 3秒冷却时间
-  private readonly normalTimeout = 1500;
-  private readonly extendedTimeout = 15000;
+  private is_busy = false;
+  private last_busy_time = 0;
+  private readonly busy_cooldown_ms = 3000; // 3秒冷却时间
+  private readonly normal_timeout = 1500;
+  private readonly extended_timeout = 15000;
 
   // 轮询管理相关 - 从FurnacePollingManagerService迁移过来
   private readonly POLLING_INTERVAL = 2000; // 2秒轮询间隔
@@ -148,15 +148,15 @@ export class FurnaceService implements OnModuleInit {
   private readonly RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY = 1000;
 
-  private pollingTimer: NodeJS.Timeout | null = null;
-  private samplingTimer: NodeJS.Timeout | null = null;
-  private isPolling = false;
-  private isSampling = false;
-  private isPollingPaused = false; // 轮询暂停状态
-  private retryCount = 0;
-  private lastStatus: FurnaceStatusUpdate | null = null;
+  private polling_timer: NodeJS.Timeout | null = null;
+  private sampling_timer: NodeJS.Timeout | null = null;
+  private is_polling = false;
+  private is_sampling = false;
+  private is_polling_paused = false; // 轮询暂停状态
+  private retry_count = 0;
+  private last_status: FurnaceStatusUpdate | null = null;
   private readonly subscribers = new Set<string>(); // WebSocket客户端ID集合
-  private operationInProgress = false; // 当前是否有操作在进行
+  private operation_in_progress = false; // 当前是否有操作在进行
 
   constructor(
     private readonly device: FurnaceDeviceService,
@@ -222,17 +222,37 @@ export class FurnaceService implements OnModuleInit {
 
   // ---------- 连接状态管理 ----------
   // 获取当前连接状态
-  getConnectionState(): ConnectionState {
+  get_connection_state(): ConnectionState {
     return this.connectionManager.getCurrentState();
   }
 
+  /**
+   * 获取连接状态详细信息（用于状态更新）
+   */
+  private async get_connection_state_details(): Promise<any> {
+    try {
+      // 这里应该从设备服务获取实际的连接状态
+      // 暂时返回模拟状态
+      return {
+        status: 'connected',
+        last_connected: new Date().toISOString(),
+        reconnect_attempts: 0,
+      };
+    } catch {
+      return {
+        status: 'disconnected',
+        reconnect_attempts: 0,
+      };
+    }
+  }
+
   // 尝试重连方法
-  async attemptReconnection(): Promise<boolean> {
+  async attempt_reconnection(): Promise<boolean> {
     return this.connectionManager.attemptReconnection();
   }
 
   // 检查设备是否已连接
-  isDeviceConnected(): boolean {
+  is_device_connected(): boolean {
     return this.connectionManager.getCurrentState() === ConnectionState.CONNECTED;
   }
 
@@ -355,7 +375,7 @@ export class FurnaceService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.executeDeviceOperation(
+    return this.execute_device_operation(
       () => this.device.status(),
       'status_query'
     );
@@ -416,7 +436,7 @@ export class FurnaceService implements OnModuleInit {
     this.set_operation_in_progress(true);
 
     try {
-      return await this.executeDeviceOperation(
+      return await this.execute_device_operation(
         () => this.device.getProgramSegments(),
         'read_program_segments',
         true // 使用扩展超时
@@ -441,7 +461,7 @@ export class FurnaceService implements OnModuleInit {
     this.set_operation_in_progress(true);
 
     try {
-      return await this.executeDeviceOperation(
+      return await this.execute_device_operation(
         () => this.device.setProgramSegments(segments as any),
         'write_program_segments',
         true // 使用扩展超时
@@ -457,36 +477,36 @@ export class FurnaceService implements OnModuleInit {
 
   // 设备忙碌状态查询（用于API层节流）
   is_device_busy(): boolean {
-    return this.isBusy || (Date.now() - this.lastBusyTime < this.busyCooldownMs);
+    return this.is_busy || (Date.now() - this.last_busy_time < this.busy_cooldown_ms);
   }
 
   // ---------- 数据管理方法（委托给FurnaceDataService） ----------
-  async listPresets(): Promise<Pick<FurnacePreset, 'name'|'createdAt'|'updatedAt'>[]> {
+  async list_presets(): Promise<Pick<FurnacePreset, 'name'|'createdAt'|'updatedAt'>[]> {
     return this.furnaceData.listPresets();
   }
 
-  async getPreset(name: string): Promise<FurnacePreset> {
+  async get_preset(name: string): Promise<FurnacePreset> {
     return this.furnaceData.getPreset(name);
   }
 
-  async createPreset(name: string, segments: ProgramSegment[], summary?: string): Promise<FurnacePreset> {
+  async create_preset(name: string, segments: ProgramSegment[], summary?: string): Promise<FurnacePreset> {
     return this.furnaceData.createPreset(name, segments, summary);
   }
 
-  async updatePreset(name: string, segments: ProgramSegment[]): Promise<FurnacePreset> {
+  async update_preset(name: string, segments: ProgramSegment[]): Promise<FurnacePreset> {
     return this.furnaceData.updatePreset(name, segments);
   }
 
-  async deletePreset(name: string): Promise<void> {
+  async delete_preset(name: string): Promise<void> {
     return this.furnaceData.deletePreset(name);
   }
 
-  async clonePreset(name: string, newName: string): Promise<FurnacePreset> {
+  async clone_preset(name: string, newName: string): Promise<FurnacePreset> {
     return this.furnaceData.clonePreset(name, newName);
   }
 
   // 历史数据管理
-  async getHistoryData(params: {
+  async get_history_data(params: {
     start_date?: string;
     end_date?: string;
     limit?: number;
@@ -495,7 +515,7 @@ export class FurnaceService implements OnModuleInit {
     return this.furnaceData.getHistoryData(params);
   }
 
-  async exportData(params: {
+  async export_data(params: {
     start_date?: string;
     end_date?: string;
     format?: 'csv' | 'json' | 'excel';
@@ -503,12 +523,12 @@ export class FurnaceService implements OnModuleInit {
     return this.furnaceData.exportData(params);
   }
 
-  async cleanupData(olderThanDays: number = 30): Promise<{ deleted_count: number }> {
+  async cleanup_data(olderThanDays: number = 30): Promise<{ deleted_count: number }> {
     return this.furnaceData.cleanupData(olderThanDays);
   }
 
   // 应用预设 - 需要协调设备控制和数据管理
-  async applyPreset(name: string): Promise<{ changed: boolean; steps: string[] }> {
+  async apply_preset(name: string): Promise<{ changed: boolean; steps: string[] }> {
     return this.furnaceData.applyPreset(
       name,
       () => this.getProgramSegments(),
@@ -519,27 +539,27 @@ export class FurnaceService implements OnModuleInit {
   /**
    * 智能超时策略执行设备操作
    */
-  private async executeDeviceOperation<T>(
+  private async execute_device_operation<T>(
     operation: () => Promise<T>,
     operationName: string,
     useExtendedTimeout: boolean = false
   ): Promise<T> {
     // 检查是否需要使用扩展超时
-    const needsExtendedTimeout = useExtendedTimeout || this.isBusy ||
-      (Date.now() - this.lastBusyTime < this.busyCooldownMs);
+    const needsExtendedTimeout = useExtendedTimeout || this.is_busy ||
+      (Date.now() - this.last_busy_time < this.busy_cooldown_ms);
 
     try {
       // 使用设备层的executeWithTimeout方法
       const result = await this.device.executeWithTimeout(operation, needsExtendedTimeout);
       // 成功响应后，重置忙碌状态
-      this.isBusy = false;
+      this.is_busy = false;
       return result;
     } catch (error: any) {
       // 如果是超时错误，标记为忙碌状态
       if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-        this.isBusy = true;
-        this.lastBusyTime = Date.now();
-        this.logger.warn(`设备操作 ${operationName} 响应超时，切换到扩展超时模式 (${this.extendedTimeout}ms)`);
+        this.is_busy = true;
+        this.last_busy_time = Date.now();
+        this.logger.warn(`设备操作 ${operationName} 响应超时，切换到扩展超时模式 (${this.extended_timeout}ms)`);
       }
       throw error;
     }
@@ -555,7 +575,7 @@ export class FurnaceService implements OnModuleInit {
     this.logger.log(`Client ${client_id} subscribed to furnace updates`);
 
     // 如果还没有开始轮询，开始轮询
-    if (!this.isPolling) {
+    if (!this.is_polling) {
       this.start_furnace_polling();
     }
   }
@@ -578,19 +598,19 @@ export class FurnaceService implements OnModuleInit {
    * 开始轮询熔炉状态
    */
   private start_furnace_polling(): void {
-    if (this.isPolling) {
+    if (this.is_polling) {
       return;
     }
 
-    this.isPolling = true;
-    this.retryCount = 0;
+    this.is_polling = true;
+    this.retry_count = 0;
     this.logger.log('Starting furnace status polling');
 
     // 立即执行一次状态检查
     this.poll_furnace_status();
 
     // 设置定时轮询
-    this.pollingTimer = setInterval(() => {
+    this.polling_timer = setInterval(() => {
       this.poll_furnace_status();
     }, this.POLLING_INTERVAL);
   }
@@ -599,11 +619,11 @@ export class FurnaceService implements OnModuleInit {
    * 停止轮询熔炉状态
    */
   private stop_furnace_polling(): void {
-    if (this.pollingTimer) {
-      clearInterval(this.pollingTimer);
-      this.pollingTimer = null;
+    if (this.polling_timer) {
+      clearInterval(this.polling_timer);
+      this.polling_timer = null;
     }
-    this.isPolling = false;
+    this.is_polling = false;
     this.logger.log('Stopped furnace status polling');
   }
 
@@ -611,14 +631,14 @@ export class FurnaceService implements OnModuleInit {
    * 开始采样
    */
   private start_furnace_sampling(): void {
-    if (this.isSampling) {
+    if (this.is_sampling) {
       return;
     }
 
-    this.isSampling = true;
+    this.is_sampling = true;
     this.logger.log('Starting furnace sampling');
 
-    this.samplingTimer = setInterval(() => {
+    this.sampling_timer = setInterval(() => {
       this.sample_furnace_data();
     }, this.SAMPLING_INTERVAL);
   }
@@ -627,11 +647,11 @@ export class FurnaceService implements OnModuleInit {
    * 停止采样
    */
   private stop_furnace_sampling(): void {
-    if (this.samplingTimer) {
-      clearInterval(this.samplingTimer);
-      this.samplingTimer = null;
+    if (this.sampling_timer) {
+      clearInterval(this.sampling_timer);
+      this.sampling_timer = null;
     }
-    this.isSampling = false;
+    this.is_sampling = false;
     this.logger.log('Stopped furnace sampling');
   }
 
@@ -641,13 +661,13 @@ export class FurnaceService implements OnModuleInit {
   private async poll_furnace_status(): Promise<void> {
     try {
       // 检查设备是否忙碌（轮询暂停状态）
-      if (this.is_device_busy() || this.isPollingPaused) {
+      if (this.is_device_busy() || this.is_polling_paused) {
         this.logger.debug('设备轮询已暂停，跳过本次状态查询');
         return;
       }
 
       const status = await this.device.status();
-      const connectionState = await this.get_connection_state();
+      const connectionState = await this.get_connection_state_details();
       const operationState = this.derive_operation_state(status?.status);
 
       const status_update: FurnaceStatusUpdate = {
@@ -670,11 +690,11 @@ export class FurnaceService implements OnModuleInit {
       // 检查状态是否发生变化
       const hasChanged = this.has_status_changed(status_update);
 
-      if (hasChanged || this.retryCount === 0) {
+      if (hasChanged || this.retry_count === 0) {
         // 发送状态更新到所有订阅者
         this.broadcast_status_update(status_update);
-        this.lastStatus = { ...status_update };
-        this.retryCount = 0;
+        this.last_status = { ...status_update };
+        this.retry_count = 0;
       }
 
       // 标记设备活跃状态给数据管理服务
@@ -692,7 +712,7 @@ export class FurnaceService implements OnModuleInit {
   private async sample_furnace_data(): Promise<void> {
     try {
       // 只有在设备连接且不忙碌时才采样
-      if (!await this.is_device_connected() || this.is_device_busy() || this.isPollingPaused) {
+      if (!await this.is_device_connected() || this.is_device_busy() || this.is_polling_paused) {
         return;
       }
 
@@ -735,26 +755,7 @@ export class FurnaceService implements OnModuleInit {
     this.logger.debug(`Broadcasted furnace sampling data to ${this.subscribers.size} subscribers`);
   }
 
-  /**
-   * 获取连接状态
-   */
-  private async get_connection_state(): Promise<any> {
-    try {
-      // 这里应该从设备服务获取实际的连接状态
-      // 暂时返回模拟状态
-      return {
-        status: 'connected',
-        last_connected: new Date().toISOString(),
-        reconnect_attempts: 0,
-      };
-    } catch {
-      return {
-        status: 'disconnected',
-        reconnect_attempts: 0,
-      };
-    }
-  }
-
+  
   /**
    * 根据状态字符串推断运行状态
    */
@@ -793,41 +794,30 @@ export class FurnaceService implements OnModuleInit {
    * 检查状态是否发生变化
    */
   private has_status_changed(current_status: FurnaceStatusUpdate): boolean {
-    if (!this.lastStatus) {
+    if (!this.last_status) {
       return true;
     }
 
     return (
-      this.lastStatus.status.pv !== current_status.status.pv ||
-      this.lastStatus.status.sv !== current_status.status.sv ||
-      this.lastStatus.status.mv !== current_status.status.mv ||
-      this.lastStatus.status.status !== current_status.status.status ||
-      this.lastStatus.status.segment !== current_status.status.segment ||
-      this.lastStatus.connection_state.status !== current_status.connection_state.status ||
-      this.lastStatus.operation_state !== current_status.operation_state
+      this.last_status.status.pv !== current_status.status.pv ||
+      this.last_status.status.sv !== current_status.status.sv ||
+      this.last_status.status.mv !== current_status.status.mv ||
+      this.last_status.status.status !== current_status.status.status ||
+      this.last_status.status.segment !== current_status.status.segment ||
+      this.last_status.connection_state.status !== current_status.connection_state.status ||
+      this.last_status.operation_state !== current_status.operation_state
     );
   }
 
-  /**
-   * 检查设备是否连接
-   */
-  private async is_device_connected(): Promise<boolean> {
-    try {
-      const connectionState = await this.get_connection_state();
-      return connectionState.status === 'connected';
-    } catch {
-      return false;
-    }
-  }
-
+  
   /**
    * 处理轮询错误
    */
   private async handle_polling_error(error: any): Promise<void> {
-    this.retryCount++;
+    this.retry_count++;
 
-    if (this.retryCount <= this.RETRY_ATTEMPTS) {
-      this.logger.warn(`Polling attempt ${this.retryCount} failed, retrying in ${this.RETRY_DELAY}ms`);
+    if (this.retry_count <= this.RETRY_ATTEMPTS) {
+      this.logger.warn(`Polling attempt ${this.retry_count} failed, retrying in ${this.RETRY_DELAY}ms`);
 
       // 发送错误状态到订阅者
       const error_status: FurnaceStatusUpdate = {
@@ -844,7 +834,7 @@ export class FurnaceService implements OnModuleInit {
         },
         connection_state: {
           status: 'disconnected',
-          reconnect_attempts: this.retryCount,
+          reconnect_attempts: this.retry_count,
         },
         operation_state: 'idle',
         is_busy: false,
@@ -854,10 +844,10 @@ export class FurnaceService implements OnModuleInit {
 
       // 延迟后重试
       setTimeout(() => {
-        if (this.isPolling) {
+        if (this.is_polling) {
           this.poll_furnace_status();
         }
-      }, this.RETRY_DELAY * this.retryCount);
+      }, this.RETRY_DELAY * this.retry_count);
     } else {
       this.logger.error(`Polling failed after ${this.RETRY_ATTEMPTS} attempts, stopping polling`);
 
@@ -880,7 +870,7 @@ export class FurnaceService implements OnModuleInit {
         },
         connection_state: {
           status: 'disconnected',
-          reconnect_attempts: this.retryCount,
+          reconnect_attempts: this.retry_count,
         },
         operation_state: 'idle',
         is_busy: false,
@@ -902,12 +892,12 @@ export class FurnaceService implements OnModuleInit {
     is_polling_paused: boolean;
   } {
     return {
-      is_polling: this.isPolling,
-      is_sampling: this.isSampling,
+      is_polling: this.is_polling,
+      is_sampling: this.is_sampling,
       subscriber_count: this.subscribers.size,
-      retry_count: this.retryCount,
-      last_update: this.lastStatus?.timestamp,
-      is_polling_paused: this.isPollingPaused,
+      retry_count: this.retry_count,
+      last_update: this.last_status?.timestamp,
+      is_polling_paused: this.is_polling_paused,
     };
   }
 
@@ -915,7 +905,7 @@ export class FurnaceService implements OnModuleInit {
    * 暂停轮询 - 供业务层调用
    */
   pause_polling(): void {
-    this.isPollingPaused = true;
+    this.is_polling_paused = true;
     this.logger.debug('业务层请求暂停轮询');
   }
 
@@ -923,22 +913,22 @@ export class FurnaceService implements OnModuleInit {
    * 恢复轮询 - 供业务层调用
    */
   resume_polling(): void {
-    this.isPollingPaused = false;
+    this.is_polling_paused = false;
     this.logger.debug('业务层请求恢复轮询');
   }
 
   /**
    * 检查轮询是否暂停
    */
-  is_polling_paused(): boolean {
-    return this.isPollingPaused;
+  check_polling_paused(): boolean {
+    return this.is_polling_paused;
   }
 
   /**
    * 设置操作进行状态
    */
   set_operation_in_progress(in_progress: boolean): void {
-    this.operationInProgress = in_progress;
+    this.operation_in_progress = in_progress;
     if (in_progress) {
       this.logger.debug('设备操作开始，暂停轮询');
       this.pause_polling();
@@ -952,6 +942,6 @@ export class FurnaceService implements OnModuleInit {
    * 检查是否有操作在进行
    */
   is_operation_in_progress(): boolean {
-    return this.operationInProgress;
+    return this.operation_in_progress;
   }
 }

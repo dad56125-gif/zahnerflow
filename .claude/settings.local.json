@@ -41,7 +41,8 @@
       "Bash(npx nest info:*)",
       "Bash(npm --version:*)",
       "Bash(SMOKETEST=1 node:*)",
-      "Bash(npx nest:*)"
+      "Bash(npx nest:*)",
+      "Bash(dir:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
