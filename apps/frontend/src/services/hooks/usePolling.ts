@@ -141,14 +141,14 @@ export function usePolling<T>(
       if (!mountedRef.current) return;
 
       // 成功获取数据
-      updateState(prev => ({
-        ...prev,
+      setState(currentState => ({
+        ...currentState,
         data,
         isLoading: false,
         error: null,
         lastUpdate: new Date(),
         retryCount: 0,
-        pollCount: prev.pollCount + 1,
+        pollCount: currentState.pollCount + 1,
       }));
 
       // 调用成功回调
@@ -161,35 +161,48 @@ export function usePolling<T>(
 
       const deviceError = error as DeviceError;
 
-      // 更新错误状态
-      updateState(prev => ({
-        ...prev,
-        data: null,
-        isLoading: false,
-        error: deviceError,
-        retryCount: isRetry ? prev.retryCount + 1 : 1,
-      }));
+      // 使用函数式更新来确保获取最新的状态值，避免闭包问题
+      setState(currentState => {
+        const newRetryCount = isRetry ? currentState.retryCount + 1 : 1;
 
-      // 调用错误回调
-      if (onError) {
-        onError(deviceError);
-      }
+        // 调用错误回调
+        if (onError) {
+          onError(deviceError);
+        }
 
-      // 如果可以重试且未达到最大重试次数
-      if (apiUtils.isRetryableError(deviceError) && state.retryCount < maxRetries) {
-        const nextRetryDelay = retryDelay * Math.pow(backoffFactor, state.retryCount);
+        // 如果可以重试且未达到最大重试次数
+        if (isRetryableError(deviceError) && newRetryCount <= maxRetries) {
+          const nextRetryDelay = retryDelay * Math.pow(backoffFactor, newRetryCount - 1);
 
-        retryTimeoutRef.current = setTimeout(() => {
-          if (mountedRef.current) {
-            fetchData(true);
-          }
-        }, nextRetryDelay);
-      } else {
-        // 无法重试或达到最大重试次数，停止轮询
-        stop();
-      }
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current) {
+              fetchData(true);
+            }
+          }, nextRetryDelay);
+        } else {
+          // 无法重试或达到最大重试次数，停止轮询
+          // 使用setTimeout避免在setState过程中调用stop()
+          setTimeout(() => {
+            if (mountedRef.current) {
+              clearTimers();
+              updateState({ isPolling: false, isLoading: false });
+              if (onPollingStateChange) {
+                onPollingStateChange(false);
+              }
+            }
+          }, 0);
+        }
+
+        return {
+          ...currentState,
+          data: null,
+          isLoading: false,
+          error: deviceError,
+          retryCount: newRetryCount,
+        };
+      });
     }
-  }, [fetchFn, onError, onSuccess, retryDelay, backoffFactor, maxRetries, state.retryCount, updateState]);
+  }, [fetchFn, onError, onSuccess, retryDelay, backoffFactor, maxRetries, updateState, clearTimers, onPollingStateChange]);
 
   // 开始轮询
   const start = useCallback(() => {
@@ -257,15 +270,24 @@ export function usePolling<T>(
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // 页面隐藏时暂停轮询
-        if (intervalRef.current) {
-          stop();
+        // 页面隐藏时强制清理所有定时器，避免竞态条件
+        clearTimers();
+        updateState({ isPolling: false, isLoading: false });
+
+        if (onPollingStateChange) {
+          onPollingStateChange(false);
         }
       } else {
-        // 页面显示时恢复轮询
-        if (!intervalRef.current) {
-          start();
-        }
+        // 页面显示时恢复轮询，确保没有残留的定时器
+        clearTimers(); // 先清理所有可能的残留定时器
+        updateState({ isPolling: false, isLoading: false }); // 重置状态
+
+        // 延迟启动轮询，确保清理完成
+        setTimeout(() => {
+          if (mountedRef.current) {
+            start();
+          }
+        }, 0);
       }
     };
 
@@ -274,7 +296,7 @@ export function usePolling<T>(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [onlyWhenVisible, start, stop]);
+  }, [onlyWhenVisible, start, clearTimers, updateState, onPollingStateChange]);
 
   // 依赖变化时重新开始轮询
   useEffect(() => {
@@ -286,7 +308,7 @@ export function usePolling<T>(
     return () => {
       reset();
     };
-  }, deps);
+  }, [...deps, reset, start, auto_start]); // 展开deps数组，包含所有依赖项
 
   // 组件卸载时清理
   useEffect(() => {
@@ -363,76 +385,5 @@ export function useConditionalPolling<T>(
   return [state, controls];
 }
 
-/**
- * 多数据源轮询 Hook
- */
-export function useMultiPolling<T extends Record<string, any>>(
-  fetchers: {
-    [K in keyof T]: () => Promise<T[K]>;
-  },
-  interval: number = 2000,
-  options: Partial<PollingOptions<T>> = {}
-): [Partial<T> | null, boolean, DeviceError | null] {
-  const [state, setState] = useState<{
-    data: Partial<T> | null;
-    isLoading: boolean;
-    error: DeviceError | null;
-  }>({
-    data: null,
-    isLoading: false,
-    error: null,
-  });
-
-  const fetchAllData = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-
-      const promises = Object.entries(fetchers).map(async ([key, fetcher]) => {
-        const value = await fetcher();
-        return [key, value] as [string, any];
-      });
-
-      const results = await Promise.allSettled(promises);
-
-      const data: Partial<T> = {};
-      let hasError = false;
-      let firstError: DeviceError | null = null;
-
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          const [key] = Object.keys(fetchers)[index];
-          data[key as keyof T] = result.value[1];
-        } else {
-          hasError = true;
-          if (!firstError) {
-            firstError = result.reason as DeviceError;
-          }
-        }
-      });
-
-      setState({
-        data,
-        isLoading: false,
-        error: hasError ? firstError : null,
-      });
-
-    } catch (error) {
-      setState({
-        data: null,
-        isLoading: false,
-        error: error as DeviceError,
-      });
-    }
-  }, [fetchers]);
-
-  // 使用简单轮询
-  const [data, isLoading, error, refresh] = useSimplePolling(
-    fetchAllData,
-    interval,
-    options
-  );
-
-  return [data, isLoading, error];
-}
 
 export default usePolling;

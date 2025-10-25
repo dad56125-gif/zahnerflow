@@ -66,11 +66,7 @@ export class FurnaceDeviceService {
   async pause(): Promise<any> { const { data } = await this.http.post('/pause', {}); return data; }
   async stop(): Promise<any> { const { data } = await this.http.post('/stop', {}); return data; }
 
-  async setSv(sv: number): Promise<any> {
-    const { data } = await this.http.post('/sv', { sv });
-    return data;
-  }
-
+  
   async setSegment(segment: number): Promise<any> {
     const { data } = await this.http.post('/segment/set', { segment });
     return data;

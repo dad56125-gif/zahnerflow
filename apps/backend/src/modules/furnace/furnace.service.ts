@@ -432,30 +432,7 @@ export class FurnaceService implements OnModuleInit {
     return this.device.getCommLog();
   }
 
-  // 设置SV方法 - 需要初始化检查和连接状态检查
-  async setSv(sv: number): Promise<any> {
-    await this.ensureInitialized();
-    if (this.connectionManager.getCurrentState() !== ConnectionState.CONNECTED) {
-      throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
-    }
-
-    try {
-      const result = await this.errorHandler.handleDeviceOperation(
-        () => this.device.setSv(sv),
-        { operation: 'set_temperature', temperature: sv }
-      );
-
-      // 使用统一响应包装器确保返回完整状态数据
-      if (result && typeof result === 'object') {
-        return FurnaceResponse.createFromParameterData(result, 'set_sv');
-      } else {
-        return FurnaceResponse.createErrorResponse('设置温度命令返回无效数据');
-      }
-    } catch (error: any) {
-      return FurnaceResponse.createErrorResponse(error.message || '设置温度失败');
-    }
-  }
-
+  
   // 设置程序段方法 - 需要初始化检查和连接状态检查
   async setSegment(segment: number): Promise<any> {
     await this.ensureInitialized();

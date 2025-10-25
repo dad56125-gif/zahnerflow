@@ -57,7 +57,7 @@ async function apiRequest<T>(
     return response.json();
   } catch (error) {
     // 网络错误或其他异常
-    if (error instanceof Error && !(error as DeviceError).code) {
+    if (error instanceof Error && !(error as unknown as DeviceError).code) {
       throw {
         code: 'NETWORK_ERROR',
         message: error.message,
@@ -65,7 +65,7 @@ async function apiRequest<T>(
       } as DeviceError;
     }
 
-    throw error as DeviceError;
+    throw error as unknown as DeviceError;
   }
 }
 
@@ -79,7 +79,7 @@ export class MfcApi {
    * 扫描MFC设备
    */
   static async scanDevices(params: MfcScanRequest = {}): Promise<MfcDeviceInfo[]> {
-    const { start = 32, end = 80 } = params;
+    const { start_address: start = 32, end_address: end = 80 } = params;
 
     if (typeof start !== 'number' || start < 1 || start > 127) {
       throw {
@@ -418,8 +418,8 @@ export class MfcApi {
    */
   static getRecommendedScanParams(): MfcScanRequest {
     return {
-      start: 32,
-      end: 80,
+      start_address: 32,
+      end_address: 80,
     };
   }
 

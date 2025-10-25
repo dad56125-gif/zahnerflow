@@ -120,7 +120,6 @@ export const api = {
   // Furnace 快速访问
   furnace: {
     getStatus: FurnaceApi.getStatus,
-    setTemperature: FurnaceApi.setTemperature,
     setSegment: FurnaceApi.setSegment,
     connect: FurnaceApi.connect,
     disconnect: FurnaceApi.disconnect,

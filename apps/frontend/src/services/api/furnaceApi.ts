@@ -75,7 +75,7 @@ async function apiRequest<T>(
     return response.json();
   } catch (error) {
     // 网络错误或其他异常
-    if (error instanceof Error && !(error as DeviceError).code) {
+    if (error instanceof Error && !(error as unknown as DeviceError).code) {
       throw {
         code: 'NETWORK_ERROR',
         message: error.message,
@@ -83,7 +83,7 @@ async function apiRequest<T>(
       } as DeviceError;
     }
 
-    throw error as DeviceError;
+    throw error as unknown as DeviceError;
   }
 }
 
@@ -98,24 +98,7 @@ export class FurnaceApi {
     return apiRequest<FurnaceStatus>('/status');
   }
 
-  /**
-   * 设置设定温度
-   */
-  static async setTemperature(sv: number): Promise<FurnaceOperationResponse> {
-    if (typeof sv !== 'number' || sv < 0 || sv > 1200) {
-      throw {
-        code: 'INVALID_PARAMETER',
-        message: 'Temperature must be between 0 and 1200°C',
-        status: 400,
-      } as DeviceError;
-    }
-
-    return apiRequest<FurnaceOperationResponse>('/sv', {
-      method: 'POST',
-      body: JSON.stringify({ sv }),
-    });
-  }
-
+  
   /**
    * 切换程序段
    */

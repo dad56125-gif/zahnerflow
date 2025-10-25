@@ -48,7 +48,6 @@ export class FurnaceController {
   @Get('health') health() { return this.svc.health(); }
   @Get('ports') ports() { return this.svc.ports(); }
   @Get('comm-log') getCommLog() { return this.svc.getCommLog(); }
-  @Post('sv') sv(@Body() body: { sv: number }) { return this.svc.setSv(body.sv); }
   @Post('segment/set') segmentSet(@Body() body: { segment: number }) { return this.svc.setSegment(body.segment); }
 
   @Get('program/segments') getSegments() { return this.svc.getProgramSegments(); }

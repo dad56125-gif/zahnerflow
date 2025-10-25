@@ -14,8 +14,22 @@ declare global {
 }
 
 // 创建API实例
+const getApiBaseUrl = () => {
+  // 尝试多种方式获取API基础URL，避免import.meta的使用
+  if (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) {
+    return (window as any).__ENV__.VITE_API_BASE_URL;
+  }
+  if (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) {
+    return process.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && (window as any).VITE_API_BASE_URL) {
+    return (window as any).VITE_API_BASE_URL;
+  }
+  return '/api';
+};
+
 const api: AxiosInstance = axios.create({
-  baseURL: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api',
+  baseURL: getApiBaseUrl(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
