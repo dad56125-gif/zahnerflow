@@ -1,4 +1,5 @@
-﻿from fastapi import FastAPI, Body
+﻿from fastapi import FastAPI, Body, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import serial
@@ -27,6 +28,71 @@ class FurnaceError(Exception):
         self.retryable = retryable
         self.context = context or {}
         self.timestamp = datetime.now()
+
+
+
+
+class FurnaceResponse:
+    """熔炉响应包装器类 - 统一数据解析和响应格式"""
+
+    @staticmethod
+    def create_from_parameter_data(param_data: dict, operation_success: bool = True,
+                                 operation_code: Optional[int] = None, operation_value: Optional[int] = None) -> dict:
+        """从参数数据创建统一的响应格式
+
+        Args:
+            param_data: 从read_parameter或write_parameter获得的数据
+            operation_success: 操作是否成功
+            operation_code: 操作的参数代码
+            operation_value: 操作的参数值
+
+        Returns:
+            dict: 统一格式的响应数据
+        """
+        if not param_data or "error" in param_data:
+            return FurnaceResponse.create_error_response(param_data.get("error", "Unknown error") if param_data else "No data")
+
+        base_response = {
+            "ok": operation_success,
+            "pv": param_data.get("pv", 0.0),
+            "sv": param_data.get("sv", 0.0),
+            "mv": param_data.get("mv", 0),
+            "status_a": param_data.get("status_a", 0),
+            "param_value": param_data.get("param_value", 0),
+            "timestamp": datetime.now().isoformat()
+        }
+
+        if operation_code is not None and operation_value is not None:
+            base_response["operation"] = {
+                "code": operation_code,
+                "value": operation_value,
+                "success": operation_success
+            }
+
+        return base_response
+
+    @staticmethod
+    def create_error_response(error_message: str) -> dict:
+        """创建错误响应
+
+        Args:
+            error_message: 错误信息
+
+        Returns:
+            dict: 错误响应格式
+        """
+        return {
+            "ok": False,
+            "error": error_message,
+            "pv": 0.0,
+            "sv": 0.0,
+            "mv": 0,
+            "status_a": 0,
+            "param_value": 0,
+            "timestamp": datetime.now().isoformat()
+        }
+
+
 
 class EnhancedCommLogManager:
     """增强的通信日志管理器，包含错误分类和统计"""
@@ -93,6 +159,50 @@ class EnhancedCommLogManager:
 
 # AI-518P温控器FastAPI服务器
 app = FastAPI(title="AI-518P温控器FastAPI接口")
+
+
+@app.exception_handler(FurnaceError)
+async def furnace_exception_handler(request: Request, exc: FurnaceError):
+    """
+    捕获所有自定义的FurnaceError异常，并返回标准化的错误响应
+    """
+    error_message = str(exc)  # 从Exception基类获取错误消息
+    logger.error(f"FurnaceError caught: {error_message} | Category: {exc.category.value} | Context: {exc.context}")
+
+    # 使用FurnaceResponse工具生成响应
+    error_response = FurnaceResponse.create_error_response(error_message)
+
+    # 添加更多结构化信息
+    error_response["error_details"] = {
+        "category": exc.category.value,
+        "retryable": exc.retryable,
+        "context": exc.context
+    }
+
+    # 根据错误类型决定HTTP状态码
+    status_code = 503 if exc.category == ErrorCategory.DEVICE else 400
+
+    return JSONResponse(
+        status_code=status_code,
+        content=error_response
+    )
+
+
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """
+    捕获所有未处理的通用异常，防止服务器返回500错误
+    """
+    logger.critical(f"Unhandled exception for request {request.url}: {exc}", exc_info=True)
+
+    error_response = FurnaceResponse.create_error_response("An unexpected internal server error occurred.")
+
+    return JSONResponse(
+        status_code=500,
+        content=error_response
+    )
 
 
 # 使用增强的日志管理器
@@ -254,6 +364,36 @@ class FurnaceDeviceManager:
 device_manager = FurnaceDeviceManager()
 
 
+def get_active_controller() -> 'AI518PController':
+    """
+    FastAPI依赖项：获取活动的控制器
+    如果获取失败，抛出FurnaceError异常
+
+    Returns:
+        AI518PController: 可用的控制器实例
+
+    Raises:
+        FurnaceError: 当没有活动连接时
+    """
+    controller = device_manager.get_controller()
+    if not controller:
+        raise FurnaceError(
+            "No active connection to the device. Please connect first.",
+            ErrorCategory.DEVICE,
+            retryable=False
+        )
+    return controller
+
+
+def get_optional_controller() -> Optional['AI518PController']:
+    """
+    FastAPI依赖项：获取可选的控制器
+    如果获取失败，返回None而不是抛出异常
+
+    Returns:
+        Optional[AI518PController]: 可用的控制器实例，或None
+    """
+    return device_manager.get_controller()
 
 
 class ConnectRequest(BaseModel):
@@ -512,7 +652,7 @@ class AI518PController:
             self.comm_log.add_log('ERROR', 'READ_PARAMETER_ERROR', connection_id=self.connection_id, error=error)
             raise error
 
-    def write_parameter(self, code: int, value: int) -> bool:
+    def write_parameter(self, code: int, value: int) -> dict:
         """写入温控器参数
 
         Args:
@@ -520,13 +660,51 @@ class AI518PController:
             value: 参数值
 
         Returns:
-            bool: 写入成功返回True，失败返回False
+            dict: 包含pv、sv、mv、status_a、param_value的字典，以及操作结果
         """
-        resp = self._send(self._cmd_write(code, value))
-        if not resp or len(resp) < 8:
-            return False
-        returned = resp[6] + (resp[7] << 8)
-        return returned == value
+        try:
+            resp = self._send(self._cmd_write(code, value))
+            if resp and len(resp) >= 8:
+                # 解析响应数据，与read_parameter方法保持一致
+                pv = resp[0] + (resp[1] << 8)
+                sv = resp[2] + (resp[3] << 8)
+                mv = resp[4] if resp[4] <= 127 else resp[4] - 256
+                status_a = resp[5]
+                param_value = resp[6] + (resp[7] << 8)
+                
+                # 检查写入是否成功
+                operation_success = param_value == value
+                
+                # 使用FurnaceResponse包装器创建统一格式响应
+                param_data = {
+                    "pv": pv / 10.0,
+                    "sv": sv / 10.0,
+                    "mv": mv,
+                    "status_a": status_a,
+                    "param_value": param_value
+                }
+                
+                return FurnaceResponse.create_from_parameter_data(
+                    param_data, operation_success, code, value
+                )
+            else:
+                error = FurnaceError(
+                    f"参数写入失败，响应数据不完整 (代码: 0x{code:02X})",
+                    ErrorCategory.SYSTEM,
+                    retryable=True
+                )
+                self.comm_log.add_log('ERROR', 'PROTOCOL_ERROR', connection_id=self.connection_id, error=error)
+                return FurnaceResponse.create_error_response(str(error))
+        except FurnaceError:
+            return FurnaceResponse.create_error_response("设备通信错误")
+        except Exception as e:
+            error = FurnaceError(
+                f"参数写入异常 (代码: 0x{code:02X}): {str(e)}",
+                ErrorCategory.SYSTEM,
+                retryable=False
+            )
+            self.comm_log.add_log('ERROR', 'WRITE_PARAMETER_ERROR', connection_id=self.connection_id, error=error)
+            return FurnaceResponse.create_error_response(str(error))
 
     def get_all_status(self):
         """获取温控器所有状态信息
@@ -614,17 +792,7 @@ class AI518PController:
         """
         return self.write_parameter(0x00, seg)
 
-    def set_sv(self, sv_celsius: float):
-        """设定目标温度
-
-        Args:
-            sv_celsius: 目标温度（摄氏度）
-
-        Returns:
-            bool: 设置成功返回True，失败返回False
-        """
-        return self.write_parameter(0x00, int(sv_celsius * 10))
-
+    
     def read_program_segments(self) -> List[ProgramSegment]:
         """读取所有程序段设置"""
         segs: List[ProgramSegment] = []
@@ -702,86 +870,86 @@ def disconnect():
 
 
 @app.get("/status")
-def get_status():
+def get_status(controller: 'AI518PController' = Depends(get_active_controller)):
     """获取温控器状态"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"error": "No active connection"}
-
     s = controller.get_all_status()
     return s or {"error": "no response"}
 
 
 @app.post("/run")
-def run_program():
+def run_program(controller: 'AI518PController' = Depends(get_active_controller)):
     """启动程序运行"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"ok": False, "error": "No active connection"}
-
-    return {"ok": bool(controller.set_program_run())}
+    # 直接调用，异常由全局异常处理器处理
+    return controller.set_program_run()
 
 
 @app.post("/pause")
-def pause_program():
+def pause_program(controller: 'AI518PController' = Depends(get_active_controller)):
     """暂停程序运行"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"ok": False, "error": "No active connection"}
-
-    return {"ok": bool(controller.set_program_pause())}
+    # 直接调用，异常由全局异常处理器处理
+    return controller.set_program_pause()
 
 
 @app.post("/stop")
-def stop_program():
+def stop_program(controller: 'AI518PController' = Depends(get_active_controller)):
     """停止程序运行"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"ok": False, "error": "No active connection"}
-
-    return {"ok": bool(controller.set_program_stop())}
+    # 直接调用，异常由全局异常处理器处理
+    return controller.set_program_stop()
 
 
-@app.post("/sv")
-def set_sv(sv: float = Body(...)):  # 摄氏度
-    """设定目标温度"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"ok": False, "error": "No active connection"}
-
-    return {"ok": bool(controller.set_sv(sv))}
 
 
 @app.post("/segment/set")
-def set_segment(segment: int = Body(...)):
+def set_segment(segment: int = Body(...), controller: 'AI518PController' = Depends(get_active_controller)):
     """设置当前程序段"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"ok": False, "error": "No active connection"}
-
-    return {"ok": bool(controller.set_segment(segment))}
+    # 直接调用，异常由全局异常处理器处理
+    return controller.set_segment(segment)
 
 
 @app.get("/program/segments")
-def get_program_segments():
+def get_program_segments(controller: 'AI518PController' = Depends(get_active_controller)):
     """获取所有程序段设置"""
-    controller = device_manager.get_controller()
-    if not controller:
-        return {"error": "No active connection"}
-
     segments = controller.read_program_segments()
     return [s.model_dump() for s in segments]
 
 
 @app.post("/program/segments")
-def set_program_segments(items: List[ProgramSegment]):
+def set_program_segments(items: List[ProgramSegment], controller: Optional['AI518PController'] = Depends(get_optional_controller)):
     """设置程序段"""
-    controller = device_manager.get_controller()
     if not controller:
-        return {"ok": False, "error": "No active connection", "count": len(items)}
+        error_response = FurnaceResponse.create_error_response("No active connection")
+        error_response["count"] = len(items)
+        return error_response
 
+    # 执行程序段写入操作
     ok = controller.write_program_segments(items)
-    return {"ok": bool(ok), "count": len(items)}
+
+    # 如果写入失败，返回错误
+    if not ok:
+        error_response = FurnaceResponse.create_error_response("Failed to write program segments")
+        error_response["count"] = len(items)
+        error_response["segments_written"] = 0
+        return error_response
+
+    # 读取最新状态作为响应
+    latest_status = controller.read_parameter(0x00)
+    if latest_status:
+        result = FurnaceResponse.create_from_parameter_data(
+            latest_status,
+            True,
+            operation_code=None,
+            operation_value=len(items)
+        )
+        result["count"] = len(items)
+        result["segments_written"] = len(items)
+        return result
+    else:
+        # 写入成功但无法读取验证状态
+        error_response = FurnaceResponse.create_error_response("Program segments written but failed to read verification status")
+        error_response["count"] = len(items)
+        error_response["segments_written"] = len(items)
+        error_response["warning"] = "Write operation completed successfully, but status verification failed"
+        return error_response
 
 
 @app.get("/health")
@@ -801,19 +969,10 @@ def get_comm_log():
         "connection_id": connection_id
     }
 
-
-# 简化架构：单连接模式，删除过度设计的连接池功能
-
-
 @app.get("/ports")
 def ports():
     """获取可用串口列表"""
     return [p.device for p in serial.tools.list_ports.comports()]
-
-
-# 删除所有带connection_id的冗余API端点
-# 简化设计，只使用无connection_id的API端点
-
 
 if __name__ == "__main__":
     import uvicorn
