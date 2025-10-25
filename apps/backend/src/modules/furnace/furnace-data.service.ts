@@ -4,6 +4,64 @@ import * as path from 'path';
 import type { FurnacePreset, ProgramSegment, FurnaceSample } from '@zahnerflow/types';
 
 /**
+ * 统一的熔炉响应包装器 - 解决API响应重复问题
+ * 基于Furnace API协议合规性改进方案实现
+ */
+export class FurnaceResponse {
+  /**
+   * 基于统一的参数数据创建响应
+   */
+  static createFromParameterData(paramData: any, operationType: string = 'read'): any {
+    if (!paramData) {
+      return { ok: false, error: '设备通信失败' };
+    }
+
+    return {
+      ok: true,
+      data: {
+        pv: paramData.pv || 0,
+        sv: paramData.sv || 0,
+        mv: paramData.mv || 0,
+        status: paramData.status_a || paramData.status || 0,
+        timestamp: paramData.timestamp || new Date().toISOString(),
+        operation: operationType
+      }
+    };
+  }
+
+  /**
+   * 创建标准的错误响应
+   */
+  static createErrorResponse(errorMsg: string): any {
+    return { ok: false, error: errorMsg };
+  }
+
+  /**
+   * 从设备状态数据创建标准响应
+   */
+  static createFromDeviceStatus(deviceStatus: any, operationType: string = 'status'): any {
+    if (!deviceStatus) {
+      return this.createErrorResponse('设备状态数据为空');
+    }
+
+    return {
+      ok: true,
+      data: {
+        pv: deviceStatus.pv || 0,
+        sv: deviceStatus.sv || 0,
+        mv: deviceStatus.mv || 0,
+        status: deviceStatus.status || 0,
+        segment: deviceStatus.segment || 0,
+        segment_time: deviceStatus.segment_time || 0,
+        segment_time_set: deviceStatus.segment_time_set || 0,
+        timestamp: deviceStatus.timestamp || new Date().toISOString(),
+        operation: operationType
+      }
+    };
+  }
+}
+
+/**
  * 预设写入限制器
  * 防止频繁写入操作，限制最小写入间隔
  */

@@ -42,7 +42,8 @@
       "Bash(npm --version:*)",
       "Bash(SMOKETEST=1 node:*)",
       "Bash(npx nest:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Skill(superpowers:subagent-driven-development)"
     ]
   },
   "enableAllProjectMcpServers": true,

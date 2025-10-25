@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, AxiosHeaders } from 'axios';
 import { PaginatedResponse } from '@zahnerflow/types';
 
 // Vite环境变量类型声明
@@ -7,13 +7,15 @@ interface ImportMetaEnv {
   // 其他环境变量可以在这里添加
 }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+declare global {
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }
 
 // 创建API实例
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -26,15 +28,22 @@ api.interceptors.request.use(
     // 添加认证token
     const token = localStorage.getItem('auth_token');
     if (token) {
-      config.headers = config.headers || {};
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers = config.headers || new AxiosHeaders();
+      if (config.headers.set) {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        (config.headers as any)['Authorization'] = `Bearer ${token}`;
+      }
     }
-    
+
     // 添加请求ID用于追踪
-    config.headers = config.headers || {};
-    config.headers['X-Request-ID'] = generateRequestId();
-    
-      
+    config.headers = config.headers || new AxiosHeaders();
+    if (config.headers.set) {
+      config.headers.set('X-Request-ID', generateRequestId());
+    } else {
+      (config.headers as any)['X-Request-ID'] = generateRequestId();
+    }
+
     return config;
   },
   (error) => {

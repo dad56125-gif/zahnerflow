@@ -167,21 +167,21 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
               {furnaceState.logs.map((log) => (
                 <div
                   key={log.id}
-                  className={`console-log ${log.type === 'comm' ? 'comm' : 'operation'} ${log.type === 'comm' ? (log.data as CommLog).direction.toLowerCase() : (log.data as OperationLog).level}`}
+                  className={`console-log ${(log.type === 'comm_rx' || log.type === 'comm_tx') ? 'comm' : 'operation'} ${(log.type === 'comm_rx' || log.type === 'comm_tx') ? (log.details as CommLog)?.direction?.toLowerCase() || '' : ''}`}
                 >
                   <span className="log-timestamp">{log.timestamp}</span>
-                  {log.type === 'comm' ? (
+                  {(log.type === 'comm_rx' || log.type === 'comm_tx') ? (
                     <>
-                      <span className="log-direction">{(log.data as CommLog).direction}:</span>
-                      <span className="log-data">{(log.data as CommLog).data}</span>
+                      <span className="log-direction">{(log.details as CommLog)?.direction}:</span>
+                      <span className="log-data">{(log.details as CommLog)?.data}</span>
                     </>
                   ) : (
                     <span className="log-message">
-                      {(log.data as OperationLog).level === 'success' && '✓ '}
-                      {(log.data as OperationLog).level === 'error' && '✗ '}
-                      {(log.data as OperationLog).level === 'warning' && '⚠ '}
-                      {(log.data as OperationLog).level === 'info' && 'ℹ '}
-                      {(log.data as OperationLog).message}
+                      {log.type === 'success' && '✓ '}
+                      {log.type === 'error' && '✗ '}
+                      {log.type === 'warning' && '⚠ '}
+                      {log.type === 'info' && 'ℹ '}
+                      {log.message}
                     </span>
                   )}
                 </div>

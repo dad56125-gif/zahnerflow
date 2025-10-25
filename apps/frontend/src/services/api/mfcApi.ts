@@ -65,7 +65,7 @@ async function apiRequest<T>(
       } as DeviceError;
     }
 
-    throw error;
+    throw error as DeviceError;
   }
 }
 

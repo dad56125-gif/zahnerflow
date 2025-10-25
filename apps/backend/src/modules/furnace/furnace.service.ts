@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit, HttpException, HttpStatus, Inject, forwardRef } from '@nestjs/common';
 import { FurnaceDeviceService } from '../../devices/furnace-device.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
-import { FurnaceDataService } from './furnace-data.service';
+import { FurnaceDataService, FurnaceResponse } from './furnace-data.service';
 import { WorkflowGateway } from '../../gateways/workflow.gateway';
 import type { FurnacePreset, ProgramSegment } from '@zahnerflow/types';
 
@@ -336,10 +336,21 @@ export class FurnaceService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleDeviceOperation(
-      () => this.device.run(),
-      { operation: 'run_program' }
-    );
+    try {
+      const result = await this.errorHandler.handleDeviceOperation(
+        () => this.device.run(),
+        { operation: 'run_program' }
+      );
+
+      // 使用统一响应包装器确保返回完整状态数据
+      if (result && typeof result === 'object') {
+        return FurnaceResponse.createFromParameterData(result, 'run');
+      } else {
+        return FurnaceResponse.createErrorResponse('运行命令返回无效数据');
+      }
+    } catch (error: any) {
+      return FurnaceResponse.createErrorResponse(error.message || '运行失败');
+    }
   }
 
   // 暂停方法 - 需要初始化检查和连接状态检查
@@ -349,10 +360,21 @@ export class FurnaceService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleDeviceOperation(
-      () => this.device.pause(),
-      { operation: 'pause_program' }
-    );
+    try {
+      const result = await this.errorHandler.handleDeviceOperation(
+        () => this.device.pause(),
+        { operation: 'pause_program' }
+      );
+
+      // 使用统一响应包装器确保返回完整状态数据
+      if (result && typeof result === 'object') {
+        return FurnaceResponse.createFromParameterData(result, 'pause');
+      } else {
+        return FurnaceResponse.createErrorResponse('暂停命令返回无效数据');
+      }
+    } catch (error: any) {
+      return FurnaceResponse.createErrorResponse(error.message || '暂停失败');
+    }
   }
 
   // 停止方法 - 需要初始化检查和连接状态检查
@@ -362,10 +384,21 @@ export class FurnaceService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleDeviceOperation(
-      () => this.device.stop(),
-      { operation: 'stop_program' }
-    );
+    try {
+      const result = await this.errorHandler.handleDeviceOperation(
+        () => this.device.stop(),
+        { operation: 'stop_program' }
+      );
+
+      // 使用统一响应包装器确保返回完整状态数据
+      if (result && typeof result === 'object') {
+        return FurnaceResponse.createFromParameterData(result, 'stop');
+      } else {
+        return FurnaceResponse.createErrorResponse('停止命令返回无效数据');
+      }
+    } catch (error: any) {
+      return FurnaceResponse.createErrorResponse(error.message || '停止失败');
+    }
   }
 
   // 状态方法 - 需要初始化检查和连接状态检查
@@ -406,10 +439,21 @@ export class FurnaceService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleDeviceOperation(
-      () => this.device.setSv(sv),
-      { operation: 'set_temperature', temperature: sv }
-    );
+    try {
+      const result = await this.errorHandler.handleDeviceOperation(
+        () => this.device.setSv(sv),
+        { operation: 'set_temperature', temperature: sv }
+      );
+
+      // 使用统一响应包装器确保返回完整状态数据
+      if (result && typeof result === 'object') {
+        return FurnaceResponse.createFromParameterData(result, 'set_sv');
+      } else {
+        return FurnaceResponse.createErrorResponse('设置温度命令返回无效数据');
+      }
+    } catch (error: any) {
+      return FurnaceResponse.createErrorResponse(error.message || '设置温度失败');
+    }
   }
 
   // 设置程序段方法 - 需要初始化检查和连接状态检查
@@ -419,10 +463,21 @@ export class FurnaceService implements OnModuleInit {
       throw new HttpException('Device not connected', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return this.errorHandler.handleDeviceOperation(
-      () => this.device.setSegment(segment),
-      { operation: 'set_segment', segment_id: segment }
-    );
+    try {
+      const result = await this.errorHandler.handleDeviceOperation(
+        () => this.device.setSegment(segment),
+        { operation: 'set_segment', segment_id: segment }
+      );
+
+      // 使用统一响应包装器确保返回完整状态数据
+      if (result && typeof result === 'object') {
+        return FurnaceResponse.createFromParameterData(result, 'set_segment');
+      } else {
+        return FurnaceResponse.createErrorResponse('设置程序段命令返回无效数据');
+      }
+    } catch (error: any) {
+      return FurnaceResponse.createErrorResponse(error.message || '设置程序段失败');
+    }
   }
 
   // 获取程序段方法 - 需要初始化检查和连接状态检查

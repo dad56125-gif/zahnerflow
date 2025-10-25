@@ -230,13 +230,12 @@ export function useMfc(): [MfcState, MfcControls] {
       await MfcApi.disconnect();
 
       // 断开后更新设备状态为disconnected
-      updateState(prev => ({
-        ...prev,
-        devices: prev.devices.map(device => ({
+      updateState({
+        devices: state.devices.map(device => ({
           ...device,
           status: 'disconnected' as const,
         })),
-      }));
+      });
 
     } catch (error) {
       handleApiError(error);

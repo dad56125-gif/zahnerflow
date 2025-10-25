@@ -19,6 +19,7 @@ import {
   RateLimitResponse,
   FurnaceConnectRequest,
   CommLog,
+  FurnaceOperationResponse,
 } from '../../types/devices';
 
 // API 基础URL
@@ -82,7 +83,7 @@ async function apiRequest<T>(
       } as DeviceError;
     }
 
-    throw error;
+    throw error as DeviceError;
   }
 }
 
@@ -100,7 +101,7 @@ export class FurnaceApi {
   /**
    * 设置设定温度
    */
-  static async setTemperature(sv: number): Promise<void> {
+  static async setTemperature(sv: number): Promise<FurnaceOperationResponse> {
     if (typeof sv !== 'number' || sv < 0 || sv > 1200) {
       throw {
         code: 'INVALID_PARAMETER',
@@ -109,7 +110,7 @@ export class FurnaceApi {
       } as DeviceError;
     }
 
-    return apiRequest<void>('/sv', {
+    return apiRequest<FurnaceOperationResponse>('/sv', {
       method: 'POST',
       body: JSON.stringify({ sv }),
     });
@@ -118,7 +119,7 @@ export class FurnaceApi {
   /**
    * 切换程序段
    */
-  static async setSegment(segment: number): Promise<void> {
+  static async setSegment(segment: number): Promise<FurnaceOperationResponse> {
     if (typeof segment !== 'number' || segment < 1 || segment > 30) {
       throw {
         code: 'INVALID_PARAMETER',
@@ -127,7 +128,7 @@ export class FurnaceApi {
       } as DeviceError;
     }
 
-    return apiRequest<void>('/segment/set', {
+    return apiRequest<FurnaceOperationResponse>('/segment/set', {
       method: 'POST',
       body: JSON.stringify({ segment }),
     });
@@ -416,22 +417,22 @@ export class FurnaceApi {
   /**
    * 开始运行程序
    */
-  static async run(): Promise<void> {
-    return apiRequest<void>('/run', { method: 'POST' });
+  static async run(): Promise<FurnaceOperationResponse> {
+    return apiRequest<FurnaceOperationResponse>('/run', { method: 'POST' });
   }
 
   /**
    * 暂停程序
    */
-  static async pause(): Promise<void> {
-    return apiRequest<void>('/pause', { method: 'POST' });
+  static async pause(): Promise<FurnaceOperationResponse> {
+    return apiRequest<FurnaceOperationResponse>('/pause', { method: 'POST' });
   }
 
   /**
    * 停止程序
    */
-  static async stop(): Promise<void> {
-    return apiRequest<void>('/stop', { method: 'POST' });
+  static async stop(): Promise<FurnaceOperationResponse> {
+    return apiRequest<FurnaceOperationResponse>('/stop', { method: 'POST' });
   }
 
   // ==================== 工具方法 ====================

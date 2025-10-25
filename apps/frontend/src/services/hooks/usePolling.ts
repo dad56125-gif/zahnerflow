@@ -141,14 +141,15 @@ export function usePolling<T>(
       if (!mountedRef.current) return;
 
       // 成功获取数据
-      updateState({
+      updateState(prev => ({
+        ...prev,
         data,
         isLoading: false,
         error: null,
         lastUpdate: new Date(),
         retryCount: 0,
-        pollCount: prev => prev + 1,
-      });
+        pollCount: prev.pollCount + 1,
+      }));
 
       // 调用成功回调
       if (onSuccess) {
@@ -161,12 +162,13 @@ export function usePolling<T>(
       const deviceError = error as DeviceError;
 
       // 更新错误状态
-      updateState({
+      updateState(prev => ({
+        ...prev,
         data: null,
         isLoading: false,
         error: deviceError,
-        retryCount: prev => isRetry ? prev + 1 : 1,
-      });
+        retryCount: isRetry ? prev.retryCount + 1 : 1,
+      }));
 
       // 调用错误回调
       if (onError) {
