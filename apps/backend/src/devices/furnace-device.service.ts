@@ -68,7 +68,7 @@ export class FurnaceDeviceService {
 
   
   async setSegment(segment: number): Promise<any> {
-    const { data } = await this.http.post('/segment/set', { segment });
+    const { data } = await this.http.post('/segment/set', segment);
     return data;
   }
 

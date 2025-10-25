@@ -222,23 +222,10 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       set_loading(true);
       clear_error();
 
-      const response = await operation();
+      await operation();
 
-      // 简化的响应处理 - 信任后端数据
-      if (response && typeof response === 'object' && response.ok && response.data) {
-        update_state({
-          device_status: {
-            pv: response.data.pv,
-            sv: response.data.sv,
-            mv: response.data.mv,
-            status: response.data.status?.toString() || '0',
-            segment: response.data.segment,
-            segment_time: response.data.segment_time,
-            segment_time_set: response.data.segment_time_set,
-          },
-          operation_status: 'running', // 简化：操作成功就设为running
-        });
-      }
+      // 不再直接更新状态，完全依赖WebSocket网关获取设备状态
+      // 这样确保前端显示状态与实际设备状态的一致性
 
       if (success_message) {
         add_log('success', success_message);
