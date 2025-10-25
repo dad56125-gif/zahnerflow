@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit, HttpException, HttpStatus, Inject, fo
 import { FurnaceDeviceService } from '../../devices/furnace-device.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
 import { FurnaceDataService, FurnaceResponse } from './furnace-data.service';
-import { WorkflowGateway } from '../../gateways/workflow.gateway';
+import { FurnaceGateway } from '../../gateways/furnace.gateway';
 import type { FurnacePreset, ProgramSegment } from '@zahnerflow/types';
 
 // 轮询状态更新接口
@@ -162,8 +162,8 @@ export class FurnaceService implements OnModuleInit {
     private readonly device: FurnaceDeviceService,
     private readonly errorHandler: FurnaceErrorHandlerService,
     private readonly furnaceData: FurnaceDataService,
-    @Inject(forwardRef(() => WorkflowGateway))
-    private readonly workflowGateway: WorkflowGateway,
+    @Inject(forwardRef(() => FurnaceGateway))
+    private readonly furnaceGateway: FurnaceGateway,
   ) {
     // 监听连接状态变化
     this.connectionManager.onStateChange(async (state) => {
@@ -774,7 +774,7 @@ export class FurnaceService implements OnModuleInit {
    * 广播状态更新到所有订阅者
    */
   private broadcast_status_update(status_update: FurnaceStatusUpdate): void {
-    this.workflowGateway.sendDeviceStatusUpdate('furnace', status_update);
+    this.furnaceGateway.sendFurnaceStatusUpdate(status_update);
     // 改为info级别，减少debug日志噪音
     this.logger.debug(`Broadcasted furnace status update to ${this.subscribers.size} subscribers`);
   }
@@ -783,7 +783,7 @@ export class FurnaceService implements OnModuleInit {
    * 广播采样数据到所有订阅者
    */
   private broadcast_sampling_data(sampling_data: FurnaceSamplingData): void {
-    this.workflowGateway.broadcast('furnaceSamplingData', sampling_data);
+    this.furnaceGateway.sendFurnaceSamplingData(sampling_data);
     this.logger.debug(`Broadcasted furnace sampling data to ${this.subscribers.size} subscribers`);
   }
 
