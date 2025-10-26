@@ -33,9 +33,18 @@ export class MfcController {
    */
   @Post('connect')
   async connect(@Body() body: any) {
-    const result = await this.mfcService.passthrough('connect', body);
-    // 数据管理由MfcDataService自动处理
-    return result;
+    return this.errorHandler.handleDeviceConnection(
+      async () => {
+        const result = await this.mfcService.passthrough('connect', body);
+        // 数据管理由MfcDataService自动处理
+        return result;
+      },
+      {
+        operation: 'connect',
+        port: body?.port,
+        connection_id: body?.connection_id
+      }
+    );
   }
 
   /**
@@ -43,11 +52,18 @@ export class MfcController {
    */
   @Post('disconnect')
   async disconnect() {
-    try {
-      return await this.mfcService.passthrough('disconnect');
-    } finally {
-      // 数据管理由MfcDataService自动处理
-    }
+    return this.errorHandler.handleDeviceConnection(
+      async () => {
+        try {
+          return await this.mfcService.passthrough('disconnect');
+        } finally {
+          // 数据管理由MfcDataService自动处理
+        }
+      },
+      {
+        operation: 'disconnect'
+      }
+    );
   }
 
   /**
@@ -55,7 +71,15 @@ export class MfcController {
    */
   @Post('scan')
   async scan(@Body() body?: any) {
-    return this.mfcService.passthrough('scan', body);
+    return this.errorHandler.handleDeviceScan(
+      async () => {
+        return this.mfcService.passthrough('scan', body);
+      },
+      {
+        operation: 'scan',
+        port: body?.port
+      }
+    );
   }
 
   /**
@@ -63,15 +87,23 @@ export class MfcController {
    */
   @Get('status')
   async status(@Query('address') address?: string) {
-    // 数据管理由MfcDataService自动处理
-    // API 层增加忙碌检查：当设备正在执行长耗时操作时，直接给出忙碌响应，避免产生冲突
-    if (this.mfcService.is_device_busy()) {
-      return {
-        busy: true,
-        message: 'device is busy with operation'
-      };
-    }
-    return this.mfcService.passthrough('status', { address });
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        // 数据管理由MfcDataService自动处理
+        // API 层增加忙碌检查：当设备正在执行长耗时操作时，直接给出忙碌响应，避免产生冲突
+        if (this.mfcService.is_device_busy()) {
+          return {
+            busy: true,
+            message: 'device is busy with operation'
+          };
+        }
+        return this.mfcService.passthrough('status', { address });
+      },
+      {
+        operation: 'status',
+        address: address ? parseInt(address) : undefined
+      }
+    );
   }
 
   /**
@@ -79,7 +111,16 @@ export class MfcController {
    */
   @Post('setpoint')
   async setpoint(@Body() body: { address: number; sccm: number }) {
-    return this.mfcService.passthrough('setpoint', body);
+    return this.errorHandler.handleFlowControl(
+      async () => {
+        return this.mfcService.passthrough('setpoint', body);
+      },
+      {
+        operation: 'setpoint',
+        address: body.address,
+        sccm: body.sccm
+      }
+    );
   }
 
   /**
@@ -87,7 +128,14 @@ export class MfcController {
    */
   @Get('health')
   async health() {
-    return this.mfcService.passthrough('health');
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.passthrough('health');
+      },
+      {
+        operation: 'health'
+      }
+    );
   }
 
   /**
@@ -95,7 +143,14 @@ export class MfcController {
    */
   @Get('ports')
   async ports() {
-    return this.mfcService.passthrough('ports');
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.passthrough('ports');
+      },
+      {
+        operation: 'ports'
+      }
+    );
   }
 
   // ==================== 数据查询接口 ====================
@@ -125,7 +180,14 @@ export class MfcController {
    */
   @Get('comm-log')
   async getCommLog() {
-    return this.mfcService.passthrough('comm-log');
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.passthrough('comm-log');
+      },
+      {
+        operation: 'comm-log'
+      }
+    );
   }
 
   /**
@@ -150,7 +212,14 @@ export class MfcController {
   @Delete('comm-log')
   @HttpCode(HttpStatus.OK)
   async clearCommLog() {
-    return this.mfcService.passthrough('clear-comm-log');
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.passthrough('clear-comm-log');
+      },
+      {
+        operation: 'clear-comm-log'
+      }
+    );
   }
 
   // ==================== 错误处理接口 ====================
@@ -192,7 +261,7 @@ export class MfcController {
    */
   @Get('error/export')
   async exportErrors() {
-    return this.errorHandler.exportErrors();
+    return this.errorHandler.exportErrorData();
   }
 
   /**
@@ -200,6 +269,10 @@ export class MfcController {
    */
   @Post('error/clear')
   async clearErrors() {
-    return this.errorHandler.clearErrors();
+    this.errorHandler.clearErrorLogs();
+    return {
+      success: true,
+      message: 'Error logs cleared successfully'
+    };
   }
 }

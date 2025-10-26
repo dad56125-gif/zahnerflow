@@ -43,7 +43,8 @@
       "Bash(SMOKETEST=1 node:*)",
       "Bash(npx nest:*)",
       "Bash(dir:*)",
-      "Skill(superpowers:subagent-driven-development)"
+      "Skill(superpowers:subagent-driven-development)",
+      "Read(//c/Users/Dushuaijia/**)"
     ]
   },
   "enableAllProjectMcpServers": true,

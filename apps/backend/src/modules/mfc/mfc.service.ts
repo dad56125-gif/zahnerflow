@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { MfcDeviceService } from '../../devices/mfc-device.service';
 import { MfcDataService, FlowHistoryQuery } from './mfc-data.service';
-import { MfcErrorHandlerService, ErrorCategory } from './services/mfc-error-handler.service';
+import { MfcErrorHandlerService } from './services/mfc-error-handler.service';
+import { ErrorCategory } from '../../shared/utils/error-handler.util';
 import { MfcGateway } from '../../gateways/mfc.gateway';
 import type { MfcDeviceInfo, MfcSample } from '@zahnerflow/types';
 
@@ -110,37 +111,41 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    * 扫描MFC设备
    */
   async scan(start?: number, end?: number): Promise<MfcDeviceInfo[]> {
-    try {
-      this.set_device_busy('scan');
+    return this.errorHandler.handleDeviceScan(
+      async () => {
+        this.set_device_busy('scan');
 
-      const list: MfcDeviceInfo[] = await this.device.scan_devices({ start, end });
+        const list: MfcDeviceInfo[] = await this.device.scan_devices({ start, end });
 
-      // 合并到缓存（按 address 去重）
-      for (const it of list) {
-        const idx = this.discovered.findIndex((x) => x.address === it.address);
-        if (idx >= 0) {
-          this.discovered[idx] = it;
-        } else {
-          this.discovered.push(it);
-          // 初始化设备状态
-          this.device_statuses.set(it.address, {
-            address: it.address,
-            connection_status: ConnectionState.DISCONNECTED,
-            last_communication: new Date().toISOString(),
-            gas_type: it.gas_type,
-            max_flow_sccm: it.max_flow_sccm,
-          });
+        // 合并到缓存（按 address 去重）
+        for (const it of list) {
+          const idx = this.discovered.findIndex((x) => x.address === it.address);
+          if (idx >= 0) {
+            this.discovered[idx] = it;
+          } else {
+            this.discovered.push(it);
+            // 初始化设备状态
+            this.device_statuses.set(it.address, {
+              address: it.address,
+              connection_status: ConnectionState.DISCONNECTED,
+              last_communication: new Date().toISOString(),
+              gas_type: it.gas_type,
+              max_flow_sccm: it.max_flow_sccm,
+            });
+          }
         }
-      }
 
-      this.logger.log(`Scanned MFC devices: found ${list.length} devices`);
-      return this.discovered;
-    } catch (error) {
-      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'scan', start, end });
-      throw error;
-    } finally {
+        this.logger.log(`Scanned MFC devices: found ${list.length} devices`);
+        return this.discovered;
+      },
+      {
+        operation: 'scan',
+        start,
+        end
+      }
+    ).finally(() => {
       this.clear_device_busy('scan');
-    }
+    });
   }
 
   /**
@@ -156,84 +161,93 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    * 连接MFC设备
    */
   async connect(request_body: { port: string; baudrate?: number; timeout?: number }) {
-    try {
-      this.set_device_busy('connect');
-      this.connection_state = ConnectionState.CONNECTING;
+    return this.errorHandler.handleDeviceConnection(
+      async () => {
+        this.set_device_busy('connect');
+        this.connection_state = ConnectionState.CONNECTING;
 
-      const result = await this.device.connect_device(request_body);
+        const result = await this.device.connect_device(request_body);
 
-      if (result.ok) {
-        this.connection_state = ConnectionState.CONNECTED;
-        this.connection_info = result;
-        this.logger.log(`MFC connected: ${JSON.stringify(result)}`);
+        if (result.ok) {
+          this.connection_state = ConnectionState.CONNECTED;
+          this.connection_info = result;
+          this.logger.log(`MFC connected: ${JSON.stringify(result)}`);
 
-        // 广播连接状态更新
-        this.gateway.sendMfcConnectionUpdate({
-          type: 'connection_update',
-          data: {
-            status: 'connected',
-            device_count: this.discovered.length,
-            connection_id: result.connection_id,
-          },
-          timestamp: new Date().toISOString(),
-        });
+          // 广播连接状态更新
+          this.gateway.sendMfcConnectionUpdate({
+            type: 'connection_update',
+            data: {
+              status: 'connected',
+              device_count: this.discovered.length,
+              connection_id: result.connection_id,
+            },
+            timestamp: new Date().toISOString(),
+          });
 
-        // 重启轮询
-        if (this.polling_config.enabled) {
-          this.start_polling();
+          // 重启轮询
+          if (this.polling_config.enabled) {
+            this.start_polling();
+          }
+        } else {
+          this.connection_state = ConnectionState.ERROR;
+          throw new Error(result.error_message || 'Connection failed');
         }
-      } else {
-        this.connection_state = ConnectionState.ERROR;
-        throw new Error(result.error_message || 'Connection failed');
-      }
 
-      return result;
-    } catch (error) {
+        return result;
+      },
+      {
+        operation: 'connect',
+        port: request_body.port,
+        baudrate: request_body.baudrate,
+        timeout: request_body.timeout
+      }
+    ).catch(error => {
       this.connection_state = ConnectionState.ERROR;
-      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'connect', ...request_body });
       throw error;
-    } finally {
+    }).finally(() => {
       this.clear_device_busy('connect');
-    }
+    });
   }
 
   /**
    * 断开MFC设备连接
    */
   async disconnect() {
-    try {
-      this.set_device_busy('disconnect');
+    return this.errorHandler.handleDeviceConnection(
+      async () => {
+        this.set_device_busy('disconnect');
 
-      const result = await this.device.disconnect_device();
+        const result = await this.device.disconnect_device();
 
-      this.connection_state = ConnectionState.DISCONNECTED;
-      this.connection_info = null;
+        this.connection_state = ConnectionState.DISCONNECTED;
+        this.connection_info = null;
 
-      // 清除设备状态
-      this.device_statuses.clear();
+        // 清除设备状态
+        this.device_statuses.clear();
 
-      this.logger.log('MFC disconnected');
+        this.logger.log('MFC disconnected');
 
-      // 广播连接状态更新
-      this.gateway.sendMfcConnectionUpdate({
-        type: 'connection_update',
-        data: {
-          status: 'disconnected',
-          device_count: 0,
-        },
-        timestamp: new Date().toISOString(),
-      });
+        // 广播连接状态更新
+        this.gateway.sendMfcConnectionUpdate({
+          type: 'connection_update',
+          data: {
+            status: 'disconnected',
+            device_count: 0,
+          },
+          timestamp: new Date().toISOString(),
+        });
 
-      // 停止轮询
-      this.stop_polling();
+        // 停止轮询
+        this.stop_polling();
 
-      return result;
-    } catch (error) {
-      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'disconnect' });
-      throw error;
-    } finally {
+        return result;
+      },
+      {
+        operation: 'disconnect'
+      }
+    ).finally(() => {
       this.clear_device_busy('disconnect');
-    }
+    });
   }
 
   /**
@@ -308,35 +322,39 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    * 设置流量设定点
    */
   async setpoint(address: number, sccm: number) {
-    try {
-      this.set_device_busy(`setpoint_${address}`);
+    return this.errorHandler.handleFlowControl(
+      async () => {
+        this.set_device_busy(`setpoint_${address}`);
 
-      // 获取当前设定值用于广播
-      const current_device = this.device_statuses.get(address);
-      const old_sccm = current_device?.setpoint_sccm || 0;
+        // 获取当前设定值用于广播
+        const current_device = this.device_statuses.get(address);
+        const old_sccm = current_device?.setpoint_sccm || 0;
 
-      const result = await this.device.set_device_flow({ address, sccm });
+        const result = await this.device.set_device_flow({ address, sccm });
 
-      if (result.ok) {
-        // 更新设备状态
-        if (current_device) {
-          current_device.setpoint_sccm = sccm;
-          current_device.last_communication = new Date().toISOString();
+        if (result.ok) {
+          // 更新设备状态
+          if (current_device) {
+            current_device.setpoint_sccm = sccm;
+            current_device.last_communication = new Date().toISOString();
+          }
+
+          // 广播设定点变更
+          this.gateway.broadcastFlowSetpointChange(address, old_sccm, sccm);
+
+          this.logger.log(`Set flow setpoint: device ${address} = ${sccm} sccm`);
         }
 
-        // 广播设定点变更
-        this.gateway.broadcastFlowSetpointChange(address, old_sccm, sccm);
-
-        this.logger.log(`Set flow setpoint: device ${address} = ${sccm} sccm`);
+        return result;
+      },
+      {
+        operation: 'setpoint',
+        address,
+        sccm
       }
-
-      return result;
-    } catch (error) {
-      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'setpoint', address, sccm });
-      throw error;
-    } finally {
+    ).finally(() => {
       this.clear_device_busy(`setpoint_${address}`);
-    }
+    });
   }
 
   // ==================== 数据管理 ====================
