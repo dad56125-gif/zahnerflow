@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import {
   ErrorCategory,
   ErrorSeverity,
@@ -66,6 +67,52 @@ export class MfcErrorHandlerService {
   }
 
   /**
+   * 精简地记录Axios错误，避免冗长的日志输出
+   */
+  private logAxiosError(operation: string, error: any, additionalInfo?: any): void {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as any;
+      const status = axiosError.response?.status;
+      const url = axiosError.config?.url;
+      const baseURL = axiosError.config?.baseURL;
+      const fullUrl = baseURL && url ? `${baseURL}${url}` : (url || 'unknown');
+      const timeout = axiosError.config?.timeout;
+      const responseData = axiosError.response?.data;
+
+      this.logger.error(
+        `[MfcErrorHandlerService] ${operation} failed: ${axiosError.message}; status=${status}; url=${fullUrl}; timeout=${timeout}`
+      );
+
+      // 只记录响应数据的关键部分，避免完整对象展开
+      if (responseData) {
+        try {
+          const responseStr = typeof responseData === 'string'
+            ? responseData
+            : JSON.stringify(responseData, null, 0); // 无缩进，紧凑格式
+          this.logger.error(`[MfcErrorHandlerService] Response data: ${responseStr}`);
+        } catch (e) {
+          this.logger.error(`[MfcErrorHandlerService] Response data: [Object - too large to serialize]`);
+        }
+      }
+
+      // 记录额外的上下文信息
+      if (additionalInfo) {
+        try {
+          const infoStr = typeof additionalInfo === 'string'
+            ? additionalInfo
+            : JSON.stringify(additionalInfo, null, 0);
+          this.logger.error(`[MfcErrorHandlerService] Context: ${infoStr}`);
+        } catch (e) {
+          this.logger.error(`[MfcErrorHandlerService] Context: [Object - too large to serialize]`);
+        }
+      }
+    } else {
+      // 非Axios错误，记录堆栈信息
+      this.logger.error(`[MfcErrorHandlerService] ${operation} failed: ${error instanceof Error ? error.stack : String(error)}`);
+    }
+  }
+
+  /**
    * 创建熔断器
    */
   createCircuitBreaker(name: string, config?: CircuitBreakerConfig): void {
@@ -110,12 +157,22 @@ export class MfcErrorHandlerService {
       const errorInfo = this.classifyError(error, context);
       this.errorMonitor.log(errorInfo);
 
-      // 根据熔断器状态提供更多信息
+      // 根据熔断器状态提供更多信息，使用精简格式
       const breakerStats = breaker.getStats();
-      this.logger.error(
-        `Circuit breaker ${breakerName}: operation failed. State: ${breakerStats.state}, Failures: ${breakerStats.failureCount}`,
-        { error: errorInfo, context, breakerStats }
-      );
+      const logMessage = `Circuit breaker ${breakerName}: operation failed. State: ${breakerStats.state}, Failures: ${breakerStats.failureCount}`;
+
+      // 使用精简的Axios错误记录方法
+      this.logAxiosError(logMessage, error, {
+        operation: breakerName,
+        state: breakerStats.state,
+        failures: breakerStats.failureCount,
+        errorInfo: {
+          category: errorInfo.category,
+          severity: errorInfo.severity,
+          message: errorInfo.message,
+          suggested_action: errorInfo.suggested_action
+        }
+      });
 
       throw error;
     }
@@ -143,10 +200,16 @@ export class MfcErrorHandlerService {
       const errorInfo = this.classifyError(error, context);
       this.errorMonitor.log(errorInfo);
 
-      this.logger.error(
-        `Retry handler ${handlerName}: all attempts failed`,
-        { error: errorInfo, context }
-      );
+      // 使用精简的Axios错误记录方法
+      this.logAxiosError(`Retry handler ${handlerName}: all attempts failed`, error, {
+        operation: handlerName,
+        errorInfo: {
+          category: errorInfo.category,
+          severity: errorInfo.severity,
+          message: errorInfo.message,
+          suggested_action: errorInfo.suggested_action
+        }
+      });
 
       throw error;
     }
@@ -407,7 +470,18 @@ export class MfcErrorHandlerService {
   handleError(error: any, category: ErrorCategory, context?: Record<string, any>): void {
     const errorInfo = this.classifyError(error, context as MfcErrorContext);
     this.errorMonitor.log(errorInfo);
-    this.logger.error(`MFC Error [${category}]: ${errorInfo.message}`, error);
+
+    // 使用精简的Axios错误记录方法，而不是直接记录完整错误对象
+    this.logAxiosError(`MFC Error [${category}]: ${errorInfo.message}`, error, {
+      category,
+      errorInfo: {
+        category: errorInfo.category,
+        severity: errorInfo.severity,
+        message: errorInfo.message,
+        suggested_action: errorInfo.suggested_action
+      },
+      context
+    });
   }
 
   /**

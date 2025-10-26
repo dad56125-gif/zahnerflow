@@ -44,7 +44,8 @@
       "Bash(npx nest:*)",
       "Bash(dir:*)",
       "Skill(superpowers:subagent-driven-development)",
-      "Read(//c/Users/Dushuaijia/**)"
+      "Read(//c/Users/Dushuaijia/**)",
+      "Bash(timeout:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

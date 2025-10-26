@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 
 @Injectable()
 export class MfcDeviceService {
@@ -17,6 +17,40 @@ export class MfcDeviceService {
     });
   }
 
+  /**
+   * 精简地记录Axios错误，避免冗长的日志输出
+   */
+  private logAxiosError(operation: string, error: any): void {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      const status = axiosError.response?.status;
+      const url = axiosError.config?.url;
+      const baseURL = axiosError.config?.baseURL;
+      const fullUrl = baseURL && url ? `${baseURL}${url}` : (url || 'unknown');
+      const timeout = axiosError.config?.timeout;
+      const responseData = axiosError.response?.data;
+
+      this.logger.error(
+        `MFC ${operation} failed: ${axiosError.message}; status=${status}; url=${fullUrl}; timeout=${timeout}`
+      );
+
+      // 只记录响应数据的关键部分，避免完整对象展开
+      if (responseData) {
+        try {
+          const responseStr = typeof responseData === 'string'
+            ? responseData
+            : JSON.stringify(responseData, null, 0); // 无缩进，紧凑格式
+          this.logger.error(`Response data: ${responseStr}`);
+        } catch (e) {
+          this.logger.error(`Response data: [Object - too large to serialize]`);
+        }
+      }
+    } else {
+      // 非Axios错误，记录堆栈信息
+      this.logger.error(`MFC ${operation} failed: ${error instanceof Error ? error.stack : String(error)}`);
+    }
+  }
+
   // ==================== 连接管理功能 ====================
 
   /**
@@ -27,7 +61,7 @@ export class MfcDeviceService {
       const { data } = await this.http.get('/health');
       return data;
     } catch (error) {
-      this.logger.error('Health check failed', error);
+      this.logAxiosError('health check', error);
       throw error;
     }
   }
@@ -40,7 +74,7 @@ export class MfcDeviceService {
       const { data } = await this.http.get('/ports');
       return data;
     } catch (error) {
-      this.logger.error('Get available ports failed', error);
+      this.logAxiosError('get available ports', error);
       throw error;
     }
   }
@@ -53,7 +87,7 @@ export class MfcDeviceService {
       const { data } = await this.http.post('/connect', request_body);
       return data;
     } catch (error) {
-      this.logger.error('Connect device failed', error);
+      this.logAxiosError('connect device', error);
       throw error;
     }
   }
@@ -66,7 +100,7 @@ export class MfcDeviceService {
       const { data } = await this.http.post('/disconnect', {});
       return data;
     } catch (error) {
-      this.logger.error('Disconnect device failed', error);
+      this.logAxiosError('disconnect device', error);
       throw error;
     }
   }
@@ -79,7 +113,7 @@ export class MfcDeviceService {
       const { data } = await this.http.get('/connection/info');
       return data;
     } catch (error) {
-      this.logger.error('Get connection info failed', error);
+      this.logAxiosError('get connection info', error);
       throw error;
     }
   }
@@ -94,7 +128,7 @@ export class MfcDeviceService {
       const { data } = await this.http.post('/scan', request_body);
       return data;
     } catch (error) {
-      this.logger.error('Scan devices failed', error);
+      this.logAxiosError('scan devices', error);
       throw error;
     }
   }
@@ -109,7 +143,7 @@ export class MfcDeviceService {
       });
       return data;
     } catch (error) {
-      this.logger.error('Get device status failed', error);
+      this.logAxiosError('get device status', error);
       throw error;
     }
   }
@@ -122,7 +156,7 @@ export class MfcDeviceService {
       const { data } = await this.http.post('/setpoint', request_body);
       return data;
     } catch (error) {
-      this.logger.error('Set device flow failed', error);
+      this.logAxiosError('set device flow', error);
       throw error;
     }
   }
@@ -137,7 +171,7 @@ export class MfcDeviceService {
       const { data } = await this.http.get('/comm-log');
       return data;
     } catch (error) {
-      this.logger.error('Get communication log failed', error);
+      this.logAxiosError('get communication log', error);
       throw error;
     }
   }
@@ -150,7 +184,7 @@ export class MfcDeviceService {
       const { data } = await this.http.delete('/comm-log');
       return data;
     } catch (error) {
-      this.logger.error('Clear communication log failed', error);
+      this.logAxiosError('clear communication log', error);
       throw error;
     }
   }
