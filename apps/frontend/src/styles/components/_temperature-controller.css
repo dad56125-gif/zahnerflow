@@ -764,6 +764,15 @@
   width: 100%;
 }
 
+.segment-row .segment-input + .unit-hint {
+  margin-left: -0.25rem;
+}
+
+/* 温度单位的℃和时间标签t01之间加大间距 */
+.segment-row .segment-input.temp-input + .unit-hint + .segment-label {
+  margin-left: 1rem;
+}
+
 .segment-row:hover {
   background: rgba(0, 0, 0, 0.2);
   transform: translateX(2px);
@@ -776,6 +785,16 @@
   min-width: 1.5rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
+}
+
+.unit-hint {
+  font-size: clamp(0.75rem, 0.7rem + 0.2vw, 0.875rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .segment-input {

@@ -28,22 +28,22 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
       {/* 程序段控制按钮 */}
       <div className="program-controls">
         <button
-          className={`btn btn-primary ${furnaceState.operation_progress?.active && furnaceState.operation_progress?.type === 'reading' ? 'btn-progress' : ''}`}
+          className={`btn btn-primary ${furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'read' ? 'btn-progress' : ''}`}
           onClick={furnaceControls.load_segments}
           disabled={furnaceState.connection_status !== 'connected' || furnaceState.loading}
         >
-          {furnaceState.operation_progress?.active && furnaceState.operation_progress?.type === 'reading' ? (
+          {furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'read' ? (
             <>
               <div className="btn-progress-bar">
                 <div
                   className="btn-progress-fill"
-                  style={{ left: `${furnaceState.operation_progress.progress}%` }}
+                  style={{ left: `${furnaceState.segment_progress.progress}%` }}
                 />
               </div>
               <div className="btn-progress-content">
                 <div className="btn-text">读取程序段</div>
                 <div className="btn-progress-text">
-                  {Math.round(furnaceState.operation_progress.progress)}%
+                  {Math.round(furnaceState.segment_progress.progress)}%
                 </div>
               </div>
             </>
@@ -52,7 +52,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
           )}
         </button>
         <button
-          className={`btn btn-success ${furnaceState.operation_progress?.active && furnaceState.operation_progress?.type === 'writing' ? 'btn-progress' : ''}`}
+          className={`btn btn-success ${furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'write' ? 'btn-progress' : ''}`}
           onClick={() => {
             // 从受控组件状态中收集数据
             const segments: ProgramSegment[] = [];
@@ -72,18 +72,18 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
           }}
           disabled={furnaceState.connection_status !== 'connected' || furnaceState.loading}
         >
-          {furnaceState.operation_progress?.active && furnaceState.operation_progress?.type === 'writing' ? (
+          {furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'write' ? (
             <>
               <div className="btn-progress-bar">
                 <div
                   className="btn-progress-fill"
-                  style={{ left: `${furnaceState.operation_progress.progress}%` }}
+                  style={{ left: `${furnaceState.segment_progress.progress}%` }}
                 />
               </div>
               <div className="btn-progress-content">
                 <div className="btn-text">写入程序段</div>
                 <div className="btn-progress-text">
-                  {Math.round(furnaceState.operation_progress.progress)}%
+                  {Math.round(furnaceState.segment_progress.progress)}%
                 </div>
               </div>
             </>

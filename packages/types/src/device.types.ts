@@ -218,6 +218,13 @@ export interface TransitionConfig {
 // Furnace & MFC types
 // --------------------
 
+// 程序段操作进度
+export interface SegmentProgress {
+  active: boolean;        // 是否正在进行程序段操作
+  type: 'read' | 'write'; // 操作类型：读取程序段 | 写入程序段
+  progress: number;       // 进度百分比 (0-100)
+}
+
 // 炉温程序段（仅数字组合）
 export interface ProgramSegment {
   id: number;          // 顺序段号，从 1 开始

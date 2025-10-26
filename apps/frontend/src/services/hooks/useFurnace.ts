@@ -19,6 +19,7 @@ import {
   DeviceError,
   DeviceOperationStatus,
   FurnaceOperationResponse,
+  SegmentProgress,
 } from '../../types/devices';
 
 /**
@@ -45,6 +46,7 @@ export interface FurnaceState {
   // UI状态 - 大幅简化
   loading: boolean;
   error: string | null; // 简化为字符串，移除复杂的DeviceError
+  segment_progress: SegmentProgress | null; // 程序段操作进度
   logs: Array<{
     id: string;
     timestamp: string;
@@ -109,6 +111,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     logs: [],
     loading: false,
     error: null,
+    segment_progress: null,
   };
 
   const [state, set_state] = useState<FurnaceState>(initial_state);
@@ -324,11 +327,40 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       clear_error();
       set_loading(true);
 
+      // 开始5秒模拟进度
+      update_state({
+        segment_progress: {
+          active: true,
+          type: 'read',
+          progress: 0
+        }
+      });
+
+      // 模拟5秒进度
+      const duration = 5000; // 5秒
+      const steps = 50; // 50步，每步100ms
+      const stepDuration = duration / steps;
+
+      for (let i = 0; i <= steps; i++) {
+        await new Promise(resolve => setTimeout(resolve, stepDuration));
+        update_state({
+          segment_progress: {
+            active: true,
+            type: 'read',
+            progress: (i / steps) * 100
+          }
+        });
+      }
+
       const segments = await FurnaceApi.getProgramSegments();
-      update_state({ segments });
+      update_state({
+        segments,
+        segment_progress: null
+      });
       add_log('success', `已读取程序段数据，共${segments.length}个段`);
 
     } catch (error) {
+      update_state({ segment_progress: null });
       handle_error(error);
       throw error;
     } finally {
@@ -346,11 +378,40 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       set_loading(true);
       clear_error();
 
+      // 开始5秒模拟进度
+      update_state({
+        segment_progress: {
+          active: true,
+          type: 'write',
+          progress: 0
+        }
+      });
+
+      // 模拟5秒进度
+      const duration = 5000; // 5秒
+      const steps = 50; // 50步，每步100ms
+      const stepDuration = duration / steps;
+
+      for (let i = 0; i <= steps; i++) {
+        await new Promise(resolve => setTimeout(resolve, stepDuration));
+        update_state({
+          segment_progress: {
+            active: true,
+            type: 'write',
+            progress: (i / steps) * 100
+          }
+        });
+      }
+
       await FurnaceApi.writeProgramSegments(segments);
-      update_state({ segments });
+      update_state({
+        segments,
+        segment_progress: null
+      });
       add_log('success', `已写入 ${segments.length} 个程序段`);
 
     } catch (error) {
+      update_state({ segment_progress: null });
       handle_error(error);
       throw error;
     } finally {
