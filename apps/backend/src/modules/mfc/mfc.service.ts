@@ -1,12 +1,92 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { MfcDeviceService } from '../../devices/mfc-device.service';
-import type { MfcDeviceInfo } from '@zahnerflow/types';
+import { MfcDataService, FlowHistoryQuery } from './mfc-data.service';
+import { MfcErrorHandlerService, ErrorCategory } from './services/mfc-error-handler.service';
+import { MfcGateway } from '../../gateways/mfc.gateway';
+import type { MfcDeviceInfo, MfcSample } from '@zahnerflow/types';
+
+/**
+ * 连接状态枚举
+ */
+export enum ConnectionState {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  ERROR = 'error',
+}
+
+/**
+ * 设备状态信息
+ */
+export interface DeviceStatusInfo {
+  address: number;
+  connection_status: ConnectionState;
+  last_communication: string;
+  flow_sccm?: number;
+  setpoint_sccm?: number;
+  gas_type?: string;
+  max_flow_sccm?: number;
+  error_message?: string;
+}
+
+/**
+ * 轮询配置
+ */
+interface PollingConfig {
+  enabled: boolean;
+  interval: number; // 毫秒
+  retry_attempts: number;
+  retry_delay: number; // 毫秒
+}
+
+/**
+ * 轮询状态
+ */
+export interface PollingStatus {
+  is_running: boolean;
+  last_poll: string;
+  success_count: number;
+  error_count: number;
+  consecutive_errors: number;
+}
 
 @Injectable()
-export class MfcService implements OnModuleInit {
+export class MfcService implements OnModuleInit, OnModuleDestroy {
   private discovered: MfcDeviceInfo[] = [];
   private readonly logger = new Logger(MfcService.name);
-  constructor(private readonly device: MfcDeviceService) {}
+
+  // 连接和状态管理
+  private connection_state: ConnectionState = ConnectionState.DISCONNECTED;
+  private connection_info: any = null;
+  private device_statuses = new Map<number, DeviceStatusInfo>();
+  private polling_subscribers = new Set<string>();
+
+  // 轮询管理
+  private polling_timer: NodeJS.Timeout | null = null;
+  private polling_config: PollingConfig = {
+    enabled: true,
+    interval: 2000, // 2秒
+    retry_attempts: 3,
+    retry_delay: 1000,
+  };
+  private polling_status: PollingStatus = {
+    is_running: false,
+    last_poll: '',
+    success_count: 0,
+    error_count: 0,
+    consecutive_errors: 0,
+  };
+
+  // 设备忙状态管理
+  private device_busy = false;
+  private busy_operations = new Set<string>();
+
+  constructor(
+    private readonly device: MfcDeviceService,
+    private readonly dataService: MfcDataService,
+    private readonly errorHandler: MfcErrorHandlerService,
+    private readonly gateway: MfcGateway,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     try {
@@ -15,23 +95,509 @@ export class MfcService implements OnModuleInit {
     } catch (e: any) {
       this.logger.warn(`MFC FastAPI health check failed: ${e?.message || e}`);
     }
+
+    // 启动轮询
+    this.start_polling();
   }
 
+  onModuleDestroy(): void {
+    this.stop_polling();
+  }
+
+  // ==================== 设备发现和扫描 ====================
+
+  /**
+   * 扫描MFC设备
+   */
   async scan(start?: number, end?: number): Promise<MfcDeviceInfo[]> {
-    const list: MfcDeviceInfo[] = await this.device.scan({ start, end });
-    // 合并到缓存（按 address 去重）
-    for (const it of list) {
-      const idx = this.discovered.findIndex((x) => x.address === it.address);
-      if (idx >= 0) this.discovered[idx] = it; else this.discovered.push(it);
+    try {
+      this.set_device_busy('scan');
+
+      const list: MfcDeviceInfo[] = await this.device.scan_devices({ start, end });
+
+      // 合并到缓存（按 address 去重）
+      for (const it of list) {
+        const idx = this.discovered.findIndex((x) => x.address === it.address);
+        if (idx >= 0) {
+          this.discovered[idx] = it;
+        } else {
+          this.discovered.push(it);
+          // 初始化设备状态
+          this.device_statuses.set(it.address, {
+            address: it.address,
+            connection_status: ConnectionState.DISCONNECTED,
+            last_communication: new Date().toISOString(),
+            gas_type: it.gas_type,
+            max_flow_sccm: it.max_flow_sccm,
+          });
+        }
+      }
+
+      this.logger.log(`Scanned MFC devices: found ${list.length} devices`);
+      return this.discovered;
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'scan', start, end });
+      throw error;
+    } finally {
+      this.clear_device_busy('scan');
     }
-    return this.discovered;
   }
 
-  getDevices(): MfcDeviceInfo[] { return [...this.discovered]; }
-  async connect(request_body: { port: string; baudrate?: number; timeout?: number }) {
-    return this.device.connect(request_body);
+  /**
+   * 获取已发现的设备列表
+   */
+  getDevices(): MfcDeviceInfo[] {
+    return [...this.discovered];
   }
-  async disconnect() { return this.device.disconnect(); }
-  async status(address?: number) { return this.device.status(address); }
-  async setpoint(address: number, sccm: number) { return this.device.setpoint(address, sccm); }
+
+  // ==================== 连接管理 ====================
+
+  /**
+   * 连接MFC设备
+   */
+  async connect(request_body: { port: string; baudrate?: number; timeout?: number }) {
+    try {
+      this.set_device_busy('connect');
+      this.connection_state = ConnectionState.CONNECTING;
+
+      const result = await this.device.connect_device(request_body);
+
+      if (result.ok) {
+        this.connection_state = ConnectionState.CONNECTED;
+        this.connection_info = result;
+        this.logger.log(`MFC connected: ${JSON.stringify(result)}`);
+
+        // 广播连接状态更新
+        this.gateway.sendMfcConnectionUpdate({
+          type: 'connection_update',
+          data: {
+            status: 'connected',
+            device_count: this.discovered.length,
+            connection_id: result.connection_id,
+          },
+          timestamp: new Date().toISOString(),
+        });
+
+        // 重启轮询
+        if (this.polling_config.enabled) {
+          this.start_polling();
+        }
+      } else {
+        this.connection_state = ConnectionState.ERROR;
+        throw new Error(result.error_message || 'Connection failed');
+      }
+
+      return result;
+    } catch (error) {
+      this.connection_state = ConnectionState.ERROR;
+      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'connect', ...request_body });
+      throw error;
+    } finally {
+      this.clear_device_busy('connect');
+    }
+  }
+
+  /**
+   * 断开MFC设备连接
+   */
+  async disconnect() {
+    try {
+      this.set_device_busy('disconnect');
+
+      const result = await this.device.disconnect_device();
+
+      this.connection_state = ConnectionState.DISCONNECTED;
+      this.connection_info = null;
+
+      // 清除设备状态
+      this.device_statuses.clear();
+
+      this.logger.log('MFC disconnected');
+
+      // 广播连接状态更新
+      this.gateway.sendMfcConnectionUpdate({
+        type: 'connection_update',
+        data: {
+          status: 'disconnected',
+          device_count: 0,
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      // 停止轮询
+      this.stop_polling();
+
+      return result;
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'disconnect' });
+      throw error;
+    } finally {
+      this.clear_device_busy('disconnect');
+    }
+  }
+
+  /**
+   * 获取连接信息
+   */
+  async get_connection_info() {
+    try {
+      if (this.connection_state === ConnectionState.CONNECTED && this.connection_info) {
+        return this.connection_info;
+      }
+
+      const result = await this.device.get_connection_info();
+      this.connection_info = result;
+      return result;
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'get_connection_info' });
+      throw error;
+    }
+  }
+
+  /**
+   * 获取连接状态
+   */
+  getConnectionStatus(): {
+    status: ConnectionState;
+    connection_info?: any;
+    device_count: number;
+    polling_status: PollingStatus;
+  } {
+    return {
+      status: this.connection_state,
+      connection_info: this.connection_info,
+      device_count: this.discovered.length,
+      polling_status: this.polling_status,
+    };
+  }
+
+  // ==================== 设备控制和状态 ====================
+
+  /**
+   * 获取设备状态
+   */
+  async status(address?: number) {
+    try {
+      // 检查熔断器状态
+      const circuitBreaker = this.errorHandler.checkCircuitBreaker('device_communication');
+      if (!circuitBreaker.allowed) {
+        throw new Error(`Circuit breaker is open: ${circuitBreaker.state}`);
+      }
+
+      const result = await this.device.get_device_status(address);
+
+      // 更新设备状态缓存
+      if (result && Array.isArray(result)) {
+        result.forEach((device_status: any) => {
+          this.update_device_status(device_status);
+        });
+      } else if (result && result.address !== undefined) {
+        this.update_device_status(result);
+      }
+
+      this.errorHandler.recordCircuitBreakerSuccess('device_communication');
+      return result;
+    } catch (error) {
+      this.errorHandler.recordCircuitBreakerFailure('device_communication');
+      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'status', address });
+      throw error;
+    }
+  }
+
+  /**
+   * 设置流量设定点
+   */
+  async setpoint(address: number, sccm: number) {
+    try {
+      this.set_device_busy(`setpoint_${address}`);
+
+      // 获取当前设定值用于广播
+      const current_device = this.device_statuses.get(address);
+      const old_sccm = current_device?.setpoint_sccm || 0;
+
+      const result = await this.device.set_device_flow({ address, sccm });
+
+      if (result.ok) {
+        // 更新设备状态
+        if (current_device) {
+          current_device.setpoint_sccm = sccm;
+          current_device.last_communication = new Date().toISOString();
+        }
+
+        // 广播设定点变更
+        this.gateway.broadcastFlowSetpointChange(address, old_sccm, sccm);
+
+        this.logger.log(`Set flow setpoint: device ${address} = ${sccm} sccm`);
+      }
+
+      return result;
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'setpoint', address, sccm });
+      throw error;
+    } finally {
+      this.clear_device_busy(`setpoint_${address}`);
+    }
+  }
+
+  // ==================== 数据管理 ====================
+
+  /**
+   * 查询流量历史数据
+   */
+  async query_flow_history(query: FlowHistoryQuery) {
+    try {
+      return await this.dataService.queryFlowHistory(query);
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.SYSTEM, { operation: 'query_flow_history', ...query });
+      throw error;
+    }
+  }
+
+  /**
+   * 获取通信日志
+   */
+  async get_communication_log() {
+    try {
+      return await this.device.get_communication_log();
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.SYSTEM, { operation: 'get_communication_log' });
+      throw error;
+    }
+  }
+
+  /**
+   * 清空通信日志
+   */
+  async clear_communication_log() {
+    try {
+      const result = await this.device.clear_communication_log();
+      this.dataService.clearCommunicationLog();
+      return result;
+    } catch (error) {
+      this.errorHandler.handleError(error, ErrorCategory.SYSTEM, { operation: 'clear_communication_log' });
+      throw error;
+    }
+  }
+
+  // ==================== 轮询管理 ====================
+
+  /**
+   * 启动轮询
+   */
+  private start_polling(): void {
+    if (this.polling_timer) {
+      clearInterval(this.polling_timer);
+    }
+
+    if (this.connection_state !== ConnectionState.CONNECTED) {
+      this.logger.warn('Cannot start polling: device not connected');
+      return;
+    }
+
+    this.polling_status.is_running = true;
+    this.polling_status.consecutive_errors = 0;
+
+    this.polling_timer = setInterval(() => {
+      this.perform_polling();
+    }, this.polling_config.interval);
+
+    this.logger.log(`Started MFC polling with interval ${this.polling_config.interval}ms`);
+  }
+
+  /**
+   * 停止轮询
+   */
+  private stop_polling(): void {
+    if (this.polling_timer) {
+      clearInterval(this.polling_timer);
+      this.polling_timer = null;
+    }
+
+    this.polling_status.is_running = false;
+    this.logger.log('Stopped MFC polling');
+  }
+
+  /**
+   * 执行轮询
+   */
+  private async perform_polling(): Promise<void> {
+    if (this.device_busy || this.polling_subscribers.size === 0) {
+      return;
+    }
+
+    try {
+      const status_data = await this.status();
+      const now = new Date().toISOString();
+
+      this.polling_status.last_poll = now;
+      this.polling_status.success_count++;
+      this.polling_status.consecutive_errors = 0;
+
+      // 准备状态更新消息
+      const status_devices = this.device_statuses.size > 0 ?
+        Array.from(this.device_statuses.values()).map(device => ({
+          device_address: device.address,
+          flow_sccm: device.flow_sccm || 0,
+          setpoint_sccm: device.setpoint_sccm || 0,
+          gas_type: device.gas_type,
+          max_flow_sccm: device.max_flow_sccm,
+          connection_status: (device.connection_status === ConnectionState.CONNECTED ? 'connected' : 'disconnected') as 'connected' | 'disconnected',
+          last_communication: device.last_communication,
+        })) : [];
+
+      // 发送状态更新
+      if (status_devices.length > 0) {
+        this.gateway.sendMfcStatusUpdate({
+          type: 'status_update',
+          data: status_devices,
+          timestamp: now,
+        });
+
+        // 添加采样数据
+        status_devices.forEach(device => {
+          const sample: MfcSample = {
+            ts: now,
+            address: device.device_address,
+            flow_sccm: device.flow_sccm,
+            flow_percent: (device.flow_sccm / (device.max_flow_sccm || 1)) * 100,
+            digital_setpoint_percent: (device.setpoint_sccm / (device.max_flow_sccm || 1)) * 100,
+            active_setpoint_percent: (device.setpoint_sccm / (device.max_flow_sccm || 1)) * 100,
+          };
+          this.dataService.addFlowSample(sample);
+        });
+
+        // 发送采样数据
+        this.gateway.sendMfcSamplingData({
+          type: 'sampling_data',
+          data: status_devices.map(device => ({
+            device_address: device.device_address,
+            timestamp: now,
+            flow_sccm: device.flow_sccm,
+            setpoint_sccm: device.setpoint_sccm,
+          })),
+          timestamp: now,
+        });
+      }
+
+      // 广播系统状态
+      const system_overview = this.dataService.getSystemOverview();
+      this.gateway.broadcastSystemStatus(system_overview);
+
+    } catch (error) {
+      this.polling_status.error_count++;
+      this.polling_status.consecutive_errors++;
+
+      this.errorHandler.handleError(error, ErrorCategory.TIMEOUT, { operation: 'polling' });
+
+      // 如果连续错误过多，暂停轮询
+      if (this.polling_status.consecutive_errors >= this.polling_config.retry_attempts) {
+        this.logger.warn(`Too many consecutive polling errors (${this.polling_status.consecutive_errors}), pausing polling`);
+        this.stop_polling();
+
+        // 延迟后重启轮询
+        setTimeout(() => {
+          if (this.connection_state === ConnectionState.CONNECTED) {
+            this.start_polling();
+          }
+        }, this.polling_config.retry_delay * this.polling_config.retry_attempts);
+      }
+    }
+  }
+
+  /**
+   * 订阅MFC更新
+   */
+  subscribe_to_mfc_updates(client_id: string): void {
+    this.polling_subscribers.add(client_id);
+    this.logger.log(`Client ${client_id} subscribed to MFC updates`);
+
+    // 确保轮询正在运行
+    if (!this.polling_status.is_running && this.connection_state === ConnectionState.CONNECTED) {
+      this.start_polling();
+    }
+  }
+
+  /**
+   * 取消订阅MFC更新
+   */
+  unsubscribe_from_mfc_updates(client_id: string): void {
+    this.polling_subscribers.delete(client_id);
+    this.logger.log(`Client ${client_id} unsubscribed from MFC updates`);
+
+    // 如果没有订阅者，停止轮询
+    if (this.polling_subscribers.size === 0) {
+      this.stop_polling();
+    }
+  }
+
+  // ==================== 辅助方法 ====================
+
+  /**
+   * 更新设备状态
+   */
+  private update_device_status(status_data: any): void {
+    const device = this.device_statuses.get(status_data.address);
+    if (device) {
+      device.flow_sccm = status_data.flow_sccm;
+      device.setpoint_sccm = status_data.setpoint_sccm || status_data.active_setpoint_percent * (device.max_flow_sccm || 1) / 100;
+      device.connection_status = ConnectionState.CONNECTED;
+      device.last_communication = new Date().toISOString();
+      device.error_message = undefined;
+    }
+  }
+
+  /**
+   * 设置设备忙状态
+   */
+  private set_device_busy(operation: string): void {
+    this.device_busy = true;
+    this.busy_operations.add(operation);
+  }
+
+  /**
+   * 清除设备忙状态
+   */
+  private clear_device_busy(operation: string): void {
+    this.busy_operations.delete(operation);
+    if (this.busy_operations.size === 0) {
+      this.device_busy = false;
+    }
+  }
+
+  /**
+   * 检查设备是否忙碌
+   */
+  is_device_busy(): boolean {
+    return this.device_busy;
+  }
+
+  // ==================== 兼容性方法 ====================
+
+  /**
+   * 通用透传方法 - 保持向后兼容
+   */
+  async passthrough(method: string, params?: any): Promise<any> {
+    switch (method) {
+      case 'health':
+        return await this.device.health();
+      case 'ports':
+        return await this.device.get_available_ports();
+      case 'connect':
+        return await this.connect(params);
+      case 'disconnect':
+        return await this.disconnect();
+      case 'scan':
+        return await this.scan(params?.start, params?.end);
+      case 'status':
+        return await this.status(params?.address);
+      case 'setpoint':
+        return await this.setpoint(params.address, params.sccm);
+      case 'comm-log':
+        return await this.get_communication_log();
+      case 'clear-comm-log':
+        return await this.clear_communication_log();
+      default:
+        throw new Error(`Unknown method: ${method}`);
+    }
+  }
 }

@@ -65,8 +65,8 @@ pnpm install
 - `postcss` ^8.4.0
 
 **图表和可视化:**
-- `chart.js` ^4.4.0
-- `react-chartjs-2` ^5.2.0
+- `echarts` ^5.5.0
+- `echarts-for-react` ^3.0.2
 
 **工具库:**
 - `socket.io-client` ^4.8.1
@@ -185,6 +185,44 @@ pnpm lint
 
 # 启动开发环境
 pnpm dev
+```
+
+## 开发环境端口配置
+
+### 默认端口分配
+- **Frontend (Vite)**: http://localhost:8083
+- **Backend (NestJS)**: http://localhost:3001
+- **FastAPI Device Service**: http://localhost:8000
+- **Database (PostgreSQL)**: localhost:5432
+
+### 端口配置文件
+端口配置位于项目根目录的 `.env` 文件中：
+```bash
+# 应用配置
+PORT=3001                    # Backend端口
+
+# FastAPI设备服务
+FASTAPI_PORT=8000           # FastAPI端口
+
+# WebSocket配置
+WS_PORT=3001                # WebSocket端口（与Backend共享）
+
+# CORS配置
+CORS_ORIGIN=http://localhost:8083  # 前端端口
+```
+
+### 端口冲突处理
+如果遇到端口冲突，可以：
+1. 修改 `.env` 文件中的端口配置
+2. 或者在启动时指定不同端口：
+```bash
+# 前端自定义端口
+cd apps/frontend
+npm run dev -- --port 3000
+
+# 后端自定义端口
+cd apps/backend
+npm run start:dev -- --port 4000
 ```
 
 ## 故障排除指南

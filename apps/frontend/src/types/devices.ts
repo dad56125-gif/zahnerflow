@@ -321,6 +321,8 @@ export interface MfcConfig extends DeviceConfig {
   max_flow_sccm: number;
   calibration_factor?: number;
   flow_mode?: 'hold' | 'follow';
+  retry_attempts?: number;
+  retry_delay?: number;
 }
 
 // 默认配置常量
@@ -349,4 +351,6 @@ export const DEFAULT_MFC_CONFIG: MfcConfig = {
   max_flow_sccm: 1000,
   calibration_factor: 1.0,
   flow_mode: 'hold',
+  retry_attempts: 3,
+  retry_delay: 1000,
 };

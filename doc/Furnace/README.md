@@ -17,193 +17,248 @@ Furnace 功能采用三层架构设计：
 
 | 路径                                                        | 职责                                                                 |
 | ----------------------------------------------------------- | -------------------------------------------------------------------- |
-| `apps/frontend/src/components/DeviceModal.tsx`              | **前端 UI 组件**: 提供 Furnace 的所有用户交互界面，如状态监控、程序设置等。 |
+| `apps/frontend/src/components/furnace/`                     | **前端 UI 组件目录**: 包含StatusPanel、PresetManager、ConnectionPanel、ProgramEditor等组件 |
 | `apps/frontend/src/services/hooks/useFurnace.ts`            | **前端状态管理 (Hook)**: 封装 Furnace 的所有前端状态和控制逻辑。         |
-| `apps/frontend/src/services/hooks/usePolling.ts`            | **通用轮询 Hook**: 提供可复用的轮询逻辑，用于定期获取设备状态。        |
-| `apps/frontend/src/services/utils/apiUtils.ts`              | **API 工具库**: 提供 API 错误处理、重试等辅助函数。                   |
+| `apps/frontend/src/services/furnace-websocket.service.ts`   | **WebSocket服务**: 处理实时数据推送和状态更新                        |
 | `apps/frontend/src/services/api/furnaceApi.ts`              | **前端 API 客户端**: 封装所有对后端 Furnace API 的 HTTP 请求。             |
 | `apps/backend/src/modules/furnace/furnace.controller.ts`    | **后端控制器 (Controller)**: 定义 `/api/devices/furnace` 的所有 API 路由。 |
-| `apps/backend/src/modules/furnace/furnace.service.ts`       | **后端服务 (Service)**: 实现 Furnace 的核心业务逻辑，如预设管理。        |
-| `apps/backend/src/modules/sampling/sampling.service.ts`     | **数据采样服务**: 负责定期从硬件采样数据，并提供历史数据查询。       |
+| `apps/backend/src/modules/furnace/furnace.service.ts`       | **后端服务 (Service)**: 实现 Furnace 的核心业务逻辑，包含轮询和采样管理。        |
+| `apps/backend/src/modules/furnace/furnace-data.service.ts`  | **数据管理服务**: 负责预设管理和历史数据存储查询。       |
+| `apps/backend/src/modules/furnace/services/furnace-error-handler.service.ts` | **错误处理服务**: 提供熔断器和错误统计功能。 |
 | `apps/backend/src/devices/furnace-device.service.ts`        | **后端设备服务**: 作为 NestJS 和 FastAPI 之间的桥梁，转发硬件控制指令。 |
+| `apps/backend/src/gateways/furnace.gateway.ts`              | **WebSocket网关**: 处理前端WebSocket连接和实时数据推送。 |
 | `apps/backend/src/modules/furnace/fastapi/ai518p_device.py` | **硬件接口 (FastAPI)**: 提供底层的 HTTP 接口，直接与 AI-518P 温控仪通信。 |
-| `packages/types/src/device.types.ts`                        | **共享类型定义**: 定义了前后端通用的 TypeScript 类型，如 `FurnaceStatus`。 |
+| `apps/frontend/src/types/devices.ts`                        | **类型定义**: 定义了前端通用的 TypeScript 类型，如 `FurnaceStatus`。 |
 
 ## 3. 数据流与运行逻辑
 
-### 3.1. 状态获取与轮询
+### 3.1. 状态获取与实时通信
 
-1.  **UI (`DeviceModal.tsx`)** 通过 `useFurnace` Hook 获取实时状态 (`furnaceState.status`)。
-2.  **Hook (`useFurnace.ts`)** 使用了 `useConditionalPolling` 这个自定义 Hook（来自 `usePolling.ts`）来定期获取状态。只有在 `connectionState.status` 为 `'connected'` 时，轮询才会启动。
-3.  **Polling Hook (`usePolling.ts`)** 在满足条件时，会以固定的时间间隔（例如 2 秒）调用传入的 `fetchFn` 函数，即 `FurnaceApi.getStatus()`。它还使用 `apiUtils.ts` 中的函数来处理网络错误和重试逻辑。
-4.  **API Client (`furnaceApi.ts`)** 发送 `GET /api/devices/furnace/status` 请求到后端。
-5.  **Controller (`furnace.controller.ts`)** 接收请求，并调用 `furnace.service.ts` 的 `status()` 方法。
-6.  **Service (`furnace.service.ts`)** 调用 `furnace-device.service.ts` 的 `status()` 方法。
-7.  **Device Service (`furnace-device.service.ts`)** 发送 `GET /status` 请求到 FastAPI 应用。
-8.  **FastAPI (`ai518p_device.py`)** 通过串口与 AI-518P 硬件通信，读取实时数据并返回。
-9.  数据沿相反路径返回到前端 UI，完成状态更新。
+1.  **UI组件** 通过 `useFurnace` Hook 获取实时状态并注册WebSocket监听器。
+2.  **Hook (`useFurnace.ts`)** 管理设备连接状态，在连接时自动建立WebSocket连接并订阅设备状态更新。
+3.  **WebSocket服务** 与后端 `FurnaceGateway` 建立持久连接，接收实时状态推送。
+4.  **后端网关** 管理多客户端连接，通过轮询机制定期获取设备状态并推送给所有订阅的客户端。
+5.  **Service (`furnace.service.ts`)** 包含轮询管理器，每2秒查询设备状态，每1秒进行数据采样。
+6.  **Device Service** 转发请求到Python FastAPI服务。
+7.  **FastAPI (`ai518p_device.py`)** 通过串口与AI-518P硬件通信，使用互斥锁确保原子性操作。
+8.  **数据推送** 状态更新通过WebSocket实时推送到前端，减少HTTP轮询开销。
 
-### 3.2. 控制命令 (以“设置温度”为例)
+### 3.2. 控制命令流程
 
-1.  用户在 **UI (`DeviceModal.tsx`)** 中输入目标温度，点击按钮触发 `furnaceControls.setTemperature()`。
-2.  **Hook (`useFurnace.ts`)** 调用 `FurnaceApi.setTemperature(sv)`。
-3.  **API Client (`furnaceApi.ts`)** 发送 `POST /api/devices/furnace/sv` 请求，请求体为 `{ "sv": 450 }`。
-4.  后续流程与状态获取类似，最终由 FastAPI 应用将指令发送到硬件。
+1.  **UI组件** 用户操作触发 `furnaceControls` 中的控制方法（如 `run`、`pause`、`stop`、`set_segment`）。
+2.  **Hook (`useFurnace.ts`)** 调用相应的 `FurnaceApi` 方法，包含完整的参数验证和错误处理。
+3.  **API Client** 发送POST请求到对应端点，请求体使用snake_case格式（如 `{ "segment": 5 }`）。
+4.  **Controller** 接收请求并调用相应的Service方法，包含设备连接状态检查。
+5.  **Service** 执行业务逻辑，在长时间操作期间暂停轮询，操作完成后恢复。
+6.  **Device Service** 转发请求到FastAPI，支持动态超时设置。
+7.  **FastAPI** 使用互斥锁执行原子性硬件操作，返回统一的响应格式。
 
-### 3.3. 历史数据
+### 3.3. 数据采集与存储
 
-1.  **数据采集**: `SamplingService` 在后端独立运行，每秒通过 `FurnaceDeviceService` 从硬件采集一次数据。
-2.  **数据存储**: 采集到的数据点被追加到内存缓冲区（保留 1 小时）和当天的 JSONL 文件中 (`/apps/backend/data/samples/furnace/YYYY-MM-DD.jsonl`)。
-3.  **数据查询**: 当用户在前端请求历史数据时，`furnaceApi.ts` 调用 `GET /api/devices/furnace/logs/temperature`。
-4.  **Controller (`furnace.controller.ts`)** 将请求转发给 `SamplingService` 的 `queryFurnace` 方法。
-5.  **`SamplingService`** 根据查询参数（时间范围、降采样率等），从内存和对应的 JSONL 文件中聚合数据，并返回给前端。
+1.  **独立采样服务**: `FurnaceDataService` 在后端独立运行，每1秒通过 `FurnaceDeviceService` 从硬件采集一次数据。
+2.  **内存缓冲**: 采集到的数据存储在内存缓冲区中，保留1小时的历史数据供快速查询。
+3.  **文件存储**: 数据同时追加到当天的JSONL文件中 (`apps/backend/apps/backend/data/samples/furnace/YYYY-MM-DD.jsonl`)。
+4.  **实时推送**: 采样数据通过WebSocket实时推送到前端，提供毫秒级的数据更新体验。
+5.  **历史查询**: 前端可查询任意时间范围的历史数据，支持降采样以提高查询性能。
+6.  **数据格式**: 统一使用snake_case字段（timestamp、temperature、sv、mv等）。
 
 ## 4. API 端点
 
 所有 API 均以 `/api/devices/furnace` 为前缀。
 
+### 4.1 设备控制接口
+
 | 方法   | 路径                      | 描述                               |
 | ------ | ------------------------- | ---------------------------------- |
-| `GET`  | `/status`                 | 获取设备实时状态                   |
-| `POST` | `/sv`                     | 设置目标温度 (SV)                  |
-| `POST` | `/segment/set`            | 设置当前程序段                     |
-| `GET`  | `/program/segments`       | 获取所有程序段配置                 |
-| `POST` | `/program/segments`       | 批量写入程序段配置                 |
-| `GET`  | `/presets`                | 获取所有预设列表                   |
-| `POST` | `/presets`                | 创建新预设                         |
-| `GET`  | `/presets/:name`          | 获取指定名称的预设                 |
-| `PUT`  | `/presets/:name`          | 更新指定预设                       |
-| `DELETE`| `/presets/:name`          | 删除指定预设                       |
-| `POST` | `/presets/:name/clone`    | 克隆预设                           |
-| `POST` | `/presets/:name/apply`    | 应用预设到设备                     |
-| `GET`  | `/logs/temperature`       | 查询历史温度数据                   |
-| `POST` | `/connect`                | 连接设备                           |
+| `POST` | `/connect`                | 连接设备（参数：port、baudrate、address、stopbits、timeout） |
 | `POST` | `/disconnect`             | 断开设备连接                       |
+| `GET`  | `/status`                 | 获取设备实时状态                   |
 | `POST` | `/run`                    | 运行程序                           |
 | `POST` | `/pause`                  | 暂停程序                           |
 | `POST` | `/stop`                   | 停止程序                           |
+| `POST` | `/segment/set`            | 设置当前程序段（参数：segment）    |
+| `GET`  | `/program/segments`       | 获取所有程序段配置                 |
+| `POST` | `/program/segments`       | 批量写入程序段配置                 |
+| `GET`  | `/health`                 | 健康检查                           |
+| `GET`  | `/ports`                  | 获取可用串口列表                   |
+| `GET`  | `/comm-log`               | 获取通信日志                       |
 
-## 5. 流程图
+### 4.2 预设管理接口
 
-```plantuml
-@startuml
-!theme vibrant
+| 方法   | 路径                      | 描述                               |
+| ------ | ------------------------- | ---------------------------------- |
+| `GET`  | `/presets`                | 获取所有预设列表                   |
+| `POST` | `/presets`                | 创建新预设（参数：name、segments、summary） |
+| `GET`  | `/presets/:name`          | 获取指定名称的预设                 |
+| `PUT`  | `/presets/:name`          | 更新指定预设                       |
+| `DELETE`| `/presets/:name`          | 删除指定预设                       |
+| `POST` | `/presets/:name/clone`    | 克隆预设（参数：newName）          |
+| `POST` | `/presets/:name/apply`    | 应用预设到设备                     |
 
-title Furnace 功能 - 完整数据流
+### 4.3 数据查询接口
 
-package "前端 (Frontend)" {
-  actor 用户
-  [DeviceModal.tsx (UI)] as UI
-  [useFurnace.ts (Hook)] as Hook
-  [usePolling.ts] as PollingHook
-  [furnaceApi.ts (API Client)] as FE_API
-}
+| 方法   | 路径                      | 描述                               |
+| ------ | ------------------------- | ---------------------------------- |
+| `GET`  | `/logs/temperature`       | 查询历史温度数据（参数：from、to、limit、downsample） |
 
-package "后端 (Backend - NestJS)" {
-  [furnace.controller.ts] as Controller
-  [furnace.service.ts] as Service
-  [sampling.service.ts] as SamplingService
-  [furnace-device.service.ts] as DeviceService
-}
+### 4.4 连接管理接口
 
-package "硬件接口 (Hardware Interface - FastAPI)" {
-  [ai518p_device.py] as FastAPI_App
-}
+| 方法   | 路径                      | 描述                               |
+| ------ | ------------------------- | ---------------------------------- |
+| `GET`  | `/connection/status`      | 获取连接状态                       |
+| `POST` | `/connection/reconnect`   | 尝试重新连接                       |
+| `GET`  | `/polling/status`         | 获取轮询状态                       |
 
-database "硬件 (Hardware)" {
-    [AI-518P Furnace] as HW
-}
+### 4.5 错误处理接口
 
-folder "数据存储" {
-  database "内存缓冲区" as MemCache
-  database "JSONL 文件" as JsonLog
-}
+| 方法   | 路径                      | 描述                               |
+| ------ | ------------------------- | ---------------------------------- |
+| `GET`  | `/error/stats`            | 获取错误统计信息                   |
+| `POST` | `/error/circuit-breaker/:name/reset` | 重置指定熔断器               |
+| `POST` | `/error/circuit-breakers/reset` | 重置所有熔断器                 |
+| `GET`  | `/error/recent`           | 获取最近的错误记录                 |
+| `GET`  | `/error/export`           | 导出错误数据                       |
+| `POST` | `/error/clear`            | 清理错误日志                       |
 
-' Frontend Interactions
-用户 -> UI : 操作界面
-UI -> Hook : 调用控制函数 (e.g., setTemperature)
-Hook -> FE_API : 发起 API 请求 (e.g., POST /sv)
+## 5. 数据流详解
 
-' Polling for Status
-Hook -> PollingHook : (条件轮询)
-PollingHook -> FE_API : 定期 GET /status
+### 5.1 WebSocket实时通信流程
 
-' History Data
-Hook -> FE_API : GET /logs/temperature
+```mermaid
+sequenceDiagram
+    participant UI as 前端UI
+    participant Hook as useFurnace Hook
+    participant WS as WebSocket服务
+    participant Gateway as FurnaceGateway
+    participant Service as FurnaceService
+    participant Device as FastAPI
+    participant HW as AI-518P设备
 
-' Backend API Handling
-FE_API --> Controller : HTTP 请求
-Controller --> Service : 调用业务逻辑
-Controller --> SamplingService : (用于历史数据查询)
-Service --> DeviceService : 硬件操作
+    Note over UI,HW: 设备连接建立
+    UI->>Hook: connect(port, baudrate, address)
+    Hook->>WS: 建立WebSocket连接
+    WS->>Gateway: subscribeToFurnace()
+    Gateway->>Service: 启动轮询和采样
 
-' Data Sampling
-SamplingService ..> DeviceService : 定期采样
-SamplingService --> MemCache : 写入
-SamplingService --> JsonLog : 写入
+    Note over UI,HW: 实时状态推送
+    loop 每2秒
+        Service->>Device: GET /status
+        Device->>HW: 串口通信
+        HW-->>Device: 状态数据
+        Device-->>Service: 统一格式响应
+        Service->>Gateway: 推送状态更新
+        Gateway->>WS: WebSocket消息
+        WS->>Hook: 状态更新事件
+        Hook->>UI: 界面状态更新
+    end
 
-' Hardware Communication
-DeviceService --> FastAPI_App : 请求 FastAPI 后端
-FastAPI_App --> HW : 串口通信
+    Note over UI,HW: 用户控制操作
+    UI->>Hook: setSegment(5)
+    Hook->>Service: POST /segment/set
+    Service->>Device: 转发请求
+    Device->>HW: 设置程序段
+    HW-->>Device: 操作确认
+    Device-->>Service: 响应结果
+    Service->>Gateway: 立即推送状态
+    Gateway->>WS: WebSocket通知
+    WS->>Hook: 状态变化
+    Hook->>UI: 界面更新
+```
 
-@enduml
+### 5.2 数据采集与存储流程
+
+```mermaid
+flowchart TD
+    A[FurnaceService采样管理器] --> B{每1秒触发}
+    B --> C[调用DeviceService.status()]
+    C --> D[FastAPI /status接口]
+    D --> E[AI-518P串口通信]
+    E --> F[获取PV/SV/MV/Segment数据]
+    F --> G[FurnaceDataService处理]
+
+    G --> H[内存缓冲区存储]
+    G --> I[JSONL文件追加]
+    G --> J[WebSocket实时推送]
+
+    H --> K[1小时数据滚动]
+    I --> L[按日期文件分割]
+    J --> M[前端实时图表更新]
+
+    N[前端历史查询] --> O[GET /logs/temperature]
+    O --> P[数据聚合与降采样]
+    P --> Q[返回时间序列数据]
 ```
 
 ## 6. 实现状态
 
-### 6.1. FastAPI硬件接口层
+### 6.1. Python FastAPI硬件接口层
 
-**互斥锁实现**：
+**核心特性**：
 - 文件：`apps/backend/src/modules/furnace/fastapi/ai518p_device.py`
-- 第7行：`import threading`
-- 第49行：`self.lock = threading.Lock()`
-- 第143行：`with self.lock:` 原子性操作
-- 第131-182行：一发一收协议，独立超时机制
+- **线程安全**：使用`threading.Lock()`确保串口操作原子性
+- **通信协议**：一发一收协议，独立超时机制防止阻塞
+- **错误处理**：完整的异常分类（DEVICE、TIMEOUT、SYSTEM）
+- **响应统一**：使用`FurnaceResponse`包装器确保格式一致
+- **连接管理**：单连接模式，支持连接健康检查和自动重连
 
-**数据契约对齐**：
-- 状态字段：`run`/`pause`/`stop`
-- 时间字段：`segment_time`、`segment_time_set`（秒）
-- 请求体：`/sv{sv}`、`/segment/set{segment}`
+**API端点**：
+- `/connect`、`/disconnect`：设备连接管理
+- `/status`：实时状态查询
+- `/run`、`/pause`、`/stop`：程序控制
+- `/segment/set`：程序段设置
+- `/program/segments`：程序段读写
+- `/ports`：串口枚举
+- `/health`、`/comm-log`：健康检查和通信日志
 
 ### 6.2. NestJS后端业务层
 
-**端口转发**：
-- Controller第18行：`@Get('ports') ports()`
-- Service第53行：`async ports()`
-- 转发至FastAPI `/ports` 接口
+**服务架构**：
+- **FurnaceService**：核心业务逻辑，包含轮询管理器（2秒间隔）和采样管理器（1秒间隔）
+- **FurnaceDataService**：独立的数据管理服务，负责预设管理和历史数据存储
+- **FurnaceErrorHandlerService**：错误处理服务，提供熔断器机制和错误统计
+- **FurnaceGateway**：WebSocket网关，支持多客户端实时数据推送
 
-**采样服务对齐**：
-- 文件：`apps/backend/src/modules/sampling/sampling.service.ts`
-- 第62-63行：读取 `st.segment_time`、`st.segment_time_set`
-- 写入保持 `segmentTime`、`segmentTimeSet` 历史兼容
+**关键特性**：
+- **条件轮询**：只在设备连接状态下启动轮询，节省资源
+- **操作互斥**：长时间操作期间自动暂停轮询，避免冲突
+- **连接管理**：完整的连接状态管理，支持重连机制
+- **数据缓冲**：1小时内存缓冲 + JSONL文件持久化
+- **预设管理**：完整的CRUD操作，支持克隆和应用
 
 ### 6.3. 前端React层
 
-**数据字段**：
-- 已使用 `segment_time`/`segment_time_set`（snake_case）
-- DeviceModal.tsx第48行：`FurnaceApi.getPorts()`
-- API请求体格式完全对齐
+**组件结构**：
+- **StatusPanel**：实时状态显示，包含PV、SV、MV数据
+- **ConnectionPanel**：设备连接管理界面
+- **ProgramEditor**：程序段编辑功能
+- **PresetManager**：预设管理界面
 
-### 6.4. 验证方法
+**状态管理**：
+- **useFurnace Hook**：封装所有前端状态和控制逻辑
+- **WebSocket服务**：实时数据推送，自动重连机制
+- **API客户端**：完整的参数验证和错误处理
+- **数据格式**：严格使用snake_case命名规范
+
+### 6.4. 数据验证
 
 ```bash
-# 端口枚举
+# 端口枚举测试
 GET /api/devices/furnace/ports
 # 响应：["COM1", "COM3", "COM4"]
 
-# 连接设备
+# 设备连接测试
 POST /api/devices/furnace/connect
 # 请求体：{"port":"COM4","baudrate":9600,"address":1,"stopbits":2,"timeout":1.0}
 
-# 状态查询
+# 状态查询测试
 GET /api/devices/furnace/status
-# 响应包含segment_time、segment_time_set（秒）和status字段
-```
+# 响应：{"pv":25.5,"sv":100.0,"mv":50,"status":"run","segment":1,"segment_time":120,"segment_time_set":300}
 
-### 6.5. 实现状态
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| 数据契约对齐 | 完成 | 三层使用snake_case字段 |
-| 串口原子性 | 完成 | threading.Lock + 一发一收 |
-| 端口枚举 | 完成 | 前端可连接真实设备 |
-**状态：生产就绪，支持真实设备联测。**
+# 程序段操作测试
+POST /api/devices/furnace/segment/set
+# 请求体：{"segment":5}
+
+# 预设管理测试
+GET /api/devices/furnace/presets
+# 响应：[{"name":"预热程序","createdAt":"2025-10-23T...","updatedAt":"2025-10-23T..."}]
+```

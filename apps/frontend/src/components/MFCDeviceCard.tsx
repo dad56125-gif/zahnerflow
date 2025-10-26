@@ -10,6 +10,8 @@ import { MfcDevice, DeviceCardProps } from '../types/devices';
 interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   device: MfcDevice;
   onSetFlow?: (address: number, sccm: number) => Promise<void>;
+  loading?: boolean;
+  disabled?: boolean;
 }
 
 /**

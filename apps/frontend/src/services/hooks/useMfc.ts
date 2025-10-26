@@ -141,7 +141,7 @@ export function useMfc(): [MfcState, MfcControls] {
       if (!status) {
         return {
           ...device,
-          status: 'disconnected',
+          status: 'disconnected' as 'connected' | 'disconnected' | 'error' | 'warning',
         };
       }
 
@@ -158,8 +158,8 @@ export function useMfc(): [MfcState, MfcControls] {
         set_flow: computedSetFlow,
         digital_setpoint_percent: digitalSetpointPercent,
         active_setpoint_percent: activeSetpointPercent,
-        mode: digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow',
-        status: 'connected',
+        mode: (digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow') as 'hold' | 'follow',
+        status: 'connected' as 'connected' | 'disconnected' | 'error' | 'warning',
       };
     });
 
@@ -333,7 +333,7 @@ export function useMfc(): [MfcState, MfcControls] {
           set_flow: computedSetFlow,
           digital_setpoint_percent: digitalSetpointPercent,
           active_setpoint_percent: activeSetpointPercent,
-          mode: digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow',
+          mode: (digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow') as 'hold' | 'follow',
           status: 'connected',
         };
       });
@@ -417,13 +417,13 @@ export function useMfc(): [MfcState, MfcControls] {
       const finalParams = params || state.historyParams;
       const historyData = await MfcApi.getFlowHistory(address, finalParams);
 
-      updateState(prev => {
-        const newHistoryData = new Map(prev.historyData);
-        newHistoryData.set(address, historyData);
-        return {
-          historyData: newHistoryData,
-          historyParams: finalParams,
-        };
+      updateState({
+        historyData: (() => {
+          const newHistoryData = new Map(state.historyData);
+          newHistoryData.set(address, historyData);
+          return newHistoryData;
+        })(),
+        historyParams: finalParams,
       });
 
     } catch (error) {

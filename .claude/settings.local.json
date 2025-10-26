@@ -49,5 +49,6 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "playwright-mcp"
-  ]
+  ],
+  "outputStyle": "Explanatory"
 }

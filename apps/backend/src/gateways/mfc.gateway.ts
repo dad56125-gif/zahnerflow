@@ -1,0 +1,393 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  OnGatewayInit,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+} from '@nestjs/websockets';
+import { Injectable, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
+import { Server, Socket } from 'socket.io';
+import { ConsoleDisplayManager } from '../common/console-display-manager.service';
+import { MfcService } from '../modules/mfc/mfc.service';
+
+/**
+ * MFC客户端信息
+ */
+interface MfcClient {
+  id: string;
+  socket: Socket;
+  connectedAt: Date;
+  lastActivity: Date;
+  isSubscribedToMfc: boolean;
+}
+
+/**
+ * MFC状态更新消息
+ */
+interface MfcStatusUpdateMessage {
+  type: 'status_update';
+  data: {
+    device_address: number;
+    flow_sccm: number;
+    setpoint_sccm: number;
+    gas_type?: string;
+    max_flow_sccm?: number;
+    connection_status: 'connected' | 'disconnected';
+    last_communication: string;
+  }[];
+  timestamp: string;
+}
+
+/**
+ * MFC采样数据消息
+ */
+interface MfcSamplingDataMessage {
+  type: 'sampling_data';
+  data: {
+    device_address: number;
+    timestamp: string;
+    flow_sccm: number;
+    setpoint_sccm: number;
+  }[];
+  timestamp: string;
+}
+
+/**
+ * MFC连接状态更新消息
+ */
+interface MfcConnectionUpdateMessage {
+  type: 'connection_update';
+  data: {
+    status: 'connected' | 'disconnected' | 'error';
+    device_count: number;
+    connection_id?: string;
+    device_address?: number;
+    details?: any;
+  };
+  timestamp: string;
+}
+
+/**
+ * MFC通知消息
+ */
+interface MfcNotificationMessage {
+  type: 'notification';
+  data: {
+    level: 'info' | 'success' | 'warning' | 'error';
+    title: string;
+    message: string;
+    source?: string;
+  };
+  timestamp: string;
+}
+
+@WebSocketGateway({
+  cors: {
+    origin: [
+      'http://localhost:8083',
+      'http://localhost:4173',
+      'http://localhost:3000',
+      'http://127.0.0.1:8083',
+    ],
+    credentials: true,
+  },
+})
+@Injectable()
+export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
+  @WebSocketServer()
+  server: Server;
+
+  private readonly clients = new Map<string, MfcClient>();
+  private readonly logger = new ConsoleDisplayManager();
+
+  constructor(
+    @Inject(forwardRef(() => MfcService))
+    private readonly mfcService: MfcService,
+  ) {}
+
+  afterInit(server: Server) {
+    this.logger.log('MfcGateway', 'enableLog', 'MFC WebSocket Gateway initialized');
+  }
+
+  handleConnection(client: Socket) {
+    this.logger.log('MfcGateway', 'enableLog', `MFC client connected: ${client.id}`);
+
+    const clientInfo: MfcClient = {
+      id: client.id,
+      socket: client,
+      connectedAt: new Date(),
+      lastActivity: new Date(),
+      isSubscribedToMfc: false,
+    };
+
+    this.clients.set(client.id, clientInfo);
+
+    // 发送欢迎消息
+    client.emit('mfcConnected', {
+      message: 'Connected to MFC WebSocket Gateway',
+      clientId: client.id,
+      serverTime: new Date(),
+    });
+  }
+
+  handleDisconnect(client: Socket) {
+    this.logger.log('MfcGateway', 'enableLog', `MFC client disconnected: ${client.id}`);
+
+    const clientInfo = this.clients.get(client.id);
+    if (clientInfo?.isSubscribedToMfc) {
+      // 取消订阅MFC更新
+      this.mfcService.unsubscribe_from_mfc_updates(client.id);
+    }
+
+    this.clients.delete(client.id);
+  }
+
+  @SubscribeMessage('subscribeToMfc')
+  handleSubscribeToMfc(@ConnectedSocket() client: Socket) {
+    const clientInfo = this.clients.get(client.id);
+    if (!clientInfo) {
+      client.emit('error', { message: 'Client not found' });
+      return;
+    }
+
+    clientInfo.isSubscribedToMfc = true;
+    clientInfo.lastActivity = new Date();
+
+    // 订阅MFC轮询管理器的更新
+    this.mfcService.subscribe_to_mfc_updates(client.id);
+
+    this.logger.log('MfcGateway', 'enableLog', `Client ${client.id} subscribed to MFC updates`);
+
+    client.emit('subscribedToMfc', {
+      message: 'Successfully subscribed to MFC updates',
+      timestamp: new Date(),
+    });
+  }
+
+  @SubscribeMessage('unsubscribeFromMfc')
+  handleUnsubscribeFromMfc(@ConnectedSocket() client: Socket) {
+    const clientInfo = this.clients.get(client.id);
+    if (!clientInfo) {
+      client.emit('error', { message: 'Client not found' });
+      return;
+    }
+
+    clientInfo.isSubscribedToMfc = false;
+    clientInfo.lastActivity = new Date();
+
+    // 取消订阅MFC轮询管理器的更新
+    this.mfcService.unsubscribe_from_mfc_updates(client.id);
+
+    this.logger.log('MfcGateway', 'enableLog', `Client ${client.id} unsubscribed from MFC updates`);
+
+    client.emit('unsubscribedFromMfc', {
+      message: 'Successfully unsubscribed from MFC updates',
+      timestamp: new Date(),
+    });
+  }
+
+  // ==================== 广播方法 ====================
+
+  /**
+   * 发送MFC状态更新到订阅的客户端
+   */
+  sendMfcStatusUpdate(statusUpdate: MfcStatusUpdateMessage) {
+    this.server.emit('mfcStatusUpdate', statusUpdate);
+    this.logger.log('MfcGateway', 'enableDebug', `Sent MFC status update`);
+  }
+
+  /**
+   * 发送MFC采样数据到订阅的客户端
+   */
+  sendMfcSamplingData(samplingData: MfcSamplingDataMessage) {
+    this.server.emit('mfcSamplingData', samplingData);
+    this.logger.log('MfcGateway', 'enableDebug', `Sent MFC sampling data`);
+  }
+
+  /**
+   * 广播MFC连接状态更新
+   */
+  sendMfcConnectionUpdate(connectionUpdate: MfcConnectionUpdateMessage) {
+    this.server.emit('mfcConnectionUpdate', connectionUpdate);
+    this.logger.log('MfcGateway', 'enableLog', `Broadcasted MFC connection update`);
+  }
+
+  /**
+   * 广播MFC相关通知
+   */
+  broadcastMfcNotification(notification: {
+    type: 'info' | 'success' | 'warning' | 'error';
+    title: string;
+    message: string;
+    source?: string;
+  }) {
+    const mfcNotification: MfcNotificationMessage = {
+      type: 'notification',
+      data: {
+        level: notification.type,
+        title: notification.title,
+        message: notification.message,
+        source: notification.source,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    this.server.emit('mfcNotification', mfcNotification);
+    this.logger.log('MfcGateway', 'enableLog', `Broadcasted MFC notification: [${notification.type}] ${notification.title}`);
+  }
+
+  /**
+   * 发送MFC错误到订阅的客户端
+   */
+  sendMfcError(error: string, errorDetails?: any) {
+    const errorMessage = {
+      type: 'notification',
+      data: {
+        level: 'error' as const,
+        title: 'MFC Error',
+        message: error,
+        source: 'mfc_service',
+        details: errorDetails,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    this.server.emit('mfcError', errorMessage);
+    this.logger.log('MfcGateway', 'enableError', `Sent MFC error: ${error}`);
+  }
+
+  /**
+   * 广播设备状态变化
+   */
+  broadcastDeviceStatusChange(deviceAddress: number, status: 'connected' | 'disconnected' | 'error', details?: any) {
+    const statusMessage: MfcConnectionUpdateMessage = {
+      type: 'connection_update',
+      data: {
+        status,
+        device_count: this.getConnectedDeviceCount(),
+        device_address: deviceAddress,
+        details,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    this.server.emit('mfcDeviceStatusChange', statusMessage);
+    this.logger.log('MfcGateway', 'enableLog', `Broadcasted device status change: ${deviceAddress} -> ${status}`);
+  }
+
+  /**
+   * 广播流量设定点变更
+   */
+  broadcastFlowSetpointChange(deviceAddress: number, oldSccm: number, newSccm: number) {
+    const setpointMessage = {
+      type: 'setpoint_change',
+      data: {
+        device_address: deviceAddress,
+        old_sccm: oldSccm,
+        new_sccm: newSccm,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    this.server.emit('mfcSetpointChange', setpointMessage);
+    this.logger.log('MfcGateway', 'enableLog', `Broadcasted flow setpoint change: ${deviceAddress} ${oldSccm} -> ${newSccm} sccm`);
+  }
+
+  /**
+   * 广播系统状态
+   */
+  broadcastSystemStatus(systemStatus: {
+    total_devices: number;
+    active_devices: number;
+    system_status: 'healthy' | 'warning' | 'error';
+    last_update: string;
+  }) {
+    this.server.emit('mfcSystemStatus', {
+      type: 'system_status',
+      data: systemStatus,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.log('MfcGateway', 'enableDebug', `Broadcasted system status: ${systemStatus.system_status}`);
+  }
+
+  // ==================== 统计和管理方法 ====================
+
+  /**
+   * 获取连接统计信息
+   */
+  getConnectionStats() {
+    const subscribedCount = Array.from(this.clients.values())
+      .filter(client => client.isSubscribedToMfc).length;
+
+    return {
+      totalClients: this.clients.size,
+      subscribedToMfc: subscribedCount,
+      clientDetails: Array.from(this.clients.values()).map(client => ({
+        id: client.id,
+        connectedAt: client.connectedAt,
+        lastActivity: client.lastActivity,
+        isSubscribedToMfc: client.isSubscribedToMfc,
+      })),
+    };
+  }
+
+  /**
+   * 更新客户端活动时间
+   */
+  updateClientActivity(clientId: string) {
+    const client = this.clients.get(clientId);
+    if (client) {
+      client.lastActivity = new Date();
+    }
+  }
+
+  /**
+   * 清理非活跃连接
+   */
+  cleanupInactiveConnections(maxInactiveTime: number = 30 * 60 * 1000) { // 默认30分钟
+    const now = new Date();
+    const inactiveClients: string[] = [];
+
+    this.clients.forEach((client, id) => {
+      const inactiveTime = now.getTime() - client.lastActivity.getTime();
+      if (inactiveTime > maxInactiveTime) {
+        inactiveClients.push(id);
+      }
+    });
+
+    inactiveClients.forEach(clientId => {
+      const client = this.clients.get(clientId);
+      if (client) {
+        client.socket.disconnect();
+        this.clients.delete(clientId);
+        this.logger.log('MfcGateway', 'enableLog', `Cleaned up inactive client: ${clientId}`);
+      }
+    });
+
+    return inactiveClients.length;
+  }
+
+  /**
+   * 获取当前连接的设备数量
+   */
+  private getConnectedDeviceCount(): number {
+    // 这里应该从MFC服务获取实际的连接设备数量
+    // 暂时返回订阅客户端数量作为估算
+    return Array.from(this.clients.values())
+      .filter(client => client.isSubscribedToMfc).length;
+  }
+
+  onModuleDestroy(): void {
+    this.logger.log('MfcGateway', 'enableLog', 'MFC WebSocket Gateway destroyed');
+
+    // 断开所有客户端连接
+    this.clients.forEach((client) => {
+      client.socket.disconnect();
+    });
+    this.clients.clear();
+  }
+}

@@ -122,23 +122,5 @@ $RECYCLE.BIN/
 .vercel/
 
 # 其他
-.env.example
-.DS_Store
-
-
-# START Ruler Generated Files
-/.codex/config.json
-/.codex/config.json.bak
-/.codex/config.toml
-/.codex/config.toml.bak
-/.gemini/settings.json
-/.gemini/settings.json.bak
-/.mcp.json
-/.mcp.json.bak
-/AGENTS.md
-/AGENTS.md.bak
-/CLAUDE.md
-/CLAUDE.md.bak
-# END Ruler Generated Files
 .jsonl/
 *.jsonl
