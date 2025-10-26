@@ -30,7 +30,7 @@ export class MfcDeviceService {
       const timeout = axiosError.config?.timeout;
       const responseData = axiosError.response?.data;
 
-      this.logger.error(
+      this.logger.warn(
         `MFC ${operation} failed: ${axiosError.message}; status=${status}; url=${fullUrl}; timeout=${timeout}`
       );
 
@@ -40,9 +40,9 @@ export class MfcDeviceService {
           const responseStr = typeof responseData === 'string'
             ? responseData
             : JSON.stringify(responseData, null, 0); // 无缩进，紧凑格式
-          this.logger.error(`Response data: ${responseStr}`);
+          this.logger.warn(`Response data: ${responseStr}`);
         } catch (e) {
-          this.logger.error(`Response data: [Object - too large to serialize]`);
+          this.logger.warn(`Response data: [Object - too large to serialize]`);
         }
       }
     } else {

@@ -64,6 +64,12 @@ export class MfcErrorHandlerService {
       recovery_timeout: 20000,
       monitoring_period: 60000
     });
+
+    // 初始化重试处理器
+    this.createRetryHandler('device_connection');
+    this.createRetryHandler('device_operation');
+    this.createRetryHandler('device_scan');
+    this.createRetryHandler('flow_control');
   }
 
   /**
