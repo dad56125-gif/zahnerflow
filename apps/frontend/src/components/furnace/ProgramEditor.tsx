@@ -110,7 +110,8 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                   disabled={furnaceState.connection_status !== 'connected'}
                   onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
                 />
-                <label className="segment-label">C{segId.toString().padStart(2, '0')}<span className="unit-hint">℃</span></label>
+                <span className="unit-hint">℃</span>
+                <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
                 <input
                   type="number"
                   className="segment-input time-input"
@@ -120,7 +121,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                   placeholder="分钟"
                   title="保温时长单位：分钟"
                 />
-                <label className="segment-label">t{segId.toString().padStart(2, '0')}<span className="unit-hint">分钟</span></label>
+                <span className="unit-hint">min</span>
               </div>
             );
           })}
@@ -140,7 +141,8 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                   disabled={furnaceState.connection_status !== 'connected'}
                   onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
                 />
-                <label className="segment-label">C{segId.toString().padStart(2, '0')}<span className="unit-hint">℃</span></label>
+                <span className="unit-hint">℃</span>
+                <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
                 <input
                   type="number"
                   className="segment-input time-input"
@@ -150,7 +152,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                   placeholder="分钟"
                   title="保温时长单位：分钟"
                 />
-                <label className="segment-label">t{segId.toString().padStart(2, '0')}<span className="unit-hint">分钟</span></label>
+                <span className="unit-hint">min</span>
               </div>
             );
           })}
