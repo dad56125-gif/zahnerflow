@@ -900,9 +900,9 @@ def stop_program(controller: 'AI518PController' = Depends(get_active_controller)
 
 
 @app.post("/segment/set")
-def set_segment(segment: int = Body(...), controller: 'AI518PController' = Depends(get_active_controller)):
+def set_segment(request: dict = Body(...), controller: 'AI518PController' = Depends(get_active_controller)):
     """设置当前程序段"""
-    # 直接调用，异常由全局异常处理器处理
+    segment = request.get('segment')
     return controller.set_segment(segment)
 
 
