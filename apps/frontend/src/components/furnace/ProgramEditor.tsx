@@ -110,14 +110,17 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                   disabled={furnaceState.connection_status !== 'connected'}
                   onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
                 />
-                <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
+                <label className="segment-label">C{segId.toString().padStart(2, '0')}<span className="unit-hint">℃</span></label>
                 <input
                   type="number"
                   className="segment-input time-input"
                   value={segmentInputs[`time_${segId}`] || (segment?.time?.toString() || '0')}
                   disabled={furnaceState.connection_status !== 'connected'}
                   onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`time_${segId}`]: e.target.value }))}
+                  placeholder="分钟"
+                  title="保温时长单位：分钟"
                 />
+                <label className="segment-label">t{segId.toString().padStart(2, '0')}<span className="unit-hint">分钟</span></label>
               </div>
             );
           })}
@@ -137,14 +140,17 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                   disabled={furnaceState.connection_status !== 'connected'}
                   onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
                 />
-                <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
+                <label className="segment-label">C{segId.toString().padStart(2, '0')}<span className="unit-hint">℃</span></label>
                 <input
                   type="number"
                   className="segment-input time-input"
                   value={segmentInputs[`time_${segId}`] || (segment?.time?.toString() || '0')}
                   disabled={furnaceState.connection_status !== 'connected'}
                   onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`time_${segId}`]: e.target.value }))}
+                  placeholder="分钟"
+                  title="保温时长单位：分钟"
                 />
+                <label className="segment-label">t{segId.toString().padStart(2, '0')}<span className="unit-hint">分钟</span></label>
               </div>
             );
           })}

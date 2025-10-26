@@ -809,7 +809,7 @@ class AI518PController:
             temp_c = (td["param_value"] / 10.0) if td else 0.0
             t_min = vd["param_value"] if vd else 0
 
-            segs.append(ProgramSegment(id=seg_id, temperature=temp_c, time=int(t_min * 60)))
+            segs.append(ProgramSegment(id=seg_id, temperature=temp_c, time=t_min))
 
         return segs
 
@@ -825,7 +825,7 @@ class AI518PController:
             temp_code = 0x1A + idx * 2
             time_code = 0x1B + idx * 2
             temp_int = int(round(it.temperature * 10))
-            time_min = int(round((it.time or 0) / 60))
+            time_min = int(round(it.time or 0))
 
             # 写入温度和时间参数
             temp_ok = self.write_parameter(temp_code, temp_int)

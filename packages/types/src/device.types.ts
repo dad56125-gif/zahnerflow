@@ -222,7 +222,7 @@ export interface TransitionConfig {
 export interface ProgramSegment {
   id: number;          // 顺序段号，从 1 开始
   temperature: number; // 目标温度（℃），AI-518P: 以℃为单位（FastAPI 层再做 ×10）
-  time: number;        // 保温时长（秒）
+  time: number;        // 保温时长（分钟）
 }
 
 // 炉温预设元信息
