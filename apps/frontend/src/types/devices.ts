@@ -7,11 +7,18 @@
 // 重新导出 @zahnerflow/types 中的基础类型
 // 注意：这里假设 @zahnerflow/types 包含以下类型，如果没有，需要定义
 
+// 程序段操作进度
+export interface SegmentProgress {
+  active: boolean;        // 是否正在进行程序段操作
+  type: 'read' | 'write'; // 操作类型：读取程序段 | 写入程序段
+  progress: number;       // 进度百分比 (0-100)
+}
+
 // 基础类型定义（如果 @zahnerflow/types 不可用）
 export interface ProgramSegment {
   id: number;
   temperature: number; // 温度 (℃)
-  time: number;       // 时间 (秒)
+  time: number;       // 时间 (分钟)
 }
 
 export interface FurnacePresetMeta {

@@ -387,9 +387,9 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         }
       });
 
-      // 模拟5秒进度
-      const duration = 5000; // 5秒
-      const steps = 50; // 50步，每步100ms
+      // 模拟8秒进度
+      const duration = 8000; // 8秒
+      const steps = 50; // 50步，每步160ms
       const stepDuration = duration / steps;
 
       for (let i = 0; i <= steps; i++) {
