@@ -539,8 +539,15 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       clearInterval(this.polling_timer);
     }
 
+    // 严格检查连接状态 - 只有设备真正连接时才能启动轮询
     if (this.connection_state !== ConnectionState.CONNECTED) {
-      this.logger.warn('Cannot start polling: device not connected');
+      this.logger.warn(`Cannot start polling: device not connected (current state: ${this.connection_state})`);
+      return;
+    }
+
+    // 确保有已知设备才进行轮询
+    if (this.device_statuses.size === 0) {
+      this.logger.warn('Cannot start polling: no known devices to poll');
       return;
     }
 
@@ -551,7 +558,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       this.perform_polling();
     }, this.polling_config.interval);
 
-    this.logger.log(`Started MFC polling with interval ${this.polling_config.interval}ms`);
+    this.logger.log(`✅ Started MFC polling with interval ${this.polling_config.interval}ms for ${this.device_statuses.size} devices`);
   }
 
   /**
@@ -672,11 +679,14 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    */
   subscribe_to_mfc_updates(client_id: string): void {
     this.polling_subscribers.add(client_id);
-    this.logger.log(`Client ${client_id} subscribed to MFC updates`);
+    this.logger.log(`Client ${client_id} subscribed to MFC updates (total subscribers: ${this.polling_subscribers.size})`);
 
-    // 确保轮询正在运行
-    if (!this.polling_status.is_running && this.connection_state === ConnectionState.CONNECTED) {
+    // 只有在设备已连接且有已知设备时才启动轮询
+    if (!this.polling_status.is_running && this.connection_state === ConnectionState.CONNECTED && this.device_statuses.size > 0) {
+      this.logger.log(`Starting polling due to client ${client_id} subscription`);
       this.start_polling();
+    } else {
+      this.logger.debug(`Polling not started: running=${this.polling_status.is_running}, connected=${this.connection_state}, devices=${this.device_statuses.size}`);
     }
   }
 

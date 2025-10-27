@@ -270,33 +270,9 @@ export function useMfc(): [MfcState, MfcControls] {
     });
   }, [state.devices, updateState]);
 
-  // 设备状态轮询
-  const [, statusControls] = usePolling(
-    async () => {
-      try {
-        if (state.devices.length === 0) {
-          return [];
-        }
-
-        const statuses = await MfcApi.getAllDevicesStatus();
-        updateDeviceStatus(statuses);
-
-        return statuses;
-      } catch (error) {
-        handleApiError(error);
-        throw error;
-      }
-    },
-    {
-      interval: DEFAULT_MFC_CONFIG.polling_interval,
-      immediate: true,
-      onlyWhenVisible: true,
-      maxRetries: DEFAULT_MFC_CONFIG.retry_attempts,
-      retryDelay: DEFAULT_MFC_CONFIG.retry_delay,
-      onError: handleApiError,
-      deps: [state.devices.length], // 设备列表变化时重新开始轮询
-    }
-  );
+  // 移除前端轮询 - 状态更新现在完全由后端WebSocket推送
+  // 前端只负责通过WebSocket接收实时状态更新，不再主动轮询
+  console.log('MFC Hook: 前端轮询已移除，依赖后端WebSocket推送');
 
   // ==================== 端口管理 ====================
 
