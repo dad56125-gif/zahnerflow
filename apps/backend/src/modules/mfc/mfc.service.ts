@@ -153,12 +153,12 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
               });
             }
           } catch (error) {
-            // 单个地址超时或无响应是正常的，记录但继续扫描下一个地址
+            // 单个地址超时、无响应或设备不存在都是正常的，记录但继续扫描下一个地址
             if (error.code === 'ECONNABORTED' ||
-                (error.response && error.response.status === 400) ||
+                (error.response && (error.response.status === 400 || error.response.status === 503)) ||
                 error.message.includes('timeout')) {
               timeout_addresses.push(address);
-              this.logger.debug(`Address ${address} timeout or no response - continuing`);
+              this.logger.debug(`Address ${address} not found or timeout - continuing`);
             } else {
               this.logger.warn(`Unexpected error scanning address ${address}: ${error.message}`);
             }
