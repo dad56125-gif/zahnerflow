@@ -474,9 +474,12 @@ export class MfcErrorHandlerService {
   recordCircuitBreakerFailure(name: string): void {
     const breaker = this.circuitBreakers.get(name);
     if (breaker) {
-      // 通过执行一个失败的操作来触发熔断器
+      // 直接标记失败，避免异步Promise问题
       try {
-        breaker.execute(() => Promise.reject(new Error('Failure recorded')));
+        // 使用同步方式触发失败计数
+        breaker.execute(() => {
+          throw new Error('Failure recorded');
+        });
       } catch (e) {
         // 忽略错误，只是为了触发失败计数
       }

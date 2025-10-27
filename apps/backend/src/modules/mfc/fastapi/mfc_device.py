@@ -354,7 +354,10 @@ class MfcSession:
 
                 # 第二步：根据第5字节的Data Length计算完整响应长度
                 data_length = response[4] if len(response) > 4 else 0
-                total_length = 6 + data_length + 2  # 6字节头 + 数据长度 + 2字节校验(校验和+结束符)
+                # 根据协议文档：6字节头 + data_length字节数据内容
+                # data_length包含从Class开始到校验和结束的所有数据
+                total_length = 6 + data_length
+                logger.info(f"Data Length field: {data_length}, calculating total length: {total_length}")
 
                 logger.info(f"Response header: {response[:6].hex()}, data_length={data_length}, total_length={total_length}")
 
