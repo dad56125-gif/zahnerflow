@@ -96,7 +96,7 @@ class ConnectRequest(BaseModel):
 
 
 class DeviceInfo(BaseModel):
-    address: int
+    device_address: int
     gas_type: str
     max_flow_sccm: int
 
@@ -487,7 +487,7 @@ class MfcSession:
                     # 如果成功获取了流量数据，就认为设备存在
                     found_count += 1
                     info = DeviceInfo(
-                        address=addr,
+                        device_address=addr,
                         gas_type=gas or "UNKNOWN",
                         max_flow_sccm=int(fs_sccm or 1000)  # 默认1000 SCCM
                     )
@@ -574,6 +574,11 @@ class MfcSession:
             if info and info.max_flow_sccm:
                 flow_sccm = flow_percent * info.max_flow_sccm / 100.0
 
+            # Calculate setpoint_sccm
+            setpoint_sccm = 0.0
+            if info and info.max_flow_sccm:
+                setpoint_sccm = active_sp_percent * info.max_flow_sccm / 100.0
+
             # 构建响应数据
             status_data = {
                 "device_address": address,
@@ -581,6 +586,7 @@ class MfcSession:
                 "flow_sccm": flow_sccm,
                 "digital_setpoint_percent": digital_sp_percent,
                 "active_setpoint_percent": active_sp_percent,
+                "setpoint_sccm": setpoint_sccm,
                 "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected",
                 "last_communication": datetime.now().isoformat()
             }

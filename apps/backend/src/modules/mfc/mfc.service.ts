@@ -136,18 +136,18 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           if (scan_result && scan_result.devices && Array.isArray(scan_result.devices)) {
             // 处理扫描到的设备，发现立即推送
             for (const device_status of scan_result.devices) {
-              if (device_status.address !== undefined) {
+              if (device_status.device_address !== undefined) {
                 const device_info: MfcDeviceInfo = {
-                  address: device_status.address,
+                  address: device_status.device_address,
                   gas_type: device_status.gas_type || 'Unknown',
                   max_flow_sccm: device_status.max_flow_sccm || 0
                 };
 
                 found_devices.push(device_info);
-                this.logger.log(`Found MFC device at address ${device_status.address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
+                this.logger.log(`Found MFC device at address ${device_status.device_address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
 
                 // 初始化设备状态
-                this.device_statuses.set(device_status.address, {
+                this.device_statuses.set(device_status.device_address, {
                   address: device_info.address,
                   connection_status: ConnectionState.CONNECTED,
                   last_communication: new Date().toISOString(),
@@ -385,7 +385,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       const statusPromises = device_addresses.map(async (address) => {
         try {
           const result = await this.device.get_device_status(address);
-          if (result && result.address !== undefined) {
+          if (result && result.device_address !== undefined) {
             this.update_device_status(result);
           }
           return { address, success: true, result };
@@ -431,7 +431,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         result.forEach((device_status: any) => {
           this.update_device_status(device_status);
         });
-      } else if (result && result.address !== undefined) {
+      } else if (result && result.device_address !== undefined) {
         this.update_device_status(result);
       }
 
@@ -709,8 +709,8 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    * 更新设备状态
    */
   private update_device_status(status_data: any): void {
-    // 兼容FastAPI返回的device_address字段和address字段
-    const deviceAddress = status_data.device_address || status_data.address;
+    // 直接使用FastAPI返回的device_address字段
+    const deviceAddress = status_data.device_address;
     const device = this.device_statuses.get(deviceAddress);
     if (device) {
       device.flow_sccm = status_data.flow_sccm;
