@@ -340,40 +340,22 @@ export function useMfc(): [MfcState, MfcControls] {
       clearError();
 
       const devices = await MfcApi.getDevices();
-      const statuses = await MfcApi.getAllDevicesStatus();
+      // 移除重复的状态查询，WebSocket已经提供实时状态更新
+      // const statuses = await MfcApi.getAllDevicesStatus();
 
-      // 更新设备列表
+      // 更新设备列表，使用WebSocket提供的实时状态数据
       const mfcDevices: MfcDevice[] = devices.map(device => {
-        const status = statuses.find(s => s.address === device.address);
+        // 从本地状态获取设备信息，避免重复API查询
         const previous = state.devices.find(d => d.address === device.address);
-
-        if (!status) {
-          return {
-            ...device,
-            flow_sccm: previous?.flow_sccm ?? 0,
-            flow_percent: previous?.flow_percent ?? 0,
-            set_flow: previous?.set_flow ?? 0,
-            digital_setpoint_percent: previous?.digital_setpoint_percent ?? 0,
-            active_setpoint_percent: previous?.active_setpoint_percent ?? 0,
-            mode: previous?.mode ?? 'follow',
-            status: 'disconnected',
-          };
-        }
-
-        const digitalSetpointPercent = status.digital_setpoint_percent ?? 0;
-        const activeSetpointPercent = status.active_setpoint_percent ?? 0;
-        const computedSetFlow = device.max_flow_sccm > 0
-          ? (digitalSetpointPercent * device.max_flow_sccm) / 100
-          : 0;
 
         return {
           ...device,
-          flow_sccm: status.flow_sccm,
-          flow_percent: status.flow_percent ?? previous?.flow_percent ?? 0,
-          set_flow: computedSetFlow,
-          digital_setpoint_percent: digitalSetpointPercent,
-          active_setpoint_percent: activeSetpointPercent,
-          mode: (digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow') as 'hold' | 'follow',
+          flow_sccm: previous?.flow_sccm ?? 0,
+          flow_percent: previous?.flow_percent ?? 0,
+          set_flow: previous?.set_flow ?? 0,
+          digital_setpoint_percent: previous?.digital_setpoint_percent ?? 0,
+          active_setpoint_percent: previous?.active_setpoint_percent ?? 0,
+          mode: previous?.mode ?? 'follow',
           status: 'connected',
         };
       });
