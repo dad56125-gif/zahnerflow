@@ -405,7 +405,10 @@ class MfcSession:
                 logger.info(f"Scanning address {addr}...")
 
                 # Try read gas name via class 0x66 instance 0x01 attribute 0x01
-                resp = self._send(self._read_cmd(addr, 0x66, 0x01, 0x01))
+                cmd = self._read_cmd(addr, 0x66, 0x01, 0x01)
+                logger.info(f"TX: {cmd.hex()} (read gas name for address {addr})")
+                resp = self._send(cmd)
+                logger.info(f"RX: {resp.hex() if resp else 'null'} (length: {len(resp) if resp else 0})")
                 gas = ""
                 if resp and len(resp) >= 8:
                     try:
@@ -418,7 +421,10 @@ class MfcSession:
 
                 # Try read full scale via 0x66/0x01/0x03 (if present)
                 fs_sccm = 0
-                resp2 = self._send(self._read_cmd(addr, 0x66, 0x01, 0x03))
+                cmd2 = self._read_cmd(addr, 0x66, 0x01, 0x03)
+                logger.info(f"TX: {cmd2.hex()} (read full scale for address {addr})")
+                resp2 = self._send(cmd2)
+                logger.info(f"RX: {resp2.hex() if resp2 else 'null'} (length: {len(resp2) if resp2 else 0})")
                 val = self._parse_uint16_from_resp(resp2)
                 if val is not None:
                     fs_sccm = val
