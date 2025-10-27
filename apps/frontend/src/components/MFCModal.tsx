@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMfc } from '../services/hooks/useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
+import { MFCConnectionPanel } from './mfc/MFCConnectionPanel';
 import { mfcWebSocketService } from '../services/mfc-websocket.service';
 
 interface MFCModalProps {
@@ -97,33 +98,24 @@ export const MFCModal: React.FC<MFCModalProps> = ({
               <span className="status-text">
                 {web_socket_connected ? '实时连接' : '离线'}
               </span>
+              <span className={`connection-state-indicator ${mfcState.connection_status}`}>
+                ({mfcState.connection_status === 'connected' ? '设备已连接' :
+                   mfcState.connection_status === 'connecting' ? '连接中...' :
+                   mfcState.connection_status === 'error' ? '连接错误' : '未连接'})
+              </span>
             </div>
           </div>
 
           <div className="header-controls">
-            <button
-              className={`btn ${mfcState.isScanning ? 'btn-loading' : 'btn-primary'}`}
-              onClick={() => mfcControls.scanDevices()}
-              disabled={mfcState.isScanning}
-            >
-              {mfcState.isScanning ? '扫描中...' : '扫描设备'}
-            </button>
-
-            <button
-              className="btn btn-secondary"
-              onClick={() => mfcControls.refreshDevices()}
-              disabled={mfcState.isLoading}
-            >
-              刷新状态
-            </button>
-
-            <button
-              className="btn btn-info"
-              onClick={() => mfcControls.refresh()}
-              disabled={mfcState.isLoading}
-            >
-              重新连接
-            </button>
+            {mfcState.connection_status === 'connected' && (
+              <button
+                className="btn btn-info"
+                onClick={() => mfcControls.refresh()}
+                disabled={mfcState.isLoading}
+              >
+                重新连接
+              </button>
+            )}
           </div>
 
           <button className="close-btn" onClick={on_close}>×</button>
@@ -146,29 +138,62 @@ export const MFCModal: React.FC<MFCModalProps> = ({
             </div>
           )}
 
-          {/* 设备列表 */}
-          {mfcState.devices.length === 0 && !mfcState.isScanning && !mfcState.error ? (
-            <div className="no-devices">
-              <div className="no-data">
-                <h4>未发现MFC设备</h4>
-                <p>请点击"扫描设备"按钮来搜索可用的MFC设备</p>
-                <div className="connection-hint">
-                  <p>确保设备已连接并选择了正确的串口</p>
-                </div>
-              </div>
-            </div>
+          {/* 条件渲染：连接面板或设备管理 */}
+          {(mfcState.connection_status === 'disconnected' ||
+            mfcState.connection_status === 'connecting' ||
+            mfcState.connection_status === 'error') ? (
+            /* 未连接、连接中或错误状态时显示连接面板 */
+            <MFCConnectionPanel
+              mfcState={mfcState}
+              mfcControls={mfcControls}
+            />
           ) : (
-            <div className="mfc-cards-container">
-              {mfcState.devices.map((device) => (
-                <MFCDeviceCard
-                  key={device.address}
-                  device={device}
-                  onSetFlow={mfcControls.setFlowRate}
-                  loading={mfcState.isLoading}
+            /* 已连接时显示设备管理 */
+            <>
+              {/* 设备列表 */}
+              {mfcState.devices.length === 0 && !mfcState.isScanning && !mfcState.error ? (
+                <div className="no-devices">
+                  <div className="no-data">
+                    <h4>未发现MFC设备</h4>
+                    <p>正在扫描已连接端口上的设备...</p>
+                    <div className="connection-hint">
+                      <p>如果长时间未发现设备，请尝试重新连接</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mfc-cards-container">
+                  {mfcState.devices.map((device) => (
+                    <MFCDeviceCard
+                      key={device.address}
+                      device={device}
+                      onSetFlow={mfcControls.setFlowRate}
+                      loading={mfcState.isLoading}
+                      disabled={mfcState.isScanning}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 设备控制按钮 */}
+              <div className="device-controls">
+                <button
+                  className={`btn ${mfcState.isScanning ? 'btn-loading' : 'btn-primary'}`}
+                  onClick={() => mfcControls.scanDevices()}
                   disabled={mfcState.isScanning}
-                />
-              ))}
-            </div>
+                >
+                  {mfcState.isScanning ? '扫描中...' : '重新扫描设备'}
+                </button>
+
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => mfcControls.refreshDevices()}
+                  disabled={mfcState.isLoading}
+                >
+                  刷新状态
+                </button>
+              </div>
+            </>
           )}
 
           {/* 设备状态信息 */}

@@ -173,6 +173,15 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           this.connection_info = result;
           this.logger.log(`MFC connected: ${JSON.stringify(result)}`);
 
+          // 连接成功后自动扫描设备
+          try {
+            await this.scan();
+            this.logger.log(`Auto-scan completed after connection, found ${this.discovered.length} devices`);
+          } catch (scanError) {
+            this.logger.warn(`Auto-scan failed after connection: ${scanError}`);
+            // 扫描失败不影响连接状态
+          }
+
           // 广播连接状态更新
           this.gateway.sendMfcConnectionUpdate({
             type: 'connection_update',

@@ -17,6 +17,7 @@ import {
   DeviceError,
   ConnectionState,
   DEFAULT_MFC_CONFIG,
+  DeviceConnectionStatus,
 } from '../../types/devices';
 import { isRetryableError } from '../utils/apiUtils';
 
@@ -30,6 +31,11 @@ export interface MfcState {
 
   // 设备状态映射
   deviceStatuses: Map<number, MfcStatus>;
+
+  // 连接状态管理
+  connection_status: DeviceConnectionStatus;
+  selected_port: string;
+  available_ports: string[];
 
   // 历史数据
   historyData: Map<number, MfcSample[]>;
@@ -56,6 +62,7 @@ export interface MfcControls {
   // 设备连接
   connect: (port?: string, baudrate?: number, timeout?: number) => Promise<void>;
   disconnect: () => Promise<void>;
+  get_available_ports: () => Promise<string[]>;
 
   // 设备控制
   setFlowRate: (address: number, sccm: number) => Promise<void>;
@@ -88,6 +95,9 @@ export function useMfc(): [MfcState, MfcControls] {
     devices: [],
     availableDevices: [],
     deviceStatuses: new Map(),
+    connection_status: 'disconnected',
+    selected_port: '',
+    available_ports: [],
     historyData: new Map(),
     historyParams: MfcApi.getDefaultHistoryParams(),
     isLoading: false,
@@ -198,6 +208,19 @@ export function useMfc(): [MfcState, MfcControls] {
     }
   );
 
+  // ==================== 端口管理 ====================
+
+  const get_available_ports = useCallback(async (): Promise<string[]> => {
+    try {
+      const ports = await MfcApi.getPorts();
+      updateState({ available_ports: ports });
+      return ports;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  }, [updateState, handleApiError]);
+
   // ==================== 设备连接 ====================
 
   const connect = useCallback(async (
@@ -208,19 +231,31 @@ export function useMfc(): [MfcState, MfcControls] {
     try {
       setLoading(true);
       clearError();
+      updateState({
+        connection_status: 'connecting',
+        selected_port: port
+      });
 
       await MfcApi.connect(port, baudrate, timeout);
 
-      // 连接成功后刷新状态
-      await statusControls.refresh();
+      // 连接成功后更新状态
+      updateState({ connection_status: 'connected' });
+
+      // 连接成功后自动扫描设备
+      const recommendedParams = MfcApi.getRecommendedScanParams();
+      await MfcApi.scanDevices(recommendedParams);
 
     } catch (error) {
       handleApiError(error);
+      updateState({
+        connection_status: 'error',
+        selected_port: ''
+      });
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, statusControls]);
+  }, [setLoading, clearError, handleApiError, updateState]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
@@ -229,8 +264,10 @@ export function useMfc(): [MfcState, MfcControls] {
 
       await MfcApi.disconnect();
 
-      // 断开后更新设备状态为disconnected
+      // 断开后更新连接状态和设备状态
       updateState({
+        connection_status: 'disconnected',
+        selected_port: '',
         devices: state.devices.map(device => ({
           ...device,
           status: 'disconnected' as const,
@@ -243,7 +280,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState]);
+  }, [setLoading, clearError, handleApiError, updateState, state.devices]);
 
   // ==================== 设备发现 ====================
 
@@ -271,17 +308,6 @@ export function useMfc(): [MfcState, MfcControls] {
         devices: mfcDevices,
         deviceStatuses: new Map(),
       });
-
-      // 如果发现了设备，自动连接到第一个可用端口
-      if (devices.length > 0) {
-        try {
-          await MfcApi.connect('COM1');
-          console.log('MFC设备连接成功，模拟已启动');
-        } catch (connectError) {
-          console.warn('MFC设备连接失败，但可以继续读取基本状态:', connectError);
-          // 连接失败不影响基本功能，只是流量不会动态更新
-        }
-      }
 
       // 立即刷新状态
       await statusControls.refresh();
@@ -488,6 +514,9 @@ export function useMfc(): [MfcState, MfcControls] {
       devices: [],
       availableDevices: [],
       deviceStatuses: new Map(),
+      connection_status: 'disconnected',
+      selected_port: '',
+      available_ports: [],
       historyData: new Map(),
       historyParams: MfcApi.getDefaultHistoryParams(),
       isLoading: false,
@@ -508,11 +537,10 @@ export function useMfc(): [MfcState, MfcControls] {
 
   // ==================== 初始化 ====================
 
-  // 组件挂载时扫描设备
+  // 组件挂载时加载可用端口
   useEffect(() => {
-    const recommendedParams = MfcApi.getRecommendedScanParams();
-    scanDevices(recommendedParams);
-  }, []);
+    get_available_ports();
+  }, [get_available_ports]);
 
   // 控制方法集合
   const controls: MfcControls = {
@@ -520,6 +548,7 @@ export function useMfc(): [MfcState, MfcControls] {
     refreshDevices,
     connect,
     disconnect,
+    get_available_ports,
     setFlowRate,
     setAllFlowRates,
     loadHistoryData,
