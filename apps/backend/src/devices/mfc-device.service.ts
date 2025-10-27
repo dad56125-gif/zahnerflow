@@ -136,10 +136,11 @@ export class MfcDeviceService {
   /**
    * 获取MFC设备状态
    */
-  async get_device_status(address?: number) {
+  async get_device_status(address?: number, timeout = 500) {
     try {
       const { data } = await this.http.get('/status', {
-        params: address != null ? { address } : {}
+        params: address != null ? { address } : {},
+        timeout: address != null ? timeout : 1500 // 单个地址查询使用0.5秒超时
       });
       return data;
     } catch (error) {

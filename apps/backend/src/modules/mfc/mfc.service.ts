@@ -108,34 +108,79 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   // ==================== 设备发现和扫描 ====================
 
   /**
-   * 扫描MFC设备
+   * 扫描MFC设备 - 逐个地址轮询
    */
   async scan(start?: number, end?: number): Promise<MfcDeviceInfo[]> {
     return this.errorHandler.handleDeviceScan(
       async () => {
         this.set_device_busy('scan');
 
-        const list: MfcDeviceInfo[] = await this.device.scan_devices({ start, end });
+        // 设置默认扫描范围：32-80
+        const scan_start = start ?? 32;
+        const scan_end = end ?? 80;
 
-        // 合并到缓存（按 address 去重）
-        for (const it of list) {
-          const idx = this.discovered.findIndex((x) => x.address === it.address);
-          if (idx >= 0) {
-            this.discovered[idx] = it;
-          } else {
-            this.discovered.push(it);
-            // 初始化设备状态
-            this.device_statuses.set(it.address, {
-              address: it.address,
-              connection_status: ConnectionState.DISCONNECTED,
-              last_communication: new Date().toISOString(),
-              gas_type: it.gas_type,
-              max_flow_sccm: it.max_flow_sccm,
-            });
+        this.logger.log(`Starting MFC scan: addresses ${scan_start}-${scan_end}`);
+
+        const found_devices: MfcDeviceInfo[] = [];
+        const timeout_addresses: number[] = [];
+
+        // 逐个地址扫描
+        for (let address = scan_start; address <= scan_end; address++) {
+          try {
+            this.logger.debug(`Scanning address ${address}...`);
+
+            // 尝试获取单个地址的状态，超时0.5秒
+            const device_status = await this.device.get_device_status(address, 500);
+
+            if (device_status && device_status.address === address) {
+              // 找到设备
+              const device_info: MfcDeviceInfo = {
+                address: device_status.address,
+                gas_type: device_status.gas_type || 'Unknown',
+                max_flow_sccm: device_status.max_flow_sccm || 0
+              };
+
+              found_devices.push(device_info);
+              this.logger.log(`Found MFC device at address ${address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
+
+              // 初始化设备状态
+              this.device_statuses.set(address, {
+                address: device_info.address,
+                connection_status: ConnectionState.CONNECTED,
+                last_communication: new Date().toISOString(),
+                gas_type: device_info.gas_type,
+                max_flow_sccm: device_info.max_flow_sccm,
+              });
+            }
+          } catch (error) {
+            // 单个地址超时或无响应是正常的，记录但继续扫描下一个地址
+            if (error.code === 'ECONNABORTED' ||
+                (error.response && error.response.status === 400) ||
+                error.message.includes('timeout')) {
+              timeout_addresses.push(address);
+              this.logger.debug(`Address ${address} timeout or no response - continuing`);
+            } else {
+              this.logger.warn(`Unexpected error scanning address ${address}: ${error.message}`);
+            }
           }
         }
 
-        this.logger.log(`Scanned MFC devices: found ${list.length} devices`);
+        // 合并到缓存（按 address 去重）
+        for (const device of found_devices) {
+          const idx = this.discovered.findIndex((x) => x.address === device.address);
+          if (idx >= 0) {
+            this.discovered[idx] = device;
+          } else {
+            this.discovered.push(device);
+          }
+        }
+
+        this.logger.log(`MFC scan completed: found ${found_devices.length} devices, ${timeout_addresses.length} addresses timed out`);
+
+        if (timeout_addresses.length > 0) {
+          this.logger.debug(`Timed out addresses: ${timeout_addresses.join(', ')}`);
+        }
+
         return this.discovered;
       },
       {
@@ -453,7 +498,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const status_data = await this.status();
+      await this.status(); // 获取状态数据，更新内部缓存
       const now = new Date().toISOString();
 
       this.polling_status.last_poll = now;
