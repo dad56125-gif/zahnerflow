@@ -52,7 +52,10 @@
       "Bash(do echo:*)",
       "Bash(done:*)",
       "Bash(npm test:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(npm run test:*)",
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Bash(git add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

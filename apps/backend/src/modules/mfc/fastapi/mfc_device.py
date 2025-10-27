@@ -404,39 +404,75 @@ class MfcSession:
             try:
                 logger.info(f"Scanning address {addr}...")
 
-                # Try read gas name via class 0x66 instance 0x01 attribute 0x01
-                cmd = self._read_cmd(addr, 0x66, 0x01, 0x01)
-                logger.info(f"TX: {cmd.hex()} (read gas name for address {addr})")
+                # 首先尝试读取流量数据 (Class 0x68, Instance 0x01, Attribute 0xB9)
+                # 这是MFC最基本的功能，如果设备存在应该能响应
+                cmd = self._read_cmd(addr, 0x68, 0x01, 0xB9)
+                logger.info(f"TX: {cmd.hex()} (read flow data for address {addr})")
                 resp = self._send(cmd)
                 logger.info(f"RX: {resp.hex() if resp else 'null'} (length: {len(resp) if resp else 0})")
+
+                device_found = False
                 gas = ""
-                if resp and len(resp) >= 8:
-                    try:
-                        data_length = resp[4] if len(resp) > 4 else 0
-                        text_len = max(0, data_length - 3)
-                        if len(resp) >= 8 + text_len and text_len > 0:
-                            gas = resp[8:8 + text_len].decode('ascii', errors='ignore').strip('\x00').strip()
-                    except Exception:
-                        gas = ""
-
-                # Try read full scale via 0x66/0x01/0x03 (if present)
                 fs_sccm = 0
-                cmd2 = self._read_cmd(addr, 0x66, 0x01, 0x03)
-                logger.info(f"TX: {cmd2.hex()} (read full scale for address {addr})")
-                resp2 = self._send(cmd2)
-                logger.info(f"RX: {resp2.hex() if resp2 else 'null'} (length: {len(resp2) if resp2 else 0})")
-                val = self._parse_uint16_from_resp(resp2)
-                if val is not None:
-                    fs_sccm = val
+                flow_sccm = 0
 
-                if gas or fs_sccm:
+                # 检查是否有有效响应
+                if resp and len(resp) >= 8:
+                    # 解析流量值来验证设备存在
+                    flow_val = self._parse_uint16_from_resp(resp)
+                    if flow_val is not None:
+                        flow_sccm = flow_val
+                        device_found = True
+                        logger.info(f"Address {addr}: Flow response {flow_sccm} SCCM - device detected")
+
+                # 如果流量命令有响应，继续读取设备信息
+                if device_found:
+                    # 读取气体类型 (Class 0x66, Instance 0x01, Attribute 0x07 - Product Name)
+                    try:
+                        cmd2 = self._read_cmd(addr, 0x66, 0x01, 0x07)
+                        logger.info(f"TX: {cmd2.hex()} (read product name for address {addr})")
+                        resp2 = self._send(cmd2)
+                        logger.info(f"RX: {resp2.hex() if resp2 else 'null'} (length: {len(resp2) if resp2 else 0})")
+
+                        if resp2 and len(resp2) >= 8:
+                            try:
+                                data_length = resp2[4] if len(resp2) > 4 else 0
+                                text_len = max(0, data_length - 3)
+                                if len(resp2) >= 8 + text_len and text_len > 0:
+                                    gas = resp2[8:8 + text_len].decode('ascii', errors='ignore').strip('\x00').strip()
+                                logger.info(f"Address {addr}: Parsed gas type: '{gas}'")
+                            except Exception:
+                                gas = "UNKNOWN"
+                    except Exception as e:
+                        logger.info(f"Address {addr}: Failed to read gas type: {str(e)}")
+                        gas = "UNKNOWN"
+
+                    # 读取满量程 (Class 0x66, Instance 0x01, Attribute 0x03 - Full Scale)
+                    try:
+                        cmd3 = self._read_cmd(addr, 0x66, 0x01, 0x03)
+                        logger.info(f"TX: {cmd3.hex()} (read full scale for address {addr})")
+                        resp3 = self._send(cmd3)
+                        logger.info(f"RX: {resp3.hex() if resp3 else 'null'} (length: {len(resp3) if resp3 else 0})")
+
+                        val = self._parse_uint16_from_resp(resp3)
+                        if val is not None:
+                            fs_sccm = val
+                            logger.info(f"Address {addr}: Full scale {fs_sccm} SCCM")
+                    except Exception as e:
+                        logger.info(f"Address {addr}: Failed to read full scale: {str(e)}")
+
+                    # 如果成功获取了流量数据，就认为设备存在
                     found_count += 1
-                    info = DeviceInfo(address=addr, gas_type=gas or "UNKNOWN", max_flow_sccm=int(fs_sccm or 0))
+                    info = DeviceInfo(
+                        address=addr,
+                        gas_type=gas or "UNKNOWN",
+                        max_flow_sccm=int(fs_sccm or 1000)  # 默认1000 SCCM
+                    )
                     self.devices[addr] = info
                     out.append(info)
-                    logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM")
+                    logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM, current_flow={flow_sccm} SCCM")
                 else:
-                    logger.info(f"Address {addr}: No device response")
+                    logger.info(f"Address {addr}: No device response to flow command")
 
             except MfcError as e:
                 # 单个地址失败是正常的，继续扫描下一个地址
