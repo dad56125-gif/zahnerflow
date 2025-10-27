@@ -390,7 +390,7 @@ export function useMfc(): [MfcState, MfcControls] {
       });
 
       // 立即刷新状态
-      await statusControls.refresh();
+      await refresh();
 
     } catch (error) {
       handleApiError(error);
@@ -398,7 +398,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setScanning(false);
     }
-  }, [setScanning, clearError, handleApiError, statusControls, updateState]);
+  }, [setScanning, clearError, handleApiError, refresh, updateState]);
 
   const refreshDevices = useCallback(async (): Promise<void> => {
     try {
@@ -451,7 +451,7 @@ export function useMfc(): [MfcState, MfcControls] {
       await MfcApi.setFlowRate(address, sccm);
 
       // 立即刷新状态
-      await statusControls.refresh();
+      await refresh();
 
     } catch (error) {
       handleApiError(error);
@@ -459,7 +459,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, statusControls]);
+  }, [setLoading, clearError, handleApiError, refresh]);
 
   
   
@@ -480,7 +480,7 @@ export function useMfc(): [MfcState, MfcControls] {
       await Promise.all(promises);
 
       // 立即刷新状态
-      await statusControls.refresh();
+      await refresh();
 
     } catch (error) {
       handleApiError(error);
@@ -488,7 +488,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, statusControls]);
+  }, [setLoading, clearError, handleApiError, refresh]);
 
   
   
