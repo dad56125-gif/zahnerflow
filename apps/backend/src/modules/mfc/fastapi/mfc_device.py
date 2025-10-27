@@ -394,28 +394,57 @@ class MfcSession:
         out: List[DeviceInfo] = []
         if not self.ser:
             return out
+
+        logger.info(f"Starting MFC device scan: addresses {start}-{end}")
+        scanned_count = 0
+        found_count = 0
+
         for addr in range(start, end + 1):
-            # Try read gas name via class 0x66 instance 0x01 attribute 0x01
-            resp = self._send(self._read_cmd(addr, 0x66, 0x01, 0x01))
-            gas = ""
-            if resp and len(resp) >= 8:
-                try:
-                    data_length = resp[4] if len(resp) > 4 else 0
-                    text_len = max(0, data_length - 3)
-                    if len(resp) >= 8 + text_len and text_len > 0:
-                        gas = resp[8:8 + text_len].decode('ascii', errors='ignore').strip('\x00').strip()
-                except Exception:
-                    gas = ""
-            # Try read full scale via 0x66/0x01/0x03 (if present)
-            fs_sccm = 0
-            resp2 = self._send(self._read_cmd(addr, 0x66, 0x01, 0x03))
-            val = self._parse_uint16_from_resp(resp2)
-            if val is not None:
-                fs_sccm = val
-            if gas or fs_sccm:
-                info = DeviceInfo(address=addr, gas_type=gas or "UNKNOWN", max_flow_sccm=int(fs_sccm or 0))
-                self.devices[addr] = info
-                out.append(info)
+            scanned_count += 1
+            try:
+                logger.debug(f"Scanning address {addr}...")
+
+                # Try read gas name via class 0x66 instance 0x01 attribute 0x01
+                resp = self._send(self._read_cmd(addr, 0x66, 0x01, 0x01))
+                gas = ""
+                if resp and len(resp) >= 8:
+                    try:
+                        data_length = resp[4] if len(resp) > 4 else 0
+                        text_len = max(0, data_length - 3)
+                        if len(resp) >= 8 + text_len and text_len > 0:
+                            gas = resp[8:8 + text_len].decode('ascii', errors='ignore').strip('\x00').strip()
+                    except Exception:
+                        gas = ""
+
+                # Try read full scale via 0x66/0x01/0x03 (if present)
+                fs_sccm = 0
+                resp2 = self._send(self._read_cmd(addr, 0x66, 0x01, 0x03))
+                val = self._parse_uint16_from_resp(resp2)
+                if val is not None:
+                    fs_sccm = val
+
+                if gas or fs_sccm:
+                    found_count += 1
+                    info = DeviceInfo(address=addr, gas_type=gas or "UNKNOWN", max_flow_sccm=int(fs_sccm or 0))
+                    self.devices[addr] = info
+                    out.append(info)
+                    logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM")
+                else:
+                    logger.debug(f"Address {addr}: No device response")
+
+            except MfcError as e:
+                # 单个地址失败是正常的，继续扫描下一个地址
+                if e.category == ErrorCategory.TIMEOUT:
+                    logger.debug(f"Address {addr} timeout - continuing")
+                else:
+                    logger.debug(f"Address {addr} not responding ({e.category.value}) - continuing")
+                continue
+            except Exception as e:
+                # 其他异常也继续扫描，但记录警告
+                logger.warning(f"Unexpected error scanning address {addr}: {str(e)}")
+                continue
+
+        logger.info(f"MFC scan completed: scanned {scanned_count} addresses, found {found_count} devices")
         return out
 
     def ufrac16_to_percent(self, value: int) -> float:
