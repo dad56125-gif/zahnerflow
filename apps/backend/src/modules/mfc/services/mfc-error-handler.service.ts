@@ -47,11 +47,18 @@ export class MfcErrorHandlerService {
       monitoring_period: 30000
     });
 
-    // 初始化设备扫描熔断器 - 更快失败和恢复
+    // 初始化设备通信熔断器 - 更宽松策略，允许单个设备通信超时
+    this.createCircuitBreaker('device_communication', {
+      failure_threshold: 10, // 更高的失败阈值，避免单个设备超时就熔断
+      recovery_timeout: 10000, // 更快的恢复时间
+      monitoring_period: 60000
+    });
+
+    // 初始化设备扫描熔断器 - 更宽松的策略，允许单个地址超时
     this.createCircuitBreaker('device_scan', {
-      failure_threshold: 2,
-      recovery_timeout: 30000,
-      monitoring_period: 90000
+      failure_threshold: 5, // 增加失败阈值，避免单个地址超时就熔断
+      recovery_timeout: 15000, // 减少恢复时间，更快重试
+      monitoring_period: 120000 // 延长监控周期
     });
 
     // 初始化流量设置熔断器 - 更快失败和恢复
@@ -256,9 +263,16 @@ export class MfcErrorHandlerService {
   }
 
   private isMfcScanError(error: any): boolean {
-    return error.message?.toLowerCase().includes('scan') ||
-           error.message?.toLowerCase().includes('address') ||
-           error.code === 'SCAN_ERROR';
+    const isScanRelated = error.message?.toLowerCase().includes('scan') ||
+                         error.message?.toLowerCase().includes('address') ||
+                         error.code === 'SCAN_ERROR';
+
+    // 检查是否是单个地址超时错误，这类错误不应该触发熔断器
+    const isAddressTimeout = error.message?.toLowerCase().includes('timeout') &&
+                            (error.message?.toLowerCase().includes('address') ||
+                             error.code === 'ECONNABORTED');
+
+    return isScanRelated && !isAddressTimeout; // 只处理真正的扫描错误，不包括地址超时
   }
 
   /**

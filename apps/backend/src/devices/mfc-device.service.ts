@@ -125,7 +125,22 @@ export class MfcDeviceService {
    */
   async scan_devices(request_body: { start?: number; end?: number }) {
     try {
-      const { data } = await this.http.post('/scan', request_body);
+      // 计算扫描所需的超时时间：(end - start + 1) * 0.5s + 5s缓冲
+      const start = request_body.start ?? 32;
+      const end = request_body.end ?? 80;
+      const address_count = end - start + 1;
+      const scan_timeout = address_count * 500 + 5000; // 每个地址0.5秒 + 5秒缓冲
+
+      // 使用独立的axios实例进行扫描，避免影响其他操作
+      const scan_http = axios.create({
+        baseURL: this.http.defaults.baseURL,
+        timeout: Math.max(scan_timeout, 30000), // 最少30秒超时
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const { data } = await scan_http.post('/scan', request_body);
       return data;
     } catch (error) {
       this.logAxiosError('scan devices', error);

@@ -163,8 +163,18 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           }
 
         } catch (error) {
-          this.logger.error(`FastAPI /scan interface failed: ${error.message}`);
-          throw error;
+          // 区分真正的扫描失败和单个地址超时
+          const isTimeout = error.message?.toLowerCase().includes('timeout') ||
+                           error.code === 'ECONNABORTED';
+
+          if (isTimeout) {
+            this.logger.warn(`FastAPI /scan interface timed out, but some devices may have been found: ${error.message}`);
+            // 超时不抛出异常，允许返回已扫描到的设备
+            // FastAPI /scan接口会正常处理单个地址超时并继续扫描
+          } else {
+            this.logger.error(`FastAPI /scan interface failed: ${error.message}`);
+            throw error; // 只有非超时错误才抛出异常
+          }
         }
 
         // 合并到缓存（按 address 去重）
