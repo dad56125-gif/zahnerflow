@@ -289,7 +289,13 @@ export function useMfc(): [MfcState, MfcControls] {
       setScanning(true);
       clearError();
 
-      const devices = await MfcApi.scanDevices(params);
+      // 确保传递当前连接的端口
+      const scanParams = {
+        ...params,
+        port: params.port || state.selected_port,
+      };
+
+      const devices = await MfcApi.scanDevices(scanParams);
 
       // 将发现的设备转换为MfcDevice格式
       const mfcDevices: MfcDevice[] = devices.map(device => ({

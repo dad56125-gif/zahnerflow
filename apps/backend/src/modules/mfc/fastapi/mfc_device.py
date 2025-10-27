@@ -328,7 +328,7 @@ class MfcSession:
 
                 # 堵塞等待直到收齐或超时（独立于串口自身 timeout）
                 start_time = time.time()
-                max_wait = 1.0  # 最多等1秒
+                max_wait = 0.5  # 最多等0.5秒，按用户要求
 
                 while time.time() - start_time < max_wait and len(response) < target_len:
                     waiting = self.ser.in_waiting

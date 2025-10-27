@@ -79,7 +79,7 @@ export class MfcApi {
    * 扫描MFC设备
    */
   static async scanDevices(params: MfcScanRequest = {}): Promise<MfcDeviceInfo[]> {
-    const { start_address: start = 32, end_address: end = 80 } = params;
+    const { start_address: start = 32, end_address: end = 80, port } = params;
 
     if (typeof start !== 'number' || start < 1 || start > 127) {
       throw {
@@ -107,7 +107,7 @@ export class MfcApi {
 
     return apiRequest<MfcDeviceInfo[]>('/scan', {
       method: 'POST',
-      body: JSON.stringify({ start, end }),
+      body: JSON.stringify({ start, end, port }),
     });
   }
 

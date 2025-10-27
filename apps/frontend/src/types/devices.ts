@@ -237,6 +237,7 @@ export interface MfcScanRequest {
   start_address?: number;
   end_address?: number;
   timeout_ms?: number;
+  port?: string;  // 要扫描的端口，用于明确指定在哪个端口上扫描
 }
 
 // 组件Props类型

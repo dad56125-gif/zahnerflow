@@ -77,7 +77,8 @@ export class MfcController {
       },
       {
         operation: 'scan',
-        port: body?.port
+        start: body?.start,
+        end: body?.end
       }
     );
   }
