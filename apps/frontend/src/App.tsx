@@ -11,6 +11,7 @@ import { setupAutoGlassEffect } from './utils/glassEffect';
 import { stateLinkageManager } from './managers/state-linkage.manager';
 import { useCanvasStore } from './stores/canvasStore';
 import { DeviceModal } from './components/DeviceModal';
+import { MFCModal } from './components/MFCModal';
 import { workflowService } from './services/workflowService';
 import { useFurnace } from './services/hooks/useFurnace';
 
@@ -175,16 +176,26 @@ const ZahnerFlowApp: React.FC = () => {
         {/* 浮层：设备模态框，吸附左侧与画布顶部（在 main-viewport 内） */}
         {fixedDevice && (
           <div className="layout-overlay align-to-L align-to-canvas-top">
-            <DeviceModal
-              device={fixedDevice}
-              onClose={() => setFixedDevice(null)}
-              modalTop={0}
-              modalLeft={0}
-              modalWidth={500}
-              modalHeight={400}
-              furnaceState={furnaceState}
-              furnaceControls={furnaceControls}
-            />
+            {fixedDevice === 'mfc' ? (
+              <MFCModal
+                on_close={() => setFixedDevice(null)}
+                modal_top={0}
+                modal_left={0}
+                modal_width={500}
+                modal_height={400}
+              />
+            ) : (
+              <DeviceModal
+                device={fixedDevice}
+                onClose={() => setFixedDevice(null)}
+                modalTop={0}
+                modalLeft={0}
+                modalWidth={500}
+                modalHeight={400}
+                furnaceState={furnaceState}
+                furnaceControls={furnaceControls}
+              />
+            )}
           </div>
         )}
       </div>

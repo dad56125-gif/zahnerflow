@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import type { FurnaceState, FurnaceControls } from '../services/hooks/useFurnace';
-import { useMfc } from '../services/hooks/useMfc';
-import { MFCDeviceCard } from './MFCDeviceCard';
 import { StatusPanel } from './furnace/StatusPanel';
 import { ProgramEditor } from './furnace/ProgramEditor';
 import { PresetManager } from './furnace/PresetManager';
@@ -9,7 +7,7 @@ import { ConnectionPanel } from './furnace/ConnectionPanel';
 
 
 interface DeviceModalProps {
-  device: 'furnace' | 'mfc' | null;
+  device: 'furnace';
   onClose: () => void;
   modalTop: number;
   modalLeft: number;
@@ -34,89 +32,8 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   // 当前选项卡状态
   const [activeTab, setActiveTab] = useState<'monitoring' | 'program' | 'presets' | 'recording' | 'history'>('monitoring');
 
-  const [mfcState, mfcControls] = useMfc();
-
   // 保持对 props 的读取以避免 TS 未使用报错
   void modalTop; void modalLeft; void modalWidth; void modalHeight;
-
-  // MFC设备 - 使用真实数据和API
-  if (device !== 'furnace') {
-    return (
-      <div className="device-modal furnace-modal">
-        <div className="device-modal-content">
-          <div className="device-header">
-            <h3>质量流量控制器 (MFC)</h3>
-            <div className="header-controls">
-              <button
-                className={`btn ${mfcState.isScanning ? 'btn-loading' : 'btn-primary'}`}
-                onClick={() => mfcControls.scanDevices()}
-                disabled={mfcState.isScanning}
-              >
-                {mfcState.isScanning ? '扫描中...' : '扫描设备'}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => mfcControls.refreshDevices()}
-                disabled={mfcState.isLoading}
-              >
-                刷新状态
-              </button>
-            </div>
-            <button className="close-btn" onClick={onClose}>×</button>
-          </div>
-
-          <div className="mfc-modal-content">
-            {/* 错误显示 */}
-            {mfcState.error && (
-              <div className="error-banner">
-                <span className="error-message">
-                  错误: {mfcState.error.message}
-                </span>
-                <button
-                  className="btn btn-sm btn-secondary"
-                  onClick={mfcControls.clearError}
-                >
-                  关闭
-                </button>
-              </div>
-            )}
-
-            {/* 设备列表 */}
-            {mfcState.devices.length === 0 && !mfcState.isScanning && !mfcState.error ? (
-              <div className="no-devices">
-                <div className="no-data">
-                  <h4>未发现MFC设备</h4>
-                  <p>请点击"扫描设备"按钮来搜索可用的MFC设备</p>
-                </div>
-              </div>
-            ) : (
-              <div className="mfc-cards-container">
-                {mfcState.devices.map((device) => (
-                  <MFCDeviceCard
-                    key={device.address}
-                    device={device}
-                    onSetFlow={mfcControls.setFlowRate}
-                    loading={mfcState.isLoading}
-                    disabled={mfcState.isScanning}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* 加载状态 */}
-            {mfcState.isScanning && (
-              <div className="scanning-overlay">
-                <div className="scanning-content">
-                  <div className="loading-spinner" />
-                  <p>正在扫描MFC设备...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="device-modal furnace-modal">
