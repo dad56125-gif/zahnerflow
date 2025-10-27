@@ -204,11 +204,8 @@ export class MfcController {
    */
   @Get('devices')
   async getDevices() {
-    return {
-      success: true,
-      data: this.mfcService.getDevices(),
-      count: this.mfcService.getDevices().length
-    };
+    const devices = this.mfcService.getDevices();
+    return devices; // 直接返回设备数组，兼容前端.map()调用
   }
 
   /**
