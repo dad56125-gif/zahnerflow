@@ -129,7 +129,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           const scan_result = await this.device.scan_devices({ start: scan_start, end: scan_end });
 
           if (scan_result && scan_result.devices && Array.isArray(scan_result.devices)) {
-            // 处理扫描到的设备
+            // 处理扫描到的设备，发现立即推送
             for (const device_status of scan_result.devices) {
               if (device_status.address !== undefined) {
                 const device_info: MfcDeviceInfo = {
@@ -148,6 +148,19 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
                   last_communication: new Date().toISOString(),
                   gas_type: device_info.gas_type,
                   max_flow_sccm: device_info.max_flow_sccm,
+                });
+
+                // 立即推送发现的设备给前端
+                this.gateway.sendMfcDeviceDiscovered({
+                  type: 'device_discovered',
+                  data: {
+                    device_address: device_info.address,
+                    gas_type: device_info.gas_type,
+                    max_flow_sccm: device_info.max_flow_sccm,
+                    connection_status: 'connected',
+                    last_communication: new Date().toISOString()
+                  },
+                  timestamp: new Date().toISOString(),
                 });
               }
             }
@@ -353,6 +366,49 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   // ==================== 设备控制和状态 ====================
 
   /**
+   * 仅更新已知设备状态（轮询专用，提高效率）
+   */
+  private async updateKnownDevicesStatus(): Promise<void> {
+    if (this.device_statuses.size === 0) {
+      this.logger.debug('No known devices to update');
+      return;
+    }
+
+    try {
+      // 并发查询所有已知设备的状态
+      const device_addresses = Array.from(this.device_statuses.keys());
+      const statusPromises = device_addresses.map(async (address) => {
+        try {
+          const result = await this.device.get_device_status(address);
+          if (result && result.address !== undefined) {
+            this.update_device_status(result);
+          }
+          return { address, success: true, result };
+        } catch (error) {
+          this.logger.warn(`Failed to get status for device ${address}: ${error.message}`);
+          return { address, success: false, error };
+        }
+      });
+
+      // 等待所有状态查询完成
+      const results = await Promise.allSettled(statusPromises);
+
+      // 统计结果
+      const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+      const failCount = results.length - successCount;
+
+      if (failCount > 0) {
+        this.logger.warn(`Device status update: ${successCount} success, ${failCount} failed`);
+      } else {
+        this.logger.debug(`Device status update: ${successCount} devices updated successfully`);
+      }
+
+    } catch (error) {
+      this.logger.error(`Error updating known devices status: ${error.message}`);
+    }
+  }
+
+  /**
    * 获取设备状态
    */
   async status(address?: number) {
@@ -515,7 +571,8 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.status(); // 获取状态数据，更新内部缓存
+      // 仅查询已发现的设备，提高效率
+      await this.updateKnownDevicesStatus(); // 获取状态数据，更新内部缓存
       const now = new Date().toISOString();
 
       this.polling_status.last_poll = now;

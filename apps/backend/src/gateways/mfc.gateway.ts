@@ -84,6 +84,21 @@ interface MfcNotificationMessage {
   timestamp: string;
 }
 
+/**
+ * MFC设备发现消息
+ */
+interface MfcDeviceDiscoveredMessage {
+  type: 'device_discovered';
+  data: {
+    device_address: number;
+    gas_type: string;
+    max_flow_sccm: number;
+    connection_status: 'connected' | 'disconnected';
+    last_communication: string;
+  };
+  timestamp: string;
+}
+
 @WebSocketGateway({
   cors: {
     origin: [
@@ -205,6 +220,14 @@ export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   sendMfcSamplingData(samplingData: MfcSamplingDataMessage) {
     this.server.emit('mfcSamplingData', samplingData);
     this.logger.log('MfcGateway', 'enableDebug', `Sent MFC sampling data`);
+  }
+
+  /**
+   * 广播MFC设备发现消息
+   */
+  sendMfcDeviceDiscovered(deviceDiscovered: MfcDeviceDiscoveredMessage) {
+    this.server.emit('mfcDeviceDiscovered', deviceDiscovered);
+    this.logger.log('MfcGateway', 'enableDebug', `Sent MFC device discovered: address ${deviceDiscovered.data.device_address}`);
   }
 
   /**
