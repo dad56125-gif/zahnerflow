@@ -102,8 +102,8 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`MFC FastAPI health check failed: ${e?.message || e}`);
     }
 
-    // 启动轮询
-    this.start_polling();
+    // 不在模块初始化时启动轮询，只有在设备连接后才启动
+    // this.start_polling(); // 移除自动轮询启动
   }
 
   onModuleDestroy(): void {
@@ -373,6 +373,12 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    // 再次检查连接状态，防止在没有连接时调用FastAPI
+    if (this.connection_state !== ConnectionState.CONNECTED) {
+      this.logger.debug('Device not connected, skipping status update');
+      return;
+    }
+
     try {
       // 并发查询所有已知设备的状态
       const device_addresses = Array.from(this.device_statuses.keys());
@@ -566,6 +572,18 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    */
   private async perform_polling(): Promise<void> {
     if (this.device_busy || this.polling_subscribers.size === 0) {
+      return;
+    }
+
+    // 检查连接状态，只有在设备已连接时才进行轮询
+    if (this.connection_state !== ConnectionState.CONNECTED) {
+      this.logger.debug('Skipping polling: device not connected');
+      return;
+    }
+
+    // 检查是否有已知设备，没有设备时跳过轮询
+    if (this.device_statuses.size === 0) {
+      this.logger.debug('Skipping polling: no known devices');
       return;
     }
 
