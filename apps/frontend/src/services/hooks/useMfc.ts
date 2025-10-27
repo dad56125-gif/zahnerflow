@@ -352,6 +352,29 @@ export function useMfc(): [MfcState, MfcControls] {
 
   // ==================== 设备发现 ====================
 
+  const refreshDevices = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      clearError();
+
+      const devices = await MfcApi.getDevices();
+
+      // KISS原则：简化设备列表更新，依赖WebSocket提供实时状态
+      updateState({
+        availableDevices: devices,
+        devices: devices as MfcDevice[], // 直接使用API返回的数据
+        deviceStatuses: new Map(), // 状态完全由WebSocket管理
+        lastUpdate: new Date(),
+      });
+
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, clearError, handleApiError, updateState]);
+
   const scanDevices = useCallback(async (params: MfcScanRequest = {}): Promise<void> => {
     // 防重复调用检查
     if (state.isScanning) {
@@ -400,29 +423,7 @@ export function useMfc(): [MfcState, MfcControls] {
     }
   }, [setScanning, clearError, handleApiError, refreshDevices, updateState]);
 
-  const refreshDevices = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      const devices = await MfcApi.getDevices();
-
-      // KISS原则：简化设备列表更新，依赖WebSocket提供实时状态
-      updateState({
-        availableDevices: devices,
-        devices: devices as MfcDevice[], // 直接使用API返回的数据
-        deviceStatuses: new Map(), // 状态完全由WebSocket管理
-        lastUpdate: new Date(),
-      });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, updateState]);
-
+  
   // ==================== 设备控制 ====================
 
   const setFlowRate = useCallback(async (address: number, sccm: number): Promise<void> => {
