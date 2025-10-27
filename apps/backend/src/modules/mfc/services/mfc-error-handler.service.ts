@@ -4,14 +4,11 @@ import {
   ErrorCategory,
   ErrorSeverity,
   CircuitBreaker,
-  RetryHandler,
   ErrorClassifier,
   ErrorInfo,
   ErrorMonitor,
-  DEFAULT_RETRY_CONFIG,
   DEFAULT_CIRCUIT_BREAKER_CONFIG,
-  CircuitBreakerConfig,
-  RetryConfig
+  CircuitBreakerConfig
 } from '../../../shared/utils/error-handler.util';
 
 export interface MfcErrorContext {
@@ -34,42 +31,35 @@ export class MfcErrorHandlerService {
   private readonly logger = new Logger(MfcErrorHandlerService.name);
   private readonly errorMonitor = new ErrorMonitor();
   private readonly circuitBreakers = new Map<string, CircuitBreaker>();
-  private readonly retryHandlers = new Map<string, RetryHandler>();
 
   constructor() {
-    // 初始化设备连接熔断器
+    // 初始化设备连接熔断器 - 更快失败和恢复
     this.createCircuitBreaker('device_connection', {
-      failure_threshold: 3,
+      failure_threshold: 2,
       recovery_timeout: 30000,
       monitoring_period: 60000
     });
 
-    // 初始化设备操作熔断器
+    // 初始化设备操作熔断器 - 更快失败和恢复
     this.createCircuitBreaker('device_operation', {
-      failure_threshold: 5,
-      recovery_timeout: 15000,
+      failure_threshold: 2,
+      recovery_timeout: 30000,
       monitoring_period: 30000
     });
 
-    // 初始化设备扫描熔断器
+    // 初始化设备扫描熔断器 - 更快失败和恢复
     this.createCircuitBreaker('device_scan', {
-      failure_threshold: 3,
-      recovery_timeout: 45000,
+      failure_threshold: 2,
+      recovery_timeout: 30000,
       monitoring_period: 90000
     });
 
-    // 初始化流量设置熔断器
+    // 初始化流量设置熔断器 - 更快失败和恢复
     this.createCircuitBreaker('flow_control', {
-      failure_threshold: 4,
-      recovery_timeout: 20000,
+      failure_threshold: 2,
+      recovery_timeout: 30000,
       monitoring_period: 60000
     });
-
-    // 初始化重试处理器
-    this.createRetryHandler('device_connection');
-    this.createRetryHandler('device_operation');
-    this.createRetryHandler('device_scan');
-    this.createRetryHandler('flow_control');
   }
 
   /**
@@ -128,16 +118,7 @@ export class MfcErrorHandlerService {
     }
   }
 
-  /**
-   * 创建重试处理器
-   */
-  createRetryHandler(name: string, config?: RetryConfig): void {
-    if (!this.retryHandlers.has(name)) {
-      this.retryHandlers.set(name, new RetryHandler(config || DEFAULT_RETRY_CONFIG));
-      this.logger.log(`Created retry handler: ${name}`);
-    }
-  }
-
+  
   /**
    * 使用熔断器执行操作
    */
@@ -184,58 +165,16 @@ export class MfcErrorHandlerService {
     }
   }
 
+  
   /**
-   * 使用重试机制执行操作
-   */
-  async executeWithRetry<T>(
-    handlerName: string,
-    operation: () => Promise<T>,
-    context?: MfcErrorContext,
-    customRetryable?: (error: any) => boolean
-  ): Promise<T> {
-    const handler = this.retryHandlers.get(handlerName);
-    if (!handler) {
-      this.logger.warn(`Retry handler not found: ${handlerName}, executing without retry`);
-      return operation();
-    }
-
-    try {
-      return await handler.execute(operation, customRetryable);
-    } catch (error) {
-      // 分类错误并记录
-      const errorInfo = this.classifyError(error, context);
-      this.errorMonitor.log(errorInfo);
-
-      // 使用精简的Axios错误记录方法
-      this.logAxiosError(`Retry handler ${handlerName}: all attempts failed`, error, {
-        operation: handlerName,
-        errorInfo: {
-          category: errorInfo.category,
-          severity: errorInfo.severity,
-          message: errorInfo.message,
-          suggested_action: errorInfo.suggested_action
-        }
-      });
-
-      throw error;
-    }
-  }
-
-  /**
-   * 同时使用熔断器和重试机制执行操作
+   * 使用熔断器保护执行操作（简化版，不进行重试）
    */
   async executeWithProtection<T>(
     breakerName: string,
-    handlerName: string,
     operation: () => Promise<T>,
-    context?: MfcErrorContext,
-    customRetryable?: (error: any) => boolean
+    context?: MfcErrorContext
   ): Promise<T> {
-    const protectedOperation = async () => {
-      return this.executeWithRetry(handlerName, operation, context, customRetryable);
-    };
-
-    return this.executeWithCircuitBreaker(breakerName, protectedOperation, context);
+    return this.executeWithCircuitBreaker(breakerName, operation, context);
   }
 
   /**
@@ -252,26 +191,41 @@ export class MfcErrorHandlerService {
       module: 'mfc'
     };
 
-    // MFC特定的错误分类增强
-    if (this.isMfcConnectionError(error)) {
-      errorInfo.category = ErrorCategory.DEVICE;
-      errorInfo.severity = ErrorSeverity.HIGH;
-      errorInfo.suggested_action = 'Check MFC connection and power supply';
-    }
+    // 检查是否为设备未连接错误 - 503状态码且包含连接相关信息
+    const isDeviceNotConnected =
+      (error.response?.status === 503 || error.status === 503) &&
+      (
+        (error.response?.data?.message && error.response.data.message.includes('设备未连接')) ||
+        (error.message && error.message.includes('设备未连接')) ||
+        (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('设备未连接')) ||
+        (error.response?.data?.detail && error.response.data.detail.includes('设备未连接'))
+      );
 
-    if (this.isMfcProtocolError(error)) {
+    // 设备未连接错误分类为DEVICE/MEDIUM，而不是HIGH
+    if (isDeviceNotConnected) {
+      errorInfo.category = ErrorCategory.DEVICE;
+      errorInfo.severity = ErrorSeverity.MEDIUM;
+      errorInfo.suggested_action = '请先连接MFC设备';
+      errorInfo.retryable = false; // 设备未连接时不重试
+    }
+    // MFC特定的错误分类增强
+    else if (this.isMfcConnectionError(error)) {
+      errorInfo.category = ErrorCategory.DEVICE;
+      errorInfo.severity = ErrorSeverity.MEDIUM; // 降低严重程度
+      errorInfo.suggested_action = 'Check MFC connection and power supply';
+      errorInfo.retryable = false; // 连接问题不重试
+    }
+    else if (this.isMfcProtocolError(error)) {
       errorInfo.category = ErrorCategory.PROTOCOL;
       errorInfo.severity = ErrorSeverity.MEDIUM;
       errorInfo.suggested_action = 'Verify MFC communication protocol and device address';
     }
-
-    if (this.isMfcFlowError(error)) {
+    else if (this.isMfcFlowError(error)) {
       errorInfo.category = ErrorCategory.DEVICE;
       errorInfo.severity = ErrorSeverity.MEDIUM;
       errorInfo.suggested_action = 'Check flow rate parameters and device status';
     }
-
-    if (this.isMfcScanError(error)) {
+    else if (this.isMfcScanError(error)) {
       errorInfo.category = ErrorCategory.DEVICE;
       errorInfo.severity = ErrorSeverity.MEDIUM;
       errorInfo.suggested_action = 'Check device connections and scanning parameters';
@@ -313,8 +267,7 @@ export class MfcErrorHandlerService {
   getErrorStats() {
     return {
       monitor: this.errorMonitor.getErrorStats(),
-      circuitBreakers: this.getCircuitBreakerStats(),
-      retryHandlers: this.getRetryHandlerStats()
+      circuitBreakers: this.getCircuitBreakerStats()
     };
   }
 
@@ -329,20 +282,7 @@ export class MfcErrorHandlerService {
     return stats;
   }
 
-  /**
-   * 获取重试处理器信息
-   */
-  getRetryHandlerStats() {
-    const stats: any = {};
-    this.retryHandlers.forEach((handler, name) => {
-      stats[name] = {
-        name,
-        created: true
-      };
-    });
-    return stats;
-  }
-
+  
   /**
    * 重置指定的熔断器
    */
@@ -419,7 +359,6 @@ export class MfcErrorHandlerService {
   ): Promise<T> {
     return this.executeWithProtection(
       'device_connection',
-      'device_connection',
       operation,
       context
     );
@@ -433,7 +372,6 @@ export class MfcErrorHandlerService {
     context?: MfcErrorContext
   ): Promise<T> {
     return this.executeWithProtection(
-      'device_operation',
       'device_operation',
       operation,
       context
@@ -449,7 +387,6 @@ export class MfcErrorHandlerService {
   ): Promise<T> {
     return this.executeWithProtection(
       'device_scan',
-      'device_scan',
       operation,
       context
     );
@@ -463,7 +400,6 @@ export class MfcErrorHandlerService {
     context?: MfcErrorContext
   ): Promise<T> {
     return this.executeWithProtection(
-      'flow_control',
       'flow_control',
       operation,
       context
