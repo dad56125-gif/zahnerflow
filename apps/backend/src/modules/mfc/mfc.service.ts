@@ -625,13 +625,20 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
    * 更新设备状态
    */
   private update_device_status(status_data: any): void {
-    const device = this.device_statuses.get(status_data.address);
+    // 兼容FastAPI返回的device_address字段和address字段
+    const deviceAddress = status_data.device_address || status_data.address;
+    const device = this.device_statuses.get(deviceAddress);
     if (device) {
       device.flow_sccm = status_data.flow_sccm;
       device.setpoint_sccm = status_data.setpoint_sccm || status_data.active_setpoint_percent * (device.max_flow_sccm || 1) / 100;
       device.connection_status = ConnectionState.CONNECTED;
       device.last_communication = new Date().toISOString();
       device.error_message = undefined;
+
+      // 添加调试日志
+      this.logger.debug(`Updated device ${deviceAddress}: flow=${device.flow_sccm} SCCM, setpoint=${device.setpoint_sccm} SCCM`);
+    } else {
+      this.logger.warn(`Device ${deviceAddress} not found in status cache for update`);
     }
   }
 
