@@ -442,7 +442,9 @@ class MfcSession:
                     if raw_flow is not None:
                         # 使用UFRAC16格式转换
                         flow_percent = self.ufrac16_to_percent(raw_flow)
-                        flow_sccm = flow_percent  # 百分比形式的流量值
+                        # 在扫描阶段还没有满量程信息，暂时保存百分比
+                        # 实际SCCM值会在轮询阶段计算
+                        flow_sccm = flow_percent  # 临时保存百分比
                         device_found = True
                         logger.info(f"Address {addr}: Raw flow 0x{raw_flow:04X} = {flow_percent:.2f}% - device detected")
 
@@ -491,7 +493,9 @@ class MfcSession:
                     )
                     self.devices[addr] = info
                     out.append(info)
-                    logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM, current_flow={flow_sccm} SCCM")
+                    # 计算实际SCCM流量值
+                    actual_flow_sccm = flow_percent * int(fs_sccm or 1000) / 100.0
+                    logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM, current_flow={actual_flow_sccm:.4f} SCCM")
                 else:
                     logger.info(f"Address {addr}: No device response to flow command")
 

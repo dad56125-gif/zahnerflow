@@ -375,7 +375,13 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.errorHandler.recordCircuitBreakerSuccess('device_communication');
-      return result;
+
+      // 确保总是返回数组格式，避免前端期望格式不一致
+      if (result && !Array.isArray(result)) {
+        return [result]; // 将单个对象包装为数组
+      }
+
+      return result || [];
     } catch (error) {
       this.errorHandler.recordCircuitBreakerFailure('device_communication');
       this.errorHandler.handleError(error, ErrorCategory.DEVICE, { operation: 'status', address });
