@@ -402,7 +402,7 @@ class MfcSession:
         for addr in range(start, end + 1):
             scanned_count += 1
             try:
-                logger.debug(f"Scanning address {addr}...")
+                logger.info(f"Scanning address {addr}...")
 
                 # Try read gas name via class 0x66 instance 0x01 attribute 0x01
                 resp = self._send(self._read_cmd(addr, 0x66, 0x01, 0x01))
@@ -430,14 +430,14 @@ class MfcSession:
                     out.append(info)
                     logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM")
                 else:
-                    logger.debug(f"Address {addr}: No device response")
+                    logger.info(f"Address {addr}: No device response")
 
             except MfcError as e:
                 # 单个地址失败是正常的，继续扫描下一个地址
                 if e.category == ErrorCategory.TIMEOUT:
-                    logger.debug(f"Address {addr} timeout - continuing")
+                    logger.info(f"Address {addr} timeout - continuing")
                 else:
-                    logger.debug(f"Address {addr} not responding ({e.category.value}) - continuing")
+                    logger.info(f"Address {addr} not responding ({e.category.value}) - continuing")
                 continue
             except Exception as e:
                 # 其他异常也继续扫描，但记录警告
