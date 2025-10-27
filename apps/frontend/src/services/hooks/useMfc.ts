@@ -84,6 +84,19 @@ export interface MfcControls {
   reset: () => void;
   clearError: () => void;
   refresh: () => Promise<void>;
+
+  // WebSocket实时更新
+  updateDeviceStatus: (deviceAddress: number, statusData: {
+    flow_sccm?: number;
+    setpoint_sccm?: number;
+    connection_status?: 'connected' | 'disconnected' | 'error';
+    last_communication?: string;
+  }) => void;
+  updateFlowData: (deviceAddress: number, flowData: {
+    flow_sccm: number;
+    timestamp: string;
+    setpoint_sccm?: number;
+  }) => void;
 }
 
 /**
@@ -138,7 +151,7 @@ export function useMfc(): [MfcState, MfcControls] {
     setError(deviceError);
   }, [setError]);
 
-  // 更新设备状态
+  // 更新设备状态（批量更新，用于轮询）
   const updateDeviceStatus = useCallback((statuses: MfcStatus[]) => {
     const statusMap = new Map<number, MfcStatus>();
     statuses.forEach(status => {
@@ -175,6 +188,83 @@ export function useMfc(): [MfcState, MfcControls] {
 
     updateState({
       deviceStatuses: statusMap,
+      devices: updatedDevices,
+      lastUpdate: new Date(),
+    });
+  }, [state.devices, updateState]);
+
+  // 更新单个设备状态（用于WebSocket实时更新）
+  const updateSingleDeviceStatus = useCallback((deviceAddress: number, statusData: {
+    flow_sccm?: number;
+    setpoint_sccm?: number;
+    connection_status?: 'connected' | 'disconnected' | 'error';
+    last_communication?: string;
+  }) => {
+    const updatedDevices = state.devices.map(device => {
+      if (device.address !== deviceAddress) {
+        return device;
+      }
+
+      // 计算流量百分比
+      const flowPercent = device.max_flow_sccm > 0 && statusData.flow_sccm !== undefined
+        ? (statusData.flow_sccm / device.max_flow_sccm) * 100
+        : device.flow_percent;
+
+      // 计算设定点百分比
+      const digitalSetpointPercent = device.max_flow_sccm > 0 && statusData.setpoint_sccm !== undefined
+        ? (statusData.setpoint_sccm / device.max_flow_sccm) * 100
+        : device.digital_setpoint_percent;
+
+      return {
+        ...device,
+        flow_sccm: statusData.flow_sccm ?? device.flow_sccm,
+        flow_percent: flowPercent,
+        set_flow: statusData.setpoint_sccm ?? device.set_flow,
+        digital_setpoint_percent: digitalSetpointPercent,
+        mode: (digitalSetpointPercent > (device.active_setpoint_percent ?? 0) ? 'hold' : 'follow') as 'hold' | 'follow',
+        status: (statusData.connection_status ?? device.status) as 'connected' | 'disconnected' | 'error' | 'warning',
+      };
+    });
+
+    updateState({
+      devices: updatedDevices,
+      lastUpdate: new Date(),
+    });
+  }, [state.devices, updateState]);
+
+  // 更新流量数据（用于WebSocket实时更新）
+  const updateFlowData = useCallback((deviceAddress: number, flowData: {
+    flow_sccm: number;
+    timestamp: string;
+    setpoint_sccm?: number;
+  }) => {
+    const updatedDevices = state.devices.map(device => {
+      if (device.address !== deviceAddress) {
+        return device;
+      }
+
+      // 计算流量百分比
+      const flowPercent = device.max_flow_sccm > 0
+        ? (flowData.flow_sccm / device.max_flow_sccm) * 100
+        : device.flow_percent;
+
+      // 计算设定点百分比
+      const digitalSetpointPercent = device.max_flow_sccm > 0 && flowData.setpoint_sccm !== undefined
+        ? (flowData.setpoint_sccm / device.max_flow_sccm) * 100
+        : device.digital_setpoint_percent;
+
+      return {
+        ...device,
+        flow_sccm: flowData.flow_sccm,
+        flow_percent: flowPercent,
+        set_flow: flowData.setpoint_sccm ?? device.set_flow,
+        digital_setpoint_percent: digitalSetpointPercent,
+        mode: (digitalSetpointPercent > (device.active_setpoint_percent ?? 0) ? 'hold' : 'follow') as 'hold' | 'follow',
+        status: 'connected' as 'connected' | 'disconnected' | 'error' | 'warning', // 有流量数据表示设备已连接
+      };
+    });
+
+    updateState({
       devices: updatedDevices,
       lastUpdate: new Date(),
     });
@@ -363,7 +453,7 @@ export function useMfc(): [MfcState, MfcControls] {
       updateState({
         availableDevices: devices,
         devices: mfcDevices,
-        deviceStatuses: new Map(statuses.map(s => [s.address, s])),
+        deviceStatuses: new Map(), // 状态由WebSocket实时更新，不需要在这里设置
         lastUpdate: new Date(),
       });
 
@@ -556,6 +646,8 @@ export function useMfc(): [MfcState, MfcControls] {
     reset,
     clearError,
     refresh,
+    updateDeviceStatus: updateSingleDeviceStatus, // WebSocket使用的单设备状态更新
+    updateFlowData, // WebSocket使用的流量数据更新
   };
 
   return [state, controls];

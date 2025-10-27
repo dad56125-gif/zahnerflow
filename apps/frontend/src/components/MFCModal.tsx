@@ -50,12 +50,31 @@ export const MFCModal: React.FC<MFCModalProps> = ({
 
         mfcWebSocketService.onStatusUpdate((data) => {
           console.log('MFC status update received:', data);
-          // 状态更新由useMfc Hook处理
+          // 更新设备状态到useMfc Hook
+          if (data.data && Array.isArray(data.data)) {
+            data.data.forEach(deviceStatus => {
+              mfcControls.updateDeviceStatus(deviceStatus.device_address, {
+                flow_sccm: deviceStatus.flow_sccm,
+                setpoint_sccm: deviceStatus.setpoint_sccm,
+                connection_status: deviceStatus.connection_status,
+                last_communication: deviceStatus.last_communication,
+              });
+            });
+          }
         });
 
         mfcWebSocketService.onSamplingData((data) => {
           console.log('MFC sampling data received:', data);
-          // 采样数据由useMfc Hook处理
+          // 更新采样数据到useMfc Hook
+          if (data.data && Array.isArray(data.data)) {
+            data.data.forEach(sample => {
+              mfcControls.updateFlowData(sample.device_address, {
+                flow_sccm: sample.flow_sccm,
+                timestamp: sample.timestamp,
+                setpoint_sccm: sample.setpoint_sccm,
+              });
+            });
+          }
         });
 
         mfcWebSocketService.onNotification((notification) => {
