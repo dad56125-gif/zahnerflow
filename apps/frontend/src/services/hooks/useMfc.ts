@@ -390,7 +390,7 @@ export function useMfc(): [MfcState, MfcControls] {
       });
 
       // 立即刷新状态
-      await refresh();
+      await refreshDevices();
 
     } catch (error) {
       handleApiError(error);
@@ -398,7 +398,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setScanning(false);
     }
-  }, [setScanning, clearError, handleApiError, refresh, updateState]);
+  }, [setScanning, clearError, handleApiError, refreshDevices, updateState]);
 
   const refreshDevices = useCallback(async (): Promise<void> => {
     try {
@@ -406,30 +406,12 @@ export function useMfc(): [MfcState, MfcControls] {
       clearError();
 
       const devices = await MfcApi.getDevices();
-      // 移除重复的状态查询，WebSocket已经提供实时状态更新
-      // const statuses = await MfcApi.getAllDevicesStatus();
 
-      // 更新设备列表，使用WebSocket提供的实时状态数据
-      const mfcDevices: MfcDevice[] = devices.map(device => {
-        // 从本地状态获取设备信息，避免重复API查询
-        const previous = state.devices.find(d => d.address === device.address);
-
-        return {
-          ...device,
-          flow_sccm: previous?.flow_sccm ?? 0,
-          flow_percent: previous?.flow_percent ?? 0,
-          set_flow: previous?.set_flow ?? 0,
-          digital_setpoint_percent: previous?.digital_setpoint_percent ?? 0,
-          active_setpoint_percent: previous?.active_setpoint_percent ?? 0,
-          mode: previous?.mode ?? 'follow',
-          status: 'connected',
-        };
-      });
-
+      // KISS原则：简化设备列表更新，依赖WebSocket提供实时状态
       updateState({
         availableDevices: devices,
-        devices: mfcDevices,
-        deviceStatuses: new Map(), // 状态由WebSocket实时更新，不需要在这里设置
+        devices: devices as MfcDevice[], // 直接使用API返回的数据
+        deviceStatuses: new Map(), // 状态完全由WebSocket管理
         lastUpdate: new Date(),
       });
 
@@ -439,7 +421,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState, state.devices]);
+  }, [setLoading, clearError, handleApiError, updateState]);
 
   // ==================== 设备控制 ====================
 
@@ -451,7 +433,7 @@ export function useMfc(): [MfcState, MfcControls] {
       await MfcApi.setFlowRate(address, sccm);
 
       // 立即刷新状态
-      await refresh();
+      await refreshDevices();
 
     } catch (error) {
       handleApiError(error);
@@ -459,7 +441,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, refresh]);
+  }, [setLoading, clearError, handleApiError, refreshDevices]);
 
   
   
@@ -480,7 +462,7 @@ export function useMfc(): [MfcState, MfcControls] {
       await Promise.all(promises);
 
       // 立即刷新状态
-      await refresh();
+      await refreshDevices();
 
     } catch (error) {
       handleApiError(error);
@@ -488,7 +470,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, refresh]);
+  }, [setLoading, clearError, handleApiError, refreshDevices]);
 
   
   
