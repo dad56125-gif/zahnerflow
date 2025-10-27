@@ -241,9 +241,11 @@ export function useMfc(): [MfcState, MfcControls] {
       // 连接成功后更新状态
       updateState({ connection_status: 'connected' });
 
-      // 连接成功后自动扫描设备
-      const recommendedParams = MfcApi.getRecommendedScanParams();
-      await MfcApi.scanDevices(recommendedParams);
+      // 连接成功后自动扫描设备（防重复触发）
+      if (!state.isScanning && state.devices.length === 0) {
+        const recommendedParams = MfcApi.getRecommendedScanParams();
+        await MfcApi.scanDevices(recommendedParams);
+      }
 
     } catch (error) {
       handleApiError(error);
@@ -285,6 +287,12 @@ export function useMfc(): [MfcState, MfcControls] {
   // ==================== 设备发现 ====================
 
   const scanDevices = useCallback(async (params: MfcScanRequest = {}): Promise<void> => {
+    // 防重复调用检查
+    if (state.isScanning) {
+      console.log('Scan already in progress, ignoring duplicate request');
+      return;
+    }
+
     try {
       setScanning(true);
       clearError();
