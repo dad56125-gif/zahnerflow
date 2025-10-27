@@ -322,15 +322,12 @@ class MfcSession:
                 # 记录发送的16进制数据
                 self.comm_log.add_log('TX', cmd.hex(), connection_id=self.connection_id)
 
-                # 期望响应长度（MFC协议通常至少6字节）
-                target_len = 6
                 response = bytearray()
-
-                # 堵塞等待直到收齐或超时（独立于串口自身 timeout）
                 start_time = time.time()
                 max_wait = 0.5  # 最多等0.5秒，按用户要求
 
-                while time.time() - start_time < max_wait and len(response) < target_len:
+                # 第一步：读取基本响应头（至少6字节才能获取长度信息）
+                while time.time() - start_time < max_wait and len(response) < 6:
                     waiting = self.ser.in_waiting
                     if waiting > 0:
                         chunk = self.ser.read(waiting)
@@ -339,27 +336,44 @@ class MfcSession:
                     else:
                         time.sleep(0.01)  # 轻量轮询
 
-                if len(response) >= target_len:
-                    # 记录接收的16进制数据
-                    response_bytes = bytes(response[:target_len])
-                    self.comm_log.add_log('RX', response_bytes.hex(), connection_id=self.connection_id)
-                    return response_bytes
-                else:
-                    # 读取所有可用数据
+                # 如果连6字节头都没收到，返回超时
+                if len(response) < 6:
                     n = self.ser.in_waiting
                     if n > 0:
                         partial_response = self.ser.read(n)
-                        self.comm_log.add_log('RX', partial_response.hex(), connection_id=self.connection_id)
-                        return partial_response
+                        response.extend(partial_response)
+                        self.comm_log.add_log('RX', response.hex(), connection_id=self.connection_id)
 
-                    # 超时错误
                     timeout_error = MfcError(
-                        f"通信超时, 命令: {cmd.hex()}, 等待{max_wait}秒无响应",
+                        f"通信超时, 命令: {cmd.hex()}, 等待{max_wait}秒只收到{len(response)}字节",
                         ErrorCategory.TIMEOUT,
                         retryable=True
                     )
                     self.comm_log.add_log('ERROR', 'COMMUNICATION_TIMEOUT', connection_id=self.connection_id, error=timeout_error)
                     raise timeout_error
+
+                # 第二步：根据第5字节的Data Length计算完整响应长度
+                data_length = response[4] if len(response) > 4 else 0
+                total_length = 6 + data_length + 2  # 6字节头 + 数据长度 + 2字节校验(校验和+结束符)
+
+                logger.info(f"Response header: {response[:6].hex()}, data_length={data_length}, total_length={total_length}")
+
+                # 第三步：读取剩余字节直到完整响应
+                while time.time() - start_time < max_wait and len(response) < total_length:
+                    waiting = self.ser.in_waiting
+                    if waiting > 0:
+                        chunk = self.ser.read(waiting)
+                        if chunk:
+                            response.extend(chunk)
+                    else:
+                        time.sleep(0.01)  # 轻量轮询
+
+                # 记录接收的完整16进制数据
+                self.comm_log.add_log('RX', response.hex(), connection_id=self.connection_id)
+                logger.info(f"Received {len(response)} bytes, expected {total_length}")
+
+                # 返回完整响应
+                return bytes(response)
 
             except serial.SerialTimeoutException as e:
                 error = MfcError(f"串口超时: {str(e)}", ErrorCategory.TIMEOUT, retryable=True)
