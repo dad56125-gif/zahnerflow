@@ -82,6 +82,11 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   private device_busy = false;
   private busy_operations = new Set<string>();
 
+  // 扫描状态管理
+  private scanning = false;
+  private last_scan_time = 0;
+  private readonly SCAN_COOLDOWN = 1000; // 1秒内不允许重复扫描
+
   constructor(
     private readonly device: MfcDeviceService,
     private readonly dataService: MfcDataService,
@@ -242,14 +247,8 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           this.connection_info = result;
           this.logger.log(`MFC connected: ${JSON.stringify(result)}`);
 
-          // 连接成功后自动扫描设备
-          try {
-            await this.scan();
-            this.logger.log(`Auto-scan completed after connection, found ${this.discovered.length} devices`);
-          } catch (scanError) {
-            this.logger.warn(`Auto-scan failed after connection: ${scanError}`);
-            // 扫描失败不影响连接状态
-          }
+          // 连接成功后，不再自动扫描，改为前端按需调用
+          this.logger.log(`MFC connected successfully, ready for scanning on demand`);
 
           // 广播连接状态更新
           this.gateway.sendMfcConnectionUpdate({
