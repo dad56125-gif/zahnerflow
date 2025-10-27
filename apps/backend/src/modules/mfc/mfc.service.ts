@@ -108,7 +108,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   // ==================== 设备发现和扫描 ====================
 
   /**
-   * 扫描MFC设备 - 逐个地址轮询
+   * 扫描MFC设备 - 使用FastAPI /scan接口
    */
   async scan(start?: number, end?: number): Promise<MfcDeviceInfo[]> {
     return this.errorHandler.handleDeviceScan(
@@ -122,47 +122,49 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Starting MFC scan: addresses ${scan_start}-${scan_end}`);
 
         const found_devices: MfcDeviceInfo[] = [];
-        const timeout_addresses: number[] = [];
 
-        // 逐个地址扫描
-        for (let address = scan_start; address <= scan_end; address++) {
-          try {
-            this.logger.debug(`Scanning address ${address}...`);
+        try {
+          // 调用FastAPI /scan接口，一次性扫描所有地址
+          this.logger.debug(`Calling FastAPI /scan interface for addresses ${scan_start}-${scan_end}...`);
+          const scan_result = await this.device.scan_devices({ start: scan_start, end: scan_end });
 
-            // 尝试获取单个地址的状态，超时0.5秒
-            const device_status = await this.device.get_device_status(address, 500);
+          if (scan_result && scan_result.devices && Array.isArray(scan_result.devices)) {
+            // 处理扫描到的设备
+            for (const device_status of scan_result.devices) {
+              if (device_status.address !== undefined) {
+                const device_info: MfcDeviceInfo = {
+                  address: device_status.address,
+                  gas_type: device_status.gas_type || 'Unknown',
+                  max_flow_sccm: device_status.max_flow_sccm || 0
+                };
 
-            if (device_status && device_status.address === address) {
-              // 找到设备
-              const device_info: MfcDeviceInfo = {
-                address: device_status.address,
-                gas_type: device_status.gas_type || 'Unknown',
-                max_flow_sccm: device_status.max_flow_sccm || 0
-              };
+                found_devices.push(device_info);
+                this.logger.log(`Found MFC device at address ${device_status.address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
 
-              found_devices.push(device_info);
-              this.logger.log(`Found MFC device at address ${address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
-
-              // 初始化设备状态
-              this.device_statuses.set(address, {
-                address: device_info.address,
-                connection_status: ConnectionState.CONNECTED,
-                last_communication: new Date().toISOString(),
-                gas_type: device_info.gas_type,
-                max_flow_sccm: device_info.max_flow_sccm,
-              });
-            }
-          } catch (error) {
-            // 单个地址超时、无响应或设备不存在都是正常的，记录但继续扫描下一个地址
-            if (error.code === 'ECONNABORTED' ||
-                (error.response && (error.response.status === 400 || error.response.status === 503)) ||
-                error.message.includes('timeout')) {
-              timeout_addresses.push(address);
-              this.logger.debug(`Address ${address} not found or timeout - continuing`);
-            } else {
-              this.logger.warn(`Unexpected error scanning address ${address}: ${error.message}`);
+                // 初始化设备状态
+                this.device_statuses.set(device_status.address, {
+                  address: device_info.address,
+                  connection_status: ConnectionState.CONNECTED,
+                  last_communication: new Date().toISOString(),
+                  gas_type: device_info.gas_type,
+                  max_flow_sccm: device_info.max_flow_sccm,
+                });
+              }
             }
           }
+
+          // 可选：调用status方法更新缓存
+          try {
+            this.logger.debug(`Updating device status cache after scan...`);
+            await this.status();
+          } catch (statusError) {
+            this.logger.warn(`Failed to update status cache after scan: ${statusError}`);
+            // 状态更新失败不影响扫描结果
+          }
+
+        } catch (error) {
+          this.logger.error(`FastAPI /scan interface failed: ${error.message}`);
+          throw error;
         }
 
         // 合并到缓存（按 address 去重）
@@ -175,11 +177,10 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           }
         }
 
-        this.logger.log(`MFC scan completed: found ${found_devices.length} devices, ${timeout_addresses.length} addresses timed out`);
+        const scanned_address_count = scan_end - scan_start + 1;
+        const timeout_addresses_count = scanned_address_count - found_devices.length;
 
-        if (timeout_addresses.length > 0) {
-          this.logger.debug(`Timed out addresses: ${timeout_addresses.join(', ')}`);
-        }
+        this.logger.log(`MFC scan completed: found ${found_devices.length} devices, ${timeout_addresses_count} addresses not found`);
 
         return this.discovered;
       },

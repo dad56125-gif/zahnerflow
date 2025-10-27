@@ -45,7 +45,14 @@
       "Bash(dir:*)",
       "Skill(superpowers:subagent-driven-development)",
       "Read(//c/Users/Dushuaijia/**)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Skill(superpowers:systematic-debugging)",
+      "Bash(npx ts-node:*)",
+      "Bash(for file in test/*.test.ts)",
+      "Bash(do echo:*)",
+      "Bash(done:*)",
+      "Bash(npm test:*)",
+      "Bash(pip install:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
