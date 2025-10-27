@@ -261,8 +261,8 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
             timestamp: new Date().toISOString(),
           });
 
-          // 重启轮询
-          if (this.polling_config.enabled) {
+          // 重启轮询 - 只有在有已知设备时才启动
+          if (this.polling_config.enabled && this.device_statuses.size > 0) {
             this.start_polling();
           }
         } else {
@@ -663,13 +663,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       if (this.polling_status.consecutive_errors >= this.polling_config.retry_attempts) {
         this.logger.warn(`Too many consecutive polling errors (${this.polling_status.consecutive_errors}), pausing polling`);
         this.stop_polling();
-
-        // 延迟后重启轮询
-        setTimeout(() => {
-          if (this.connection_state === ConnectionState.CONNECTED) {
-            this.start_polling();
-          }
-        }, this.polling_config.retry_delay * this.polling_config.retry_attempts);
+        // 移除自动重启轮询机制 - 遵循KISS原则
       }
     }
   }
@@ -681,13 +675,9 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     this.polling_subscribers.add(client_id);
     this.logger.log(`Client ${client_id} subscribed to MFC updates (total subscribers: ${this.polling_subscribers.size})`);
 
-    // 只有在设备已连接且有已知设备时才启动轮询
-    if (!this.polling_status.is_running && this.connection_state === ConnectionState.CONNECTED && this.device_statuses.size > 0) {
-      this.logger.log(`Starting polling due to client ${client_id} subscription`);
-      this.start_polling();
-    } else {
-      this.logger.debug(`Polling not started: running=${this.polling_status.is_running}, connected=${this.connection_state}, devices=${this.device_statuses.size}`);
-    }
+    // 移除WebSocket订阅自动启动轮询机制 - 遵循KISS原则
+    this.logger.debug(`Polling not started automatically on subscription (manual control only)`);
+    // 轮询应该通过手动接口或明确的设备扫描操作启动
   }
 
   /**
