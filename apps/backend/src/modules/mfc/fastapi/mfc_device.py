@@ -436,11 +436,15 @@ class MfcSession:
                 # 检查是否有有效响应
                 if resp and len(resp) >= 8:
                     # 解析流量值来验证设备存在
-                    flow_val = self._parse_uint16_from_resp(resp)
-                    if flow_val is not None:
-                        flow_sccm = flow_val
+                    # MFC协议使用小端序：29 42 = 0x4229
+                    raw_flow_bytes = resp[8:10] if len(resp) >= 10 else b'\x00\x00'
+                    raw_flow = struct.unpack('<H', raw_flow_bytes)[0]  # 小端序解析
+                    if raw_flow is not None:
+                        # 使用UFRAC16格式转换
+                        flow_percent = self.ufrac16_to_percent(raw_flow)
+                        flow_sccm = flow_percent  # 百分比形式的流量值
                         device_found = True
-                        logger.info(f"Address {addr}: Flow response {flow_sccm} SCCM - device detected")
+                        logger.info(f"Address {addr}: Raw flow 0x{raw_flow:04X} = {flow_percent:.2f}% - device detected")
 
                 # 如果流量命令有响应，继续读取设备信息
                 if device_found:

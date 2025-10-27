@@ -200,6 +200,18 @@ export class MfcController {
   }
 
   /**
+   * 获取已发现的设备列表
+   */
+  @Get('devices')
+  async getDevices() {
+    return {
+      success: true,
+      data: this.mfcService.getDevices(),
+      count: this.mfcService.getDevices().length
+    };
+  }
+
+  /**
    * 获取连接状态
    */
   @Get('connection/status')
