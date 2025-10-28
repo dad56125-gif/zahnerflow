@@ -7,6 +7,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { usePolling } from './usePolling';
 import { MfcApi } from '../api';
+import { mfcWebSocketService, MfcDeviceDiscovered } from '../mfc-websocket.service';
 import {
   MfcDeviceInfo,
   MfcStatus,
@@ -403,10 +404,13 @@ export function useMfc(): [MfcState, MfcControls] {
         port: params.port || state.selected_port,
       };
 
-      const devices = await MfcApi.scanDevices(scanParams);
+      console.log('Starting async scan - devices will appear in real-time via WebSocket');
 
-      // 将发现的设备转换为MfcDevice格式
-      const mfcDevices: MfcDevice[] = devices.map(device => ({
+      // 调用异步扫描 - 立即返回，设备通过WebSocket推送
+      const currentDevices = await MfcApi.scanDevices(scanParams);
+
+      // 更新当前设备列表（可能包含之前发现的设备）
+      const mfcDevices: MfcDevice[] = currentDevices.map(device => ({
         ...device,
         flow_sccm: 0,
         set_flow: 0,
@@ -418,19 +422,26 @@ export function useMfc(): [MfcState, MfcControls] {
       }));
 
       updateState({
-        availableDevices: devices,
+        availableDevices: currentDevices,
         devices: mfcDevices,
         deviceStatuses: new Map(),
       });
 
-      // 立即刷新状态
-      await refreshDevices();
+      // 异步刷新状态（不阻塞）
+      refreshDevices().catch(error => {
+        console.warn('Failed to refresh device status after scan:', error);
+      });
+
+      // 扫描在后台继续，新设备会通过WebSocket实时推送
 
     } catch (error) {
       handleApiError(error);
       throw error;
     } finally {
-      setScanning(false);
+      // 延迟停止扫描状态，给用户更好的体验
+      setTimeout(() => {
+        setScanning(false);
+      }, 1000);
     }
   }, [setScanning, clearError, handleApiError, refreshDevices, updateState]);
 
@@ -597,6 +608,79 @@ export function useMfc(): [MfcState, MfcControls] {
   useEffect(() => {
     get_available_ports();
   }, [get_available_ports]);
+
+  // WebSocket设备发现事件监听 - 实现实时设备发现
+  useEffect(() => {
+    // 处理设备发现事件
+    const handleDeviceDiscovered = (discovered: MfcDeviceDiscovered) => {
+      console.log('Real-time MFC device discovered:', discovered);
+
+      const deviceData = discovered.data;
+
+      // 转换为MfcDevice格式
+      const newDevice: MfcDevice = {
+        address: deviceData.device_address,
+        gas_type: deviceData.gas_type,
+        max_flow_sccm: deviceData.max_flow_sccm,
+        flow_sccm: 0,
+        set_flow: 0,
+        flow_percent: 0,
+        digital_setpoint_percent: 0,
+        active_setpoint_percent: 0,
+        mode: 'follow' as const,
+        status: deviceData.connection_status === 'connected' ? 'connected' as const : 'disconnected' as const,
+      };
+
+      setState(prev => {
+        // 检查设备是否已存在
+        const existingDeviceIndex = prev.devices.findIndex(d => d.address === newDevice.address);
+        const existingDeviceInfoIndex = prev.availableDevices.findIndex(d => d.address === newDevice.address);
+
+        let updatedDevices = [...prev.devices];
+        let updatedAvailableDevices = [...prev.availableDevices];
+
+        // 更新或添加设备
+        if (existingDeviceIndex >= 0) {
+          updatedDevices[existingDeviceIndex] = newDevice;
+        } else {
+          updatedDevices.push(newDevice);
+        }
+
+        // 更新或添加设备信息
+        const deviceInfo: MfcDeviceInfo = {
+          address: newDevice.address,
+          gas_type: newDevice.gas_type,
+          max_flow_sccm: newDevice.max_flow_sccm,
+        };
+
+        if (existingDeviceInfoIndex >= 0) {
+          updatedAvailableDevices[existingDeviceInfoIndex] = deviceInfo;
+        } else {
+          updatedAvailableDevices.push(deviceInfo);
+        }
+
+        return {
+          ...prev,
+          devices: updatedDevices,
+          availableDevices: updatedAvailableDevices,
+          lastUpdate: new Date().toISOString(),
+        };
+      });
+    };
+
+    // 注册WebSocket事件监听
+    mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
+
+    // 确保WebSocket连接
+    if (!mfcWebSocketService.connected) {
+      mfcWebSocketService.connect();
+    }
+
+    // 清理函数
+    return () => {
+      mfcWebSocketService.removeCallback(handleDeviceDiscovered);
+    };
+  }, []);
 
   // 控制方法集合
   const controls: MfcControls = {

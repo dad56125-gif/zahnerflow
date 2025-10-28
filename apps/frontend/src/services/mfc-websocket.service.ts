@@ -47,6 +47,18 @@ export interface MfcNotification {
   timestamp: string;
 }
 
+export interface MfcDeviceDiscovered {
+  type: 'device_discovered';
+  data: {
+    device_address: number;
+    gas_type: string;
+    max_flow_sccm: number;
+    connection_status: 'connected' | 'disconnected';
+    last_communication: string;
+  };
+  timestamp: string;
+}
+
 /**
  * MFC WebSocket服务
  *
@@ -68,6 +80,7 @@ export class MfcWebSocketService {
     statusUpdate: [] as ((update: MfcStatusUpdate) => void)[],
     samplingData: [] as ((data: MfcSamplingData) => void)[],
     connectionUpdate: [] as ((update: MfcConnectionUpdate) => void)[],
+    deviceDiscovered: [] as ((discovered: MfcDeviceDiscovered) => void)[],
     notification: [] as ((notification: MfcNotification) => void)[],
     error: [] as ((error: any) => void)[],
   };
@@ -157,6 +170,12 @@ export class MfcWebSocketService {
     // MFC连接状态更新事件
     this.socket.on('mfcConnectionUpdate', (update: MfcConnectionUpdate) => {
       this.callbacks.connectionUpdate.forEach(callback => callback(update));
+    });
+
+    // MFC设备发现事件
+    this.socket.on('mfcDeviceDiscovered', (discovered: MfcDeviceDiscovered) => {
+      console.log('MFC device discovered:', discovered);
+      this.callbacks.deviceDiscovered.forEach(callback => callback(discovered));
     });
 
     // MFC通知事件
@@ -257,6 +276,10 @@ export class MfcWebSocketService {
 
   onConnectionUpdate(callback: (update: MfcConnectionUpdate) => void): void {
     this.callbacks.connectionUpdate.push(callback);
+  }
+
+  onDeviceDiscovered(callback: (discovered: MfcDeviceDiscovered) => void): void {
+    this.callbacks.deviceDiscovered.push(callback);
   }
 
   onNotification(callback: (notification: MfcNotification) => void): void {

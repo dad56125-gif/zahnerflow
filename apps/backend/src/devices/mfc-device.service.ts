@@ -305,5 +305,18 @@ export class MfcDeviceService {
   async setpoint(address: number, sccm: number) {
     return this.set_device_flow({ address, sccm });
   }
+
+  /**
+   * 单地址扫描 - 实现真正的单地址发现即推送
+   */
+  async scan_single_address(address: number) {
+    try {
+      const { data } = await this.http.post('/scan', { address });
+      return data;
+    } catch (error) {
+      this.logAxiosError('scan single address', error);
+      throw error;
+    }
+  }
 }
 

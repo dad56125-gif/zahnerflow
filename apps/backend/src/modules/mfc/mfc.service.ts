@@ -124,101 +124,18 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         const scan_start = start ?? 32;
         const scan_end = end ?? 80;
 
-        this.logger.log(`Starting MFC scan with realtime discovery: addresses ${scan_start}-${scan_end}`);
+        this.logger.log(`Starting async MFC scan: addresses ${scan_start}-${scan_end}`);
 
-        // 启动设备发现事件轮询 - 实现单地址发现即推送
-        this.logger.log('Starting device discovery polling for real-time push');
-        this.startDeviceDiscoveryPolling(100); // 100ms轮询间隔
+        // 立即返回当前设备列表，不等待扫描完成
+        const current_devices = [...this.discovered];
 
-        const found_devices: MfcDeviceInfo[] = [];
+        // 异步执行扫描，不阻塞HTTP响应
+        this._performAsyncScan(scan_start, scan_end).catch(error => {
+          this.logger.error(`Async scan failed: ${error.message}`);
+          this.clear_device_busy('scan');
+        });
 
-        try {
-          // 调用FastAPI /scan接口，现在支持实时设备发现
-          this.logger.debug(`Calling FastAPI /scan interface for addresses ${scan_start}-${scan_end}...`);
-          const scan_result = await this.device.scan_devices({ start: scan_start, end: scan_end });
-
-          if (scan_result && scan_result.devices && Array.isArray(scan_result.devices)) {
-            // 处理扫描到的设备，发现立即推送
-            for (const device_status of scan_result.devices) {
-              if (device_status.device_address !== undefined) {
-                const device_info: MfcDeviceInfo = {
-                  address: device_status.device_address,
-                  gas_type: device_status.gas_type || 'Unknown',
-                  max_flow_sccm: device_status.max_flow_sccm || 0
-                };
-
-                found_devices.push(device_info);
-                this.logger.log(`Found MFC device at address ${device_status.device_address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
-
-                // 初始化设备状态
-                this.device_statuses.set(device_status.device_address, {
-                  address: device_info.address,
-                  connection_status: ConnectionState.CONNECTED,
-                  last_communication: new Date().toISOString(),
-                  gas_type: device_info.gas_type,
-                  max_flow_sccm: device_info.max_flow_sccm,
-                });
-
-                // 立即推送发现的设备给前端
-                this.gateway.sendMfcDeviceDiscovered({
-                  type: 'device_discovered',
-                  data: {
-                    device_address: device_info.address,
-                    gas_type: device_info.gas_type,
-                    max_flow_sccm: device_info.max_flow_sccm,
-                    connection_status: 'connected',
-                    last_communication: new Date().toISOString()
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              }
-            }
-          }
-
-          // 可选：调用status方法更新缓存
-          try {
-            this.logger.debug(`Updating device status cache after scan...`);
-            await this.status();
-          } catch (statusError) {
-            this.logger.warn(`Failed to update status cache after scan: ${statusError}`);
-            // 状态更新失败不影响扫描结果
-          }
-
-        } catch (error) {
-          // 区分真正的扫描失败和单个地址超时
-          const isTimeout = error.message?.toLowerCase().includes('timeout') ||
-                           error.code === 'ECONNABORTED';
-
-          if (isTimeout) {
-            this.logger.warn(`FastAPI /scan interface timed out, but some devices may have been found: ${error.message}`);
-            // 超时不抛出异常，允许返回已扫描到的设备
-            // FastAPI /scan接口会正常处理单个地址超时并继续扫描
-          } else {
-            this.logger.error(`FastAPI /scan interface failed: ${error.message}`);
-            throw error; // 只有非超时错误才抛出异常
-          }
-        }
-
-        // 合并到缓存（按 address 去重）
-        for (const device of found_devices) {
-          const idx = this.discovered.findIndex((x) => x.address === device.address);
-          if (idx >= 0) {
-            this.discovered[idx] = device;
-          } else {
-            this.discovered.push(device);
-          }
-        }
-
-        const scanned_address_count = scan_end - scan_start + 1;
-        const timeout_addresses_count = scanned_address_count - found_devices.length;
-
-        this.logger.log(`MFC scan with realtime discovery completed: found ${found_devices.length} devices, ${timeout_addresses_count} addresses not found`);
-
-        // 停止设备发现轮询
-        this.logger.log('Stopping device discovery polling');
-        this.stopDeviceDiscoveryPolling();
-
-        return this.discovered;
+        return current_devices;
       },
       {
         operation: 'scan',
@@ -227,9 +144,90 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       }
     ).finally(() => {
       this.clear_device_busy('scan');
-      // 确保轮询停止 - 防止异常情况下轮询继续运行
-      this.stopDeviceDiscoveryPolling();
     });
+  }
+
+  /**
+   * 异步执行扫描 - 实现真正的单地址发现即推送
+   */
+  private async _performAsyncScan(start: number, end: number): Promise<void> {
+    this.logger.log(`Starting async single address scanning from ${start} to ${end}...`);
+
+    try {
+      for (let address = start; address <= end; address++) {
+        this.logger.log(`Scanning single address ${address}...`);
+
+        try {
+          // 调用单地址扫描方法
+          const scan_result = await this.device.scan_single_address(address);
+
+          if (scan_result && scan_result.found && scan_result.device) {
+            const device_data = scan_result.device;
+
+            const device_info: MfcDeviceInfo = {
+              address: device_data.device_address,
+              gas_type: device_data.gas_type || 'Unknown',
+              max_flow_sccm: device_data.max_flow_sccm || 0
+            };
+
+            // 更新设备缓存
+            const existingIndex = this.discovered.findIndex(d => d.address === device_info.address);
+            if (existingIndex >= 0) {
+              this.discovered[existingIndex] = device_info;
+            } else {
+              this.discovered.push(device_info);
+            }
+
+            this.logger.log(`Found MFC device at address ${device_info.address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
+
+            // 初始化设备状态
+            this.device_statuses.set(device_info.address, {
+              address: device_info.address,
+              connection_status: ConnectionState.CONNECTED,
+              last_communication: new Date().toISOString(),
+              gas_type: device_info.gas_type,
+              max_flow_sccm: device_info.max_flow_sccm,
+            });
+
+            // 立即推送发现的设备给前端 - 实时推送
+            this.gateway.sendMfcDeviceDiscovered({
+              type: 'device_discovered',
+              data: {
+                device_address: device_info.address,
+                gas_type: device_info.gas_type,
+                max_flow_sccm: device_info.max_flow_sccm,
+                connection_status: 'connected',
+                last_communication: new Date().toISOString()
+              },
+              timestamp: new Date().toISOString(),
+            });
+          } else {
+            this.logger.log(`No device found at address ${address}`);
+          }
+
+        } catch (addressError) {
+          this.logger.log(`Address ${address} scan failed: ${addressError.message}`);
+          // 单个地址失败不影响其他地址扫描
+        }
+
+        // 添加小延迟，避免过快的请求
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      this.logger.log(`Async scan completed`);
+
+      // 扫描完成后更新状态缓存
+      try {
+        await this.status();
+      } catch (statusError) {
+        this.logger.warn(`Failed to update status cache after async scan: ${statusError}`);
+      }
+
+    } catch (error) {
+      this.logger.error(`Async scan failed: ${error.message}`);
+    } finally {
+      this.clear_device_busy('scan');
+    }
   }
 
   /**
@@ -863,63 +861,6 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   }
 
   // ==================== 实时扫描事件轮询 ====================
-
-  /**
-   * 轮询设备发现事件 - 支持单地址发现即推送
-   */
-  async startDeviceDiscoveryPolling(intervalMs: number = 100): Promise<void> {
-    const pollEvents = async () => {
-      try {
-        // 调用FastAPI的新事件轮询端点
-        const events_response = await this.device.get_device_discovery_events();
-
-        if (events_response && events_response.events && Array.isArray(events_response.events)) {
-          for (const event of events_response.events) {
-            if (event.type === 'mfc_device_discovered' && event.data) {
-              this.logger.log(`Real-time device discovered via polling: address ${event.data.device_address}`);
-
-              // 立即通过WebSocket推送到前端
-              this.gateway.sendMfcDeviceDiscovered({
-                type: 'device_discovered',
-                data: event.data,
-                timestamp: event.timestamp || new Date().toISOString()
-              });
-
-              // 更新内部设备状态缓存
-              this.device_statuses.set(event.data.device_address, {
-                address: event.data.device_address,
-                connection_status: ConnectionState.CONNECTED,
-                last_communication: event.data.last_communication,
-                gas_type: event.data.gas_type,
-                max_flow_sccm: event.data.max_flow_sccm,
-              });
-            }
-          }
-        }
-      } catch (error) {
-        this.logger.warn(`Device discovery polling failed: ${error.message}`);
-      }
-
-      // 继续下一次轮询
-      if (this.is_discovery_polling_active) {
-        setTimeout(pollEvents, intervalMs);
-      }
-    };
-
-    // 标记轮询为活跃状态并开始轮询
-    this.is_discovery_polling_active = true;
-    pollEvents();
-  }
-
-  /**
-   * 停止设备发现轮询
-   */
-  stopDeviceDiscoveryPolling(): void {
-    this.is_discovery_polling_active = false;
-    this.logger.log('Device discovery polling stopped');
-  }
-
-  private is_discovery_polling_active: boolean = false;
 
   // ==================== 兼容性方法 ====================
 

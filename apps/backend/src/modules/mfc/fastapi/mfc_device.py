@@ -16,9 +16,6 @@ from enum import Enum
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 全局设备发现事件队列 - 用于支持实时扫描推送
-device_discovery_events = []
-device_discovery_lock = threading.Lock()
 
 class ErrorCategory(Enum):
     DEVICE = "DEVICE"
@@ -38,31 +35,6 @@ class MfcError(Exception):
 app = FastAPI(title="MFC FastAPI (Enhanced with Real-time Scanning)")
 
 
-def push_device_discovery_event(device_info: DeviceInfo):
-    """立即推送设备发现事件到全局队列"""
-    try:
-        device_event = {
-            "type": "mfc_device_discovered",
-            "data": {
-                "device_address": device_info.device_address,
-                "gas_type": device_info.gas_type,
-                "max_flow_sccm": device_info.max_flow_sccm,
-                "connection_status": "connected",
-                "last_communication": datetime.now().isoformat()
-            },
-            "timestamp": datetime.now().isoformat()
-        }
-
-        with device_discovery_lock:
-            device_discovery_events.append(device_event)
-            # 保持队列大小合理
-            if len(device_discovery_events) > 100:
-                device_discovery_events.pop(0)
-
-        logger.info(f"Device discovery event pushed immediately: address {device_info.device_address}")
-
-    except Exception as e:
-        logger.error(f"Failed to push device discovery event: {str(e)}")
 
 
 class MfcResponse:
@@ -467,143 +439,7 @@ class MfcSession:
         except Exception:
             return None
 
-    def scan(self, start: int = 32, end: int = 80, realtime_callback: Optional[callable] = None) -> List[DeviceInfo]:
-        out: List[DeviceInfo] = []
-        if not self.ser:
-            return out
-
-        logger.info(f"Starting MFC device scan: addresses {start}-{end}")
-        scanned_count = 0
-        found_count = 0
-
-        for addr in range(start, end + 1):
-            scanned_count += 1
-            try:
-                logger.info(f"Scanning address {addr}...")
-
-                # 首先尝试读取流量数据 (Class 0x68, Instance 0x01, Attribute 0xB9)
-                # 这是MFC最基本的功能，如果设备存在应该能响应
-                cmd = self._read_cmd(addr, 0x68, 0x01, 0xB9)
-                logger.info(f"TX: {cmd.hex()} (read flow data for address {addr})")
-                resp = self._send(cmd)
-                logger.info(f"RX: {resp.hex() if resp else 'null'} (length: {len(resp) if resp else 0})")
-
-                device_found = False
-                gas = ""
-                fs_sccm = 0
-                flow_sccm = 0
-
-                # 检查是否有有效响应
-                if resp and len(resp) >= 8:
-                    # 解析流量值来验证设备存在
-                    # MFC协议使用小端序：29 42 = 0x4229
-                    raw_flow_bytes = resp[8:10] if len(resp) >= 10 else b'\x00\x00'
-                    raw_flow = struct.unpack('<H', raw_flow_bytes)[0]  # 小端序解析
-                    if raw_flow is not None:
-                        # 使用UFRAC16格式转换
-                        flow_percent = self.ufrac16_to_percent(raw_flow)
-                        # 在扫描阶段还没有满量程信息，暂时保存百分比
-                        # 实际SCCM值会在轮询阶段计算
-                        flow_sccm = flow_percent  # 临时保存百分比
-                        device_found = True
-                        logger.info(f"Address {addr}: Raw flow 0x{raw_flow:04X} = {flow_percent:.2f}% - device detected")
-
-                # 如果流量命令有响应，继续读取设备信息
-                if device_found:
-                    # 读取气体名称 (Class 0x66, Instance 0x01, Attribute 0x01 - Target Gas Name)
-                    try:
-                        cmd2 = self._read_cmd(addr, 0x66, 0x01, 0x01)
-                        logger.info(f"TX: {cmd2.hex()} (read gas name for address {addr})")
-                        resp2 = self._send(cmd2)
-                        logger.info(f"RX: {resp2.hex() if resp2 else 'null'} (length: {len(resp2) if resp2 else 0})")
-
-                        if resp2 and len(resp2) >= 8:
-                            try:
-                                # 使用我们新添加的TEXT32解析方法
-                                gas = self._parse_text32_from_resp(resp2)
-                                if gas:
-                                    gas = gas.strip()
-                                    logger.info(f"Address {addr}: Parsed gas name: '{gas}'")
-                                else:
-                                    gas = "UNKNOWN"
-                            except Exception:
-                                gas = "UNKNOWN"
-                    except Exception as e:
-                        logger.info(f"Address {addr}: Failed to read gas name: {str(e)}")
-                        gas = "UNKNOWN"
-
-                    # 读取满量程 (Class 0x66, Instance 0x01, Attribute 0x03 - Full Scale)
-                    try:
-                        cmd3 = self._read_cmd(addr, 0x66, 0x01, 0x03)
-                        logger.info(f"TX: {cmd3.hex()} (read full scale for address {addr})")
-                        resp3 = self._send(cmd3)
-                        logger.info(f"RX: {resp3.hex() if resp3 else 'null'} (length: {len(resp3) if resp3 else 0})")
-
-                        val = self._parse_uint16_from_resp(resp3)
-                        if val is not None:
-                            fs_sccm = val
-                            logger.info(f"Address {addr}: Full scale {fs_sccm} SCCM")
-                    except Exception as e:
-                        logger.info(f"Address {addr}: Failed to read full scale: {str(e)}")
-
-                    # 读取当前设定值 (Class 0x69, Instance 0x01, Attribute 0xA5 - Active Setpoint)
-                    try:
-                        cmd4 = self._read_cmd(addr, 0x69, 0x01, 0xA5)
-                        logger.info(f"TX: {cmd4.hex()} (read active setpoint for address {addr})")
-                        resp4 = self._send(cmd4)
-                        logger.info(f"RX: {resp4.hex() if resp4 else 'null'} (length: {len(resp4) if resp4 else 0})")
-
-                        setpoint_val = self._parse_uint16_from_resp(resp4)
-                        if setpoint_val is not None:
-                            # 使用UFRAC16格式解析当前设定值
-                            setpoint_percent = self.ufrac16_to_percent(setpoint_val)
-                            # 保存当前设定值百分比，实际SCCM值会在后续计算
-                            logger.info(f"Address {addr}: Active setpoint raw=0x{setpoint_val:04X} ({setpoint_percent:.2f}%)")
-                    except Exception as e:
-                        logger.info(f"Address {addr}: Failed to read active setpoint: {str(e)}")
-
-                    # 如果成功获取了流量数据，就认为设备存在
-                    found_count += 1
-                    info = DeviceInfo(
-                        device_address=addr,
-                        gas_type=gas or "UNKNOWN",
-                        max_flow_sccm=int(fs_sccm or 1000)  # 默认1000 SCCM
-                    )
-                    self.devices[addr] = info
-                    out.append(info)
-
-                    # 实时推送设备发现（立即推送到全局队列）
-                    push_device_discovery_event(info)
-
-                    # 如果提供了回调，也调用它保持兼容性
-                    if realtime_callback:
-                        try:
-                            realtime_callback(info)
-                            logger.info(f"Real-time callback sent for device at address {addr}")
-                        except Exception as e:
-                            logger.warning(f"Failed to send real-time callback for device {addr}: {str(e)}")
-
-                    # 计算实际SCCM流量值
-                    actual_flow_sccm = flow_percent * int(fs_sccm or 1000) / 100.0
-                    logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM, current_flow={actual_flow_sccm:.4f} SCCM")
-                else:
-                    logger.info(f"Address {addr}: No device response to flow command")
-
-            except MfcError as e:
-                # 单个地址失败是正常的，继续扫描下一个地址
-                if e.category == ErrorCategory.TIMEOUT:
-                    logger.info(f"Address {addr} timeout - continuing")
-                else:
-                    logger.info(f"Address {addr} not responding ({e.category.value}) - continuing")
-                continue
-            except Exception as e:
-                # 其他异常也继续扫描，但记录警告
-                logger.warning(f"Unexpected error scanning address {addr}: {str(e)}")
-                continue
-
-        logger.info(f"MFC scan completed: scanned {scanned_count} addresses, found {found_count} devices")
-        return out
-
+    
     def ufrac16_to_percent(self, value: int) -> float:
         return ((value - 0x4000) / (0xC000 - 0x4000)) * 100.0
 
@@ -1058,55 +894,92 @@ def disconnect():
 
 @app.post("/scan")
 def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
-         start: int = Body(32), end: int = Body(80)):
-    """扫描MFC设备 - 支持实时设备发现"""
-    logger.info(f"FastAPI /scan endpoint called: start={start}, end={end}, controller={controller is not None}")
+         address: int = Body(...)):
+    """扫描单个MFC设备地址"""
+    logger.info(f"FastAPI /scan endpoint called: address={address}, controller={controller is not None}")
 
     try:
         if not controller:
             logger.error("No controller available for scanning")
             raise MfcError("需要先连接设备才能进行扫描", ErrorCategory.DEVICE, retryable=False)
 
-        logger.info(f"Controller available: {controller}")
-        discovered_devices = []
+        logger.info(f"Scanning single address {address}...")
 
-        def realtime_device_discovered(device_info: DeviceInfo):
-            """实时设备发现回调"""
-            logger.info(f"=== DEVICE DISCOVERED CALLBACK === address {device_info.device_address}, type {device_info.gas_type}")
-            discovered_devices.append(device_info.dict())
+        try:
+            # 首先尝试读取流量数据验证设备存在
+            cmd = controller._read_cmd(address, 0x68, 0x01, 0xB9)
+            logger.info(f"TX: {cmd.hex()} (read flow data for address {address})")
+            resp = controller._send(cmd)
+            logger.info(f"RX: {resp.hex() if resp else 'null'} (length: {len(resp) if resp else 0})")
 
-        logger.info(f"Starting scan with realtime_callback function")
-        # 执行扫描并提供实时回调 - 现在这是默认行为
-        devices = controller.scan(start, end, realtime_callback=realtime_device_discovered)
+            if not resp or len(resp) < 8:
+                # 设备不存在
+                logger.info(f"Address {address}: No device response")
+                return MfcResponse.create_success_response({
+                    "device": None,
+                    "found": False
+                })
 
-        return MfcResponse.create_success_response({
-            "devices": [d.dict() for d in devices],
-            "discovered_during_scan": discovered_devices,
-            "count": len(devices),
-            "scan_range": {"start": start, "end": end}
-        })
+            # 解析流量值
+            raw_flow_bytes = resp[8:10] if len(resp) >= 10 else b'\x00\x00'
+            raw_flow = struct.unpack('<H', raw_flow_bytes)[0]
+            flow_percent = controller.ufrac16_to_percent(raw_flow)
+
+            # 设备存在，继续读取详细信息
+            gas = "UNKNOWN"
+            fs_sccm = 1000  # 默认值
+
+            # 读取气体名称
+            try:
+                cmd2 = controller._read_cmd(address, 0x66, 0x01, 0x01)
+                resp2 = controller._send(cmd2)
+                gas = controller._parse_text32_from_resp(resp2) or "UNKNOWN"
+            except Exception:
+                gas = "UNKNOWN"
+
+            # 读取满量程
+            try:
+                cmd3 = controller._read_cmd(address, 0x66, 0x01, 0x03)
+                resp3 = controller._send(cmd3)
+                val = controller._parse_uint16_from_resp(resp3)
+                if val is not None:
+                    fs_sccm = val
+            except Exception:
+                pass
+
+            # 创建设备信息
+            device_info = DeviceInfo(
+                device_address=address,
+                gas_type=gas,
+                max_flow_sccm=int(fs_sccm)
+            )
+
+            controller.devices[address] = device_info
+
+            logger.info(f"Found MFC device at address {address}: gas_type={device_info.gas_type}, max_flow={device_info.max_flow_sccm} SCCM, flow={flow_percent:.2f}%")
+
+            return MfcResponse.create_success_response({
+                "device": device_info.model_dump(),
+                "found": True,
+                "flow_percent": flow_percent
+            })
+
+        except MfcError as e:
+            if e.category == ErrorCategory.TIMEOUT:
+                logger.info(f"Address {address} timeout - no device")
+                return MfcResponse.create_success_response({
+                    "device": None,
+                    "found": False
+                })
+            else:
+                raise e
+
     except MfcError:
         raise
     except Exception as e:
         raise MfcError(f"扫描失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
 
-@app.get("/scan-realtime-events")
-def get_device_discovery_events():
-    """获取设备发现事件（用于实时轮询）"""
-    try:
-        with device_discovery_lock:
-            # 返回并清空事件队列
-            events = device_discovery_events.copy()
-            device_discovery_events.clear()
-
-        return MfcResponse.create_success_response({
-            "events": events,
-            "count": len(events)
-        })
-
-    except Exception as e:
-        raise MfcError(f"获取设备发现事件失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
 
 @app.get("/status")
