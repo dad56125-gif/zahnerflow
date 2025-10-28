@@ -7,7 +7,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { usePolling } from './usePolling';
 import { MfcApi } from '../api';
-import { mfcWebSocketService, MfcDeviceDiscovered } from '../mfc-websocket.service';
+import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate } from '../mfc-websocket.service';
 import {
   MfcDeviceInfo,
   MfcStatus,
@@ -668,17 +668,69 @@ export function useMfc(): [MfcState, MfcControls] {
       });
     };
 
+    // 处理WebSocket连接成功事件
+    const handleConnected = () => {
+      console.log('MFC WebSocket connected, subscribing to updates');
+      mfcWebSocketService.subscribeToMfc();
+    };
+
+    // 处理状态更新事件 - 实时流量数据
+    const handleStatusUpdate = (update: MfcStatusUpdate) => {
+      console.log('MFC status update received:', update);
+
+      setState(prev => {
+        const updatedDevices = prev.devices.map(device => {
+          // 查找对应的状态数据
+          const statusData = update.data.find(d => d.device_address === device.address);
+          if (!statusData) return device;
+
+          // 计算流量百分比
+          const flowPercent = device.max_flow_sccm > 0
+            ? (statusData.flow_sccm / device.max_flow_sccm) * 100
+            : 0;
+
+          const setpointPercent = device.max_flow_sccm > 0
+            ? (statusData.setpoint_sccm / device.max_flow_sccm) * 100
+            : 0;
+
+          return {
+            ...device,
+            flow_sccm: statusData.flow_sccm,
+            set_flow: statusData.setpoint_sccm,
+            flow_percent: flowPercent,
+            active_setpoint_percent: setpointPercent,
+            status: statusData.connection_status as 'connected' | 'disconnected' | 'error' | 'warning',
+          };
+        });
+
+        return {
+          ...prev,
+          devices: updatedDevices,
+          lastUpdate: new Date(),
+        };
+      });
+    };
+
     // 注册WebSocket事件监听
     mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
+    mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
+    mfcWebSocketService.onConnected(handleConnected);
 
     // 确保WebSocket连接
     if (!mfcWebSocketService.connected) {
       mfcWebSocketService.connect();
     }
 
+    // 订阅MFC更新
+    if (mfcWebSocketService.connected && !mfcWebSocketService.subscribed) {
+      mfcWebSocketService.subscribeToMfc();
+    }
+
     // 清理函数
     return () => {
       mfcWebSocketService.removeCallback(handleDeviceDiscovered);
+      mfcWebSocketService.removeCallback(handleStatusUpdate);
+      mfcWebSocketService.removeCallback(handleConnected);
     };
   }, []);
 

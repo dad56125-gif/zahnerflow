@@ -57,7 +57,8 @@
       "Skill(superpowers:finishing-a-development-branch)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Skill(debug)"
+      "Skill(debug)",
+      "Skill(superpowers:brainstorming)"
     ]
   },
   "enableAllProjectMcpServers": true,
