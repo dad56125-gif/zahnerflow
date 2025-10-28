@@ -132,7 +132,7 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     setCanvasSize: (width, height) => set({ canvasSize: { width, height } }),
 
     addNode: (type, selectedWorkstation, index) => {
-      const { nodes, canvasSize } = get();
+      const { nodes, canvasSize, connections } = get();
       const config = getNodeConfigByWorkstation(type, selectedWorkstation);
       if (!config) return;
 
@@ -180,7 +180,32 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
         position: calculateNodePosition(i, canvasSize.width)
       }));
 
-      set({ nodes: repositionedNodes, validationError: validateNodes(repositionedNodes) });
+      // 自动创建连接：如果不是第一个节点，创建与前一个节点的连接
+      const newConnections = [...connections];
+      if (repositionedNodes.length > 1) {
+        const prevNode = repositionedNodes[targetIndex - 1];
+        if (prevNode) {
+          // 查找是否已存在相同的连接
+          const existingConnection = newConnections.find(
+            conn => conn.sourceId === prevNode.id && conn.targetId === newNode.id
+          );
+
+          if (!existingConnection) {
+            newConnections.push({
+              id: `conn_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+              sourceId: prevNode.id,
+              targetId: newNode.id
+            });
+            console.log(`[Canvas Store] 自动创建连接: ${prevNode.name} → ${newNode.name}`);
+          }
+        }
+      }
+
+      set({
+        nodes: repositionedNodes,
+        connections: newConnections,
+        validationError: validateNodes(repositionedNodes)
+      });
     },
 
     deleteNode: (nodeId) => {
