@@ -54,6 +54,25 @@ const calculateNodeIndex = (position: Position, canvasWidth: number, nodeCount: 
     return Math.max(0, Math.min(nodeCount, index)); // Allow inserting at the end
 };
 
+// --- 智能循环节点配对 ---
+const findLastUnpairedLoopStart = (nodes: ElectrochemicalNode[]): ElectrochemicalNode | null => {
+  // 从后往前查找最近的未配对的 loop_start 节点
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    if (node.type === 'loop_start' && node.data.parameters?.loop_id) {
+      // 检查是否已经有配对的 loop_end
+      const hasMatchingEnd = nodes.some(n =>
+        n.type === 'loop_end' &&
+        n.data.parameters?.loop_id === node.data.parameters?.loop_id
+      );
+      if (!hasMatchingEnd) {
+        return node;
+      }
+    }
+  }
+  return null;
+};
+
 // --- Store Definition ---
 
 interface CanvasState {
@@ -119,13 +138,31 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
 
       const targetIndex = (index !== undefined && index >= 0 && index <= nodes.length) ? index : nodes.length;
 
+      // 智能配对：如果是 loop_end 节点，查找未配对的 loop_start
+      let nodeData = createDefaultNodeDataWithWorkstation(type, selectedWorkstation);
+
+      if (type === 'loop_end') {
+        const unpairedStart = findLastUnpairedLoopStart(nodes);
+        if (unpairedStart && unpairedStart.data.parameters?.loop_id) {
+          // 使用匹配的 loop_start 节点的 loop_id
+          nodeData = {
+            ...nodeData,
+            parameters: {
+              ...nodeData.parameters,
+              loop_id: unpairedStart.data.parameters.loop_id
+            }
+          };
+          console.log(`[Canvas Store] loop_end 节点自动配对，使用 loop_id: ${unpairedStart.data.parameters.loop_id}`);
+        }
+      }
+
       const newNode: ElectrochemicalNode = {
-        id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         type: type as NodeType,
         name: config.name,
         category: config.category,
         position: { x: 0, y: 0 }, // Position will be calculated below
-        data: createDefaultNodeDataWithWorkstation(type, selectedWorkstation),
+        data: nodeData,
         status: 'ready',
         input: config.input,
         output: config.output,

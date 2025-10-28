@@ -352,6 +352,13 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // 检测循环
     const detectionResult = LoopDetector.detectLoops(nodes, connections);
+
+    // 调试日志
+    console.log('[Canvas Debug] 检测到的循环数量:', detectionResult.loops.length);
+    console.log('[Canvas Debug] 检测到的循环:', detectionResult.loops);
+    console.log('[Canvas Debug] 节点数量:', nodes.length);
+    console.log('[Canvas Debug] 连接数量:', connections.length);
+
     setDetectedLoops(detectionResult.loops);
 
     // 更新循环上下文
