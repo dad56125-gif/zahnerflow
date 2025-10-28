@@ -1,0 +1,354 @@
+/**
+ * 循环边界括号样式文件
+ *
+ * 此文件包含了循环边界可视化所需的CSS样式定义
+ * 需要导入到主样式文件中：@import './components/_loop-boundary.css';
+ */
+
+/* 循环边界容器 */
+.bracket-container {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.1),
+    inset 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+/* 括号角基础样式 */
+.bracket-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  opacity: 0.9;
+}
+
+.bracket-line {
+  position: absolute;
+  background: currentColor;
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 左上角括号 */
+.bracket-corner.top-left {
+  top: -2px;
+  left: -2px;
+}
+
+.bracket-corner.top-left .horizontal {
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 2px;
+}
+
+.bracket-corner.top-left .vertical {
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 20px;
+}
+
+/* 右上角括号 */
+.bracket-corner.top-right {
+  top: -2px;
+  right: -2px;
+}
+
+.bracket-corner.top-right .horizontal {
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 2px;
+}
+
+.bracket-corner.top-right .vertical {
+  top: 0;
+  right: 0;
+  width: 2px;
+  height: 20px;
+}
+
+/* 左下角括号 */
+.bracket-corner.bottom-left {
+  bottom: -2px;
+  left: -2px;
+}
+
+.bracket-corner.bottom-left .horizontal {
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 2px;
+}
+
+.bracket-corner.bottom-left .vertical {
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  height: 20px;
+}
+
+/* 右下角括号 */
+.bracket-corner.bottom-right {
+  bottom: -2px;
+  right: -2px;
+}
+
+.bracket-corner.bottom-right .horizontal {
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 2px;
+}
+
+.bracket-corner.bottom-right .vertical {
+  bottom: 0;
+  right: 0;
+  width: 2px;
+  height: 20px;
+}
+
+/* 循环信息标签 */
+.loop-info-label {
+  position: absolute;
+  top: -30px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 4px;
+  font-size: 11px;
+  color: white;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.loop-id {
+  font-weight: 600;
+  color: #64B5F6;
+  text-shadow: 0 0 4px rgba(100, 181, 246, 0.5);
+}
+
+.loop-iteration {
+  color: #81C784;
+  font-weight: 500;
+}
+
+.loop-variable {
+  color: #FFB74D;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-weight: 500;
+}
+
+/* 嵌套循环层级颜色 */
+.bracket-container.level-0 {
+  border-color: #FF9800;
+  background: rgba(255, 152, 0, 0.05);
+  color: #FF9800;
+}
+
+.bracket-container.level-0 .bracket-line {
+  box-shadow: 0 0 6px rgba(255, 152, 0, 0.4);
+}
+
+.bracket-container.level-1 {
+  border-color: #4CAF50;
+  background: rgba(76, 175, 80, 0.05);
+  color: #4CAF50;
+}
+
+.bracket-container.level-1 .bracket-line {
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+}
+
+.bracket-container.level-2 {
+  border-color: #2196F3;
+  background: rgba(33, 150, 243, 0.05);
+  color: #2196F3;
+}
+
+.bracket-container.level-2 .bracket-line {
+  box-shadow: 0 0 6px rgba(33, 150, 243, 0.4);
+}
+
+.bracket-container.level-3 {
+  border-color: #9C27B0;
+  background: rgba(156, 39, 176, 0.05);
+  color: #9C27B0;
+}
+
+.bracket-container.level-3 .bracket-line {
+  box-shadow: 0 0 6px rgba(156, 39, 176, 0.4);
+}
+
+/* 循环状态动画 */
+.bracket-container.running {
+  animation: bracket-running-pulse 2s ease-in-out infinite;
+}
+
+.bracket-container.paused {
+  animation: bracket-paused-pulse 1.5s ease-in-out infinite;
+}
+
+.bracket-container.error {
+  animation: bracket-error-shake 0.5s ease-in-out 3;
+  border-color: #F44336 !important;
+  background: rgba(244, 67, 54, 0.1) !important;
+}
+
+.bracket-container.completed {
+  animation: bracket-completed-flash 1s ease-in-out 2;
+  border-color: #4CAF50 !important;
+  background: rgba(76, 175, 80, 0.1) !important;
+}
+
+/* 动画定义 */
+@keyframes bracket-running-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.005);
+  }
+}
+
+@keyframes bracket-paused-pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes bracket-error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes bracket-completed-flash {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow:
+      0 0 10px rgba(255, 255, 255, 0.1),
+      inset 0 0 10px rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 20px rgba(76, 175, 80, 0.5),
+      inset 0 0 15px rgba(76, 175, 80, 0.2);
+  }
+}
+
+/* 高亮效果 */
+.bracket-container.highlighted {
+  border-width: 3px;
+  animation: bracket-highlight 1s ease-in-out infinite alternate;
+}
+
+@keyframes bracket-highlight {
+  from {
+    box-shadow:
+      0 0 10px rgba(255, 255, 255, 0.1),
+      inset 0 0 10px rgba(255, 255, 255, 0.05);
+  }
+  to {
+    box-shadow:
+      0 0 20px rgba(255, 255, 255, 0.3),
+      inset 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .loop-info-label {
+    font-size: 10px;
+    padding: 3px 6px;
+    gap: 8px;
+  }
+
+  .bracket-corner {
+    width: 16px;
+    height: 16px;
+  }
+
+  .bracket-corner.top-left .horizontal,
+  .bracket-corner.top-right .horizontal,
+  .bracket-corner.bottom-left .horizontal,
+  .bracket-corner.bottom-right .horizontal {
+    width: 16px;
+  }
+
+  .bracket-corner.top-left .vertical,
+  .bracket-corner.top-right .vertical,
+  .bracket-corner.bottom-left .vertical,
+  .bracket-corner.bottom-right .vertical {
+    height: 16px;
+  }
+}
+
+/* 深色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .loop-info-label {
+    background: rgba(0, 0, 0, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .bracket-container {
+    background: rgba(255, 255, 255, 0.01);
+  }
+}
+
+/* 高对比度模式适配 */
+@media (prefers-contrast: high) {
+  .bracket-container {
+    border-width: 3px;
+  }
+
+  .bracket-line {
+    height: 3px;
+    width: 3px;
+  }
+
+  .loop-info-label {
+    border-width: 2px;
+    font-weight: 600;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .bracket-container {
+    border-style: dashed !important;
+    background: transparent !important;
+    opacity: 0.7 !important;
+  }
+
+  .loop-info-label {
+    background: white !important;
+    color: black !important;
+    border: 1px solid black !important;
+  }
+}

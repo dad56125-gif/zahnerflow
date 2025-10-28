@@ -20,6 +20,7 @@
 @import './components/_connection.css';
 @import './components/_modal.css';
 @import './components/_canvas.css';
+@import './components/_loop-boundary.css';  /* 新增：循环边界括号样式 */
 @import './components/_loop.css';
 @import './components/_workflow.css';
 @import './components/_notification.css';  /* 新增：通知面板样式 */

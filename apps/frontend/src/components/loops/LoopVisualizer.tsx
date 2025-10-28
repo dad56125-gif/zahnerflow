@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { LoopInfo } from './LoopDetector';
+import { LoopBoundary } from '../LoopBoundary';  // 导入LoopBoundary组件
 import {
   LoopContextManager,
   LoopExecutionContext,
@@ -35,106 +36,7 @@ export interface LoopVisualizerProps {
   onLoopReset?: (loopId: string) => void;
 }
 
-// 循环边界框组件
-const LoopBoundary: React.FC<{
-  loop: LoopInfo;
-  nodes: Array<{
-    id: string;
-    name: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-  context?: LoopExecutionContext;
-  className?: string;
-}> = ({ loop, nodes, context, className = '' }) => {
-  // 计算循环边界框
-  const loopNodes = nodes.filter(node => loop.nodeIds.includes(node.id));
-
-  if (loopNodes.length === 0) {
-    return null;
-  }
-
-  const minX = Math.min(...loopNodes.map(n => n.x));
-  const minY = Math.min(...loopNodes.map(n => n.y));
-  const maxX = Math.max(...loopNodes.map(n => n.x + n.width));
-  const maxY = Math.max(...loopNodes.map(n => n.y + n.height));
-
-  const boundaryStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: minX - 20,
-    top: minY - 20,
-    width: maxX - minX + 40,
-    height: maxY - minY + 40,
-    border: `2px dashed ${context?.state === 'running' ? '#4CAF50' : '#2196F3'}`,
-    borderRadius: '8px',
-    backgroundColor: context?.state === 'running'
-      ? 'rgba(76, 175, 80, 0.05)'
-      : 'rgba(33, 150, 243, 0.05)',
-    pointerEvents: 'none',
-    zIndex: 1,
-    transition: 'all 0.3s ease'
-  };
-
-  return (
-    <div
-      className={`loop-boundary ${className}`}
-      style={boundaryStyle}
-    >
-      {/* 循环标题 */}
-      <div
-        className="loop-title"
-        style={{
-          position: 'absolute',
-          top: -12,
-          left: 10,
-          background: context?.state === 'running' ? '#4CAF50' : '#2196F3',
-          color: 'white',
-          padding: '2px 8px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }}
-      >
-        循环 {loop.id}
-        {context && (
-          <span style={{ marginLeft: '4px' }}>
-            ({context.currentIteration}/{context.totalIterations})
-          </span>
-        )}
-      </div>
-
-      {/* 进度条 */}
-      {context && (
-        <div
-          className="loop-progress-bar"
-          style={{
-            position: 'absolute',
-            bottom: -8,
-            left: 10,
-            right: 10,
-            height: '4px',
-            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-            borderRadius: '2px',
-            overflow: 'hidden'
-          }}
-        >
-          <div
-            className="loop-progress-fill"
-            style={{
-              width: `${context.progress}%`,
-              height: '100%',
-              backgroundColor: context.state === 'running' ? '#4CAF50' : '#2196F3',
-              transition: 'width 0.3s ease'
-            }}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
+// 内部LoopBoundary组件已删除，使用导入的LoopBoundary组件
 // 循环控制面板组件
 const LoopControlPanel: React.FC<{
   loop: LoopInfo;
@@ -291,6 +193,75 @@ export const LoopVisualizer: React.FC<LoopVisualizerProps> = ({
   const [isHovered, setIsHovered] = React.useState(false);
   const [showDetails, setShowDetails] = React.useState(false);
 
+  // 获取循环内的节点
+  const loopNodes = React.useMemo(() => {
+    return nodes.filter(node => loop.nodeIds.includes(node.id));
+  }, [nodes, loop.nodeIds]);
+
+  const startNode = React.useMemo(() => {
+    return loopNodes.find(n => n.id === loop.startNodeId);
+  }, [loopNodes, loop.startNodeId]);
+
+  const endNode = React.useMemo(() => {
+    return loopNodes.find(n => n.id === loop.endNodeId);
+  }, [loopNodes, loop.endNodeId]);
+
+  // 如果找不到开始或结束节点，不渲染
+  if (!startNode || !endNode || loopNodes.length === 0) {
+    return null;
+  }
+
+  // 转换节点格式以匹配LoopBoundary组件的接口
+  const adaptNodeToLoopNode = React.useCallback((node: any, type: 'loop_start' | 'loop_end') => {
+    return {
+      id: node.id,
+      type,
+      data: {
+        parameters: {
+          loop_id: loop.id,
+          loop_count: loop.iterationCount,
+          loop_variable: loop.parameters.loop_variable || 'i',
+          start_value: loop.parameters.start_value || 0,
+          step: loop.parameters.step || 1,
+          delay_ms: loop.parameters.delay_ms,
+          break_condition: loop.parameters.break_condition,
+          continue_condition: loop.parameters.continue_condition,
+          data_accumulation: loop.parameters.data_accumulation || 'all',
+          export_format: loop.parameters.export_format || 'csv'
+        }
+      },
+      position: { x: node.x, y: node.y }
+    };
+  }, [loop.id, loop.iterationCount, loop.parameters]);
+
+  const startNodeData = React.useMemo(() => {
+    return adaptNodeToLoopNode(startNode, 'loop_start');
+  }, [startNode, adaptNodeToLoopNode]);
+
+  const endNodeData = React.useMemo(() => {
+    return adaptNodeToLoopNode(endNode, 'loop_end');
+  }, [endNode, adaptNodeToLoopNode]);
+
+  // 根据执行状态设置样式类
+  const getStateClass = React.useCallback(() => {
+    if (!context) return '';
+    switch (context.state) {
+      case 'running': return 'running';
+      case 'paused': return 'paused';
+      case 'completed': return 'completed';
+      case 'error': return 'error';
+      case 'cancelled': return 'cancelled';
+      default: return '';
+    }
+  }, [context]);
+
+  // 计算循环层级（简单的实现，可以根据需要改进）
+  const loopLevel = React.useMemo(() => {
+    // 这里可以实现嵌套循环的层级检测
+    // 暂时返回0
+    return 0;
+  }, []);
+
   // 监听循环事件
   React.useEffect(() => {
     if (!context) return;
@@ -337,12 +308,26 @@ export const LoopVisualizer: React.FC<LoopVisualizerProps> = ({
 
   return (
     <>
-      {/* 循环边界 */}
+      {/* 使用我们创建的LoopBoundary组件 */}
       <LoopBoundary
-        loop={loop}
-        nodes={nodes}
-        context={context}
-        className={className}
+        startNode={startNodeData}
+        endNode={endNodeData}
+        nodesInLoop={loopNodes}
+      />
+
+      {/* 应用状态样式到括号容器 */}
+      <div
+        className={`bracket-container level-${loopLevel} ${getStateClass()}`}
+        style={{
+          position: 'absolute',
+          left: Math.min(...loopNodes.map(n => n.x)) - 20,
+          top: Math.min(...loopNodes.map(n => n.y)) - 40,
+          width: Math.max(...loopNodes.map(n => n.x + n.width)) - Math.min(...loopNodes.map(n => n.x)) + 40,
+          height: Math.max(...loopNodes.map(n => n.y + n.height)) - Math.min(...loopNodes.map(n => n.y)) + 40,
+          pointerEvents: 'none',
+          zIndex: 1,
+          ...style
+        }}
       />
 
       {/* 循环控制覆盖层 */}
