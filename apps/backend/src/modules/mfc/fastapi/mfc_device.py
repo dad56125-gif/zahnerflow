@@ -37,6 +37,9 @@ app = FastAPI(title="MFC FastAPI (Enhanced with Real-time Scanning)")
 
 
 
+class ScanRequest(BaseModel):
+    address: int
+
 class MfcResponse:
     """MFC响应包装器类 - 统一数据解析和响应格式"""
 
@@ -894,8 +897,9 @@ def disconnect():
 
 @app.post("/scan")
 def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
-         address: int = Body(...)):
+         scan_request: ScanRequest = Body(...)):
     """扫描单个MFC设备地址"""
+    address = scan_request.address
     logger.info(f"FastAPI /scan endpoint called: address={address}, controller={controller is not None}")
 
     try:
