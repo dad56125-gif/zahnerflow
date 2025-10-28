@@ -663,7 +663,7 @@ export function useMfc(): [MfcState, MfcControls] {
           ...prev,
           devices: updatedDevices,
           availableDevices: updatedAvailableDevices,
-          lastUpdate: new Date().toISOString(),
+          lastUpdate: new Date(),
         };
       });
     };

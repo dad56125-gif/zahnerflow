@@ -56,7 +56,8 @@
       "Bash(npm run test:*)",
       "Skill(superpowers:finishing-a-development-branch)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Skill(debug)"
     ]
   },
   "enableAllProjectMcpServers": true,
