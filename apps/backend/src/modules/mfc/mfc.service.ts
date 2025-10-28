@@ -126,6 +126,10 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
 
         this.logger.log(`Starting MFC scan with realtime discovery: addresses ${scan_start}-${scan_end}`);
 
+        // 启动设备发现事件轮询 - 实现单地址发现即推送
+        this.logger.log('Starting device discovery polling for real-time push');
+        this.startDeviceDiscoveryPolling(100); // 100ms轮询间隔
+
         const found_devices: MfcDeviceInfo[] = [];
 
         try {
@@ -210,6 +214,10 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
 
         this.logger.log(`MFC scan with realtime discovery completed: found ${found_devices.length} devices, ${timeout_addresses_count} addresses not found`);
 
+        // 停止设备发现轮询
+        this.logger.log('Stopping device discovery polling');
+        this.stopDeviceDiscoveryPolling();
+
         return this.discovered;
       },
       {
@@ -219,7 +227,120 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       }
     ).finally(() => {
       this.clear_device_busy('scan');
+      // 确保轮询停止 - 防止异常情况下轮询继续运行
+      this.stopDeviceDiscoveryPolling();
     });
+  }
+
+  /**
+   * 启动实时扫描会话 - 单地址发现即推送
+   */
+  async startRealtimeScan(start?: number, end?: number): Promise<{session_id: string; status: string}> {
+    return this.errorHandler.handleDeviceScan(
+      async () => {
+        this.set_device_busy('scan');
+
+        const scan_start = start ?? 32;
+        const scan_end = end ?? 80;
+
+        this.logger.log(`Starting realtime scan session: addresses ${scan_start}-${scan_end}`);
+
+        const result = await this.device.start_realtime_scan_session({ start: scan_start, end: scan_end });
+
+        // 启动事件监听和推送
+        this._startEventListeningForSession(result.session_id);
+
+        return {
+          session_id: result.session_id,
+          status: result.status
+        };
+      },
+      {
+        operation: 'realtime-scan-start',
+        start,
+        end
+      }
+    ).finally(() => {
+      this.clear_device_busy('scan');
+    });
+  }
+
+  /**
+   * 获取实时扫描状态
+   */
+  async getRealtimeScanStatus(sessionId: string): Promise<any> {
+    try {
+      return await this.device.get_realtime_scan_status(sessionId);
+    } catch (error) {
+      this.logger.error(`Failed to get realtime scan status for session ${sessionId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取设备发现事件
+   */
+  async getDeviceDiscoveryEvents(): Promise<any> {
+    try {
+      const events = await this.device.get_device_discovery_events();
+
+      // 立即推送到前端WebSocket
+      if (events.events && events.events.length > 0) {
+        for (const event of events.events) {
+          if (event.type === 'mfc_device_discovered') {
+            this.gateway.sendMfcDeviceDiscovered({
+              type: 'device_discovered',
+              data: event.data,
+              timestamp: event.timestamp
+            });
+          }
+        }
+      }
+
+      return events;
+    } catch (error) {
+      this.logger.error(`Failed to get device discovery events: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 取消实时扫描
+   */
+  async cancelRealtimeScan(sessionId: string): Promise<any> {
+    try {
+      return await this.device.cancel_realtime_scan(sessionId);
+    } catch (error) {
+      this.logger.error(`Failed to cancel realtime scan for session ${sessionId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 启动事件监听
+   */
+  private _startEventListeningForSession(sessionId: string): void {
+    // 创建定时器轮询设备发现事件
+    const pollInterval = setInterval(async () => {
+      try {
+        const events = await this.getDeviceDiscoveryEvents();
+
+        // 检查扫描是否完成
+        const status = await this.getRealtimeScanStatus(sessionId);
+        if (status.completed) {
+          clearInterval(pollInterval);
+          this.logger.log(`Realtime scan session ${sessionId} completed, stopped polling`);
+        }
+      } catch (error) {
+        this.logger.warn(`Error polling events for session ${sessionId}: ${error.message}`);
+        clearInterval(pollInterval);
+      }
+    }, 100); // 每100ms轮询一次
+
+    // 设置超时清理
+    setTimeout(() => {
+      clearInterval(pollInterval);
+    }, 300000); // 5分钟后清理
   }
 
   /**
@@ -740,6 +861,65 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   is_device_busy(): boolean {
     return this.device_busy;
   }
+
+  // ==================== 实时扫描事件轮询 ====================
+
+  /**
+   * 轮询设备发现事件 - 支持单地址发现即推送
+   */
+  async startDeviceDiscoveryPolling(intervalMs: number = 100): Promise<void> {
+    const pollEvents = async () => {
+      try {
+        // 调用FastAPI的新事件轮询端点
+        const events_response = await this.device.http_request('GET', '/scan-events');
+
+        if (events_response && events_response.events && Array.isArray(events_response.events)) {
+          for (const event of events_response.events) {
+            if (event.type === 'mfc_device_discovered' && event.data) {
+              this.logger.log(`Real-time device discovered via polling: address ${event.data.device_address}`);
+
+              // 立即通过WebSocket推送到前端
+              this.gateway.sendMfcDeviceDiscovered({
+                type: 'device_discovered',
+                data: event.data,
+                timestamp: event.timestamp || new Date().toISOString()
+              });
+
+              // 更新内部设备状态缓存
+              this.device_statuses.set(event.data.device_address, {
+                address: event.data.device_address,
+                connection_status: ConnectionState.CONNECTED,
+                last_communication: event.data.last_communication,
+                gas_type: event.data.gas_type,
+                max_flow_sccm: event.data.max_flow_sccm,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.warn(`Device discovery polling failed: ${error.message}`);
+      }
+
+      // 继续下一次轮询
+      if (this.is_discovery_polling_active) {
+        setTimeout(pollEvents, intervalMs);
+      }
+    };
+
+    // 标记轮询为活跃状态并开始轮询
+    this.is_discovery_polling_active = true;
+    pollEvents();
+  }
+
+  /**
+   * 停止设备发现轮询
+   */
+  stopDeviceDiscoveryPolling(): void {
+    this.is_discovery_polling_active = false;
+    this.logger.log('Device discovery polling stopped');
+  }
+
+  private is_discovery_polling_active: boolean = false;
 
   // ==================== 兼容性方法 ====================
 

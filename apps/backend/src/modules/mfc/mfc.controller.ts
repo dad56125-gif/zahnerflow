@@ -84,6 +84,70 @@ export class MfcController {
   }
 
   /**
+   * 启动实时扫描会话 - 单地址发现即推送
+   */
+  @Post('scan-realtime-start')
+  async startRealtimeScan(@Body() body?: any) {
+    return this.errorHandler.handleDeviceScan(
+      async () => {
+        return this.mfcService.startRealtimeScan(body?.start, body?.end);
+      },
+      {
+        operation: 'realtime-scan-start',
+        start: body?.start,
+        end: body?.end
+      }
+    );
+  }
+
+  /**
+   * 获取实时扫描状态
+   */
+  @Get('scan-realtime-status/:sessionId')
+  async getRealtimeScanStatus(@Param('sessionId') sessionId: string) {
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.getRealtimeScanStatus(sessionId);
+      },
+      {
+        operation: 'realtime-scan-status',
+        sessionId
+      }
+    );
+  }
+
+  /**
+   * 获取设备发现事件
+   */
+  @Get('scan-realtime-events')
+  async getDeviceDiscoveryEvents() {
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.getDeviceDiscoveryEvents();
+      },
+      {
+        operation: 'scan-realtime-events'
+      }
+    );
+  }
+
+  /**
+   * 取消实时扫描
+   */
+  @Post('scan-realtime-cancel/:sessionId')
+  async cancelRealtimeScan(@Param('sessionId') sessionId: string) {
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        return this.mfcService.cancelRealtimeScan(sessionId);
+      },
+      {
+        operation: 'realtime-scan-cancel',
+        sessionId
+      }
+    );
+  }
+
+  /**
    * 获取MFC设备状态
    */
   @Get('status')

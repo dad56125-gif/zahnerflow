@@ -16,6 +16,10 @@ from enum import Enum
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 全局设备发现事件队列 - 用于支持实时扫描推送
+device_discovery_events = []
+device_discovery_lock = threading.Lock()
+
 class ErrorCategory(Enum):
     DEVICE = "DEVICE"
     TIMEOUT = "TIMEOUT"
@@ -31,7 +35,34 @@ class MfcError(Exception):
         self.context = context or {}
         self.timestamp = datetime.now()
 
-app = FastAPI(title="MFC FastAPI (Enhanced with Error Handling)")
+app = FastAPI(title="MFC FastAPI (Enhanced with Real-time Scanning)")
+
+
+def push_device_discovery_event(device_info: DeviceInfo):
+    """立即推送设备发现事件到全局队列"""
+    try:
+        device_event = {
+            "type": "mfc_device_discovered",
+            "data": {
+                "device_address": device_info.device_address,
+                "gas_type": device_info.gas_type,
+                "max_flow_sccm": device_info.max_flow_sccm,
+                "connection_status": "connected",
+                "last_communication": datetime.now().isoformat()
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+        with device_discovery_lock:
+            device_discovery_events.append(device_event)
+            # 保持队列大小合理
+            if len(device_discovery_events) > 100:
+                device_discovery_events.pop(0)
+
+        logger.info(f"Device discovery event pushed immediately: address {device_info.device_address}")
+
+    except Exception as e:
+        logger.error(f"Failed to push device discovery event: {str(e)}")
 
 
 class MfcResponse:
@@ -541,7 +572,10 @@ class MfcSession:
                     self.devices[addr] = info
                     out.append(info)
 
-                    # 实时推送设备发现（如果提供了回调）
+                    # 实时推送设备发现（立即推送到全局队列）
+                    push_device_discovery_event(info)
+
+                    # 如果提供了回调，也调用它保持兼容性
                     if realtime_callback:
                         try:
                             realtime_callback(info)
@@ -1026,17 +1060,22 @@ def disconnect():
 def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
          start: int = Body(32), end: int = Body(80)):
     """扫描MFC设备 - 支持实时设备发现"""
+    logger.info(f"FastAPI /scan endpoint called: start={start}, end={end}, controller={controller is not None}")
+
     try:
         if not controller:
+            logger.error("No controller available for scanning")
             raise MfcError("需要先连接设备才能进行扫描", ErrorCategory.DEVICE, retryable=False)
 
+        logger.info(f"Controller available: {controller}")
         discovered_devices = []
 
         def realtime_device_discovered(device_info: DeviceInfo):
             """实时设备发现回调"""
+            logger.info(f"=== DEVICE DISCOVERED CALLBACK === address {device_info.device_address}, type {device_info.gas_type}")
             discovered_devices.append(device_info.dict())
-            logger.info(f"Device discovered: address {device_info.device_address}, type {device_info.gas_type}")
 
+        logger.info(f"Starting scan with realtime_callback function")
         # 执行扫描并提供实时回调 - 现在这是默认行为
         devices = controller.scan(start, end, realtime_callback=realtime_device_discovered)
 
@@ -1050,6 +1089,24 @@ def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
         raise
     except Exception as e:
         raise MfcError(f"扫描失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+
+
+@app.get("/scan-events")
+def get_device_discovery_events():
+    """获取设备发现事件（用于实时轮询）"""
+    try:
+        with device_discovery_lock:
+            # 返回并清空事件队列
+            events = device_discovery_events.copy()
+            device_discovery_events.clear()
+
+        return MfcResponse.create_success_response({
+            "events": events,
+            "count": len(events)
+        })
+
+    except Exception as e:
+        raise MfcError(f"获取设备发现事件失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
 
 @app.get("/status")

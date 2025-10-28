@@ -150,6 +150,62 @@ export class MfcDeviceService {
   }
 
   /**
+   * 启动实时扫描会话 - 单地址发现即推送
+   */
+  async start_realtime_scan_session(request_body: { start?: number; end?: number }) {
+    try {
+      this.logger.debug(`Starting realtime scan session: addresses ${request_body.start ?? 32}-${request_body.end ?? 80}`);
+
+      const { data } = await this.http.post('/scan-realtime-start', request_body);
+
+      this.logger.log(`Realtime scan session started: ${data.session_id}`);
+      return data;
+    } catch (error) {
+      this.logAxiosError('start realtime scan session', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取实时扫描状态
+   */
+  async get_realtime_scan_status(session_id: string) {
+    try {
+      const { data } = await this.http.get(`/scan-realtime-status/${session_id}`);
+      return data;
+    } catch (error) {
+      this.logAxiosError('get realtime scan status', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取设备发现事件（前端轮询）
+   */
+  async get_device_discovery_events() {
+    try {
+      const { data } = await this.http.get('/scan-realtime-events');
+      return data;
+    } catch (error) {
+      this.logAxiosError('get device discovery events', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 取消实时扫描会话
+   */
+  async cancel_realtime_scan(session_id: string) {
+    try {
+      const { data } = await this.http.post(`/scan-realtime-cancel/${session_id}`);
+      return data;
+    } catch (error) {
+      this.logAxiosError('cancel realtime scan', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取MFC设备状态
    */
   async get_device_status(address?: number, timeout = 500) {
