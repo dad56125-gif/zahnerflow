@@ -149,6 +149,35 @@ export class MfcDeviceService {
   }
 
   /**
+   * 实时扫描MFC设备地址 - 支持实时设备发现推送
+   */
+  async scan_devices_realtime(request_body: { start?: number; end?: number }) {
+    try {
+      // 计算扫描所需的超时时间：(end - start + 1) * 0.5s + 5s缓冲
+      const start = request_body.start ?? 32;
+      const end = request_body.end ?? 80;
+      const address_count = end - start + 1;
+      const scan_timeout = address_count * 500 + 5000; // 每个地址0.5秒 + 5秒缓冲
+
+      // 使用独立的axios实例进行扫描，避免影响其他操作
+      const scan_http = axios.create({
+        baseURL: this.http.defaults.baseURL,
+        timeout: Math.max(scan_timeout, 30000), // 最少30秒超时
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      this.logger.debug(`Calling FastAPI /scan-realtime interface for addresses ${start}-${end}`);
+      const { data } = await scan_http.post('/scan-realtime', request_body);
+      return data;
+    } catch (error) {
+      this.logAxiosError('scan devices realtime', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取MFC设备状态
    */
   async get_device_status(address?: number, timeout = 500) {

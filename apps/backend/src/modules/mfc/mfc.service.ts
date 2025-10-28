@@ -223,6 +223,96 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * 实时扫描MFC设备 - 使用FastAPI /scan-realtime接口，支持实时推送
+   */
+  async scanRealtime(start?: number, end?: number): Promise<MfcDeviceInfo[]> {
+    return this.errorHandler.handleDeviceScan(
+      async () => {
+        this.set_device_busy('scan');
+
+        // 设置默认扫描范围：32-80
+        const scan_start = start ?? 32;
+        const scan_end = end ?? 80;
+
+        this.logger.log(`Starting MFC realtime scan: addresses ${scan_start}-${scan_end}`);
+
+        const found_devices: MfcDeviceInfo[] = [];
+
+        try {
+          // 调用FastAPI /scan-realtime接口，支持实时设备发现推送
+          this.logger.debug(`Calling FastAPI /scan-realtime interface for addresses ${scan_start}-${scan_end}...`);
+          const scan_result = await this.device.scan_devices_realtime({ start: scan_start, end: scan_end });
+
+          if (scan_result && scan_result.devices && Array.isArray(scan_result.devices)) {
+            // 处理扫描到的设备
+            for (const device_status of scan_result.devices) {
+              if (device_status.device_address !== undefined) {
+                const device_info: MfcDeviceInfo = {
+                  address: device_status.device_address,
+                  gas_type: device_status.gas_type || 'Unknown',
+                  max_flow_sccm: device_status.max_flow_sccm || 0
+                };
+
+                found_devices.push(device_info);
+                this.logger.log(`Found MFC device at address ${device_status.device_address}: gas_type=${device_info.gas_type}, max_flow=${device_info.max_flow_sccm} SCCM`);
+
+                // 初始化设备状态
+                this.device_statuses.set(device_status.device_address, {
+                  address: device_info.address,
+                  connection_status: ConnectionState.CONNECTED,
+                  last_communication: new Date().toISOString(),
+                  gas_type: device_info.gas_type,
+                  max_flow_sccm: device_info.max_flow_sccm,
+                });
+              }
+            }
+          }
+
+          // 可选：调用status方法更新缓存
+          try {
+            this.logger.debug(`Updating device status cache after realtime scan...`);
+            await this.status();
+          } catch (statusError) {
+            this.logger.warn(`Failed to update status cache after realtime scan: ${statusError}`);
+          }
+
+        } catch (error) {
+          const isTimeout = error.message?.toLowerCase().includes('timeout') ||
+                           error.code === 'ECONNABORTED';
+
+          if (isTimeout) {
+            this.logger.warn(`FastAPI /scan-realtime interface timed out: ${error.message}`);
+          } else {
+            this.logger.error(`FastAPI /scan-realtime interface failed: ${error.message}`);
+            throw error;
+          }
+        }
+
+        // 合并到缓存（按 address 去重）
+        for (const device of found_devices) {
+          const idx = this.discovered.findIndex((x) => x.address === device.address);
+          if (idx >= 0) {
+            this.discovered[idx] = device;
+          } else {
+            this.discovered.push(device);
+          }
+        }
+
+        this.logger.log(`MFC realtime scan completed: found ${found_devices.length} devices`);
+
+        return this.discovered;
+      },
+      {
+        operation: 'scan-realtime',
+        start,
+        end
+      }
+    ).finally(() => {
+      this.clear_device_busy('scan');
+    });
+  }
+
+  /**
    * 获取已发现的设备列表
    */
   getDevices(): MfcDeviceInfo[] {

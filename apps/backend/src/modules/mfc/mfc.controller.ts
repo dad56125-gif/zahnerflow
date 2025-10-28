@@ -84,6 +84,23 @@ export class MfcController {
   }
 
   /**
+   * 实时扫描MFC设备地址 - 支持实时设备发现推送
+   */
+  @Post('scan-realtime')
+  async scanRealtime(@Body() body?: any) {
+    return this.errorHandler.handleDeviceScan(
+      async () => {
+        return this.mfcService.scanRealtime(body?.start, body?.end);
+      },
+      {
+        operation: 'scan-realtime',
+        start: body?.start,
+        end: body?.end
+      }
+    );
+  }
+
+  /**
    * 获取MFC设备状态
    */
   @Get('status')

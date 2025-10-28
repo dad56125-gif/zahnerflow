@@ -436,7 +436,7 @@ class MfcSession:
         except Exception:
             return None
 
-    def scan(self, start: int = 32, end: int = 80) -> List[DeviceInfo]:
+    def scan(self, start: int = 32, end: int = 80, realtime_callback: Optional[callable] = None) -> List[DeviceInfo]:
         out: List[DeviceInfo] = []
         if not self.ser:
             return out
@@ -540,6 +540,15 @@ class MfcSession:
                     )
                     self.devices[addr] = info
                     out.append(info)
+
+                    # 实时推送设备发现（如果提供了回调）
+                    if realtime_callback:
+                        try:
+                            realtime_callback(info)
+                            logger.info(f"Real-time callback sent for device at address {addr}")
+                        except Exception as e:
+                            logger.warning(f"Failed to send real-time callback for device {addr}: {str(e)}")
+
                     # 计算实际SCCM流量值
                     actual_flow_sccm = flow_percent * int(fs_sccm or 1000) / 100.0
                     logger.info(f"Found MFC device at address {addr}: gas_type={info.gas_type}, max_flow={info.max_flow_sccm} SCCM, current_flow={actual_flow_sccm:.4f} SCCM")
@@ -1033,6 +1042,37 @@ def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
         raise
     except Exception as e:
         raise MfcError(f"扫描失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+
+
+@app.post("/scan-realtime")
+def scan_realtime(controller: Optional[MfcSession] = Depends(get_optional_controller),
+                 start: int = Body(32), end: int = Body(80)):
+    """实时扫描MFC设备 - 支持实时推送"""
+    try:
+        if not controller:
+            raise MfcError("需要先连接设备才能进行扫描", ErrorCategory.DEVICE, retryable=False)
+
+        discovered_devices = []
+
+        def realtime_device_discovered(device_info: DeviceInfo):
+            """实时设备发现回调"""
+            discovered_devices.append(device_info.dict())
+            logger.info(f"Real-time device discovered: address {device_info.device_address}, type {device_info.gas_type}")
+
+        # 执行扫描并提供实时回调
+        devices = controller.scan(start, end, realtime_callback=realtime_device_discovered)
+
+        return MfcResponse.create_success_response({
+            "devices": [d.dict() for d in devices],
+            "realtime_discovered": discovered_devices,
+            "count": len(devices),
+            "realtime_count": len(discovered_devices),
+            "scan_range": {"start": start, "end": end}
+        })
+    except MfcError:
+        raise
+    except Exception as e:
+        raise MfcError(f"实时扫描失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
 
 @app.get("/status")
