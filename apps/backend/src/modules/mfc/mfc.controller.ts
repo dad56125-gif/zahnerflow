@@ -285,4 +285,38 @@ export class MfcController {
       message: 'Error logs cleared successfully'
     };
   }
+
+  /**
+   * 获取MFC设备气体名称
+   */
+  @Get('gas-name')
+  async getGasName(@Query('address') address: number) {
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        const result = await this.mfcService.passthrough('read_gas_name', { address });
+        return result;
+      },
+      {
+        operation: 'read_gas_name',
+        device_address: address
+      }
+    );
+  }
+
+  /**
+   * 获取MFC设备当前设定值
+   */
+  @Get('active-setpoint')
+  async getActiveSetpoint(@Query('address') address: number) {
+    return this.errorHandler.handleDeviceOperation(
+      async () => {
+        const result = await this.mfcService.passthrough('read_active_setpoint', { address });
+        return result;
+      },
+      {
+        operation: 'read_active_setpoint',
+        device_address: address
+      }
+    );
+  }
 }

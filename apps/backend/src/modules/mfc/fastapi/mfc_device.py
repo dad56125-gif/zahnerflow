@@ -407,6 +407,35 @@ class MfcSession:
             return None
         return resp[8]
 
+    def _parse_text32_from_resp(self, resp: bytes) -> Optional[str]:
+        """解析TEXT32格式的响应数据
+
+        Args:
+            resp: 响应字节数据
+
+        Returns:
+            Optional[str]: 解析出的字符串，失败时返回None
+        """
+        if not resp or len(resp) < 9:
+            return None
+
+        try:
+            # 根据通讯协议，TEXT32数据在第9字节开始（索引8）
+            # 找到结束符0x00的位置
+            text_start = 8
+            text_end = resp.find(0x00, text_start)
+
+            if text_end == -1:
+                # 如果没有找到结束符，取到响应末尾
+                text_end = len(resp)
+
+            # 提取文本数据并解码
+            text_bytes = resp[text_start:text_end]
+            return text_bytes.decode('ascii', errors='ignore').strip()
+
+        except Exception:
+            return None
+
     def scan(self, start: int = 32, end: int = 80) -> List[DeviceInfo]:
         out: List[DeviceInfo] = []
         if not self.ser:
@@ -450,24 +479,26 @@ class MfcSession:
 
                 # 如果流量命令有响应，继续读取设备信息
                 if device_found:
-                    # 读取气体类型 (Class 0x66, Instance 0x01, Attribute 0x07 - Product Name)
+                    # 读取气体名称 (Class 0x66, Instance 0x01, Attribute 0x01 - Target Gas Name)
                     try:
-                        cmd2 = self._read_cmd(addr, 0x66, 0x01, 0x07)
-                        logger.info(f"TX: {cmd2.hex()} (read product name for address {addr})")
+                        cmd2 = self._read_cmd(addr, 0x66, 0x01, 0x01)
+                        logger.info(f"TX: {cmd2.hex()} (read gas name for address {addr})")
                         resp2 = self._send(cmd2)
                         logger.info(f"RX: {resp2.hex() if resp2 else 'null'} (length: {len(resp2) if resp2 else 0})")
 
                         if resp2 and len(resp2) >= 8:
                             try:
-                                data_length = resp2[4] if len(resp2) > 4 else 0
-                                text_len = max(0, data_length - 3)
-                                if len(resp2) >= 8 + text_len and text_len > 0:
-                                    gas = resp2[8:8 + text_len].decode('ascii', errors='ignore').strip('\x00').strip()
-                                logger.info(f"Address {addr}: Parsed gas type: '{gas}'")
+                                # 使用我们新添加的TEXT32解析方法
+                                gas = self._parse_text32_from_resp(resp2)
+                                if gas:
+                                    gas = gas.strip()
+                                    logger.info(f"Address {addr}: Parsed gas name: '{gas}'")
+                                else:
+                                    gas = "UNKNOWN"
                             except Exception:
                                 gas = "UNKNOWN"
                     except Exception as e:
-                        logger.info(f"Address {addr}: Failed to read gas type: {str(e)}")
+                        logger.info(f"Address {addr}: Failed to read gas name: {str(e)}")
                         gas = "UNKNOWN"
 
                     # 读取满量程 (Class 0x66, Instance 0x01, Attribute 0x03 - Full Scale)
@@ -483,6 +514,22 @@ class MfcSession:
                             logger.info(f"Address {addr}: Full scale {fs_sccm} SCCM")
                     except Exception as e:
                         logger.info(f"Address {addr}: Failed to read full scale: {str(e)}")
+
+                    # 读取当前设定值 (Class 0x69, Instance 0x01, Attribute 0xA5 - Active Setpoint)
+                    try:
+                        cmd4 = self._read_cmd(addr, 0x69, 0x01, 0xA5)
+                        logger.info(f"TX: {cmd4.hex()} (read active setpoint for address {addr})")
+                        resp4 = self._send(cmd4)
+                        logger.info(f"RX: {resp4.hex() if resp4 else 'null'} (length: {len(resp4) if resp4 else 0})")
+
+                        setpoint_val = self._parse_uint16_from_resp(resp4)
+                        if setpoint_val is not None:
+                            # 使用UFRAC16格式解析当前设定值
+                            setpoint_percent = self.ufrac16_to_percent(setpoint_val)
+                            # 保存当前设定值百分比，实际SCCM值会在后续计算
+                            logger.info(f"Address {addr}: Active setpoint raw=0x{setpoint_val:04X} ({setpoint_percent:.2f}%)")
+                    except Exception as e:
+                        logger.info(f"Address {addr}: Failed to read active setpoint: {str(e)}")
 
                     # 如果成功获取了流量数据，就认为设备存在
                     found_count += 1
@@ -597,6 +644,100 @@ class MfcSession:
             raise
         except Exception as e:
             raise MfcError(f"读取状态异常 (地址: {address}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+
+    def read_gas_name(self, address: int) -> dict:
+        """读取MFC设备气体名称
+
+        Args:
+            address: 设备地址
+
+        Returns:
+            dict: 包含气体名称信息的字典
+
+        Raises:
+            MfcError: 读取失败时抛出异常
+        """
+        try:
+            # 根据通讯协议1：Target Gas Name 读指令 (Class=0x66, Instance=0x01, Attribute=0x01)
+            cmd = self._read_cmd(address, 0x66, 0x01, 0x01)
+            resp = self._send(cmd)
+
+            # 解析TEXT32格式的气体名称
+            gas_name = self._parse_text32_from_resp(resp)
+
+            if gas_name is None:
+                gas_name = "Unknown"
+
+            # 构建响应数据
+            result_data = {
+                "device_address": address,
+                "gas_name": gas_name.strip(),  # 移除可能的空白字符
+                "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected"
+            }
+
+            return MfcResponse.create_success_response(
+                result_data,
+                operation_code=0x01,
+                operation_value=address
+            )
+
+        except MfcError:
+            raise
+        except Exception as e:
+            raise MfcError(f"读取气体名称异常 (地址: {address}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+
+    def read_active_setpoint(self, address: int) -> dict:
+        """读取MFC设备当前设定值
+
+        Args:
+            address: 设备地址
+
+        Returns:
+            dict: 包含当前设定值信息的字典
+
+        Raises:
+            MfcError: 读取失败时抛出异常
+        """
+        try:
+            # 获取设备信息用于计算sccm值
+            info = self.devices.get(address)
+
+            # 根据通讯协议1：Read Active Setpoint 读指令 (Class=0x69, Instance=0x01, Attribute=0xA5)
+            cmd = self._read_cmd(address, 0x69, 0x01, 0xA5)
+            resp = self._send(cmd)
+
+            # 解析UFRAC16格式的当前设定值
+            raw_value = self._parse_uint16_from_resp(resp)
+
+            if raw_value is None:
+                raise MfcError(f"解析当前设定值失败", ErrorCategory.PROTOCOL, retryable=True)
+
+            # 转换为百分比
+            active_percent = self.ufrac16_to_percent(raw_value)
+
+            # 计算sccm值
+            active_sccm = 0.0
+            if info and info.max_flow_sccm:
+                active_sccm = active_percent * info.max_flow_sccm / 100.0
+
+            # 构建响应数据
+            result_data = {
+                "device_address": address,
+                "active_setpoint_percent": active_percent,
+                "active_setpoint_sccm": active_sccm,
+                "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected"
+            }
+
+            return MfcResponse.create_success_response(
+                result_data,
+                operation_code=0xA5,
+                operation_value=int(raw_value)
+            )
+
+        except MfcError:
+            raise
+        except Exception as e:
+            raise MfcError(f"读取当前设定值异常 (地址: {address}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
     def write_setpoint_sccm(self, address: int, sccm: float) -> dict:
         """写入MFC设备流量设定点
@@ -987,6 +1128,32 @@ def get_connection_info():
         })
     except Exception as e:
         raise MfcError(f"获取连接信息失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+
+
+@app.get("/gas-name")
+def get_gas_name(address: int = Query(..., description="设备地址"),
+                  controller: MfcSession = Depends(get_active_controller)):
+    """获取MFC设备气体名称"""
+    try:
+        result = controller.read_gas_name(address)
+        return result
+    except MfcError:
+        raise
+    except Exception as e:
+        raise MfcError(f"获取气体名称失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+
+
+@app.get("/active-setpoint")
+def get_active_setpoint(address: int = Query(..., description="设备地址"),
+                        controller: MfcSession = Depends(get_active_controller)):
+    """获取MFC设备当前设定值"""
+    try:
+        result = controller.read_active_setpoint(address)
+        return result
+    except MfcError:
+        raise
+    except Exception as e:
+        raise MfcError(f"获取当前设定值失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
 
 if __name__ == "__main__":

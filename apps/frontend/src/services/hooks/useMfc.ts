@@ -359,10 +359,21 @@ export function useMfc(): [MfcState, MfcControls] {
 
       const devices = await MfcApi.getDevices();
 
-      // KISS原则：简化设备列表更新，依赖WebSocket提供实时状态
+      // KISS原则：最小必要字段填充，避免组件初始化错误
+      const mfcDevices: MfcDevice[] = devices.map(device => ({
+        ...device,
+        flow_sccm: 0,
+        set_flow: 0,
+        flow_percent: 0,
+        digital_setpoint_percent: 0,
+        active_setpoint_percent: 0,
+        mode: 'follow' as const,
+        status: 'disconnected' as const,
+      }));
+
       updateState({
         availableDevices: devices,
-        devices: devices as MfcDevice[], // 直接使用API返回的数据
+        devices: mfcDevices, // 使用填充了必要字段的设备数据
         deviceStatuses: new Map(), // 状态完全由WebSocket管理
         lastUpdate: new Date(),
       });

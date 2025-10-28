@@ -23,8 +23,10 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   loading = false,
   disabled = false,
 }) => {
-  // 组件内部状态
-  const [flowInputValue, setFlowInputValue] = useState<string>(device.set_flow.toString());
+  // 组件内部状态 - 添加防御性编程，处理undefined值
+  const [flowInputValue, setFlowInputValue] = useState<string>(
+    (device.set_flow ?? 0).toString()
+  );
   const [isSettingFlow, setIsSettingFlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
