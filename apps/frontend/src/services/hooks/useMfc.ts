@@ -273,7 +273,6 @@ export function useMfc(): [MfcState, MfcControls] {
 
   // 移除前端轮询 - 状态更新现在完全由后端WebSocket推送
   // 前端只负责通过WebSocket接收实时状态更新，不再主动轮询
-  console.log('MFC Hook: 前端轮询已移除，依赖后端WebSocket推送');
 
   // ==================== 端口管理 ====================
 
