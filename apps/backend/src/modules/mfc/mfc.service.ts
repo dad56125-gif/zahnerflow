@@ -670,6 +670,12 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    // 确保有订阅者
+    if (this.polling_subscribers.size === 0) {
+      this.logger.warn('Cannot start polling: no subscribers');
+      return;
+    }
+
     this.polling_status.is_running = true;
     this.polling_status.consecutive_errors = 0;
 
@@ -677,7 +683,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       this.perform_polling();
     }, this.polling_config.interval);
 
-    this.logger.log(`✅ Started MFC polling with interval ${this.polling_config.interval}ms for ${this.device_statuses.size} devices`);
+    this.logger.log(`✅ Started MFC polling with interval ${this.polling_config.interval}ms for ${this.device_statuses.size} devices and ${this.polling_subscribers.size} subscribers`);
   }
 
   /**
@@ -794,9 +800,14 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     this.polling_subscribers.add(client_id);
     this.logger.log(`Client ${client_id} subscribed to MFC updates (total subscribers: ${this.polling_subscribers.size})`);
 
-    // 移除WebSocket订阅自动启动轮询机制 - 遵循KISS原则
-    this.logger.debug(`Polling not started automatically on subscription (manual control only)`);
-    // 轮询应该通过手动接口或明确的设备扫描操作启动
+    // 如果有已知设备且已连接，启动轮询
+    if (this.connection_state === ConnectionState.CONNECTED &&
+        this.device_statuses.size > 0 &&
+        this.polling_config.enabled &&
+        !this.polling_status.is_running) {
+      this.logger.log('Starting polling due to subscription (device connected and known)');
+      this.start_polling();
+    }
   }
 
   /**
@@ -829,7 +840,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       device.error_message = undefined;
 
       // 添加调试日志
-      this.logger.debug(`Updated device ${deviceAddress}: flow=${device.flow_sccm} SCCM, setpoint=${device.setpoint_sccm} SCCM`);
+      this.logger.log(`Updated device ${deviceAddress}: flow=${device.flow_sccm} SCCM, setpoint=${device.setpoint_sccm} SCCM`);
     } else {
       this.logger.warn(`Device ${deviceAddress} not found in status cache for update`);
     }
