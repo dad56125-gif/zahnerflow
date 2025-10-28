@@ -8,6 +8,8 @@
 import React from 'react';
 import { LoopInfo } from './LoopDetector';
 import { LoopBoundary } from '../LoopBoundary';  // 导入LoopBoundary组件
+import { LoopStartNode, LoopEndNode } from '../../nodes/types';  // 导入类型定义
+import { ExecutionState } from '@zahnerflow/types';  // 导入ExecutionState类型
 import {
   LoopContextManager,
   LoopExecutionContext,
@@ -212,11 +214,19 @@ export const LoopVisualizer: React.FC<LoopVisualizerProps> = ({
   }
 
   // 转换节点格式以匹配LoopBoundary组件的接口
-  const adaptNodeToLoopNode = React.useCallback((node: any, type: 'loop_start' | 'loop_end') => {
-    return {
+  const adaptNodeToLoopNode = React.useCallback((
+    node: any,
+    type: 'loop_start' | 'loop_end'
+  ): LoopStartNode | LoopEndNode => {
+    const now = new Date();
+    const baseNode = {
       id: node.id,
-      type,
+      name: node.name || `${type}_${node.id}`,
+      category: 'flow_control' as const,
+      position: { x: node.x, y: node.y },
       data: {
+        name: node.name || `${type}_${node.id}`,
+        description: `${type} node for loop ${loop.id}`,
         parameters: {
           loop_id: loop.id,
           loop_count: loop.iterationCount,
@@ -228,18 +238,89 @@ export const LoopVisualizer: React.FC<LoopVisualizerProps> = ({
           continue_condition: loop.parameters.continue_condition,
           data_accumulation: loop.parameters.data_accumulation || 'all',
           export_format: loop.parameters.export_format || 'csv'
-        }
+        },
+        createdAt: now,
+        updatedAt: now
       },
-      position: { x: node.x, y: node.y }
+      status: ExecutionState.PENDING,
+      input: {
+        id: `${node.id}_input`,
+        name: 'Input',
+        dataType: 'flow' as const
+      },
+      output: {
+        id: `${node.id}_output`,
+        name: 'Output',
+        dataType: 'flow' as const
+      },
+      style: {
+        width: 180,
+        height: 80
+      }
     };
+
+    if (type === 'loop_start') {
+      const startNode: LoopStartNode = {
+        id: baseNode.id,
+        type: 'loop_start',
+        name: baseNode.name,
+        category: baseNode.category,
+        position: baseNode.position,
+        data: {
+          name: baseNode.data.name,
+          description: baseNode.data.description,
+          parameters: {
+            loop_id: loop.id,
+            loop_count: loop.iterationCount,
+            loop_variable: loop.parameters.loop_variable || 'i',
+            start_value: loop.parameters.start_value || 0,
+            step: loop.parameters.step || 1,
+            delay_ms: loop.parameters.delay_ms,
+            break_condition: loop.parameters.break_condition,
+            continue_condition: loop.parameters.continue_condition,
+            data_accumulation: loop.parameters.data_accumulation || 'all',
+            export_format: loop.parameters.export_format || 'csv'
+          },
+          createdAt: baseNode.data.createdAt,
+          updatedAt: baseNode.data.updatedAt
+        },
+        status: baseNode.status,
+        input: baseNode.input,
+        output: baseNode.output,
+        style: baseNode.style
+      };
+      return startNode;
+    } else {
+      const endNode: LoopEndNode = {
+        id: baseNode.id,
+        type: 'loop_end',
+        name: baseNode.name,
+        category: baseNode.category,
+        position: baseNode.position,
+        data: {
+          name: baseNode.data.name,
+          description: baseNode.data.description,
+          parameters: {
+            loop_id: loop.id
+          },
+          createdAt: baseNode.data.createdAt,
+          updatedAt: baseNode.data.updatedAt
+        },
+        status: baseNode.status,
+        input: baseNode.input,
+        output: baseNode.output,
+        style: baseNode.style
+      };
+      return endNode;
+    }
   }, [loop.id, loop.iterationCount, loop.parameters]);
 
   const startNodeData = React.useMemo(() => {
-    return adaptNodeToLoopNode(startNode, 'loop_start');
+    return adaptNodeToLoopNode(startNode, 'loop_start') as LoopStartNode;
   }, [startNode, adaptNodeToLoopNode]);
 
   const endNodeData = React.useMemo(() => {
-    return adaptNodeToLoopNode(endNode, 'loop_end');
+    return adaptNodeToLoopNode(endNode, 'loop_end') as LoopEndNode;
   }, [endNode, adaptNodeToLoopNode]);
 
   // 根据执行状态设置样式类
