@@ -5,7 +5,7 @@
  * 支持WebSocket实时通信和多设备管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useMfc } from '../services/hooks/useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { MFCConnectionPanel } from './mfc/MFCConnectionPanel';
@@ -27,80 +27,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   modal_height
 }) => {
   const [mfcState, mfcControls] = useMfc();
-  const [web_socket_connected, setWebSocketConnected] = useState(false);
-
-  // 初始化WebSocket连接
-  useEffect(() => {
-    const initializeWebSocket = () => {
-      try {
-        // 连接WebSocket服务
-        mfcWebSocketService.connect();
-
-        // 注册事件处理器
-        mfcWebSocketService.onConnected(() => {
-          console.log('MFC WebSocket connected');
-          setWebSocketConnected(true);
-          mfcWebSocketService.subscribeToMfc();
-        });
-
-        mfcWebSocketService.onDisconnected(() => {
-          console.log('MFC WebSocket disconnected');
-          setWebSocketConnected(false);
-        });
-
-        mfcWebSocketService.onStatusUpdate((data) => {
-          console.log('MFC status update received:', data);
-          // 更新设备状态到useMfc Hook
-          if (data.data && Array.isArray(data.data)) {
-            data.data.forEach(deviceStatus => {
-              mfcControls.updateDeviceStatus(deviceStatus.device_address, {
-                flow_sccm: deviceStatus.flow_sccm,
-                setpoint_sccm: deviceStatus.setpoint_sccm,
-                connection_status: deviceStatus.connection_status,
-                last_communication: deviceStatus.last_communication,
-              });
-            });
-          }
-        });
-
-        mfcWebSocketService.onSamplingData((data) => {
-          console.log('MFC sampling data received:', data);
-          // 更新采样数据到useMfc Hook
-          if (data.data && Array.isArray(data.data)) {
-            data.data.forEach(sample => {
-              mfcControls.updateFlowData(sample.device_address, {
-                flow_sccm: sample.flow_sccm,
-                timestamp: sample.timestamp,
-                setpoint_sccm: sample.setpoint_sccm,
-              });
-            });
-          }
-        });
-
-        mfcWebSocketService.onNotification((notification) => {
-          console.log('MFC notification received:', notification);
-          // 通知处理可在此添加
-        });
-
-        mfcWebSocketService.onError((error) => {
-          console.error('MFC WebSocket error:', error);
-        });
-
-      } catch (error) {
-        console.error('Failed to initialize MFC WebSocket:', error);
-      }
-    };
-
-    initializeWebSocket();
-
-    // 清理函数
-    return () => {
-      if (web_socket_connected) {
-        mfcWebSocketService.unsubscribeFromMfc();
-        mfcWebSocketService.disconnect();
-      }
-    };
-  }, []);
+  // WebSocket 连接由 useMfc hook 统一管理，这里不需要重复初始化
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modal_top; void modal_left; void modal_width; void modal_height;
@@ -113,9 +40,9 @@ export const MFCModal: React.FC<MFCModalProps> = ({
           <div className="header-title">
             <h3>质量流量控制器 (MFC)</h3>
             <div className="connection-status">
-              <span className={`status-indicator ${web_socket_connected ? 'connected' : 'disconnected'}`}></span>
+              <span className={`status-indicator ${mfcWebSocketService.connected ? 'connected' : 'disconnected'}`}></span>
               <span className="status-text">
-                {web_socket_connected ? '实时连接' : '离线'}
+                {mfcWebSocketService.connected ? '实时连接' : '离线'}
               </span>
               <span className={`connection-state-indicator ${mfcState.connection_status}`}>
                 ({mfcState.connection_status === 'connected' ? '设备已连接' :
