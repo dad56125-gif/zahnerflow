@@ -787,13 +787,34 @@ export function validateNodeConnection(sourceType: NodeType, targetType: NodeTyp
          sourceConfig.output.dataType === targetConfig.input.dataType;
 }
 
+// 生成唯一循环ID的辅助函数
+function generateLoopId(): string {
+  return `loop_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+// 导出函数，供外部使用
+export function createLoopId(): string {
+  return generateLoopId();
+}
+
 // 工具函数：创建默认节点数据（带工作站支持）
 export function createDefaultNodeDataWithWorkstation(type: string, workstation: WorkstationType): NodeData {
   const config = getNodeConfigByWorkstation(type, workstation);
+
+  // 创建参数的深拷贝
+  const parameters = { ...config.defaultParameters };
+
+  // 如果是循环节点且缺少 loop_id，自动生成一个
+  if ((type === 'loop_start' || type === 'loop_end') &&
+      (!parameters.loop_id || parameters.loop_id === '')) {
+    parameters.loop_id = generateLoopId();
+    console.log(`[createDefaultNodeDataWithWorkstation] 为${type}节点生成loop_id: ${parameters.loop_id}`);
+  }
+
   return {
     name: config.name,
     description: config.description,
-    parameters: { ...config.defaultParameters },
+    parameters,
     createdAt: new Date(),
     updatedAt: new Date()
   };
