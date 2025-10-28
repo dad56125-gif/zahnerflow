@@ -210,8 +210,8 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           // 单个地址失败不影响其他地址扫描
         }
 
-        // 添加小延迟，避免过快的请求
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // 添加0.5秒延迟，匹配设备通信超时时间
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       this.logger.log(`Async scan completed`);
