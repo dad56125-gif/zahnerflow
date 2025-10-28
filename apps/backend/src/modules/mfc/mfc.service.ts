@@ -130,9 +130,9 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         const current_devices = [...this.discovered];
 
         // 异步执行扫描，不阻塞HTTP响应
+        // 注意：clear_device_busy 在 _performAsyncScan 的 finally 块中处理
         this._performAsyncScan(scan_start, scan_end).catch(error => {
           this.logger.error(`Async scan failed: ${error.message}`);
-          this.clear_device_busy('scan');
         });
 
         return current_devices;
@@ -142,9 +142,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         start,
         end
       }
-    ).finally(() => {
-      this.clear_device_busy('scan');
-    });
+    );
   }
 
   /**
@@ -219,6 +217,12 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       // 扫描完成后更新状态缓存
       try {
         await this.status();
+
+        // 扫描完成且有设备时，如果订阅者存在则启动轮询
+        if (this.device_statuses.size > 0 && this.polling_subscribers.size > 0) {
+          this.logger.log('Starting polling after async scan completion');
+          this.start_polling();
+        }
       } catch (statusError) {
         this.logger.warn(`Failed to update status cache after async scan: ${statusError}`);
       }
