@@ -52,12 +52,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   afterInit(server: Server) {
     this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', 'WebSocket Gateway initialized');
 
-    // 避免重复设置心跳检测
-    if (!WorkflowGateway.healthInterval) {
-      WorkflowGateway.healthInterval = setInterval(() => {
-        this.performHealthCheck();
-      }, 30000); // 每30秒检测一次
-    }
+    // 移除了自动健康检查机制 - 不再自动清理非活跃连接
   }
 
   handleConnection(client: Socket) {
@@ -402,33 +397,14 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     // 使用ConsoleDisplayManager控制健康检查日志的输出
     this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Health check: ${JSON.stringify(healthData)}`);
 
-    // 检查非活跃连接
-    const inactiveClients: string[] = [];
-    for (const [clientId, client] of this.connectedClients) {
-      const inactiveTime = now.getTime() - client.lastActivity.getTime();
-      if (inactiveTime > 300000) { // 5分钟无活动
-        inactiveClients.push(clientId);
-      }
-    }
-    
-    // 清理非活跃连接
-    inactiveClients.forEach(clientId => {
-      const client = this.connectedClients.get(clientId);
-      if (client) {
-        this.consoleDisplayManager.log('WorkflowGateway', 'enableWarn', `Disconnecting inactive client: ${clientId}`);
-        client.socket.disconnect(true);
-      }
-    });
+    // 移除了自动清理非活跃连接的机制
     
     // 广播健康状态
     this.broadcast('healthCheck', healthData);
   }
 
   onModuleDestroy() {
-    if (WorkflowGateway.healthInterval) {
-      clearInterval(WorkflowGateway.healthInterval);
-      WorkflowGateway.healthInterval = null;
-    }
+    // 移除了健康检查清理机制
   }
 
   /**
@@ -459,17 +435,30 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   /**
+   * 更新客户端活动时间
+   */
+  updateClientActivity(clientId: string) {
+    const client = this.connectedClients.get(clientId);
+    if (client) {
+      client.lastActivity = new Date();
+    }
+  }
+
+  /**
    * 发送自定义事件到特定客户端
    */
   sendToClient(clientId: string, event: string, data: any) {
     const client = this.connectedClients.get(clientId);
     if (client) {
+      // 更新活动时间
+      this.updateClientActivity(clientId);
+
       const message = {
         messageId: this.generateMessageId(),
         ...data,
         timestamp: new Date(),
       };
-      
+
       client.socket.emit(event, message);
       this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Sent ${event} to client ${clientId}`);
       return true;

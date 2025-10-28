@@ -368,31 +368,7 @@ export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     }
   }
 
-  /**
-   * 清理非活跃连接
-   */
-  cleanupInactiveConnections(maxInactiveTime: number = 30 * 60 * 1000) { // 默认30分钟
-    const now = new Date();
-    const inactiveClients: string[] = [];
-
-    this.clients.forEach((client, id) => {
-      const inactiveTime = now.getTime() - client.lastActivity.getTime();
-      if (inactiveTime > maxInactiveTime) {
-        inactiveClients.push(id);
-      }
-    });
-
-    inactiveClients.forEach(clientId => {
-      const client = this.clients.get(clientId);
-      if (client) {
-        client.socket.disconnect();
-        this.clients.delete(clientId);
-        this.logger.log('MfcGateway', 'enableLog', `Cleaned up inactive client: ${clientId}`);
-      }
-    });
-
-    return inactiveClients.length;
-  }
+  // 移除了自动清理非活跃连接的方法
 
   /**
    * 获取当前连接的设备数量
