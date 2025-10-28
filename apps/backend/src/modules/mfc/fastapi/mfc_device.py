@@ -1091,7 +1091,7 @@ def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
         raise MfcError(f"扫描失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
 
 
-@app.get("/scan-events")
+@app.get("/scan-realtime-events")
 def get_device_discovery_events():
     """获取设备发现事件（用于实时轮询）"""
     try:

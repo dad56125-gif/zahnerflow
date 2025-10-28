@@ -871,7 +871,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     const pollEvents = async () => {
       try {
         // 调用FastAPI的新事件轮询端点
-        const events_response = await this.device.http_request('GET', '/scan-events');
+        const events_response = await this.device.get_device_discovery_events();
 
         if (events_response && events_response.events && Array.isArray(events_response.events)) {
           for (const event of events_response.events) {
