@@ -114,12 +114,7 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
                 ⚠️ 未检测到可用端口
               </div>
             )}
-            {available_ports.length > 0 && !selected_port && !connection_error && (
-              <div className="status-message info">
-                ℹ️ 选择端口后将自动连接
-              </div>
-            )}
-          </div>
+            </div>
 
           <div className="control-group">
             <div className="port-selector">
@@ -153,29 +148,8 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
             </div>
           )}
 
-          {/* 连接参数信息 */}
-          <div className="connection-params">
-            <div className="param-info">
-              <span className="param-label">波特率:</span>
-              <span className="param-value">19200</span>
-            </div>
-            <div className="param-info">
-              <span className="param-label">超时:</span>
-              <span className="param-value">1.0秒</span>
-            </div>
+  
           </div>
-
-          {/* 连接提示信息 */}
-          <div className="connection-hint">
-            <p>💡 提示：</p>
-            <ul>
-              <li>MFC设备默认波特率为19200</li>
-              <li>选择端口后将自动连接并扫描设备</li>
-              <li>确保设备已正确连接到所选端口</li>
-              <li>如果连接失败，请检查设备电源和连接线</li>
-            </ul>
-          </div>
-        </div>
       )}
 
       {/* 已连接时的状态显示 */}

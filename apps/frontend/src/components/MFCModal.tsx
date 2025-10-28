@@ -152,10 +152,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                 <span className="last-update">
                   最后更新: {mfcState.lastUpdate?.toLocaleTimeString() || '--:--:--'}
                 </span>
-                <span className="poll-count">
-                  轮询次数: {mfcState.pollCount}
-                </span>
-              </div>
+                  </div>
             </div>
           )}
 
