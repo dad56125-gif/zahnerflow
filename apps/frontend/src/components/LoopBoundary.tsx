@@ -16,7 +16,7 @@ interface BoundaryPosition {
   height: number;
 }
 
-export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
+const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
   startNode,
   endNode,
   nodesInLoop
@@ -135,7 +135,14 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     return `${currentIteration}/${context.iterations}`;
   };
 
+  // 调试日志
+  console.log('[LoopBoundary Debug] boundaryPos:', boundaryPos);
+  console.log('[LoopBoundary Debug] isValid:', isValid);
+  console.log('[LoopBoundary Debug] startNode:', startNode);
+  console.log('[LoopBoundary Debug] endNode:', endNode);
+
   if (!boundaryPos || !isValid) {
+    console.log('[LoopBoundary Debug] 边界无效或验证失败，返回null');
     return null;
   }
 
@@ -183,3 +190,16 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     </div>
   );
 };
+
+// 使用 React.memo 优化，只有 props 变化时才重新渲染
+export const LoopBoundary = React.memo(LoopBoundaryComponent, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键数据变化时重新渲染
+  return (
+    prevProps.startNode.id === nextProps.startNode.id &&
+    prevProps.endNode.id === nextProps.endNode.id &&
+    prevProps.nodesInLoop.length === nextProps.nodesInLoop.length &&
+    prevProps.nodesInLoop.every((node, index) =>
+      node.id === nextProps.nodesInLoop[index]?.id
+    )
+  );
+});

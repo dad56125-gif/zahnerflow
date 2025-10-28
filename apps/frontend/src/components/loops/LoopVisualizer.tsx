@@ -180,7 +180,7 @@ const LoopControlPanel: React.FC<{
 /**
  * 循环可视化主组件
  */
-export const LoopVisualizer: React.FC<LoopVisualizerProps> = ({
+const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
   loop,
   nodes,
   context,
@@ -208,8 +208,15 @@ export const LoopVisualizer: React.FC<LoopVisualizerProps> = ({
     return loopNodes.find(n => n.id === loop.endNodeId);
   }, [loopNodes, loop.endNodeId]);
 
+  // 调试日志
+  console.log('[LoopVisualizer Debug] 循环ID:', loop.id);
+  console.log('[LoopVisualizer Debug] 开始节点:', startNode);
+  console.log('[LoopVisualizer Debug] 结束节点:', endNode);
+  console.log('[LoopVisualizer Debug] 循环内节点数量:', loopNodes.length);
+
   // 如果找不到开始或结束节点，不渲染
   if (!startNode || !endNode || loopNodes.length === 0) {
+    console.log('[LoopVisualizer Debug] 未找到节点，返回null');
     return null;
   }
 
@@ -551,5 +558,18 @@ export const LoopStatusIndicator: React.FC<{
     </div>
   );
 };
+
+// 使用 React.memo 优化，只有 props 变化时才重新渲染
+export const LoopVisualizer = React.memo(LoopVisualizerComponent, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键数据变化时重新渲染
+  return (
+    prevProps.loop.id === nextProps.loop.id &&
+    prevProps.loop.nodeIds.length === nextProps.loop.nodeIds.length &&
+    prevProps.loop.iterationCount === nextProps.loop.iterationCount &&
+    prevProps.nodes.length === nextProps.nodes.length &&
+    prevProps.context?.state === nextProps.context?.state &&
+    prevProps.context?.currentIteration === nextProps.context?.currentIteration
+  );
+});
 
 export default LoopVisualizer;
