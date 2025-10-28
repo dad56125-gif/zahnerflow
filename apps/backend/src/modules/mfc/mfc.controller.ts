@@ -67,33 +67,16 @@ export class MfcController {
   }
 
   /**
-   * 扫描MFC设备地址
+   * 扫描MFC设备地址 - 支持实时设备发现
    */
   @Post('scan')
   async scan(@Body() body?: any) {
     return this.errorHandler.handleDeviceScan(
       async () => {
-        return this.mfcService.passthrough('scan', body);
+        return this.mfcService.scan(body?.start, body?.end);
       },
       {
         operation: 'scan',
-        start: body?.start,
-        end: body?.end
-      }
-    );
-  }
-
-  /**
-   * 实时扫描MFC设备地址 - 支持实时设备发现推送
-   */
-  @Post('scan-realtime')
-  async scanRealtime(@Body() body?: any) {
-    return this.errorHandler.handleDeviceScan(
-      async () => {
-        return this.mfcService.scanRealtime(body?.start, body?.end);
-      },
-      {
-        operation: 'scan-realtime',
         start: body?.start,
         end: body?.end
       }
