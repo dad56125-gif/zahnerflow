@@ -409,7 +409,7 @@ class ProgramSegment(BaseModel):
     """程序段模型"""
     id: int  # 程序段编号
     temperature: float  # 目标温度（摄氏度）
-    time: int  # 持续时间（秒）
+    time: int  # 持续时间（分钟）
 
 
 class AI518PController:
@@ -968,6 +968,26 @@ def get_comm_log():
         "total": len(logs),
         "connection_id": connection_id
     }
+
+@app.post("/parameter/write")
+def write_parameter(request: dict = Body(...), controller: 'AI518PController' = Depends(get_active_controller)):
+    """写入单个参数
+
+    Args:
+        request: 包含code和value的请求体
+
+    Returns:
+        dict: 写入结果
+    """
+    code = request.get('code')
+    value = request.get('value')
+
+    if code is None or value is None:
+        error_response = FurnaceResponse.create_error_response("Missing required parameters: code and value")
+        return error_response
+
+    return controller.write_parameter(int(code), int(value))
+
 
 @app.get("/ports")
 def ports():

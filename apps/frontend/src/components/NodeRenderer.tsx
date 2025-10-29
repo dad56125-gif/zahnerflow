@@ -138,6 +138,31 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
         {displayName}
       </div>
 
+      {/* change_temperature节点的特殊显示 */}
+      {node.type === 'change_temperature' && (
+        <div className="change_temperature-display">
+          {node.data.parameters?.current_temperature && node.data.parameters?.target_temperature ? (
+            <>
+              {/* 执行后显示温度区间 */}
+              <div className="temperature-range">
+                {Math.round(node.data.parameters.current_temperature / 10)}→{Math.round(node.data.parameters.target_temperature / 10)}
+              </div>
+              {/* 执行后显示计算时间 */}
+              {node.data.parameters?.calculated_duration && (
+                <div className="temperature-time">
+                  {node.data.parameters.calculated_duration}分钟
+                </div>
+              )}
+            </>
+          ) : (
+            /* 执行前显示目标温度 */
+            <div className="temperature-target">
+              {Math.round((node.data.parameters?.target_temperature || 25) / 10)}°C
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 节点端口（占位，后续在端口系统中实现） */}
       <div className="node-port-placeholder input" />
       <div className="node-port-placeholder output" />

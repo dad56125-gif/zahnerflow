@@ -976,4 +976,99 @@ export class FurnaceService implements OnModuleInit {
   is_operation_in_progress(): boolean {
     return this.operation_in_progress;
   }
+
+  /**
+   * 自动温度控制 - change_temperature节点核心业务逻辑
+   * 读取当前温度，计算升温时间，设置程序段28-30，启动温度监控
+   *
+   * @param params 节点参数，包含target_temperature和rate
+   * @param nodeId 节点ID，用于事件追踪
+   * @param executionId 执行ID，用于事件追踪
+   * @returns 执行结果，包含更新后的节点参数
+   */
+  async autoTemperatureControl(
+    params: {
+      target_temperature: number;  // 目标温度(°C) × 10
+      rate: number;                // 变化速率(°C/min) × 10
+      current_temperature?: number; // 当前温度(°C) × 10 (运行时查询)
+      calculated_duration?: number; // 计算时间(分钟)
+      tolerance?: number;          // 容差(°C) × 10 (固定0.5)
+      stabilization_time?: number; // 稳定时间(秒，固定30)
+    },
+    nodeId?: string,
+    executionId?: string
+  ): Promise<{
+    success: boolean;
+    updated_parameters: any;
+    error?: string;
+  }> {
+    this.logger.log(`开始自动温度控制: 目标温度=${params.target_temperature/10}°C, 速率=${params.rate/10}°C/min`);
+
+    try {
+      // 1. 确保设备已连接
+      await this.ensureInitialized();
+      if (this.connectionManager.getCurrentState() !== ConnectionState.CONNECTED) {
+        throw new Error('设备未连接，无法执行自动温度控制');
+      }
+
+      // 2. 读取当前温度
+      const currentStatus = await this.device.status();
+      const currentTemp = Math.round(currentStatus.pv * 10); // 转换为设备单位(×10)
+
+      this.logger.log(`当前温度: ${currentTemp/10}°C`);
+
+      // 3. 计算所需时间
+      const targetTemp = params.target_temperature;
+      const ratePerMin = params.rate / 10; // 转换回真实速率
+      const tempDiff = Math.abs(targetTemp - currentTemp) / 10; // 温度差(°C)
+      const calculatedDuration = Math.ceil(tempDiff / ratePerMin); // 向上取整(分钟)
+
+      this.logger.log(`温度变化: ${tempDiff}°C, 速率: ${ratePerMin}°C/min, 计算时间: ${calculatedDuration}分钟`);
+
+      // 4. 设置程序段参数
+      // c28(0x50): 当前温度
+      await this.device.setParameter(0x50, currentTemp);
+      this.logger.log(`设置c28(0x50): ${currentTemp/10}°C`);
+
+      // t28(0x51): 计算时间
+      await this.device.setParameter(0x51, calculatedDuration);
+      this.logger.log(`设置t28(0x51): ${calculatedDuration}分钟`);
+
+      // c29(0x52): 目标温度
+      await this.device.setParameter(0x52, targetTemp);
+      this.logger.log(`设置c29(0x52): ${targetTemp/10}°C`);
+
+      // t29(0x53): 5001分钟(长时间保持)
+      await this.device.setParameter(0x53, 5001);
+      this.logger.log(`设置t29(0x53): 5001分钟`);
+
+      // 5. 启动程序段28
+      await this.device.setSegment(28);
+      this.logger.log(`启动程序段28`);
+
+      // 6. 构造更新后的节点参数
+      const updatedParameters = {
+        ...params,
+        current_temperature: currentTemp,
+        calculated_duration: calculatedDuration,
+        tolerance: 5, // 0.5°C × 10
+        stabilization_time: 30
+      };
+
+      this.logger.log(`自动温度控制设置完成: ${currentTemp/10}°C → ${targetTemp/10}°C, 预计${calculatedDuration}分钟`);
+
+      return {
+        success: true,
+        updated_parameters: updatedParameters
+      };
+
+    } catch (error: any) {
+      this.logger.error(`自动温度控制失败: ${error.message}`);
+      return {
+        success: false,
+        updated_parameters: params,
+        error: error.message
+      };
+    }
+  }
 }

@@ -58,6 +58,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           'lsv_measurement',
         ].includes(node.type);
       }
+      // change_temperature节点对所有工作站都支持
+      if (node.type === 'change_temperature') {
+        return true;
+      }
       return false;
     };
 
@@ -98,6 +102,11 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       }
 
       const renderParameterInput = (key: string, defaultValue: any, currentValue: any) => {
+        // change_temperature节点的特殊处理
+        if (node.type === 'change_temperature') {
+          return renderChangeTemperatureInput(key, defaultValue, currentValue);
+        }
+
         if (typeof defaultValue === 'boolean') {
           return (
             <select
@@ -126,6 +135,155 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             value={currentValue ?? defaultValue}
             onChange={(e) => updateParameters({ ...node.data.parameters, [key]: e.target.value })}
             className="property-input glass"
+          />
+        );
+      };
+
+      // change_temperature节点的专用输入组件
+      const renderChangeTemperatureInput = (key: string, defaultValue: any, currentValue: any) => {
+        // 只显示用户可输入的参数
+        if (key === 'current_temperature' || key === 'calculated_duration' ||
+            key === 'tolerance' || key === 'stabilization_time') {
+          return (
+            <input
+              type="text"
+              value={currentValue ?? defaultValue}
+              disabled
+              className="property-input glass disabled"
+              title="运行时自动计算"
+            />
+          );
+        }
+
+        if (key === 'target_temperature') {
+          return (
+            <div className="temperature-input-group">
+              <input
+                type="number"
+                value={currentValue ?? defaultValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // 只允许数字输入
+                  if (!/^\d*$/.test(value)) return;
+
+                  const numValue = Number(value);
+                  // 边界检查和静默修正
+                  const correctedValue = Math.max(25, Math.min(1000, numValue));
+
+                  updateParameters({
+                    ...node.data.parameters,
+                    [key]: correctedValue
+                  });
+                }}
+                onBlur={(e) => {
+                  const value = e.target.value;
+                  if (!value) {
+                    updateParameters({
+                      ...node.data.parameters,
+                      [key]: defaultValue
+                    });
+                    return;
+                  }
+
+                  const numValue = Number(value);
+                  const correctedValue = Math.max(25, Math.min(1000, numValue));
+
+                  if (correctedValue !== numValue) {
+                    updateParameters({
+                      ...node.data.parameters,
+                      [key]: correctedValue
+                    });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // 阻止非数字输入
+                  if (!/^\d$/.test(e.key) &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                className="property-input glass"
+                min={25}
+                max={1000}
+                step={1}
+                title="目标温度 (25-1000°C)"
+              />
+              <span className="input-unit">°C</span>
+            </div>
+          );
+        }
+
+        if (key === 'rate') {
+          return (
+            <div className="temperature-input-group">
+              <input
+                type="number"
+                value={currentValue ?? defaultValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // 允许数字和一位小数点
+                  if (!/^\d*\.?\d?$/.test(value)) return;
+
+                  const numValue = Number(value);
+                  // 边界检查和静默修正
+                  const correctedValue = Math.max(0.1, Math.min(20, numValue));
+
+                  updateParameters({
+                    ...node.data.parameters,
+                    [key]: correctedValue
+                  });
+                }}
+                onBlur={(e) => {
+                  const value = e.target.value;
+                  if (!value) {
+                    updateParameters({
+                      ...node.data.parameters,
+                      [key]: defaultValue
+                    });
+                    return;
+                  }
+
+                  const numValue = Number(value);
+                  const correctedValue = Math.max(0.1, Math.min(20, numValue));
+
+                  if (correctedValue !== numValue) {
+                    updateParameters({
+                      ...node.data.parameters,
+                      [key]: correctedValue
+                    });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // 允许数字、小数点和控制键
+                  if (!/^\d$/.test(e.key) &&
+                      e.key !== '.' &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+
+                  // 防止多个小数点
+                  if (e.key === '.' && e.currentTarget.value.includes('.')) {
+                    e.preventDefault();
+                  }
+                }}
+                className="property-input glass"
+                min={0.1}
+                max={20}
+                step={0.1}
+                title="温度变化速率 (0.1-20 °C/min)"
+              />
+              <span className="input-unit">°C/min</span>
+            </div>
+          );
+        }
+
+        return (
+          <input
+            type="text"
+            value={currentValue ?? defaultValue}
+            disabled
+            className="property-input glass disabled"
+            title="系统参数"
           />
         );
       };

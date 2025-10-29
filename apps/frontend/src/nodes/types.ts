@@ -6,6 +6,7 @@ export type NodeType =
   // 设备控制
   | 'startup'      // 启动程序
   | 'shutdown'     // 停止程序
+  | 'change_temperature'  // 改变温度
 
   // 基础测量 - 对应设备层的8个测量方法
   | 'eis_potentiostatic'     // 恒电位EIS测量
@@ -22,7 +23,7 @@ export type NodeType =
   | 'loop_end'             // 循环结束节点
   | 'wait_delay'           // 等待/延时节点
 
-  
+
 // 重新导出WorkstationType和MeasurementType
 export type { WorkstationType, MeasurementType };
 
@@ -179,6 +180,43 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       borderRadius: '8px',
       textColor: '#ffffff',
       icon: '🛑'
+    }
+  },
+
+  change_temperature: {
+    type: 'change_temperature',
+    name: '改变温度',
+    category: 'device',
+    description: 'Furnace自动温度控制节点',
+    icon: '🌡️',
+    input: {
+      id: 'input',
+      name: '输入',
+      dataType: 'flow',
+      description: '流程输入'
+    },
+    output: {
+      id: 'output',
+      name: '输出',
+      dataType: 'flow',
+      description: '流程输出'
+    },
+    style: {
+      width: 160,
+      height: 80,
+      background: 'linear-gradient(135deg, #FF6B35, #F4511E)',
+      borderColor: '#F4511E',
+      borderRadius: '8px',
+      textColor: '#ffffff',
+      icon: '🌡️'
+    },
+    defaultParameters: {
+      target_temperature: 25,     // 目标温度(°C)
+      rate: 5.0,                  // 温度变化速率(°C/min)
+      current_temperature: 0,     // 当前温度(°C，运行时查询)
+      calculated_duration: 0,     // 计算时间(分钟，运行时计算)
+      tolerance: 0.5,             // 温度容差(°C)
+      stabilization_time: 30      // 稳定时间(秒)
     }
   },
 
@@ -594,7 +632,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
 
 // 节点分组
 export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {
-  device: ['startup', 'shutdown'],
+  device: ['startup', 'shutdown', 'change_temperature'],
   basic_measurement: [
     'eis_potentiostatic',
     'eis_galvanostatic',

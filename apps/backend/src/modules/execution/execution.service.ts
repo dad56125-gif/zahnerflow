@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { IExecutionModule, ExecutionResult, ModuleStatus } from '../../interfaces/module-interfaces';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
+import { FurnaceService } from '../furnace/furnace.service';
 import { SimpleEventBus } from '../../notification/simple-event-bus.service';
 import { ExecutionNotificationService } from './execution-notification.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
@@ -39,6 +40,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   constructor(
     protected readonly zahnerService: ZahnerZenniumService,
     protected readonly workflowService: WorkflowService,
+    protected readonly furnaceService: FurnaceService,
     protected readonly eventBus: SimpleEventBus,
     protected readonly executionNotificationService: ExecutionNotificationService,
     private readonly db: DbService,
@@ -479,6 +481,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       case 'shutdown':
         await this.executeShutdown(executionId, node);
         break;
+      case 'change_temperature':
+        await this.executeChangeTemperature(executionId, node);
+        break;
 
       // 基础测量节点 - 所有都使用zahner-measurement逻辑，但传递不同的测量类型
       case 'eis_potentiostatic':
@@ -605,6 +610,58 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const parameters = node.data?.parameters || {};
     this.consoleManager.log('ExecutionService', 'enableLog', `Loop end: ${parameters.loop_id}`);
     // 循环逻辑在工作流层面处理，这里只记录日志
+  }
+
+  private async executeChangeTemperature(executionId: string, node: any): Promise<void> {
+    const parameters = node.data?.parameters || {};
+
+    this.consoleManager.log('ExecutionService', 'enableLog', `执行change_temperature节点: ${node.id}`, {
+      target_temperature: parameters.target_temperature,
+      rate: parameters.rate
+    });
+
+    try {
+      // 参数转换：前端传递的是用户可理解的值，需要转换为设备单位
+      const convertedParams = {
+        target_temperature: Math.round(parameters.target_temperature * 10), // 转换为×10
+        rate: Math.round(parameters.rate * 10), // 转换为×10
+        tolerance: 5, // 0.5°C × 10
+        stabilization_time: 30 // 30秒
+      };
+
+      // 调用FurnaceService的autoTemperatureControl方法
+      const result = await this.furnaceService.autoTemperatureControl(
+        convertedParams,
+        node.id,
+        executionId
+      );
+
+      if (!result.success) {
+        throw new Error(`自动温度控制失败: ${result.error}`);
+      }
+
+      // 更新节点参数，保存执行结果
+      if (node.data) {
+        node.data.parameters = {
+          ...parameters,
+          ...result.updated_parameters
+        };
+      }
+
+      this.consoleManager.log('ExecutionService', 'enableLog', `change_temperature节点执行成功: ${node.id}`, {
+        current_temperature: result.updated_parameters.current_temperature / 10,
+        target_temperature: result.updated_parameters.target_temperature / 10,
+        calculated_duration: result.updated_parameters.calculated_duration
+      });
+
+    } catch (error: any) {
+      this.consoleManager.log('ExecutionService', 'enableError', `change_temperature节点执行失败: ${node.id}`, {
+        error: error.message
+      });
+
+      // 根据Todo.md要求：执行失败仅添加一条log提示，不重试
+      this.consoleManager.log('ExecutionService', 'enableLog', `change_temperature节点失败，继续执行后续节点: ${error.message}`);
+    }
   }
 
   private isMeasurementNodeType(nodeType: string): boolean {

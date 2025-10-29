@@ -301,3 +301,55 @@
   visibility: hidden;
   opacity: 0;
 }
+
+/* change_temperature节点特殊样式 */
+.change_temperature-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 60px;
+  z-index: 10;
+}
+
+.temperature-target {
+  color: #ffcc00;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.temperature-range {
+  color: #ffcc00;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  margin-bottom: 2px;
+}
+
+.temperature-time {
+  color: #00ff88;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: 9px;
+}
+
+/* PropertyPanel中temperature-input-group样式 */
+.temperature-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.temperature-input-group .input-unit {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  min-width: 40px;
+}

@@ -81,5 +81,16 @@ export class FurnaceDeviceService {
     const { data } = await this.http.post('/program/segments', segments);
     return data;
   }
+
+  /**
+   * 设置单个参数
+   * @param code 参数代码
+   * @param value 参数值
+   * @returns 设置结果
+   */
+  async setParameter(code: number, value: number): Promise<any> {
+    const { data } = await this.http.post('/parameter/write', { code, value });
+    return data;
+  }
 }
 
