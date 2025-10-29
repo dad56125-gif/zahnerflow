@@ -31,6 +31,7 @@ export type { WorkstationType, MeasurementType };
 export type ZahnerNodeType =
   | 'startup'
   | 'shutdown'
+  | 'change_temperature'
   | 'eis_potentiostatic'
   | 'eis_galvanostatic'
   | 'ocp_measurement'
@@ -778,12 +779,20 @@ export const ZAHNER_NODE_CONFIGS: Record<ZahnerNodeType, NodeConfig> = {
     defaultParameters: {
       ...NODE_CONFIGS.wait_delay.defaultParameters
     }
+  },
+  change_temperature: {
+    ...NODE_CONFIGS.change_temperature,
+    type: 'change_temperature' as ZahnerNodeType,
+    defaultParameters: {
+      ...NODE_CONFIGS.change_temperature.defaultParameters,
+      workstation: 'zahner-zennium'
+    }
   }
 };
 
 // 工作站特定的节点分组
 export const ZAHNER_NODE_GROUPS: Record<NodeCategory, ZahnerNodeType[]> = {
-  device: ['startup', 'shutdown'],
+  device: ['startup', 'shutdown', 'change_temperature'],
   basic_measurement: [
     'eis_potentiostatic',
     'eis_galvanostatic',
