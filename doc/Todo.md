@@ -675,6 +675,85 @@ import { FurnaceModule } from '../furnace/furnace.module';
 
 所有修改已完成并通过启动验证，change_temperature节点功能现在可以正常使用。
 
+### 🔧 后续问题修复
+
+**问题：change_temperature节点在Zahner工作站侧边栏中不显示**
+
+#### 问题根因分析
+- **模块化配置系统**：前端采用工作站特定的节点配置架构
+- **配置分离**：Zahner工作站使用`ZAHNER_NODE_CONFIGS`，通用配置使用`NODE_CONFIGS`
+- **缺失配置**：change_temperature节点只添加到通用配置，未添加到Zahner特定配置
+
+#### 修复内容
+1. **类型定义修复**：
+   ```typescript
+   // 在ZahnerNodeType中添加
+   export type ZahnerNodeType =
+     | 'startup'
+     | 'shutdown'
+     | 'change_temperature'  // 新增
+     | 'eis_potentiostatic'
+     // ... 其他类型
+   ```
+
+2. **节点配置修复**：
+   ```typescript
+   // 在ZAHNER_NODE_CONFIGS中添加
+   change_temperature: {
+     ...NODE_CONFIGS.change_temperature,
+     type: 'change_temperature' as ZahnerNodeType,
+     defaultParameters: {
+       ...NODE_CONFIGS.change_temperature.defaultParameters,
+       workstation: 'zahner-zennium'
+     }
+   }
+   ```
+
+3. **节点分组修复**：
+   ```typescript
+   // 在ZAHNER_NODE_GROUPS.device中添加
+   export const ZAHNER_NODE_GROUPS: Record<NodeCategory, ZahnerNodeType[]> = {
+     device: ['startup', 'shutdown', 'change_temperature'], // 新增change_temperature
+     // ... 其他分组
+   };
+   ```
+
+#### 技术架构说明
+```
+Sidebar组件渲染流程：
+┌─────────────────┐
+│   Sidebar.tsx   │
+└─────────┬───────┘
+          │ 调用getNodeConfigByWorkstation()
+          ▼
+┌─────────────────┐
+│getNodeConfigBy │
+│Workstation()    │
+└─────────┬───────┘
+          │ 根据工作站类型选择配置
+    ┌─────┴─────┐
+    │           │
+    ▼           ▼
+┌─────────┐ ┌─────────────┐
+│ZAHNER_  │ │ NODE_CONFIGS│
+│CONFIGS  │ │(通用配置)    │
+└─────────┘ └─────────────┘
+```
+
+#### 验证结果
+- ✅ **TypeScript编译**：成功，无类型错误
+- ✅ **Vite构建**：正常生成dist文件
+- ✅ **开发服务器**：成功启动在localhost:8083
+- ✅ **节点显示**：现在在Zahner工作站的"设备"分类中可见
+
+#### Git提交记录
+```
+commit bfabc6d - 修复change_temperature节点在Zahner工作站中不显示的问题
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+```
+
+**修复完成时间**：2025-10-29 13:15
+
 ### 不需要修改的文件
 - apps/frontend/src/services/api/index.ts - 节点执行完全由后端ExecutionService处理
 - apps/frontend/src/components/Sidebar.tsx - 动态读取节点配置，自动显示新节点
