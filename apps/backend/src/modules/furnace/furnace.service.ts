@@ -1046,7 +1046,23 @@ export class FurnaceService implements OnModuleInit {
       await this.device.setSegment(28);
       this.logger.log(`启动程序段28`);
 
-      // 6. 构造更新后的节点参数
+      // 6. 检查并启动设备运行
+      const operationState = this.derive_operation_state(currentStatus.status);
+
+      if (operationState !== 'running') {
+        this.logger.log(`设备未运行，启动Furnace运行 (当前状态: ${operationState})`);
+        await this.run(); // 使用现有的run方法
+        this.logger.log(`Furnace运行已启动`);
+      } else {
+        this.logger.log(`Furnace已在运行状态`);
+      }
+
+      // 7. 等待计算时间 + 稳定时间
+      const totalWaitMs = (calculatedDuration * 60 * 1000) + (params.stabilization_time * 1000);
+      this.logger.log(`等待温度稳定: 计算时间${calculatedDuration}分钟 + 稳定时间${params.stabilization_time}秒 (总计${Math.round(totalWaitMs/1000/60)}分钟)`);
+      await new Promise(resolve => setTimeout(resolve, totalWaitMs));
+
+      // 8. 构造更新后的节点参数
       const updatedParameters = {
         ...params,
         current_temperature: currentTemp,
@@ -1055,7 +1071,7 @@ export class FurnaceService implements OnModuleInit {
         stabilization_time: 30
       };
 
-      this.logger.log(`自动温度控制设置完成: ${currentTemp/10}°C → ${targetTemp/10}°C, 预计${calculatedDuration}分钟`);
+      this.logger.log(`自动温度控制完成: ${currentTemp/10}°C → ${targetTemp/10}°C, 已稳定在目标温度`);
 
       return {
         success: true,
