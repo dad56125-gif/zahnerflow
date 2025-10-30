@@ -7,6 +7,7 @@ import { ZahnerDeviceService } from '../../devices/zahner-device.service';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { ZahnerZenniumModule } from '../zahner-zennium/zahner-zennium.module';
 import { FurnaceModule } from '../furnace/furnace.module';
+import { MfcModule } from '../mfc/mfc.module';
 import { NotificationModule } from '../../notification/notification.module';
 import { CommonModule } from '../../common/common.module';
 import { HttpModule } from '@nestjs/axios';
@@ -17,6 +18,7 @@ import { DbModule } from '../../db/db.module';
     WorkflowModule,
     ZahnerZenniumModule,
     FurnaceModule,
+    MfcModule,
     forwardRef(() => NotificationModule),
     CommonModule,
     HttpModule,

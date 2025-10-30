@@ -6,6 +6,18 @@ interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;
 }
 
+// 辅助函数：获取可用MFC设备列表
+const getAvailableMfcDevices = () => {
+  // 从MFC WebSocket服务或缓存获取已连接的设备信息
+  // 这里使用静态示例，实际应该从MFC服务动态获取
+  return [
+    { value: '1:N2', label: '设备1: 氮气 (N2)', maxFlow: 200 },
+    { value: '2:O2', label: '设备2: 氧气 (O2)', maxFlow: 150 },
+    { value: '3:H2', label: '设备3: 氢气 (H2)', maxFlow: 100 },
+    { value: '4:Ar', label: '设备4: 氩气 (Ar)', maxFlow: 180 },
+  ];
+};
+
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
     const { selectedNode: node, updateNode } = useCanvasStore();
@@ -62,6 +74,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       if (node.type === 'change_temperature') {
         return true;
       }
+      // change_gas_flow节点对所有工作站都支持
+      if (node.type === 'change_gas_flow') {
+        return true;
+      }
       return false;
     };
 
@@ -105,6 +121,11 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
         // change_temperature节点的特殊处理
         if (node.type === 'change_temperature') {
           return renderChangeTemperatureInput(key, defaultValue, currentValue);
+        }
+
+        // change_gas_flow节点的特殊处理
+        if (node.type === 'change_gas_flow') {
+          return renderChangeGasFlowInput(key, defaultValue, currentValue);
         }
 
         if (typeof defaultValue === 'boolean') {
@@ -277,6 +298,134 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           );
         }
 
+        return (
+          <input
+            type="text"
+            value={currentValue ?? defaultValue}
+            disabled
+            className="property-input glass disabled"
+            title="系统参数"
+          />
+        );
+      };
+
+      // change_gas_flow节点的专用输入组件
+      const renderChangeGasFlowInput = (key: string, defaultValue: any, currentValue: any) => {
+        // 设备选择下拉组件
+        if (key === 'device_selection') {
+          const availableDevices = getAvailableMfcDevices();
+
+          return (
+            <select
+              value={currentValue ?? defaultValue}
+              onChange={(e) => {
+                const selection = e.target.value;
+                const [address, gasType] = selection.split(':');
+
+                // 解析设备信息，更新相关参数
+                const selectedDevice = availableDevices.find(d => d.value === selection);
+                updateParameters({
+                  ...node.data.parameters,
+                  [key]: selection,
+                  device_address: parseInt(address),
+                  gas_type: gasType,
+                  max_flow_sccm: selectedDevice?.maxFlow || 200
+                });
+              }}
+              className="property-select glass"
+              title="选择MFC设备和气体类型"
+            >
+              {availableDevices.map(device => (
+                <option key={device.value} value={device.value}>
+                  {device.label}
+                </option>
+              ))}
+            </select>
+          );
+        }
+
+        // 目标流量输入组件
+        if (key === 'target_flow_rate') {
+          const maxFlow = node.data.parameters?.max_flow_sccm || 200;
+
+          return (
+            <div className="flow-input-group">
+              <input
+                type="number"
+                value={currentValue ?? defaultValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // 允许数字和一位小数点
+                  if (!/^\d*\.?\d?$/.test(value)) return;
+
+                  const numValue = Number(value);
+                  // 边界检查和静默修正
+                  const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
+
+                  updateParameters({
+                    ...node.data.parameters,
+                    [key]: correctedValue
+                  });
+                }}
+                onBlur={(e) => {
+                  const value = e.target.value;
+                  if (!value) {
+                    updateParameters({
+                      ...node.data.parameters,
+                      [key]: defaultValue
+                    });
+                    return;
+                  }
+
+                  const numValue = Number(value);
+                  const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
+
+                  if (correctedValue !== numValue) {
+                    updateParameters({
+                      ...node.data.parameters,
+                      [key]: correctedValue
+                    });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // 允许数字、小数点和控制键
+                  if (!/^\d$/.test(e.key) &&
+                      e.key !== '.' &&
+                      !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+
+                  // 防止多个小数点
+                  if (e.key === '.' && e.currentTarget.value.includes('.')) {
+                    e.preventDefault();
+                  }
+                }}
+                className="property-input glass"
+                min={0}
+                max={maxFlow}
+                step={0.1}
+                title={`目标流量 (0-${maxFlow} sccm)`}
+              />
+              <span className="input-unit">sccm</span>
+            </div>
+          );
+        }
+
+        // 禁用运行时自动计算的参数
+        if (key === 'current_flow_rate' || key === 'stabilization_time' ||
+            key === 'device_address' || key === 'gas_type' || key === 'max_flow_sccm') {
+          return (
+            <input
+              type="text"
+              value={currentValue ?? defaultValue}
+              disabled
+              className="property-input glass disabled"
+              title="运行时自动设置"
+            />
+          );
+        }
+
+        // 默认输入框（用于其他可能的参数）
         return (
           <input
             type="text"

@@ -163,6 +163,29 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
         </div>
       )}
 
+      {/* change_gas_flow节点的特殊显示 */}
+      {node.type === 'change_gas_flow' && (
+        <div className="change_gas_flow-display">
+          {node.data.parameters?.current_flow_rate !== undefined && node.data.parameters?.target_flow_rate ? (
+            <>
+              {/* 执行后显示流量区间 */}
+              <div className="flow-range">
+                {node.data.parameters.current_flow_rate.toFixed(1)}→{node.data.parameters.target_flow_rate.toFixed(1)} sccm
+              </div>
+              {/* 执行后显示设备信息 */}
+              <div className="flow-info">
+                地址{node.data.parameters.device_address} ({node.data.parameters.gas_type})
+              </div>
+            </>
+          ) : (
+            /* 执行前显示目标流量 */
+            <div className="flow-target">
+              {(node.data.parameters?.target_flow_rate || 0).toFixed(1)} sccm
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 节点端口（占位，后续在端口系统中实现） */}
       <div className="node-port-placeholder input" />
       <div className="node-port-placeholder output" />

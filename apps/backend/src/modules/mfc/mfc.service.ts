@@ -612,6 +612,156 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * MFC流量控制 - change_gas_flow节点核心业务逻辑
+   * 获取当前流量，设置新流量设定值，启动流量监控
+   */
+  async setFlowRateControl(
+    params: {
+      device_address: number;        // MFC设备地址
+      gas_type: string;             // 气体类型
+      target_flow_rate: number;      // 目标流量(sccm)
+      current_flow_rate?: number;   // 当前流量(sccm, 运行时查询)
+      stabilization_time?: number;  // 稳定时间(秒, 固定10)
+    },
+    nodeId?: string,
+    executionId?: string
+  ): Promise<{
+    success: boolean;
+    updated_parameters: any;
+    error?: string;
+  }> {
+    const operation_context = {
+      operation: 'setFlowRateControl',
+      device_address: params.device_address,
+      node_id: nodeId,
+      execution_id: executionId
+    };
+
+    return this.errorHandler.handleFlowControl(
+      async () => {
+        // 1. 验证设备连接状态
+        if (this.connection_state !== ConnectionState.CONNECTED) {
+          throw new Error(`MFC设备未连接，当前状态: ${this.connection_state}`);
+        }
+
+        const device_status = this.device_statuses.get(params.device_address);
+        if (!device_status) {
+          throw new Error(`设备地址 ${params.device_address} 未找到，请确保设备已扫描并连接`);
+        }
+
+        if (device_status.connection_status !== ConnectionState.CONNECTED) {
+          throw new Error(`设备 ${params.device_address} 连接状态异常: ${device_status.connection_status}`);
+        }
+
+        this.logger.log(`[${nodeId}] 开始MFC流量控制: 设备${params.device_address}(${params.gas_type}) ${params.target_flow_rate}sccm`);
+
+        // 2. 获取当前流量
+        let current_flow_rate = params.current_flow_rate;
+        if (current_flow_rate === undefined) {
+          try {
+            const status_result = await this.device.get_device_status(params.device_address);
+            if (status_result && status_result.flow_sccm !== undefined) {
+              current_flow_rate = status_result.flow_sccm;
+              this.logger.log(`[${nodeId}] 获取当前流量: ${current_flow_rate} sccm`);
+            } else {
+              this.logger.warn(`[${nodeId}] 无法获取当前流量，使用默认值0`);
+              current_flow_rate = 0;
+            }
+          } catch (error) {
+            this.logger.warn(`[${nodeId}] 获取当前流量失败: ${error.message}，使用默认值0`);
+            current_flow_rate = 0;
+          }
+        }
+
+        // 3. 设置目标流量
+        if (params.target_flow_rate < 0) {
+          throw new Error(`目标流量不能为负数: ${params.target_flow_rate}`);
+        }
+
+        const max_flow = device_status.max_flow_sccm || 200;
+        if (params.target_flow_rate > max_flow) {
+          throw new Error(`目标流量超出设备最大限制: ${params.target_flow_rate} > ${max_flow} sccm`);
+        }
+
+        this.logger.log(`[${nodeId}] 设置流量: ${current_flow_rate} → ${params.target_flow_rate} sccm`);
+
+        const setpoint_result = await this.setpoint(params.device_address, params.target_flow_rate);
+
+        if (!setpoint_result.ok) {
+          throw new Error(`设置流量失败: ${setpoint_result.error_message || '未知错误'}`);
+        }
+
+        // 4. 启动流量监控（如果尚未启动）
+        const was_polling = this.polling_status.is_running;
+        if (!was_polling && this.polling_subscribers.size === 0) {
+          // 临时订阅以支持流量监控
+          const temp_subscription_id = `temp_${nodeId}_${executionId}`;
+          this.subscribe_to_mfc_updates(temp_subscription_id);
+
+          // 确保在方法结束时清理临时订阅
+          setTimeout(() => {
+            this.unsubscribe_from_mfc_updates(temp_subscription_id);
+          }, (params.stabilization_time || 10) * 1000 + 5000); // 稳定时间+5秒缓冲
+        }
+
+        // 5. 等待流量稳定
+        const stabilization_time = params.stabilization_time || 10;
+        this.logger.log(`[${nodeId}] 等待流量稳定，稳定时间: ${stabilization_time} 秒`);
+
+        // 简单等待稳定时间（在实际应用中可以添加更复杂的稳定性检测逻辑）
+        await new Promise(resolve => setTimeout(resolve, stabilization_time * 1000));
+
+        // 6. 获取稳定后的流量作为验证
+        let final_flow_rate = params.target_flow_rate;
+        try {
+          const final_status = await this.device.get_device_status(params.device_address);
+          if (final_status && final_status.flow_sccm !== undefined) {
+            final_flow_rate = final_status.flow_sccm;
+            this.logger.log(`[${nodeId}] 稳定后流量: ${final_flow_rate} sccm`);
+          }
+        } catch (error) {
+          this.logger.warn(`[${nodeId}] 获取稳定后流量失败: ${error.message}`);
+        }
+
+        // 7. 返回更新后的节点参数
+        const updated_parameters = {
+          device_address: params.device_address,
+          gas_type: params.gas_type,
+          target_flow_rate: params.target_flow_rate,
+          current_flow_rate: current_flow_rate,
+          final_flow_rate: final_flow_rate,
+          max_flow_sccm: device_status.max_flow_sccm,
+          stabilization_time: stabilization_time,
+          execution_timestamp: new Date().toISOString()
+        };
+
+        this.logger.log(`[${nodeId}] MFC流量控制完成: 设备${params.device_address} ${current_flow_rate}→${final_flow_rate} sccm`);
+
+        return {
+          success: true,
+          updated_parameters
+        };
+
+      },
+      operation_context
+    ).catch(error => {
+      this.logger.error(`[${nodeId}] MFC流量控制失败: ${error.message}`);
+      return {
+        success: false,
+        updated_parameters: {
+          device_address: params.device_address,
+          gas_type: params.gas_type,
+          target_flow_rate: params.target_flow_rate,
+          current_flow_rate: params.current_flow_rate || 0,
+          stabilization_time: params.stabilization_time || 10,
+          error_timestamp: new Date().toISOString()
+        },
+        error: error.message
+      };
+    });
+  }
+
   // ==================== 数据管理 ====================
 
   /**

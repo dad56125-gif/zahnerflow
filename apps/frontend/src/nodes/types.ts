@@ -7,6 +7,7 @@ export type NodeType =
   | 'startup'      // 启动程序
   | 'shutdown'     // 停止程序
   | 'change_temperature'  // 改变温度
+  | 'change_gas_flow'     // 改变气体流量
 
   // 基础测量 - 对应设备层的8个测量方法
   | 'eis_potentiostatic'     // 恒电位EIS测量
@@ -32,6 +33,7 @@ export type ZahnerNodeType =
   | 'startup'
   | 'shutdown'
   | 'change_temperature'
+  | 'change_gas_flow'
   | 'eis_potentiostatic'
   | 'eis_galvanostatic'
   | 'ocp_measurement'
@@ -218,6 +220,44 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       calculated_duration: 0,     // 计算时间(分钟，运行时计算)
       tolerance: 0.5,             // 温度容差(°C)
       stabilization_time: 30      // 稳定时间(秒)
+    }
+  },
+
+  change_gas_flow: {
+    type: 'change_gas_flow',
+    name: '更改气体流量',
+    category: 'device',
+    description: 'MFC气体流量控制节点',
+    icon: '💨',
+    input: {
+      id: 'input',
+      name: '输入',
+      dataType: 'flow',
+      description: '流程输入'
+    },
+    output: {
+      id: 'output',
+      name: '输出',
+      dataType: 'flow',
+      description: '流程输出'
+    },
+    style: {
+      width: 160,
+      height: 80,
+      background: 'linear-gradient(135deg, #2196F3, #1976D2)',
+      borderColor: '#1976D2',
+      borderRadius: '8px',
+      textColor: '#ffffff',
+      icon: '💨'
+    },
+    defaultParameters: {
+      device_selection: '1:N2',        // 设备选择(地址:气体类型)
+      device_address: 1,               // 解析出的设备地址
+      gas_type: 'N2',                  // 解析出的气体类型
+      target_flow_rate: 50,            // 目标流量(sccm)
+      current_flow_rate: 0,            // 当前流量(sccm, 运行时查询)
+      max_flow_sccm: 200,              // 该设备的最大流量
+      stabilization_time: 10           // 稳定时间(秒)
     }
   },
 
@@ -633,7 +673,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
 
 // 节点分组
 export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {
-  device: ['startup', 'shutdown', 'change_temperature'],
+  device: ['startup', 'shutdown', 'change_temperature', 'change_gas_flow'],
   basic_measurement: [
     'eis_potentiostatic',
     'eis_galvanostatic',
@@ -692,6 +732,22 @@ export const ZAHNER_NODE_CONFIGS: Record<ZahnerNodeType, NodeConfig> = {
     type: 'shutdown' as ZahnerNodeType,
     defaultParameters: {
       ...NODE_CONFIGS.shutdown.defaultParameters,
+      workstation: 'zahner-zennium'
+    }
+  },
+  change_temperature: {
+    ...NODE_CONFIGS.change_temperature,
+    type: 'change_temperature' as ZahnerNodeType,
+    defaultParameters: {
+      ...NODE_CONFIGS.change_temperature.defaultParameters,
+      workstation: 'zahner-zennium'
+    }
+  },
+  change_gas_flow: {
+    ...NODE_CONFIGS.change_gas_flow,
+    type: 'change_gas_flow' as ZahnerNodeType,
+    defaultParameters: {
+      ...NODE_CONFIGS.change_gas_flow.defaultParameters,
       workstation: 'zahner-zennium'
     }
   },
@@ -779,20 +835,12 @@ export const ZAHNER_NODE_CONFIGS: Record<ZahnerNodeType, NodeConfig> = {
     defaultParameters: {
       ...NODE_CONFIGS.wait_delay.defaultParameters
     }
-  },
-  change_temperature: {
-    ...NODE_CONFIGS.change_temperature,
-    type: 'change_temperature' as ZahnerNodeType,
-    defaultParameters: {
-      ...NODE_CONFIGS.change_temperature.defaultParameters,
-      workstation: 'zahner-zennium'
-    }
   }
 };
 
 // 工作站特定的节点分组
 export const ZAHNER_NODE_GROUPS: Record<NodeCategory, ZahnerNodeType[]> = {
-  device: ['startup', 'shutdown', 'change_temperature'],
+  device: ['startup', 'shutdown', 'change_temperature', 'change_gas_flow'],
   basic_measurement: [
     'eis_potentiostatic',
     'eis_galvanostatic',
@@ -827,9 +875,9 @@ export function getNodeGroupsByWorkstation(workstation: WorkstationType): Record
 export function validateNodeConnection(sourceType: NodeType, targetType: NodeType): boolean {
   const sourceConfig = getNodeConfig(sourceType);
   const targetConfig = getNodeConfig(targetType);
-  
+
   // 检查数据类型兼容性
-  return sourceConfig.output.dataType === 'flow' || 
+  return sourceConfig.output.dataType === 'flow' ||
          targetConfig.input.dataType === 'flow' ||
          sourceConfig.output.dataType === targetConfig.input.dataType;
 }

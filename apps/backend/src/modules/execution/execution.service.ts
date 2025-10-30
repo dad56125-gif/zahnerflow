@@ -3,6 +3,7 @@ import { IExecutionModule, ExecutionResult, ModuleStatus } from '../../interface
 import { WorkflowService } from '../workflow/workflow.service';
 import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
 import { FurnaceService } from '../furnace/furnace.service';
+import { MfcService } from '../mfc/mfc.service';
 import { SimpleEventBus } from '../../notification/simple-event-bus.service';
 import { ExecutionNotificationService } from './execution-notification.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
@@ -41,6 +42,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     protected readonly zahnerService: ZahnerZenniumService,
     protected readonly workflowService: WorkflowService,
     protected readonly furnaceService: FurnaceService,
+    protected readonly mfcService: MfcService,
     protected readonly eventBus: SimpleEventBus,
     protected readonly executionNotificationService: ExecutionNotificationService,
     private readonly db: DbService,
@@ -484,6 +486,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       case 'change_temperature':
         await this.executeChangeTemperature(executionId, node);
         break;
+      case 'change_gas_flow':
+        await this.executeChangeGasFlow(executionId, node);
+        break;
 
       // 基础测量节点 - 所有都使用zahner-measurement逻辑，但传递不同的测量类型
       case 'eis_potentiostatic':
@@ -661,6 +666,78 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
       // 根据Todo.md要求：执行失败仅添加一条log提示，不重试
       this.consoleManager.log('ExecutionService', 'enableLog', `change_temperature节点失败，继续执行后续节点: ${error.message}`);
+    }
+  }
+
+  private async executeChangeGasFlow(executionId: string, node: any): Promise<void> {
+    const parameters = node.data?.parameters || {};
+
+    this.consoleManager.log('ExecutionService', 'enableLog', `执行change_gas_flow节点: ${node.id}`, {
+      device_selection: parameters.device_selection,
+      target_flow_rate: parameters.target_flow_rate
+    });
+
+    try {
+      // 从device_selection解析设备地址和气体类型
+      if (!parameters.device_selection) {
+        throw new Error('device_selection参数不能为空');
+      }
+
+      const [deviceAddressStr, gasType] = parameters.device_selection.split(':');
+      if (!deviceAddressStr || !gasType) {
+        throw new Error('device_selection格式错误，应为"地址:气体类型"格式');
+      }
+
+      const device_address = parseInt(deviceAddressStr, 10);
+      if (isNaN(device_address)) {
+        throw new Error(`设备地址解析失败: ${deviceAddressStr}`);
+      }
+
+      // 构造MFC服务调用参数
+      const convertedParams = {
+        device_address: device_address,
+        gas_type: gasType,
+        target_flow_rate: parameters.target_flow_rate,
+        current_flow_rate: parameters.current_flow_rate,
+        stabilization_time: 10 // 固定10秒稳定时间
+      };
+
+      // 调用MfcService的setFlowRateControl方法
+      const result = await this.mfcService.setFlowRateControl(
+        convertedParams,
+        node.id,
+        executionId
+      );
+
+      if (!result.success) {
+        throw new Error(`MFC流量控制失败: ${result.error}`);
+      }
+
+      // 更新节点参数，保存解析后的设备信息和执行结果
+      if (node.data) {
+        node.data.parameters = {
+          ...parameters,
+          device_address: device_address,
+          gas_type: gasType,
+          ...result.updated_parameters
+        };
+      }
+
+      this.consoleManager.log('ExecutionService', 'enableLog', `change_gas_flow节点执行成功: ${node.id}`, {
+        device_address: device_address,
+        gas_type: gasType,
+        target_flow_rate: result.updated_parameters.target_flow_rate,
+        current_flow_rate: result.updated_parameters.current_flow_rate,
+        final_flow_rate: result.updated_parameters.final_flow_rate
+      });
+
+    } catch (error: any) {
+      this.consoleManager.log('ExecutionService', 'enableError', `change_gas_flow节点执行失败: ${node.id}`, {
+        error: error.message
+      });
+
+      // 失败时仅记录日志，不重试
+      this.consoleManager.log('ExecutionService', 'enableLog', `change_gas_flow节点失败，继续执行后续节点: ${error.message}`);
     }
   }
 
