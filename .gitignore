@@ -124,3 +124,5 @@ $RECYCLE.BIN/
 # 其他
 .jsonl/
 *.jsonl
+
+.claude/

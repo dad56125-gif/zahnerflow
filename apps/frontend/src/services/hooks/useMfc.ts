@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { usePolling } from './usePolling';
-import { MfcApi } from '../api';
+import { MfcApi } from '../api/index';
 import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate } from '../mfc-websocket.service';
 import {
   MfcDeviceInfo,

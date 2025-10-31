@@ -1,121 +1,201 @@
-.user-selector {
+﻿/* 鐢ㄦ埛閫夋嫨鍣ㄥ鍣?*/
+.user-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   position: relative;
-  display: inline-block;
+  /* 涓虹粷瀵瑰畾浣嶇殑瀛愬厓绱犳彁渚涘畾浣嶅弬鑰?*/
 }
 
+/* 瀹氫箟鐢ㄦ埛閫夐」楂樺害鍙橀噺 */
+:root {
+  --user-option-height: 48px; /* 鍗曚釜鐢ㄦ埛閫夐」鐨勯珮搴?*/
+}
+
+/* 鐢ㄦ埛閫夋嫨鍣ㄦ寜閽?- 妯′豢宸ヤ綔绔欐牱寮?*/
 .user-selector-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
   cursor: pointer;
+  transition: var(--transition);
+  height: calc(var(--btn-h) * 0.85);
+  color: white;
+  min-width: 120px;
+  justify-content: space-between;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.user-display {
+.user-selector-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-selector-button .user-display {
+  font-size: 0.9rem;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
-.dropdown-arrow {
-  font-size: 12px;
+.user-selector-button .dropdown-arrow {
+  font-size: 0.8rem;
   transition: transform 0.2s;
 }
 
-.user-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 1000;
-  min-width: 280px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  overflow: hidden;
-}
-
-.dropdown-section {
-  padding: 8px;
-}
-
-.create-user-btn {
-  width: 100%;
-  padding: 8px 12px;
-  background: #f8f9fa;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+/* 鍦嗗舰鏂板缓鐢ㄦ埛鎸夐挳 */
+.create-user-btn-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 300;
+  color: white;
+  cursor: pointer;
+  transition: var(--transition);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  flex-shrink: 0;
 }
 
-.create-user-btn:hover {
-  background: #e9ecef;
+.create-user-btn-circle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
 }
 
-.dropdown-divider {
-  height: 1px;
-  background: #eee;
-  margin: 0 8px;
+/* 鐢ㄦ埛涓嬫媺鑿滃崟 - 妯′豢宸ヤ綔绔欎笅鎷夎彍鍗曟牱寮忥紝浣跨敤fixed瀹氫綅绐佺牬瀹瑰櫒杈圭晫 */
+.user-dropdown {
+  position: fixed;
+  top: auto;
+  left: auto;
+  z-index: 2500; /* 鎻愰珮鍒拌秴杩囧伐浣滅珯涓嬫媺鑿滃崟鐨剒-index */
+  min-width: 280px;
+  max-height: 300px; /* 鍚堢悊鐨勬渶澶ч珮搴﹂檺鍒?*/
+  background: var(--glass-bg);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .user-list {
-  max-height: 200px;
+  min-height: var(--user-option-height); /* 鏈€灏?涓敤鎴烽珮搴?*/
+  max-height: calc(var(--user-option-height) * 5); /* 鏈€澶?涓敤鎴烽珮搴?*/
   overflow-y: auto;
 }
 
 .user-option {
   width: 100%;
-  padding: 8px 12px;
+  padding: 12px 16px;
+  height: var(--user-option-height);
   background: transparent;
   border: none;
   text-align: left;
   cursor: pointer;
-  border-radius: 4px;
+  color: var(--text-primary);
+  transition: var(--transition);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .user-option:hover {
-  background: #f8f9fa;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .user-option.selected {
-  background: #e3f2fd;
+  background: rgba(33, 150, 243, 0.3);
   border-left: 3px solid #2196f3;
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
 }
 
-.create-user-dialog {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
+/* 鏆傛棤鐢ㄦ埛鎻愮ず鏍峰紡 */
+.empty-users {
+  padding: 12px 16px;
+  height: var(--user-option-height);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+  cursor: default;
+  user-select: none;
 }
 
+/* 鏂板缓鐢ㄦ埛寮瑰嚭妗?- 绠€鍖栧畾浣嶇瓥鐣ワ紝閬垮厤CSS骞叉壈 */
+.create-user-dialog {
+  /* 瀹氫綅鍜屾牱寮忓皢鐢盝avaScript鍔ㄦ€佽缃?*/
+  z-index: 3000; /* 鎻愰珮鍒拌秴杩嘥opBar鍜屼笅鎷夎彍鍗曠殑灞傜骇 */
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+`n  pointer-events: auto;`n  display: flex;`n  align-items: center;`n  justify-content: center;`n}
+
 .dialog-content {
-  background: white;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
   padding: 24px;
-  border-radius: 8px;
   min-width: 320px;
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .dialog-content h3 {
   margin: 0 0 16px 0;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .dialog-content input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
   margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  color: var(--text-primary);
+  transition: var(--transition);
+}
+
+.dialog-content input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.dialog-content input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .dialog-buttons {
@@ -135,21 +215,23 @@
 }
 
 .btn-secondary {
-  background: #6c757d;
-  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #5a6268;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .btn-primary {
-  background: #007bff;
+  background: var(--accent-color, #007bff);
   color: white;
+  border: 1px solid var(--accent-color, #007bff);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--accent-color-dark, #0056b3);
 }
 
 .btn:disabled {
@@ -157,15 +239,39 @@
   cursor: not-allowed;
 }
 
+/* 鍝嶅簲寮忛€傞厤 */
 @media (max-width: 768px) {
   .user-dropdown {
     min-width: 200px;
   }
 
+  .user-selector-button {
+    min-width: 100px;
+  }
+
   .user-display {
-    max-width: 120px;
+    max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* 婊氬姩鏉℃牱寮?*/
+.user-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.user-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.user-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.user-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }

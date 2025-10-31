@@ -1,17 +1,6 @@
 import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { IsString, IsNotEmpty, IsOptional, IsEmail } from 'class-validator';
-
-export class CreateUserDto {
-  @IsString()
-  @IsNotEmpty()
-  user: string;
-
-  @IsString()
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-}
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('api/users')
 export class UsersController {

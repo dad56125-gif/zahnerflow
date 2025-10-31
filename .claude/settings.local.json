@@ -58,7 +58,16 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Skill(debug)",
-      "Skill(superpowers:brainstorming)"
+      "Skill(superpowers:brainstorming)",
+      "Bash(mkdir:*)",
+      "Skill(superpowers:test-driven-development)",
+      "Bash(npm run build:frontend:*)",
+      "Bash(ts-node:*)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:requesting-code-review)",
+      "Bash(git show:*)",
+      "Bash(npx typescript:*)",
+      "Bash(KillShell 2b14b9)"
     ]
   },
   "enableAllProjectMcpServers": true,

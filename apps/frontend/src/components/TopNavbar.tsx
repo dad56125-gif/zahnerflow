@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserSelector } from './UserSelector';
 import './UserSelector.css';
 
@@ -14,12 +14,15 @@ interface TopNavbarProps {
   onWorkstationSelect?: (workstation: Workstation) => void;
   onDeviceClick?: (device: 'furnace' | 'mfc') => void;
   fixedDevice?: 'furnace' | 'mfc' | null;
+  currentUser?: string;
+  onUserChange?: (user: string) => void;
 }
 
-export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDeviceClick }) => {
+export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDeviceClick, currentUser, onUserChange }) => {
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
   const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
-  const [currentUser, setCurrentUser] = useState<string>('test_user');
+  const [internalUser, setInternalUser] = useState<string>('test_user');
+  const effectiveUser = currentUser ?? internalUser;
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
 
@@ -102,6 +105,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
             <span className="separator">|</span>
             <span className="app-status">就绪</span>
           </div>
+
+          {/* 用户选择器 - 位于"就绪"状态文字右侧 */}
+          <div className="user-section">
+            <UserSelector
+              currentUser={effectiveUser}
+              onUserChange={onUserChange ?? setInternalUser}
+            />
+          </div>
         </div>
 
         <div className="device-controls">
@@ -129,7 +140,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
                 <span className="workstation-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
                 <span className="workstation-name">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
                 <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
-                <span className="dropdown-arrow">▾</span>
+                <span className="dropdown-arrow">▼</span>
               </button>
 
               {isWorkstationDropdownOpen && (
@@ -156,15 +167,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
             </div>
           </div>
 
-          <div className="user-section">
-            <UserSelector
-              currentUser={currentUser}
-              onUserChange={setCurrentUser}
-            />
-          </div>
         </div>
       </div>
     </div>
   );
 };
-

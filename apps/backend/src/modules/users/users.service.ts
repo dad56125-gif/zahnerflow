@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DbService, User } from '../../db/db.service';
 import { validate } from 'class-validator';
-import { CreateUserDto } from './users.controller';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {

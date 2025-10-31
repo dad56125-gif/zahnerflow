@@ -81,6 +81,12 @@
   font-weight: 500;
 }
 
+.top-navbar .user-section {
+  margin-left: 1rem;
+  display: flex;
+  align-items: center;
+}
+
 .top-navbar .status-indicator {
   width: 8px;
   height: 8px;

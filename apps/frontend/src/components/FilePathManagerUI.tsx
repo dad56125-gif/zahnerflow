@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
 export interface FilePathConfig {
@@ -36,9 +36,12 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
 
   const loadProjects = async () => {
     try {
-      const response = await api.get(`/api/files/projects?user=${currentUser}`);
-      if (response.success) {
-        setProjects(response.projects);
+      const response: any = await api.get(`/files/projects?user=${currentUser}`);
+      if (response?.success) {
+        const list = Array.isArray(response.projects)
+          ? (response.projects as string[])
+          : (Array.isArray(response.data) ? (response.data as string[]) : []);
+        setProjects(list);
       }
     } catch (error) {
       console.error('Failed to load projects:', error);
@@ -55,17 +58,17 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     setError('');
 
     try {
-      const response = await api.post('/api/files/path-config', {
+      const response: any = await api.post('/files/path-config', {
         user: currentUser,
         ...config,
-        test_type: 'eis' // Default, will be overridden by actual measurement type
+        test_type: 'eis'
       });
 
-      if (response.success) {
+      if (response?.success) {
         onSave(config);
         onClose();
       } else {
-        setError(response.message || '保存失败');
+        setError(response?.message || '保存失败');
       }
     } catch (error) {
       setError('保存配置失败，请重试');
@@ -75,19 +78,19 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   };
 
   const handleBrowseDirectory = () => {
-    // Create input element for directory selection
     const input = document.createElement('input');
     input.type = 'file';
-    input.webkitdirectory = true;
+    (input as any).webkitdirectory = true;
     input.multiple = true;
 
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
-        // Get the directory path from the first file
-        const firstFile = files[0];
-        const path = firstFile.webkitRelativePath.split('/')[0];
-        setConfig({ ...config, base_path: path });
+        const firstFile = files[0] as any;
+        const path = firstFile.webkitRelativePath?.split('/')?.[0] || '';
+        if (path) {
+          setConfig({ ...config, base_path: path });
+        }
       }
     };
 
@@ -125,13 +128,13 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="project_select">项目名:</label>
+            <label htmlFor="project_select">项目名</label>
             <div className="project-input-group">
               <select
                 id="project_select"
                 value={config.project_name}
                 onChange={(e) => setConfig({ ...config, project_name: e.target.value })}
-                onFocus={(e) => {
+                onFocus={() => {
                   if (!config.project_name && projects.length === 0) {
                     loadProjects();
                   }

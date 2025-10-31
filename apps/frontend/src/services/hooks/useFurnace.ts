@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { FurnaceApi } from '../api';
+import { FurnaceApi } from '../api/index';
 import { furnaceWebSocketService } from '../furnace-websocket.service';
 import {
   FurnaceStatus,
