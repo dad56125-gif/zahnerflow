@@ -176,34 +176,71 @@ def accurate_timer(duration: float, interval: float):
 
 def _save_data_to_csv(filename, fieldnames, data):
     """Auto-save function to periodically save measurement data to CSV"""
-    import csv, os
-    with open(filename, 'a', newline='', encoding='utf-8') as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
-        if not os.path.exists(filename) or os.path.getsize(filename) == 0:
-            w.writeheader()
-        w.writerows(data)
+    import csv
+    import os
+
+    try:
+        # 确保目录存在
+        directory = os.path.dirname(filename)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+
+        # 检查文件是否存在并是否为空
+        file_exists = os.path.exists(filename)
+        file_is_empty = not file_exists or os.path.getsize(filename) == 0
+
+        with open(filename, 'a', newline='', encoding='utf-8') as f:
+            w = csv.DictWriter(f, fieldnames=fieldnames)
+            if file_is_empty:
+                w.writeheader()
+            w.writerows(data)
+
+        return True
+
+    except (IOError, OSError, csv.Error) as e:
+        print(f"[错误] 保存数据到CSV失败: {str(e)}")
+        return False
+    except Exception as e:
+        print(f"[错误] 保存数据时发生未知错误: {str(e)}")
+        return False
 
 def _calculate_statistics_from_csv(filename):
     """Calculate statistics from CSV file instead of memory"""
     import csv
     import statistics
 
-    currents = []
-    with open(filename, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row.get('current'):
-                currents.append(float(row['current']))
+    try:
+        currents = []
+        with open(filename, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get('current'):
+                    try:
+                        current_value = float(row['current'])
+                        currents.append(current_value)
+                    except (ValueError, TypeError) as e:
+                        print(f"[警告] 跳过无效的电流值: {row.get('current')} - {str(e)}")
+                        continue
 
-    if not currents:
+        if not currents:
+            return {"count": 0, "avg": 0, "min": 0, "max": 0}
+
+        return {
+            "count": len(currents),
+            "avg": statistics.mean(currents),
+            "min": min(currents),
+            "max": max(currents)
+        }
+
+    except FileNotFoundError:
+        print(f"[错误] CSV文件不存在: {filename}")
         return {"count": 0, "avg": 0, "min": 0, "max": 0}
-
-    return {
-        "count": len(currents),
-        "avg": statistics.mean(currents),
-        "min": min(currents),
-        "max": max(currents)
-    }
+    except (IOError, OSError, csv.Error) as e:
+        print(f"[错误] 读取CSV文件失败: {str(e)}")
+        return {"count": 0, "avg": 0, "min": 0, "max": 0}
+    except Exception as e:
+        print(f"[错误] 计算统计信息时发生未知错误: {str(e)}")
+        return {"count": 0, "avg": 0, "min": 0, "max": 0}
 
 def measure_ocp_with_autosave(device_wrapper, polarization_time, sampling_time,
                             min_current, max_current, output_file):
@@ -211,27 +248,36 @@ def measure_ocp_with_autosave(device_wrapper, polarization_time, sampling_time,
     import time
 
     measurement_data = []
-    last_save_time = time.monotonic()
+    measurement_start_time = time.monotonic()
+    last_save_time = measurement_start_time
 
     for _ in accurate_timer(duration=polarization_time, interval=sampling_time):
         current = device_wrapper.getCurrent()
-        elapsed_time = time.monotonic() - last_save_time
+        # 修复时间计算：相对于测量开始时间，不是上次保存时间
+        elapsed_time = time.monotonic() - measurement_start_time
         measurement_data.append({"time": elapsed_time, "current": current})
 
-        # Auto-save every 5 minutes
-        if time.monotonic() - last_save_time >= 300:
-            _save_data_to_csv(output_file, ['time', 'current'], measurement_data)
-            last_save_time = time.monotonic()
-            measurement_data.clear()
-            print("[自动保存] 已保存数据")
+        # Auto-save every 5 minutes (300 seconds)
+        current_time = time.monotonic()
+        if current_time - last_save_time >= 300:
+            if _save_data_to_csv(output_file, ['time', 'current'], measurement_data):
+                last_save_time = current_time
+                measurement_data.clear()
+                print(f"[自动保存] 已保存数据 (测量时间: {elapsed_time:.1f}s)")
+            else:
+                print(f"[错误] 自动保存失败，继续收集数据")
 
         # Early exit on abnormal current
         if not (min_current <= current <= max_current):
+            print(f"[警告] 电流异常 ({current:.6e}A)，提前结束测量")
             break
 
-    # Final save
+    # Final save - save any remaining data
     if measurement_data:
-        _save_data_to_csv(output_file, ['time', 'current'], measurement_data)
+        if _save_data_to_csv(output_file, ['time', 'current'], measurement_data):
+            print(f"[最终保存] 已保存剩余 {len(measurement_data)} 个数据点")
+        else:
+            print(f"[错误] 最终保存失败")
 
     # Read from CSV for statistics (instead of memory)
     return _calculate_statistics_from_csv(output_file)
