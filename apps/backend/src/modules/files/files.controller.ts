@@ -1,20 +1,68 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { FilesService, RegisterFilePayload } from './files.service';
 
 @Controller('api/files')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
-  /**
-   * 注册/生成数据文件路径并（可选）创建文件
-   * 请求体：
-   * { ownerName, individualName, testType, prefix, cycle, timestamp?, extension?, createEmpty?, content? }
-   */
   @Post('register')
-  @HttpCode(HttpStatus.OK)
-  async register(@Body() body: RegisterFilePayload) {
-    const result = await this.filesService.registerDataFile(body);
-    return { success: true, ...result };
+  @HttpCode(HttpStatus.CREATED)
+  registerFile(@Body() payload: RegisterFilePayload) {
+    try {
+      const result = this.filesService.registerFile(payload);
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+
+  @Get('projects')
+  getProjects(@Query('user') user: string) {
+    if (!user) {
+      return {
+        success: false,
+        message: 'User parameter is required'
+      };
+    }
+
+    const projects = this.filesService.getProjects(user);
+    return {
+      success: true,
+      projects
+    };
+  }
+
+  @Post('path-config')
+  savePathConfig(@Body() config: {
+    user: string;
+    base_path: string;
+    project_name: string;
+    individual_name: string;
+    test_type: string;
+  }) {
+    try {
+      const result = this.filesService.registerFile({
+        ...config,
+        filename: 'placeholder.csv' // Will be replaced by device layer
+      });
+
+      return {
+        success: true,
+        id: result.id,
+        dir_path: result.dir_path
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
   }
 }
 
