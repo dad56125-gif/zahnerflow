@@ -4,6 +4,35 @@ import * as fs from 'fs';
 import { Workflow } from '../interfaces/module-interfaces';
 import { Subject, Observable } from 'rxjs';
 
+export interface User {
+  id: string;
+  user: string;
+  email: string | null;
+  created_at: string;
+}
+
+export interface WorkflowEnhanced {
+  id: string;
+  user: string;
+  project_name: string;
+  title: string;
+  description: string | null;
+  tags: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DataFilePath {
+  id: string;
+  user: string;
+  project_name: string;
+  individual_name: string;
+  test_type: string;
+  base_path: string;
+  dir_path: string;
+  created_at: string;
+}
+
 type DbJson = {
   workflow: Array<{
     id: string;
@@ -59,6 +88,11 @@ export class DbService implements OnModuleInit {
   private events$ = new Subject<{ type: string; payload: any; ts: string }>();
   private recentEvents: Array<{ type: string; payload: any; ts: string }> = [];
   private readonly eventBufferSize = 200;
+
+  // New in-memory arrays for enhanced schema
+  private users: User[] = [];
+  private workflows: WorkflowEnhanced[] = [];
+  private dataFilePaths: DataFilePath[] = [];
 
   async onModuleInit(): Promise<void> {
     await fs.promises.mkdir(path.dirname(this.dbPath), { recursive: true });
@@ -392,5 +426,105 @@ export class DbService implements OnModuleInit {
     const start = Math.max(0, (page - 1) * limit);
     const items = arr.slice(start, start + limit);
     return { items, total };
+  }
+
+  // User management methods
+  createUser(userData: { user: string; email?: string }): User {
+    const existingUser = this.users.find(u => u.user === userData.user);
+    if (existingUser) {
+      throw new Error(`User ${userData.user} already exists`);
+    }
+
+    const user: User = {
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      user: userData.user,
+      email: userData.email || null,
+      created_at: new Date().toISOString()
+    };
+
+    this.users.push(user);
+    return user;
+  }
+
+  getUsers(): User[] {
+    return this.users;
+  }
+
+  deleteUser(user: string): boolean {
+    const index = this.users.findIndex(u => u.user === user);
+    if (index === -1) return false;
+
+    this.users.splice(index, 1);
+    return true;
+  }
+
+  // Updated workflow methods
+  createWorkflow(workflowData: {
+    user: string;
+    project_name: string;
+    title: string;
+    description?: string;
+    tags?: string;
+  }): WorkflowEnhanced {
+    const workflow: WorkflowEnhanced = {
+      id: `workflow_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      user: workflowData.user,
+      project_name: workflowData.project_name,
+      title: workflowData.title,
+      description: workflowData.description || null,
+      tags: workflowData.tags || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    this.workflows.push(workflow);
+    return workflow;
+  }
+
+  // Data file path management
+  createDataFilePath(pathData: {
+    user: string;
+    project_name: string;
+    individual_name: string;
+    test_type: string;
+    base_path: string;
+  }): DataFilePath {
+    // Normalize Windows path
+    const normalizedPath = pathData.base_path.replace(/\//g, '\\');
+    const dirPath = path.join(
+      normalizedPath,
+      pathData.project_name,
+      pathData.individual_name,
+      pathData.test_type
+    );
+
+    const record: DataFilePath = {
+      id: `path_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      user: pathData.user,
+      project_name: pathData.project_name,
+      individual_name: pathData.individual_name,
+      test_type: pathData.test_type,
+      base_path: normalizedPath,
+      dir_path: dirPath,
+      created_at: new Date().toISOString()
+    };
+
+    this.dataFilePaths.push(record);
+    return record;
+  }
+
+  getDataFilePaths(user?: string): DataFilePath[] {
+    if (user) {
+      return this.dataFilePaths.filter(p => p.user === user);
+    }
+    return this.dataFilePaths;
+  }
+
+  getProjects(user: string): string[] {
+    const projects = new Set<string>();
+    this.dataFilePaths
+      .filter(p => p.user === user)
+      .forEach(p => projects.add(p.project_name));
+    return Array.from(projects);
   }
 }
