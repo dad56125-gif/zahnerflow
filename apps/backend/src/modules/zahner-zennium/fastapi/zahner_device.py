@@ -148,31 +148,93 @@ def accurate_timer(duration: float, interval: float):
     """
     一个通过 Python 生成器实现的高精度时钟。
 
-    这个函数会在每个指定的时间间隔“让出”一次控制权给 for 循环，
+    这个函数会在每个指定的时间间隔"让出"一次控制权给 for 循环，
     并通过动态计算休眠时间来确保长时间运行时不会累积计时误差。
 
     :param duration: 时钟应该运行的总秒数。
-    :param interval: 每次“滴答”之间期望的间隔秒数。
+    :param interval: 每次"滴答"之间期望的间隔秒数。
     """
     # 使用 time.monotonic()，因为它是一个单调递增的时钟，不受系统时间调整的影响。
     start_time = time.monotonic()
     next_tick = start_time
-    
+
     # 循环直到达到总运行时长
     while time.monotonic() - start_time < duration:
         # yield 关键字是生成器的核心。它会暂停函数，并将控制权返回给 for 循环。
         # 当 for 循环下一次迭代时，代码会从这里恢复执行。
         yield
-        
-        # 计算下一个目标“滴答”时间点
+
+        # 计算下一个目标"滴答"时间点
         next_tick += interval
-        
+
         # 计算为了正好在目标时间点醒来，需要休眠多久
         sleep_duration = next_tick - time.monotonic()
-        
+
         # 只有在没有超时的情况下才休眠
         if sleep_duration > 0:
             time.sleep(sleep_duration)
+
+def _save_data_to_csv(filename, fieldnames, data):
+    """Auto-save function to periodically save measurement data to CSV"""
+    import csv, os
+    with open(filename, 'a', newline='', encoding='utf-8') as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        if not os.path.exists(filename) or os.path.getsize(filename) == 0:
+            w.writeheader()
+        w.writerows(data)
+
+def _calculate_statistics_from_csv(filename):
+    """Calculate statistics from CSV file instead of memory"""
+    import csv
+    import statistics
+
+    currents = []
+    with open(filename, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get('current'):
+                currents.append(float(row['current']))
+
+    if not currents:
+        return {"count": 0, "avg": 0, "min": 0, "max": 0}
+
+    return {
+        "count": len(currents),
+        "avg": statistics.mean(currents),
+        "min": min(currents),
+        "max": max(currents)
+    }
+
+def measure_ocp_with_autosave(device_wrapper, polarization_time, sampling_time,
+                            min_current, max_current, output_file):
+    """Modified measurement loop with auto-save every 5 minutes"""
+    import time
+
+    measurement_data = []
+    last_save_time = time.monotonic()
+
+    for _ in accurate_timer(duration=polarization_time, interval=sampling_time):
+        current = device_wrapper.getCurrent()
+        elapsed_time = time.monotonic() - last_save_time
+        measurement_data.append({"time": elapsed_time, "current": current})
+
+        # Auto-save every 5 minutes
+        if time.monotonic() - last_save_time >= 300:
+            _save_data_to_csv(output_file, ['time', 'current'], measurement_data)
+            last_save_time = time.monotonic()
+            measurement_data.clear()
+            print("[自动保存] 已保存数据")
+
+        # Early exit on abnormal current
+        if not (min_current <= current <= max_current):
+            break
+
+    # Final save
+    if measurement_data:
+        _save_data_to_csv(output_file, ['time', 'current'], measurement_data)
+
+    # Read from CSV for statistics (instead of memory)
+    return _calculate_statistics_from_csv(output_file)
 
 def connect_device(host: str = "localhost"):
     """连接设备 - 返回结构化结果"""
