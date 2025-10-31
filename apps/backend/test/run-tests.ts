@@ -19,7 +19,7 @@ export async function run() {
   if (failed > 0) process.exit(1);
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   (async () => { await run(); })();
 }
 

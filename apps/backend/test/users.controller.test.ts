@@ -1,13 +1,12 @@
 // test/users.controller.test.ts
 import { test, run } from './run-tests';
+import { UsersController } from '../src/modules/users/users.controller';
+import { UsersService } from '../src/modules/users/users.service';
+import { DbService } from '../src/db/db.service';
 
 test('POST /api/users should create new user', async () => {
   // This will fail because UsersController doesn't exist yet
   try {
-    const { UsersController } = require('../src/modules/users/users.controller');
-    const { UsersService } = require('../src/modules/users/users.service');
-    const { DbService } = require('../src/db/db.service');
-
     const dbService = new DbService();
     const usersService = new UsersService(dbService);
     const usersController = new UsersController(usersService);
@@ -30,10 +29,6 @@ test('POST /api/users should create new user', async () => {
 
 test('GET /api/users should return user list', async () => {
   try {
-    const { UsersController } = require('../src/modules/users/users.controller');
-    const { UsersService } = require('../src/modules/users/users.service');
-    const { DbService } = require('../src/db/db.service');
-
     const dbService = new DbService();
     const usersService = new UsersService(dbService);
     const usersController = new UsersController(usersService);
@@ -59,10 +54,6 @@ test('GET /api/users should return user list', async () => {
 
 test('DELETE /api/users/:user should delete user', async () => {
   try {
-    const { UsersController } = require('../src/modules/users/users.controller');
-    const { UsersService } = require('../src/modules/users/users.service');
-    const { DbService } = require('../src/db/db.service');
-
     const dbService = new DbService();
     const usersService = new UsersService(dbService);
     const usersController = new UsersController(usersService);
@@ -86,4 +77,4 @@ test('DELETE /api/users/:user should delete user', async () => {
   }
 });
 
-if (require.main === module) run();
+if (import.meta.url === `file://${process.argv[1]}`) run();
