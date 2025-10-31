@@ -11,6 +11,7 @@ import { ConsoleModule } from './modules/console/console.module';
 import { AppController } from './app.controller';
 import { MfcModule } from './modules/mfc/mfc.module';
 import { FurnaceModule } from './modules/furnace/furnace.module';
+import { UsersModule } from './modules/users/users.module';
 
 /**
  * 应用主模块
@@ -29,6 +30,7 @@ import { FurnaceModule } from './modules/furnace/furnace.module';
     ConsoleModule,
     MfcModule,
     FurnaceModule,
+    UsersModule,
   ],
   controllers: [AppController],
 })
