@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { UserSelector } from './UserSelector';
+import './UserSelector.css';
 
 interface Workstation {
   id: string;
@@ -17,6 +19,7 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDeviceClick }) => {
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
   const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
+  const [currentUser, setCurrentUser] = useState<string>('test_user');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
 
@@ -151,6 +154,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="user-section">
+            <UserSelector
+              currentUser={currentUser}
+              onUserChange={setCurrentUser}
+            />
           </div>
         </div>
       </div>
