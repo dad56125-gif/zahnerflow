@@ -22,6 +22,7 @@ interface CanvasProps {
   onResetZoom: () => void;
   showWorkflowManager?: boolean;
   onToggleWorkflowManager?: () => void;
+  showFilePathManager?: boolean;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -31,7 +32,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   onZoomOut,
   onResetZoom,
   showWorkflowManager = false,
-  onToggleWorkflowManager
+  onToggleWorkflowManager,
+  showFilePathManager = false
 }) => {
   const {
     nodes,
@@ -582,6 +584,13 @@ export const Canvas: React.FC<CanvasProps> = ({
           <div className="workflow-manager-panel">
             <WorkflowManagerUI />
           </div>
+        </div>
+      )}
+
+      {/* 文件路径管理器覆盖层 - 新增 */}
+      {showFilePathManager && (
+        <div className="file-path-manager-overlay-container">
+          {/* FilePathManagerUI will be rendered by Toolbar */}
         </div>
       )}
     </div>
