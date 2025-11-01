@@ -12,6 +12,11 @@ import {
   LoopExecutionContext
 } from './loops';
 import { WorkflowManagerUI } from './workflow';
+import {
+  layout_service,
+  Position,
+  LayoutCalculationOptions
+} from '../services/layout';
 
 
 interface CanvasProps {
@@ -23,6 +28,7 @@ interface CanvasProps {
   showWorkflowManager?: boolean;
   onToggleWorkflowManager?: () => void;
   showFilePathManager?: boolean;
+  onLoopDetected?: (loops: LoopInfo[]) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -33,7 +39,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   onResetZoom,
   showWorkflowManager = false,
   onToggleWorkflowManager,
-  showFilePathManager = false
+  showFilePathManager = false,
+  onLoopDetected
 }) => {
   const {
     nodes,
@@ -77,9 +84,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   };
 
-  const CANVAS_ROW_HEIGHT = 150;
-  const NODE_WIDTH = 140; // 节点默认宽度
-
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -110,125 +114,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
   }, [setCanvasSize]);
 
-
-  // 动态计算节点布局配置 - 安全的动态宽度计算
-  const calculateDynamicLayout = useCallback(() => {
-    const padding = 100; // canvas左右预留边距
-    const availableWidth = canvasSize.width - (padding * 2); // 可用宽度
-
-    // 计算在最小间距下能容纳的最大节点数
-    const maxNodesPerRow = Math.max(1, Math.floor(availableWidth / (NODE_WIDTH + 60)));
-
-    // 根据当前节点总数决定每行实际节点数
-    const totalNodes = nodes.length;
-    const actualNodesPerRow = Math.min(maxNodesPerRow, totalNodes);
-
-    let spacing = 0;
-    let startX = padding;
-
-    if (actualNodesPerRow === 1) {
-      // 单个节点在可用范围内完全居中 - 安全访问节点
-      const firstNode = nodes[0];
-      const firstNodeWidth = firstNode?.style?.width || NODE_WIDTH;
-      startX = padding + (availableWidth - firstNodeWidth) / 2;
-      spacing = 0;
-    } else {
-      // 每行真正的两端对齐：
-      // 第一个节点左边缘距离左边框 = 最后一个节点右边缘距离右边框
-      // 节点之间间隔相等
-      // 安全计算前actualNodesPerRow个节点的实际宽度总和
-      let totalNodesWidth = 0;
-      for (let i = 0; i < actualNodesPerRow && i < nodes.length; i++) {
-        const node = nodes[i];
-        totalNodesWidth += node?.style?.width || NODE_WIDTH;
-      }
-
-      const totalSpacingWidth = availableWidth - totalNodesWidth;
-      spacing = totalSpacingWidth / (actualNodesPerRow - 1);
-
-      // 起始位置就是左padding，确保第一个节点左边缘距离canvas左边框正好是padding
-      startX = padding;
-    }
-
-    return {
-      nodesPerRow: actualNodesPerRow,
-      spacing: spacing,
-      startX: startX,
-      connectionLength: spacing
-    };
-  }, [canvasSize.width, nodes.length]);
-
-  // 重构：将节点位置计算移到 useEffect 内部，避免循环依赖
-  const calculateNodePosition = useCallback((index: number, nodesArray: ElectrochemicalNode[]) => {
-    const padding = 100; // canvas左右预留边距
-    const availableWidth = canvasSize.width - (padding * 2); // 可用宽度
-
-    const { nodesPerRow } = calculateDynamicLayout();
-    const row = Math.floor(index / nodesPerRow);
-    const col = index % nodesPerRow;
-
-    // 获取当前行的节点
-    const rowStartIndex = row * nodesPerRow;
-    const rowEndIndex = Math.min(rowStartIndex + nodesPerRow, nodesArray.length);
-    const nodesInThisRow = nodesArray.slice(rowStartIndex, rowEndIndex);
-
-    let x, spacing, startX;
-
-    if (nodesInThisRow.length === 1 && row === 0) {
-      // 第一行的单个节点在可用范围内完全居中
-      const nodeWidth = nodesInThisRow[0]?.style?.width || NODE_WIDTH;
-      startX = padding + (availableWidth - nodeWidth) / 2;
-      spacing = 0;
-      x = startX;
-    } else {
-      // 每行独立计算间距，实现真正的两端对齐
-      let totalNodesWidth = 0;
-      for (const node of nodesInThisRow) {
-        totalNodesWidth += node?.style?.width || NODE_WIDTH;
-      }
-
-      const totalSpacingWidth = availableWidth - totalNodesWidth;
-      spacing = totalSpacingWidth / (nodesInThisRow.length - 1);
-      startX = padding; // 第一个节点左边缘距离左边框 = padding
-
-      // 计算当前节点的X位置，考虑Z字形排列
-      if (row % 2 === 0) {
-        // 奇数行：从左到右（正常顺序）
-        x = startX;
-        for (let i = 0; i < col; i++) {
-          const nodeWidth = nodesInThisRow[i]?.style?.width || NODE_WIDTH;
-          x += nodeWidth + spacing;
-        }
-      } else {
-        // 偶数行：从右到左（反向顺序）
-        x = startX;
-        for (let i = 0; i < nodesInThisRow.length - 1 - col; i++) {
-          const nodeWidth = nodesInThisRow[i]?.style?.width || NODE_WIDTH;
-          x += nodeWidth + spacing;
-        }
-      }
-    }
-
-    const y = 100 + row * CANVAS_ROW_HEIGHT;
-    return { x, y };
-  }, [calculateDynamicLayout, canvasSize.width]);
-
-  // 使用两端对齐算法更新节点位置 - 移除延迟，立即计算避免抽搐
+  // 使用统一布局服务更新节点位置
   useEffect(() => {
     if (canvasSize.width > 0 && nodes.length > 0) {
-        setLayoutStable(false);
-        // 立即计算并设置最终位置，移除setTimeout避免视觉抽搐
-        const updatedNodes = nodes.map((node, index) => {
-            const newPosition = calculateNodePosition(index, nodes, canvasSize.width); // ✅ 修复：传入canvasSize.width
-            return {
-                ...node,
-                position: newPosition
-            };
-        });
-        setNodes(updatedNodes);
-        setLayoutStable(true);
+      setLayoutStable(false);
+
+      // 使用统一布局服务重新计算所有节点位置
+      const updatedNodes = layout_service.recalculateAllPositions(nodes, canvasSize.width);
+      setNodes(updatedNodes);
+      setLayoutStable(true);
     }
-  }, [canvasSize, nodes.length, calculateNodePosition, setNodes]); // 恢复nodes.length依赖避免无限循环
+  }, [canvasSize, nodes.length, setNodes]);
 
   
   const handleCanvasDrop = (e: React.DragEvent) => {
@@ -238,7 +134,19 @@ export const Canvas: React.FC<CanvasProps> = ({
       const rect = canvasRef.current.getBoundingClientRect();
       const dropX = (e.clientX - rect.left) / zoomLevel;
       const dropY = (e.clientY - rect.top) / zoomLevel;
-      const index = useCanvasStore.getState().calculateNodeIndex({ x: dropX, y: dropY }, canvasSize.width, nodes.length);
+
+      // 使用统一布局服务计算节点索引
+      const options: LayoutCalculationOptions = {
+        canvas_width: canvasSize.width,
+        nodes: nodes,
+        enable_zigzag: true,
+        center_single_node: true
+      };
+      const index = layout_service.calculateNodeIndexFromPosition(
+        { x: dropX, y: dropY },
+        options
+      );
+
       addNode(nodeType, selectedWorkstation, index);
     }
   };
@@ -264,8 +172,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         currentState.deleteNode(node.id);
       } else {
         // 如果没有deleteNode方法，手动实现
-        setNodes(prev => prev.filter(n => n.id !== node.id));
-        setConnections(prev => prev.filter(
+        setNodes(nodes.filter(n => n.id !== node.id));
+        setConnections(connections.filter(
           conn => conn.sourceId !== node.id && conn.targetId !== node.id
         ));
       }
@@ -544,7 +452,6 @@ export const Canvas: React.FC<CanvasProps> = ({
         {/* 渲染工作流执行顺序连接线 */}
         <ConnectionLines
           nodes={nodes}
-          canvasSize={canvasSize}
           canvasWidth={canvasSize.width}
           layoutStable={layoutStable}
         />

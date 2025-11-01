@@ -1,29 +1,26 @@
 /**
  * 连接线组件
  *
- * 提供S形布局的自动连接线渲染，用于可视化工作流的执行顺序
- * 只显示节点间的顺序连接，不支持用户自定义连接
+ * 使用统一布局计算服务提供S形布局的自动连接线渲染
+ * 用于可视化工作流的执行顺序，只显示节点间的顺序连接
+ * 简化版本 - 移除所有重复的布局计算逻辑
  */
 
 import React from 'react';
 import { ElectrochemicalNode } from '../nodes/types';
+import {
+  layout_service,
+  connection_binding_service,
+  CachedConnection,
+  LayoutCalculationOptions,
+  NodePosition
+} from '../services/layout';
 
 export interface ConnectionLinesProps {
   nodes: ElectrochemicalNode[];
   canvasWidth: number;
   layoutStable: boolean;
   className?: string;
-}
-
-export interface CachedConnection {
-  id: string;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  midX?: number;
-  midY?: number;
-  isLShape: boolean;
 }
 
 export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
@@ -33,144 +30,44 @@ export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
   className = ''
 }) => {
   const [cachedConnections, setCachedConnections] = React.useState<CachedConnection[]>([]);
+  const [prevNodes, setPrevNodes] = React.useState<ElectrochemicalNode[]>([]);
 
-  // 节点默认宽度
-  const NODE_WIDTH = 140;
-  const CANVAS_ROW_HEIGHT = 150;
-
-  // 动态计算节点布局配置
-  const calculateDynamicLayout = React.useCallback(() => {
-    const padding = 100;
-    const availableWidth = canvasWidth - (padding * 2);
-
-    const maxNodesPerRow = Math.max(1, Math.floor(availableWidth / (NODE_WIDTH + 60)));
-    const totalNodes = nodes.length;
-    const actualNodesPerRow = Math.min(maxNodesPerRow, totalNodes);
-
-    let spacing = 0;
-    let startX = padding;
-
-    if (actualNodesPerRow === 1) {
-      const firstNode = nodes[0];
-      const firstNodeWidth = firstNode?.style?.width || NODE_WIDTH;
-      startX = padding + (availableWidth - firstNodeWidth) / 2;
-      spacing = 0;
-    } else {
-      let totalNodesWidth = 0;
-      for (let i = 0; i < actualNodesPerRow && i < nodes.length; i++) {
-        const node = nodes[i];
-        totalNodesWidth += node?.style?.width || NODE_WIDTH;
-      }
-
-      const totalSpacingWidth = availableWidth - totalNodesWidth;
-      spacing = totalSpacingWidth / (actualNodesPerRow - 1);
-      startX = padding;
-    }
-
-    return {
-      nodesPerRow: actualNodesPerRow,
-      spacing: spacing,
-      startX: startX,
-      connectionLength: spacing
-    };
-  }, [canvasWidth, nodes.length]);
-
-  // 计算节点位置
-  const calculateNodePosition = React.useCallback((index: number, nodesArray: ElectrochemicalNode[]) => {
-    const padding = 100;
-    const availableWidth = canvasWidth - (padding * 2);
-
-    const { nodesPerRow } = calculateDynamicLayout();
-    const row = Math.floor(index / nodesPerRow);
-    const col = index % nodesPerRow;
-
-    const rowStartIndex = row * nodesPerRow;
-    const rowEndIndex = Math.min(rowStartIndex + nodesPerRow, nodesArray.length);
-    const nodesInThisRow = nodesArray.slice(rowStartIndex, rowEndIndex);
-
-    let x, spacing, startX;
-
-    if (nodesInThisRow.length === 1 && row === 0) {
-      const nodeWidth = nodesInThisRow[0]?.style?.width || NODE_WIDTH;
-      startX = padding + (availableWidth - nodeWidth) / 2;
-      spacing = 0;
-      x = startX;
-    } else {
-      let totalNodesWidth = 0;
-      for (const node of nodesInThisRow) {
-        totalNodesWidth += node?.style?.width || NODE_WIDTH;
-      }
-
-      const totalSpacingWidth = availableWidth - totalNodesWidth;
-      spacing = totalSpacingWidth / (nodesInThisRow.length - 1);
-      startX = padding;
-
-      if (row % 2 === 0) {
-        x = startX;
-        for (let i = 0; i < col; i++) {
-          const nodeWidth = nodesInThisRow[i]?.style?.width || NODE_WIDTH;
-          x += nodeWidth + spacing;
-        }
-      } else {
-        x = startX;
-        for (let i = 0; i < nodesInThisRow.length - 1 - col; i++) {
-          const nodeWidth = nodesInThisRow[i]?.style?.width || NODE_WIDTH;
-          x += nodeWidth + spacing;
-        }
-      }
-    }
-
-    const y = 100 + row * CANVAS_ROW_HEIGHT;
-    return { x, y };
-  }, [calculateDynamicLayout, canvasWidth]);
-
-  // 计算连接线
+  // 使用统一布局服务计算所有连接线
   React.useEffect(() => {
     if (!layoutStable || nodes.length === 0) {
       setCachedConnections([]);
+      setPrevNodes(nodes);
       return;
     }
 
-    const newConnections = nodes.map((node, index) => {
-      if (index >= nodes.length - 1) return null;
-      const position = calculateNodePosition(index, nodes, canvasWidth);
-      const nextPosition = calculateNodePosition(index + 1, nodes, canvasWidth);
-      const { nodesPerRow, connectionLength } = calculateDynamicLayout();
-      const currentRow = Math.floor(index / nodesPerRow);
-      const nextRow = Math.floor((index + 1) / nodesPerRow);
+    // 检查是否需要更新连接线（性能优化）
+    if (!connection_binding_service.shouldUpdateConnections(prevNodes, nodes)) {
+      return;
+    }
 
-      if (currentRow === nextRow) {
-        const isLeftToRight = currentRow % 2 === 0;
-        const startX = isLeftToRight ? position.x + (node.style.width || NODE_WIDTH) : position.x;
-        const endX = isLeftToRight ? nextPosition.x : nextPosition.x + (node.style.width || NODE_WIDTH);
-        return {
-          id: `line-${index}`,
-          startX,
-          startY: position.y + 30,
-          endX,
-          endY: nextPosition.y + 30,
-          isLShape: false
-        };
-      } else {
-        const isLeftToRight = currentRow % 2 === 0;
-        const startX = isLeftToRight ? position.x + (node.style.width || NODE_WIDTH) : position.x;
-        const endX = nextRow % 2 === 0 ? nextPosition.x : nextPosition.x + (node.style.width || NODE_WIDTH);
-        const midX = startX + (isLeftToRight ? connectionLength : -connectionLength);
-        return {
-          id: `line-${index}`,
-          startX,
-          startY: position.y + 30,
-          endX,
-          endY: nextPosition.y + 30,
-          midX,
-          midY: nextPosition.y + 30,
-          isLShape: true
-        };
-      }
-    }).filter(Boolean) as CachedConnection[];
+    try {
+      // 使用统一布局服务计算节点位置
+      const options: LayoutCalculationOptions = {
+        canvas_width: canvasWidth,
+        nodes: nodes,
+        enable_zigzag: true,
+        center_single_node: true
+      };
 
-    setCachedConnections(newConnections);
-  }, [layoutStable, nodes, calculateNodePosition]);
+      const node_positions: NodePosition[] = layout_service.calculateAllNodePositions(options);
+      const layout = layout_service.calculateDynamicLayout(options);
+
+      // 使用连接线绑定服务计算连接线
+      const connections = connection_binding_service.calculateConnections(node_positions, layout);
+      const cached = connection_binding_service.generateCachedConnections(connections);
+
+      setCachedConnections(cached);
+      setPrevNodes(nodes);
+    } catch (error) {
+      console.error('连接线计算错误:', error);
+      setCachedConnections([]);
+    }
+  }, [layoutStable, nodes, canvasWidth, prevNodes]);
 
   return (
     <svg
@@ -205,31 +102,31 @@ export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
       {/* 渲染工作流执行顺序连接线 */}
       {layoutStable && cachedConnections.map((conn) => (
         <g key={conn.id}>
-          {conn.isLShape ? (
+          {conn.is_l_shape ? (
             <>
               <line
-                x1={conn.startX}
-                y1={conn.startY}
-                x2={conn.midX}
-                y2={conn.startY}
+                x1={conn.start_x}
+                y1={conn.start_y}
+                x2={conn.mid_x}
+                y2={conn.start_y}
                 className="connection-line"
                 stroke="rgba(255,255,255,0.6)"
                 strokeWidth="2"
               />
               <line
-                x1={conn.midX}
-                y1={conn.startY}
-                x2={conn.midX}
-                y2={conn.midY}
+                x1={conn.mid_x}
+                y1={conn.start_y}
+                x2={conn.mid_x}
+                y2={conn.mid_y}
                 className="connection-line"
                 stroke="rgba(255,255,255,0.6)"
                 strokeWidth="2"
               />
               <line
-                x1={conn.midX}
-                y1={conn.midY}
-                x2={conn.endX}
-                y2={conn.endY}
+                x1={conn.mid_x}
+                y1={conn.mid_y}
+                x2={conn.end_x}
+                y2={conn.end_y}
                 className="connection-line"
                 stroke="rgba(255,255,255,0.6)"
                 strokeWidth="2"
@@ -238,10 +135,10 @@ export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
             </>
           ) : (
             <line
-              x1={conn.startX}
-              y1={conn.startY}
-              x2={conn.endX}
-              y2={conn.endY}
+              x1={conn.start_x}
+              y1={conn.start_y}
+              x2={conn.end_x}
+              y2={conn.end_y}
               className="connection-line"
               stroke="rgba(255,255,255,0.6)"
               strokeWidth="2"

@@ -7,7 +7,6 @@ export { WorkflowManager } from './WorkflowManager';
 export { WorkflowExporter } from './WorkflowExporter';
 export { WorkflowImporter } from './WorkflowImporter';
 export { WorkflowManagerUI } from './WorkflowManagerUI';
-export { WorkflowTest } from './WorkflowTest';
 
 // 类型导出
 export type {
@@ -21,5 +20,4 @@ export type {
 export type { WorkflowExporterProps } from './WorkflowExporter';
 export type { WorkflowImporterProps } from './WorkflowImporter';
 export type { WorkflowManagerUIProps } from './WorkflowManagerUI';
-export type { WorkflowTestProps } from './WorkflowTest';
 

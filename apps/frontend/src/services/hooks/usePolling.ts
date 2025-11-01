@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DeviceError } from '../api';
+import { DeviceError } from '../api/index';
 import { isRetryableError } from '../utils/apiUtils';
 
 /**

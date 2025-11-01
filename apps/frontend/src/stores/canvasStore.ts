@@ -1,58 +1,24 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { 
-  ElectrochemicalNode, 
-  NodeType, 
-  WorkstationType, 
-  createDefaultNodeDataWithWorkstation, 
-  getNodeConfigByWorkstation 
+import {
+  ElectrochemicalNode,
+  NodeType,
+  WorkstationType,
+  createDefaultNodeDataWithWorkstation,
+  getNodeConfigByWorkstation
 } from '../nodes/types';
+import {
+  layout_service,
+  Position,
+  LayoutCalculationOptions
+} from '../services/layout';
 
-// Re-defining Connection and Position as they are local to App.tsx
+// Re-defining Connection as they are local to App.tsx
 interface Connection {
   id: string;
   sourceId: string;
   targetId: string;
 }
-
-interface Position {
-  x: number;
-  y: number;
-}
-
-// --- Layout Logic (moved from App.tsx) ---
-const NODE_SPACING = 200; // 节点间距
-const NODE_START_X = 50; // 起始X坐标
-const CANVAS_ROW_HEIGHT = 150; // 行间距
-
-const calculateNodePosition = (index: number, canvasWidth: number): Position => {
-  const nodesPerRow = Math.max(1, Math.floor((canvasWidth - 100) / NODE_SPACING));
-  const row = Math.floor(index / nodesPerRow);
-  const col = index % nodesPerRow;
-  
-  // S形布局：偶数行从左到右，奇数行从右到左
-  const x = NODE_START_X + (row % 2 === 0 ? col : nodesPerRow - 1 - col) * NODE_SPACING;
-  const y = 100 + row * CANVAS_ROW_HEIGHT; // 100px顶部留白
-  
-  return { x, y };
-};
-
-const calculateNodeIndex = (position: Position, canvasWidth: number, nodeCount: number): number => {
-    const row = Math.round((position.y - 100) / CANVAS_ROW_HEIGHT);
-    const nodesPerRow = Math.max(1, Math.floor((canvasWidth - 100) / NODE_SPACING));
-    
-    if (row < 0) return 0;
-    
-    const col = Math.round((position.x - NODE_START_X) / NODE_SPACING);
-    
-    let actualCol = col;
-    if (row % 2 === 1) {
-      actualCol = nodesPerRow - 1 - col;
-    }
-    
-    const index = row * nodesPerRow + actualCol;
-    return Math.max(0, Math.min(nodeCount, index)); // Allow inserting at the end
-};
 
 // --- 智能循环节点配对 ---
 const findLastUnpairedLoopStart = (nodes: ElectrochemicalNode[]): ElectrochemicalNode | null => {
@@ -175,10 +141,8 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
           ...nodes.slice(targetIndex)
       ];
 
-      const repositionedNodes = newNodes.map((node, i) => ({
-        ...node,
-        position: calculateNodePosition(i, canvasSize.width)
-      }));
+      // 使用统一布局服务重新计算位置
+      const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
 
       // 自动创建连接：如果不是第一个节点，创建与前一个节点的连接
       const newConnections = [...connections];
@@ -212,10 +176,8 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       const { canvasSize } = get();
       set(state => {
         const newNodes = state.nodes.filter(node => node.id !== nodeId);
-        const repositionedNodes = newNodes.map((node, i) => ({
-          ...node,
-          position: calculateNodePosition(i, canvasSize.width)
-        }));
+        // 使用统一布局服务重新计算位置
+        const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
         return {
           nodes: repositionedNodes,
           connections: state.connections.filter(conn => conn.sourceId !== nodeId && conn.targetId !== nodeId),
@@ -230,17 +192,22 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       const nodeIndex = nodes.findIndex(node => node.id === nodeId);
       if (nodeIndex === -1) return;
 
-      const targetIndex = calculateNodeIndex(newPosition, canvasSize.width, nodes.length);
+      // 使用统一布局服务计算目标索引
+      const options: LayoutCalculationOptions = {
+        canvas_width: canvasSize.width,
+        nodes: nodes,
+        enable_zigzag: true,
+        center_single_node: true
+      };
+      const targetIndex = layout_service.calculateNodeIndexFromPosition(newPosition, options);
       if (targetIndex === nodeIndex) return;
 
       const newNodes = [...nodes];
       const [movedNode] = newNodes.splice(nodeIndex, 1);
       newNodes.splice(targetIndex, 0, movedNode);
 
-      const repositionedNodes = newNodes.map((node, i) => ({
-        ...node,
-        position: calculateNodePosition(i, canvasSize.width)
-      }));
+      // 使用统一布局服务重新计算位置
+      const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
 
       set({ nodes: repositionedNodes, validationError: validateNodes(repositionedNodes) });
     },
@@ -261,15 +228,20 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
 
     recalculateNodePositions: () => {
       const { nodes, canvasSize } = get();
-      const repositionedNodes = nodes.map((node, i) => ({
-        ...node,
-        position: calculateNodePosition(i, canvasSize.width)
-      }));
+      // 使用统一布局服务重新计算位置
+      const repositionedNodes = layout_service.recalculateAllPositions(nodes, canvasSize.width);
       set({ nodes: repositionedNodes });
     },
 
     calculateNodeIndex: (position, canvasWidth, nodeCount) => {
-      return calculateNodeIndex(position, canvasWidth, nodeCount);
+      // 使用统一布局服务计算节点索引
+      const options: LayoutCalculationOptions = {
+        canvas_width: canvasWidth,
+        nodes: get().nodes, // 使用当前nodes
+        enable_zigzag: true,
+        center_single_node: true
+      };
+      return layout_service.calculateNodeIndexFromPosition(position, options);
     }
 
   }

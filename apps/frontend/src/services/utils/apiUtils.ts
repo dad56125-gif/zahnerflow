@@ -4,7 +4,7 @@
  * 提供API调用的通用工具函数和错误处理
  */
 
-import { DeviceError } from '../api';
+import { DeviceError } from '../api/index';
 
 /**
  * 判断错误是否可重试

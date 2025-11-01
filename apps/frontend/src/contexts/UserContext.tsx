@@ -37,8 +37,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const loadUsers = async () => {
     const response = await api.get('/users');
-    if (response && response.users) {
-      const userList = response.users as string[];
+    if (response && (response as any).users) {
+      const userList = (response as any).users as string[];
       const fullUsers: User[] = userList.map(username => {
         return {
           id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
