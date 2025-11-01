@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钝角箭头设计预览</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            color: white;
+        }
+
+        .preview-container {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 800px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .arrow-demo {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 40px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        .arrow-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .arrow-item svg {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .label {
+            font-size: 14px;
+            opacity: 0.9;
+            text-align: center;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 300;
+        }
+
+        .title p {
+            margin: 10px 0 0 0;
+            opacity: 0.8;
+            font-size: 16px;
+        }
+
+        .comparison {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <div class="title">
+            <h1>钝角箭头设计预览</h1>
+            <p>120°钝角箭头与传统三角形箭头的对比</p>
+        </div>
+
+        <div class="arrow-demo">
+            <!-- 向右的钝角箭头 -->
+            <div class="arrow-item">
+                <svg width="120" height="80" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <path d="
+                        M112 320
+                        L239.029 192.971
+                        A40 40 0 0 1 272.971 192.971
+                        L400 320
+                    "
+                    fill="none"
+                    stroke="white"
+                    stroke-width="32"
+                    stroke-linecap="round"/>
+                    <!-- 箭头线条：从短直线中点延伸 -->
+                    <line x1="336.5" y1="256.5" x2="370" y2="240" stroke="white" stroke-width="16" stroke-linecap="round"/>
+                    <line x1="336.5" y1="256.5" x2="370" y2="273" stroke="white" stroke-width="16" stroke-linecap="round"/>
+                </svg>
+                <div class="label">向右钝角箭头<br/>带箭头线条</div>
+            </div>
+
+            <!-- 向左的钝角箭头 -->
+            <div class="arrow-item">
+                <svg width="120" height="80" viewBox="0 0 120 80">
+                    <!-- 单条路径：直线+圆弧+直线 -->
+                    <path d="
+                        M110 40
+                        L45 40
+                        A20 20 0 0 0 55 32
+                        L65 22
+                    "
+                    fill="none"
+                    stroke="white"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    opacity="0.8"/>
+                </svg>
+                <div class="label">向左钝角箭头<br/>单条路径设计</div>
+            </div>
+
+            <!-- 向下的钝角箭头 -->
+            <div class="arrow-item">
+                <svg width="80" height="120" viewBox="0 0 80 120">
+                    <!-- 连接线 -->
+                    <line x1="40" y1="10" x2="40" y2="80" stroke="white" stroke-width="2" opacity="0.8"/>
+                    <!-- 钝角箭头：120度角的两条线 -->
+                    <line x1="40" y1="80" x2="28" y2="90" stroke="white" stroke-width="2" opacity="0.8"/>
+                    <line x1="40" y1="80" x2="52" y2="90" stroke="white" stroke-width="2" opacity="0.8"/>
+                    <!-- 装饰性圆点 -->
+                    <circle cx="40" cy="80" r="2" fill="white" opacity="0.6"/>
+                </svg>
+                <div class="label">向下钝角箭头<br/>120°角</div>
+            </div>
+
+            <!-- 向上的钝角箭头 -->
+            <div class="arrow-item">
+                <svg width="80" height="120" viewBox="0 0 80 120">
+                    <!-- 连接线 -->
+                    <line x1="40" y1="110" x2="40" y2="40" stroke="white" stroke-width="2" opacity="0.8"/>
+                    <!-- 钝角箭头：120度角的两条线 -->
+                    <line x1="40" y1="40" x2="28" y2="30" stroke="white" stroke-width="2" opacity="0.8"/>
+                    <line x1="40" y1="40" x2="52" y2="30" stroke="white" stroke-width="2" opacity="0.8"/>
+                    <!-- 装饰性圆点 -->
+                    <circle cx="40" cy="40" r="2" fill="white" opacity="0.6"/>
+                </svg>
+                <div class="label">向上钝角箭头<br/>120°角</div>
+            </div>
+        </div>
+
+        <!-- 对比区域 -->
+        <div class="arrow-demo">
+            <div class="arrow-item">
+                <div class="label"><strong>传统三角形箭头</strong></div>
+                <svg width="120" height="80" viewBox="0 0 120 80">
+                    <defs>
+                        <marker id="oldArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="white" opacity="0.8"/>
+                        </marker>
+                    </defs>
+                    <line x1="10" y1="40" x2="100" y2="40" stroke="white" stroke-width="2" opacity="0.8" marker-end="url(#oldArrow)"/>
+                </svg>
+            </div>
+
+            <div class="arrow-item">
+                <div class="label"><strong>新的钝角箭头</strong></div>
+                <svg width="120" height="80" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <path d="
+                        M112 320
+                        L239.029 192.971
+                        A40 40 0 0 1 272.971 192.971
+                        L400 320
+                    "
+                    fill="none"
+                    stroke="white"
+                    stroke-width="32"
+                    stroke-linecap="round"/>
+                    <!-- 箭头线条：从短直线中点延伸 -->
+                    <line x1="336.5" y1="256.5" x2="370" y2="240" stroke="white" stroke-width="16" stroke-linecap="round"/>
+                    <line x1="336.5" y1="256.5" x2="370" y2="273" stroke="white" stroke-width="16" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="title">
+            <p style="margin-top: 30px; font-size: 14px; opacity: 0.7;">
+                设计特点：120°钝角、柔和视觉、现代美学、与玻璃态界面协调
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 添加一些交互效果
+        document.querySelectorAll('.arrow-item svg').forEach(svg => {
+            svg.addEventListener('mouseenter', () => {
+                svg.style.transform = 'scale(1.05)';
+                svg.style.transition = 'transform 0.3s ease';
+            });
+
+            svg.addEventListener('mouseleave', () => {
+                svg.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -135,7 +135,7 @@ export class ConnectionBindingService implements IConnectionBindingService {
         };
       }
     } else {
-      // 跨行连接：源节点右侧，目标节点根据行号决定
+      // 跨行连接：源节点和目标节点都根据行号决定方向
       if (is_target) {
         const is_target_left_to_right = node.row % 2 === 0;
         return {
@@ -143,9 +143,10 @@ export class ConnectionBindingService implements IConnectionBindingService {
           y: node_center_y
         };
       } else {
-        // 源节点总是右侧
+        // 源节点根据行号决定方向
+        const is_source_left_to_right = node.row % 2 === 0;
         return {
-          x: node.position.x + node.size.width,
+          x: is_source_left_to_right ? node.position.x + node.size.width : node.position.x,
           y: node_center_y
         };
       }
@@ -162,8 +163,11 @@ export class ConnectionBindingService implements IConnectionBindingService {
     target_node: NodePosition,
     layout: DynamicLayoutResult
   ): Position {
-    // 控制点的X坐标：从源节点向目标行方向延伸
-    const control_x = source_position.x + layout.connection_length;
+    // 控制点的X坐标：根据源节点行号决定延伸方向
+    const is_source_left_to_right = source_node.row % 2 === 0;
+    const control_x = is_source_left_to_right
+      ? source_position.x + layout.connection_length  // 偶数行：向右延伸
+      : source_position.x - layout.connection_length; // 奇数行：向左延伸
 
     // 控制点的Y坐标：与目标节点Y坐标对齐
     const control_y = target_position.y;

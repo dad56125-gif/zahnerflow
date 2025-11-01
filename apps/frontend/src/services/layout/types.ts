@@ -150,7 +150,7 @@ export type LayoutEventListener = (event: LayoutChangeEvent) => void;
 // 默认布局配置
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   canvas_padding: 100,
-  canvas_row_height: 150,
+  canvas_row_height: 100,
   node_default_width: 140,
   node_default_height: 60,
   node_min_spacing: 60,

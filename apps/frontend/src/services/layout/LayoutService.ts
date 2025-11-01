@@ -72,7 +72,7 @@ export class LayoutService implements ILayoutService {
       nodes_per_row: actual_nodes_per_row,
       spacing: spacing,
       start_x: start_x,
-      connection_length: spacing,
+      connection_length: spacing * 0.4, // 缩减40%宽度，保持连接线紧凑
       total_rows: total_rows
     };
   }
