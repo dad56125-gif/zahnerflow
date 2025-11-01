@@ -9,6 +9,8 @@
   flex-direction: column;
   block-size: 100%;
   overflow: auto;
+  /* 启用容器查询 */
+  container-type: inline-size;
 }
 
 /* 属性面板 */
@@ -51,20 +53,34 @@
 
 .property-tabs {
   display: flex;
-  gap: 10px;
-  padding: 0 20px;
+  gap: clamp(6px, 2vw, 10px);
+  padding: 0 clamp(12px, 3vw, 20px);
   margin-bottom: 1rem;
 }
 
 .btn-property-tab {
   flex: 1;
-  padding: 0.5rem;
-  font-size: 0.9rem;
+  padding: clamp(0.4rem, 1.5vw, 0.5rem);
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: clamp(4px, 1.5vw, 8px);
   height: var(--btn-h);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 当面板很窄时，标签页图标优先显示文字 */
+@container (max-width: 280px) {
+  .btn-property-tab .tab-text {
+    display: none;
+  }
+
+  .btn-property-tab {
+    gap: 0;
+    padding: 0.5rem;
+  }
 }
 
 .property-panel-content {
@@ -80,10 +96,78 @@
   gap: var(--space-sm);
 }
 
+/* 默认：有值的属性组横向排列 */
 .property-group:has(.property-value) {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  gap: clamp(8px, 2vw, 16px);
+}
+
+/* 当面板较窄时，所有属性组改为纵向排列 */
+@container (max-width: 320px) {
+  .property-group:has(.property-value) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .property-group-title {
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+
+  .property-value {
+    width: 100%;
+  }
+
+  /* 输入框和选择框响应式调整 */
+  .property-input,
+  .property-select {
+    width: 100%;
+    min-height: 36px;
+    font-size: clamp(12px, 2.5vw, 14px);
+    padding: clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px);
+  }
+
+  .property-select {
+    background-size: clamp(16px, 4vw, 20px);
+    background-position: right clamp(8px, 2vw, 12px) center;
+  }
+}
+
+/* 输入框和选择框的响应式基础样式 */
+.property-input,
+.property-select {
+  transition: var(--transition);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: white;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+}
+
+.property-input {
+  width: clamp(120px, 50%, 280px);
+  min-height: clamp(32px, 6vw, 40px);
+  padding: clamp(6px, 1.5vw, 8px) clamp(10px, 2.5vw, 14px);
+  font-size: clamp(12px, 2.5vw, 14px);
+  box-sizing: border-box;
+}
+
+.property-select {
+  width: clamp(120px, 50%, 280px);
+  min-height: clamp(32px, 6vw, 40px);
+  padding: clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 14px);
+  font-size: clamp(12px, 2.5vw, 14px);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' opacity='0.7'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right clamp(8px, 2vw, 12px) center;
+  background-size: clamp(16px, 4vw, 20px);
+  cursor: pointer;
 }
 
 .property-group-title {
