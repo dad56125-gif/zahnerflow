@@ -276,58 +276,7 @@
   }
 }
 
-/* 循环检测按钮样式 */
-.btn-loop-detection {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  color: var(--text-primary);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  min-width: 40px;
-}
-
-.btn-loop-detection:hover {
-  background: var(--glass-hover);
-  border-color: var(--accent-color);
-  transform: translateY(-1px);
-}
-
-.btn-loop-detection.active {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  color: white;
-  box-shadow: 0 0 12px rgba(156, 39, 176, 0.4);
-  animation: loop-detection-active 2s ease-in-out infinite;
-}
-
-/* 循环可视化按钮样式 */
-.btn-loop-visualization {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  color: var(--text-primary);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  min-width: 40px;
-}
-
-.btn-loop-visualization:hover {
-  background: var(--glass-hover);
-  border-color: var(--primary-color);
-  transform: translateY(-1px);
-}
-
-.btn-loop-visualization.active {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  color: white;
-  box-shadow: 0 0 12px rgba(33, 150, 243, 0.4);
-}
+/* 注意：循环检测和可视化按钮样式已移除，因为这些功能现在是默认开启的 */
 
 /* 循环状态包装器样式 */
 .loop-status-wrapper {
@@ -385,21 +334,7 @@
   pointer-events: auto;
 }
 
-/* 循环相关动画 */
-@keyframes loop-detection-active {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  25% {
-    transform: translateY(-2px) rotate(90deg);
-  }
-  50% {
-    transform: translateY(0) rotate(180deg);
-  }
-  75% {
-    transform: translateY(-2px) rotate(270deg);
-  }
-}
+/* 注意：循环检测动画已移除，因为按钮已不存在 */
 
 /* 工作流管理按钮样式 */
 .btn-workflow-manager {

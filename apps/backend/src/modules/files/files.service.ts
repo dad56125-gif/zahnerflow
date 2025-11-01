@@ -23,7 +23,7 @@ export interface RegisterFileResult {
 export class FilesService {
   constructor(private readonly dbService: DbService) {}
 
-  registerFile(payload: RegisterFilePayload): RegisterFileResult {
+  async registerFile(payload: RegisterFilePayload): Promise<RegisterFileResult> {
     const basePath = payload.base_path || 'C:\\data\\archive';
 
     // Normalize Windows path
@@ -37,7 +37,7 @@ export class FilesService {
       payload.test_type
     );
 
-    const record = this.dbService.createDataFilePath({
+    const record = await this.dbService.createDataFilePath({
       user: payload.user,
       project_name: payload.project_name,
       individual_name: payload.individual_name,

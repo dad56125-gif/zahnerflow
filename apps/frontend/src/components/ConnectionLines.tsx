@@ -133,8 +133,8 @@ export const ConnectionLines: React.FC<ConnectionLinesProps> = ({
 
     const newConnections = nodes.map((node, index) => {
       if (index >= nodes.length - 1) return null;
-      const position = calculateNodePosition(index, nodes);
-      const nextPosition = calculateNodePosition(index + 1, nodes);
+      const position = calculateNodePosition(index, nodes, canvasWidth);
+      const nextPosition = calculateNodePosition(index + 1, nodes, canvasWidth);
       const { nodesPerRow, connectionLength } = calculateDynamicLayout();
       const currentRow = Math.floor(index / nodesPerRow);
       const nextRow = Math.floor((index + 1) / nodesPerRow);

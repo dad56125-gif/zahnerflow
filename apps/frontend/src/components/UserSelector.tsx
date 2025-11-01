@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
-import { api } from '../services/api';
+import { useUser } from '../contexts/UserContext';
+import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 
 interface UserSelectorProps {
   currentUser: string;
@@ -10,10 +11,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   currentUser,
   onUserChange
 }) => {
+  const { users, loadUsers, createUser } = useUser();
   const [isOpen, setIsOpen] = useState(false);
-  const [users, setUsers] = useState<string[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newUserName, setNewUserName] = useState('');
+  const [error, setError] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -21,16 +23,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     loadUsers();
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // 使用 useOnClickOutside Hook 实现下拉菜单点击外部关闭
+  useOnClickOutside(dropdownRef, () => {
+    setIsOpen(false);
+  }, isOpen);
 
   // 动态定位下拉菜单
   useEffect(() => {
@@ -47,6 +43,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       }
     }
   }, [isOpen]);
+
+  // 使用 useOnClickOutside Hook 实现新建用户对话框点击外部关闭
+  useOnClickOutside(dialogRef, () => {
+    setShowCreateDialog(false);
+    setNewUserName('');
+    setError('');
+  }, showCreateDialog);
 
   // 动态定位新建用户对话框到 app-root 中心
   useEffect(() => {
@@ -88,36 +91,19 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     };
   }, [showCreateDialog]);
 
-  const loadUsers = async () => {
-    try {
-            const response = await api.get('/users');
-      if (Array.isArray((response as any).users)) {
-        setUsers((response as any).users);
-      } else if (response && (response as any).success && Array.isArray((response as any).data)) {
-        setUsers((response as any).data);
-      }
-    } catch (error) {
-      console.error('Failed to load users:', error);
-    }
-  };
-
   const handleCreateUser = async () => {
     if (!newUserName.trim()) return;
 
+    setError('');
     try {
-      const response = await api.post('/users', {
-        user: newUserName.trim()
-      });
-
-      if (response.success) {
-        setUsers([...users, newUserName.trim()]);
-        onUserChange(newUserName.trim());
-        setShowCreateDialog(false);
-        setNewUserName('');
-        setIsOpen(false);
-      }
+      await createUser({ user: newUserName.trim() });
+      onUserChange(newUserName.trim());
+      setShowCreateDialog(false);
+      setNewUserName('');
+      setIsOpen(false);
     } catch (error) {
       console.error('Failed to create user:', error);
+      setError((error as Error).message || '创建用户失败');
     }
   };
 
@@ -135,7 +121,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 新建用户按钮 - 圆形 + 号，位于选择器右侧 */}
       <button
         className="create-user-btn-circle glass"
-        onClick={() => setShowCreateDialog(true)}
+        onClick={() => {
+          setShowCreateDialog(true);
+          setError('');
+          setNewUserName('');
+        }}
         title="新建用户"
       >
         +
@@ -148,14 +138,14 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             {users.length > 0 ? (
               users.map(user => (
                 <button
-                  key={user}
-                  className={`user-option ${user === currentUser ? 'selected' : ''}`}
+                  key={user.user}
+                  className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
                   onClick={() => {
-                    onUserChange(user);
+                    onUserChange(user.user);
                     setIsOpen(false);
                   }}
                 >
-                  {user}
+                  {user.user}
                 </button>
               ))
             ) : (
@@ -174,15 +164,24 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
               type="text" autoComplete="off" spellCheck={false}
               placeholder="输入用户名"
               value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
+              onChange={(e) => {
+                setNewUserName(e.target.value);
+                if (error) setError(''); // 清除之前的错误
+              }}
               autoFocus
             />
+            {error && (
+              <div className="error-message" style={{ color: 'red', fontSize: '12px', marginTop: '8px' }}>
+                {error}
+              </div>
+            )}
             <div className="dialog-buttons">
               <button
                 className="btn btn-secondary"
                 onClick={() => {
                   setShowCreateDialog(false);
                   setNewUserName('');
+                  setError('');
                 }}
               >
                 取消
@@ -190,7 +189,12 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
               <button
                 className="btn btn-primary"
                 onClick={handleCreateUser}
-                disabled={!newUserName.trim()}
+                disabled={!newUserName.trim() || !!error}
+                title={
+                  !newUserName.trim() ? '请输入用户名' :
+                  !!error ? error :
+                  '创建新用户'
+                }
               >
                 确认
               </button>

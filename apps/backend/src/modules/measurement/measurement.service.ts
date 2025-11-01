@@ -19,7 +19,7 @@ export class MeasurementService {
     try {
       // 1. Register file path using FilesService
       const filename = `eis_${Date.now()}.csv`;
-      const pathResult = this.filesService.registerFile({
+      const pathResult = await this.filesService.registerFile({
         user: params.user,
         project_name: params.project_name,
         individual_name: params.individual_name,

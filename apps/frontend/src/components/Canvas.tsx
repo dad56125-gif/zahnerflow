@@ -219,7 +219,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         setLayoutStable(false);
         // 立即计算并设置最终位置，移除setTimeout避免视觉抽搐
         const updatedNodes = nodes.map((node, index) => {
-            const newPosition = calculateNodePosition(index, nodes);
+            const newPosition = calculateNodePosition(index, nodes, canvasSize.width); // ✅ 修复：传入canvasSize.width
             return {
                 ...node,
                 position: newPosition
@@ -544,6 +544,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         {/* 渲染工作流执行顺序连接线 */}
         <ConnectionLines
           nodes={nodes}
+          canvasSize={canvasSize}
           canvasWidth={canvasSize.width}
           layoutStable={layoutStable}
         />

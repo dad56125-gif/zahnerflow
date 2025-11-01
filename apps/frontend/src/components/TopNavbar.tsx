@@ -1,5 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserSelector } from './UserSelector';
+import { useUser } from '../contexts/UserContext';
+import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 import './UserSelector.css';
 
 interface Workstation {
@@ -14,15 +16,12 @@ interface TopNavbarProps {
   onWorkstationSelect?: (workstation: Workstation) => void;
   onDeviceClick?: (device: 'furnace' | 'mfc') => void;
   fixedDevice?: 'furnace' | 'mfc' | null;
-  currentUser?: string;
-  onUserChange?: (user: string) => void;
 }
 
-export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDeviceClick, currentUser, onUserChange }) => {
+export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDeviceClick }) => {
+  const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
   const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
-  const [internalUser, setInternalUser] = useState<string>('test_user');
-  const effectiveUser = currentUser ?? internalUser;
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
 
@@ -49,15 +48,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
     }
   }, [isWorkstationDropdownOpen, resolveFrostedGlassConflict]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isWorkstationDropdownOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsWorkstationDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isWorkstationDropdownOpen]);
+  // 使用 useOnClickOutside Hook 实现工作站下拉菜单点击外部关闭
+  useOnClickOutside(dropdownRef, () => {
+    setIsWorkstationDropdownOpen(false);
+  }, isWorkstationDropdownOpen);
 
   useEffect(() => {
     if (isWorkstationDropdownOpen) {
@@ -109,8 +103,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
           {/* 用户选择器 - 位于"就绪"状态文字右侧 */}
           <div className="user-section">
             <UserSelector
-              currentUser={effectiveUser}
-              onUserChange={onUserChange ?? setInternalUser}
+              currentUser={currentUser}
+              onUserChange={setCurrentUser}
             />
           </div>
         </div>

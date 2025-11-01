@@ -17,7 +17,7 @@ describe('FilePathManagerUI', () => {
   });
 
   test('should display file path configuration form', () => {
-    render(<FilePathManagerUI currentUser="" onClose={() => {}} onSave={() => {}} />);
+    render(<FilePathManagerUI onClose={() => {}} onSave={() => {}} />);
 
     expect(screen.getByText('文件路径配置')).toBeInTheDocument();
     expect(screen.getByLabelText('基础路径:')).toBeInTheDocument();
@@ -30,7 +30,7 @@ describe('FilePathManagerUI', () => {
     const mockPost = vi.spyOn(api, 'post').mockResolvedValue({ success: true, id: '123', dir_path: 'C:\\data\\test' });
 
     const onSave = vi.fn();
-    render(<FilePathManagerUI currentUser="" onClose={() => {}} onSave={onSave} />);
+    render(<FilePathManagerUI onClose={() => {}} onSave={onSave} />);
 
     // Fill form
     fireEvent.change(screen.getByLabelText('基础路径:'), {

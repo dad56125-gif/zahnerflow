@@ -89,7 +89,7 @@ describe('UserSelector', () => {
     fireEvent.click(screen.getByText('确认'));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/users', { user: 'new_user' });
+      expect(api.post).toHaveBeenCalledWith('/users', { user: 'new_user' });
       expect(onUserChange).toHaveBeenCalledWith('new_user');
     });
   });

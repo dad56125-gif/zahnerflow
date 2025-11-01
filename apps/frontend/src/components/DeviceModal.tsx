@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { FurnaceState, FurnaceControls } from '../services/hooks/useFurnace';
+import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 import { StatusPanel } from './furnace/StatusPanel';
 import { ProgramEditor } from './furnace/ProgramEditor';
 import { PresetManager } from './furnace/PresetManager';
@@ -31,12 +32,16 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
 
   // 当前选项卡状态
   const [activeTab, setActiveTab] = useState<'monitoring' | 'program' | 'presets' | 'recording' | 'history'>('monitoring');
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // 使用 useOnClickOutside Hook 实现点击外部关闭
+  useOnClickOutside(modalRef, onClose);
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modalTop; void modalLeft; void modalWidth; void modalHeight;
 
   return (
-    <div className="device-modal furnace-modal">
+    <div className="device-modal furnace-modal" ref={modalRef}>
       <div className="device-modal-content">
         <div className="device-header">
           <h3>AI-518P 温度控制器</h3>

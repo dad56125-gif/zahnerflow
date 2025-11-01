@@ -1,23 +1,27 @@
 import React from 'react';
 import { NotificationPanel } from './NotificationPanel';
 import { useCanvasStore } from '../stores/canvasStore';
+import type { LoopInfo } from './loops';
 
 interface StatusBarProps {
   zoomLevel: number;
   isRunning: boolean;
   isNotificationPanelOpen: boolean;
   setIsNotificationPanelOpen: (open: boolean) => void;
+  detectedLoops?: LoopInfo[];
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   zoomLevel,
   isRunning,
   isNotificationPanelOpen,
-  setIsNotificationPanelOpen
+  setIsNotificationPanelOpen,
+  detectedLoops = []
 }) => {
   const { nodes, connections, selectedNode } = useCanvasStore();
   const nodeCount = nodes.length;
   const connectionCount = connections.length;
+  const loopCount = detectedLoops.length;
 
   const formatZoomLevel = (zoom: number): string => {
     return `${Math.round(zoom * 100)}%`;
@@ -75,6 +79,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <div className="status-item">
           <span className="stat-label">连接:</span>
           <span className="stat-value glass">{connectionCount}</span>
+        </div>
+
+        <div className="status-item">
+          <span className="stat-label">循环:</span>
+          <span className="stat-value glass">{loopCount}</span>
         </div>
 
         <div className="status-item">

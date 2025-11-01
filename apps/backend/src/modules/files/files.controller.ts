@@ -7,9 +7,9 @@ export class FilesController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  registerFile(@Body() payload: RegisterFilePayload) {
+  async registerFile(@Body() payload: RegisterFilePayload) {
     try {
-      const result = this.filesService.registerFile(payload);
+      const result = await this.filesService.registerFile(payload);
       return {
         success: true,
         data: result
@@ -39,7 +39,7 @@ export class FilesController {
   }
 
   @Post('path-config')
-  savePathConfig(@Body() config: {
+  async savePathConfig(@Body() config: {
     user: string;
     base_path: string;
     project_name: string;
@@ -47,7 +47,7 @@ export class FilesController {
     test_type: string;
   }) {
     try {
-      const result = this.filesService.registerFile({
+      const result = await this.filesService.registerFile({
         ...config,
         filename: 'placeholder.csv' // Will be replaced by device layer
       });

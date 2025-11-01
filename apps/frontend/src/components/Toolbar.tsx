@@ -12,7 +12,6 @@ interface ToolbarProps {
   showWorkflowManager?: boolean;
   showFilePathManager?: boolean;
   onToggleFilePathManager?: () => void;
-  currentUser?: string;
   onFilePathSave?: (config: FilePathConfig) => void;
 }
 
@@ -24,7 +23,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   showWorkflowManager = false,
   showFilePathManager = false,
   onToggleFilePathManager,
-  currentUser = '',
   onFilePathSave
 }) => {
   const {
@@ -175,7 +173,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {/* 文件路径管理器覆盖层 */}
       {showFilePathManager && onToggleFilePathManager && onFilePathSave && (
         <FilePathManagerUI
-          currentUser={currentUser}
           onClose={onToggleFilePathManager}
           onSave={onFilePathSave}
         />

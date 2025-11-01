@@ -79,12 +79,47 @@ type DbJson = {
     workflow_id: string | null;
     node_id: string | null;
   }>;
+  // New tables for persisted in-memory data
+  users: Array<{
+    id: string;
+    user: string;
+    email: string | null;
+    created_at: string;
+  }>;
+  workflows_enhanced: Array<{
+    id: string;
+    user: string;
+    project_name: string;
+    title: string;
+    description: string | null;
+    tags: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+  data_file_paths: Array<{
+    id: string;
+    user: string;
+    project_name: string;
+    individual_name: string;
+    test_type: string;
+    base_path: string;
+    dir_path: string;
+    created_at: string;
+  }>;
 };
 
 @Injectable()
 export class DbService implements OnModuleInit {
   private dbPath = this.resolveDbPath();
-  private db: DbJson = { workflow: [], node: [], node_param: [], data_file: [] };
+  private db: DbJson = {
+    workflow: [],
+    node: [],
+    node_param: [],
+    data_file: [],
+    users: [],
+    workflows_enhanced: [],
+    data_file_paths: []
+  };
   private events$ = new Subject<{ type: string; payload: any; ts: string }>();
   private recentEvents: Array<{ type: string; payload: any; ts: string }> = [];
   private readonly eventBufferSize = 200;
@@ -97,6 +132,7 @@ export class DbService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     await fs.promises.mkdir(path.dirname(this.dbPath), { recursive: true });
     await this.load();
+    await this.loadPersistedData();
   }
 
   private resolveDbPath(): string {
@@ -117,6 +153,9 @@ export class DbService implements OnModuleInit {
           node: Array.isArray(parsed.node) ? parsed.node : [],
           node_param: Array.isArray(parsed.node_param) ? parsed.node_param : [],
           data_file: Array.isArray(parsed.data_file) ? parsed.data_file : [],
+          users: Array.isArray(parsed.users) ? parsed.users : [],
+          workflows_enhanced: Array.isArray(parsed.workflows_enhanced) ? parsed.workflows_enhanced : [],
+          data_file_paths: Array.isArray(parsed.data_file_paths) ? parsed.data_file_paths : [],
         };
       } else {
         await this.save();
@@ -124,9 +163,51 @@ export class DbService implements OnModuleInit {
     } catch {
       // 若损坏则备份并重建
       try { await fs.promises.copyFile(this.dbPath, this.dbPath + '.bak'); } catch {}
-      this.db = { workflow: [], node: [], node_param: [], data_file: [] };
+      this.db = {
+        workflow: [],
+        node: [],
+        node_param: [],
+        data_file: [],
+        users: [],
+        workflows_enhanced: [],
+        data_file_paths: []
+      };
       await this.save();
     }
+  }
+
+  private async loadPersistedData(): Promise<void> {
+    // Load users from database
+    this.users = this.db.users.map(u => ({
+      id: u.id,
+      user: u.user,
+      email: u.email,
+      created_at: u.created_at
+    }));
+
+    // Load workflows from database
+    this.workflows = this.db.workflows_enhanced.map(w => ({
+      id: w.id,
+      user: w.user,
+      project_name: w.project_name,
+      title: w.title,
+      description: w.description,
+      tags: w.tags,
+      created_at: w.created_at,
+      updated_at: w.updated_at
+    }));
+
+    // Load data file paths from database
+    this.dataFilePaths = this.db.data_file_paths.map(p => ({
+      id: p.id,
+      user: p.user,
+      project_name: p.project_name,
+      individual_name: p.individual_name,
+      test_type: p.test_type,
+      base_path: p.base_path,
+      dir_path: p.dir_path,
+      created_at: p.created_at
+    }));
   }
 
   private async save(): Promise<void> {
@@ -429,7 +510,7 @@ export class DbService implements OnModuleInit {
   }
 
   // User management methods
-  createUser(userData: { user: string; email?: string }): User {
+  async createUser(userData: { user: string; email?: string }): Promise<User> {
     const existingUser = this.users.find(u => u.user === userData.user);
     if (existingUser) {
       throw new Error(`User ${userData.user} already exists`);
@@ -443,6 +524,16 @@ export class DbService implements OnModuleInit {
     };
 
     this.users.push(user);
+
+    // Persist to database
+    this.db.users.push({
+      id: user.id,
+      user: user.user,
+      email: user.email,
+      created_at: user.created_at
+    });
+    await this.save();
+
     return user;
   }
 
@@ -450,22 +541,30 @@ export class DbService implements OnModuleInit {
     return this.users;
   }
 
-  deleteUser(user: string): boolean {
+  async deleteUser(user: string): Promise<boolean> {
     const index = this.users.findIndex(u => u.user === user);
     if (index === -1) return false;
 
     this.users.splice(index, 1);
+
+    // Remove from persisted database
+    const dbIndex = this.db.users.findIndex(u => u.user === user);
+    if (dbIndex >= 0) {
+      this.db.users.splice(dbIndex, 1);
+      await this.save();
+    }
+
     return true;
   }
 
   // Updated workflow methods
-  createWorkflow(workflowData: {
+  async createWorkflow(workflowData: {
     user: string;
     project_name: string;
     title: string;
     description?: string;
     tags?: string;
-  }): WorkflowEnhanced {
+  }): Promise<WorkflowEnhanced> {
     const workflow: WorkflowEnhanced = {
       id: `workflow_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       user: workflowData.user,
@@ -478,17 +577,31 @@ export class DbService implements OnModuleInit {
     };
 
     this.workflows.push(workflow);
+
+    // Persist to database
+    this.db.workflows_enhanced.push({
+      id: workflow.id,
+      user: workflow.user,
+      project_name: workflow.project_name,
+      title: workflow.title,
+      description: workflow.description,
+      tags: workflow.tags,
+      created_at: workflow.created_at,
+      updated_at: workflow.updated_at
+    });
+    await this.save();
+
     return workflow;
   }
 
   // Data file path management
-  createDataFilePath(pathData: {
+  async createDataFilePath(pathData: {
     user: string;
     project_name: string;
     individual_name: string;
     test_type: string;
     base_path: string;
-  }): DataFilePath {
+  }): Promise<DataFilePath> {
     // Normalize Windows path
     const normalizedPath = pathData.base_path.replace(/\//g, '\\');
     const dirPath = path.join(
@@ -510,6 +623,20 @@ export class DbService implements OnModuleInit {
     };
 
     this.dataFilePaths.push(record);
+
+    // Persist to database
+    this.db.data_file_paths.push({
+      id: record.id,
+      user: record.user,
+      project_name: record.project_name,
+      individual_name: record.individual_name,
+      test_type: record.test_type,
+      base_path: record.base_path,
+      dir_path: record.dir_path,
+      created_at: record.created_at
+    });
+    await this.save();
+
     return record;
   }
 

@@ -14,6 +14,8 @@ import { DeviceModal } from './components/DeviceModal';
 import { MFCModal } from './components/MFCModal';
 import { workflowService } from './services/workflowService';
 import { useFurnace } from './services/hooks/useFurnace';
+import { UserProvider } from './contexts/UserContext';
+import type { LoopInfo } from './components/loops';
 
 
 
@@ -36,7 +38,7 @@ const ZahnerFlowApp: React.FC = () => {
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(false);
   const [showFilePathManager, setShowFilePathManager] = useState(false);
-  const [currentUser, setCurrentUser] = useState('demo_user');
+  const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
 
   const handleWorkstationSelect = (workstation: any) => {
     const workstationType = workstation.id as WorkstationType;
@@ -57,6 +59,11 @@ const ZahnerFlowApp: React.FC = () => {
   const handleZoomIn = useCallback(() => setZoomLevel((z) => Math.min(3, +(z + 0.1).toFixed(2))), []);
   const handleZoomOut = useCallback(() => setZoomLevel((z) => Math.max(0.2, +(z - 0.1).toFixed(2))), []);
   const handleResetZoom = useCallback(() => setZoomLevel(1), []);
+
+  // 循环检测回调函数
+  const handleLoopDetected = useCallback((loops: LoopInfo[]) => {
+    setDetectedLoops(loops);
+  }, []);
 
   
   useEffect(() => {
@@ -94,8 +101,8 @@ const ZahnerFlowApp: React.FC = () => {
     try {
       const workflowDefinition = {
         id: `workflow_${Date.now()}`,
-        name: `鐢靛寲瀛︽祦绋媉${new Date().toLocaleString()}`,
-        description: '閫氳繃鍓嶇鐣岄潰鍒涘缓鐨勭數鍖栧娴嬮噺娴佺▼',
+        name: `电化学工作流${new Date().toLocaleString()}`,
+        description: '通过前端界面创建的电化学测量流程',
         nodes: nodes.map(node => ({
           id: node.id,
           type: node.type,
@@ -115,11 +122,15 @@ const ZahnerFlowApp: React.FC = () => {
       };
 
     
-      // 鐩存帴鍙戦€乄orkflowDefinition鍒板悗绔?      const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
+      // 直接发送WorkflowDefinition到后端
+      const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
 
-      await stateLinkageManager.startExecution(createdWorkflow.id, nodes);
+      if (!createdWorkflow) {
+        throw new Error("Failed to create workflow");
+      }
+      await stateLinkageManager.startExecution((createdWorkflow || { id: "" }).id, nodes);
     } catch (error) {
-      console.error('宸ヤ綔娴佹墽琛屽け璐?', error);
+      console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);
     }
   };
@@ -134,27 +145,27 @@ const ZahnerFlowApp: React.FC = () => {
     }
   };
 
-  
+
+
   return (
     <>
-      <div className="app-root">
+      <UserProvider>
+        <div className="app-root">
           <TopNavbar
             fixedDevice={fixedDevice}
             onDeviceClick={(d) => setFixedDevice(d)}
             onWorkstationSelect={handleWorkstationSelect}
-            currentUser={currentUser}
-            onUserChange={setCurrentUser}
           />
 
         <div className="main-viewport">
-          {/* 宸︿晶锛氫晶杈规爮 */}
+          {/* 左侧：侧边栏 */}
           <Sidebar
             activePanel={activePanel}
             onPanelChange={setActivePanel}
             nodeGroups={workstationNodeGroups}
             selectedWorkstation={selectedWorkstation}
           />
-
+          {/* 中间：画布区域与工具栏 */}
           {/* 涓棿锛氱敾甯冨尯鍩熶笌宸ュ叿鏍?*/}
           <div className="canvas-area glass">
             <Toolbar
@@ -165,7 +176,6 @@ const ZahnerFlowApp: React.FC = () => {
               showWorkflowManager={showWorkflowManager}
               onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
               showFilePathManager={showFilePathManager}
-              currentUser={currentUser}
               onFilePathSave={handleFilePathSave}
             />
             <Canvas
@@ -176,10 +186,11 @@ const ZahnerFlowApp: React.FC = () => {
               onResetZoom={handleResetZoom}
               showWorkflowManager={showWorkflowManager}
               onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
+              onLoopDetected={handleLoopDetected}
             />
           </div>
 
-          {/* 鍙充晶锛氬睘鎬ч潰鏉垮鍣?*/}
+          {/* 右侧：属性面板容器 */}
           <div className="right-panels">
             <PropertyPanel selectedWorkstation={selectedWorkstation} />
           </div>
@@ -212,13 +223,15 @@ const ZahnerFlowApp: React.FC = () => {
         )}
       </div>
 
-      {/* 鍥哄畾鍦ㄨ鍙ｅ簳閮ㄧ殑鐘舵€佹爮锛堜笉鍦?app-root 缃戞牸鍐咃級 */}
+      /* 固定在视窗底部的状态栏（不在 app-root 网格内） */
       <StatusBar
         zoomLevel={zoomLevel}
         isRunning={isRunning}
         isNotificationPanelOpen={isNotificationPanelOpen}
         setIsNotificationPanelOpen={setIsNotificationPanelOpen}
+        detectedLoops={detectedLoops}
       />
+      </UserProvider>
     </>
   );
 };

@@ -5,18 +5,20 @@
  * 集成工作流模板、历史记录和配置管理
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ElectrochemicalNode } from '../../nodes/types';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { LoopDetector } from '../loops';
 import WorkflowExporter, { WorkflowExporterProps } from './WorkflowExporter';
 import WorkflowImporter, { WorkflowImporterProps } from './WorkflowImporter';
 import WorkflowManager, { type WorkflowData, type WorkflowMetadata } from './WorkflowManager';
+import { useOnClickOutside } from '../../services/hooks/useOnClickOutside';
 
 // 工作流管理UI属性接口
 export interface WorkflowManagerUIProps {
   className?: string;
   style?: React.CSSProperties;
+  onClose?: () => void;
 }
 
 // 工作流历史记录接口
@@ -35,7 +37,8 @@ interface WorkflowHistory {
  */
 export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   className = '',
-  style = {}
+  style = {},
+  onClose
 }) => {
   const {
     nodes,
@@ -48,6 +51,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const [showExporter, setShowExporter] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [workflowHistory, setWorkflowHistory] = useState<WorkflowHistory[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
+
   const [templates] = useState<WorkflowData[]>([
     WorkflowManager.createWorkflowTemplate(
       '基础电化学测试',
@@ -68,6 +73,13 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
   // 检测循环
   const detectedLoops = LoopDetector.detectLoops(nodes, connections).loops;
+
+  // 使用useOnClickOutside Hook实现点击外部关闭
+  useOnClickOutside(panelRef, () => {
+    if (onClose) {
+      onClose();
+    }
+  });
 
   // 导出完成处理
   const handleExportComplete = (filename: string) => {
@@ -142,7 +154,11 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const stats = getWorkflowStats();
 
   return (
-    <div className={`workflow-manager-ui ${className}`} style={style}>
+    <div
+      ref={panelRef}
+      className={`workflow-manager-ui ${className}`}
+      style={style}
+    >
       <div className="manager-header">
         <h3>工作流管理</h3>
         <div className="workflow-stats">

@@ -1,5 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { useUser } from '../contexts/UserContext';
+import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 
 export interface FilePathConfig {
   base_path: string;
@@ -8,16 +10,15 @@ export interface FilePathConfig {
 }
 
 interface FilePathManagerUIProps {
-  currentUser: string;
   onClose: () => void;
   onSave: (config: FilePathConfig) => void;
 }
 
 export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
-  currentUser,
   onClose,
   onSave
 }) => {
+  const { currentUser } = useUser();
   const [config, setConfig] = useState<FilePathConfig>({
     base_path: 'C:\\data\\archive',
     project_name: '',
@@ -27,6 +28,10 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // 使用 useOnClickOutside 实现点击外部关闭
+  useOnClickOutside(panelRef, onClose);
 
   useEffect(() => {
     if (currentUser) {
@@ -99,7 +104,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
 
   return (
     <div className="file-path-manager-overlay">
-      <div className="file-path-manager-panel">
+      <div ref={panelRef} className="file-path-manager-panel">
         <div className="panel-header">
           <h2>文件路径配置</h2>
           <button className="close-btn" onClick={onClose}>×</button>
