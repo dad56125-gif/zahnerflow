@@ -47,7 +47,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
             </span>
           )}
         </h2>
-        {/* 移除调试信息的 JSON 打印 */}
       </div>
 
       <div className="sidebar-content">
@@ -98,10 +97,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
                             } catch {}
                           }}
                           onClick={() => handleCreateNode(nodeType)}
+                          title={config.description} /* 添加tooltip显示描述 */
                         >
-                          <div className="node-icon">{config.icon}</div>
-                          <div className="node-name">{config.name}</div>
-                          <div className="node-description">{config.description}</div>
+                          <div className="node-content">
+                            <div className="node-icon">{config.icon}</div>
+                            <div className="node-text">
+                              <div className="node-name">{config.name}</div>
+                              {/* 描述改为可选显示，通过CSS控制 */}
+                              <div className="node-description">{config.description}</div>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
