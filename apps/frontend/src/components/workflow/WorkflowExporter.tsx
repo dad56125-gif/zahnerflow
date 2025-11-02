@@ -83,9 +83,16 @@ export const WorkflowExporter: React.FC<WorkflowExporterProps> = ({
         }
       };
 
+      // 转换连接线格式：从 snake_case 到 camelCase
+      const formattedConnections = connections.map(conn => ({
+        id: conn.id,
+        sourceId: conn.source_id,
+        targetId: conn.target_id
+      }));
+
       const result = await WorkflowManager.exportWorkflow(
         nodes,
-        connections,
+        formattedConnections,
         loops,
         metadata,
         settings,

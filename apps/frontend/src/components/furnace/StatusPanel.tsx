@@ -14,7 +14,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
       {furnaceState.error && (
         <div className="error-banner">
           <span className="error-message">
-            错误: {furnaceState.error.message}
+            错误: {furnaceState.error as string}
           </span>
           <button
             className="btn btn-sm btn-secondary"

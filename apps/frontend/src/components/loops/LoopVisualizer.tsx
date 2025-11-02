@@ -1,20 +1,17 @@
 /**
  * 循环可视化组件
  *
- * 负责可视化显示循环的边界、状态和进度信息
- * 提供直观的循环控制界面
+ * 负责可视化显示循环的边界和状态信息
+ * 专注于可视化展示，不包含执行控制功能
  */
 
 import React from 'react';
 import { LoopInfo } from './LoopDetector';
-import { LoopBoundary } from '../LoopBoundary';  // 导入LoopBoundary组件
-import { LoopStartNode, LoopEndNode } from '../../nodes/types';  // 导入类型定义
-import { ExecutionState } from '@zahnerflow/types';  // 导入ExecutionState类型
+import { LoopBoundary } from '../LoopBoundary';
+import { LoopStartNode, LoopEndNode } from '../../nodes/types';
 import {
-  LoopContextManager,
-  LoopExecutionContext,
-  LoopExecutionState,
-  LoopEvent
+  type LoopExecutionContext,
+  type LoopExecutionState
 } from './LoopContextManager';
 
 // 循环可视化属性接口
@@ -33,151 +30,7 @@ export interface LoopVisualizerProps {
   style?: React.CSSProperties;
   zoomLevel?: number;
   canvasOffsetY?: number;
-  onLoopStart?: (loopId: string) => void;
-  onLoopPause?: (loopId: string) => void;
-  onLoopResume?: (loopId: string) => void;
-  onLoopCancel?: (loopId: string) => void;
-  onLoopReset?: (loopId: string) => void;
 }
-
-// 内部LoopBoundary组件已删除，使用导入的LoopBoundary组件
-// 循环控制面板组件
-const LoopControlPanel: React.FC<{
-  loop: LoopInfo;
-  context?: LoopExecutionContext;
-  onStart?: () => void;
-  onPause?: () => void;
-  onResume?: () => void;
-  onCancel?: () => void;
-  onReset?: () => void;
-  className?: string;
-}> = ({
-  loop,
-  context,
-  onStart,
-  onPause,
-  onResume,
-  onCancel,
-  onReset,
-  className = ''
-}) => {
-  const getStateColor = (state: LoopExecutionState) => {
-    switch (state) {
-      case 'running': return '#4CAF50';
-      case 'paused': return '#FF9800';
-      case 'completed': return '#2196F3';
-      case 'error': return '#F44336';
-      case 'cancelled': return '#9E9E9E';
-      default: return '#9E9E9E';
-    }
-  };
-
-  const getStateText = (state: LoopExecutionState) => {
-    switch (state) {
-      case 'running': return '运行中';
-      case 'paused': return '已暂停';
-      case 'completed': return '已完成';
-      case 'error': return '错误';
-      case 'cancelled': return '已取消';
-      default: return '未开始';
-    }
-  };
-
-  return (
-    <div className={`loop-control-panel ${className}`}>
-      <div className="loop-info">
-        <h4>循环 {loop.id}</h4>
-        <div className="loop-parameters">
-          <div>迭代次数: {loop.iteration_count}</div>
-          <div>包含节点: {loop.node_ids.length}</div>
-          {loop.parameters.delay_ms && (
-            <div>延迟: {loop.parameters.delay_ms}ms</div>
-          )}
-        </div>
-      </div>
-
-      {context && (
-        <div className="loop-status">
-          <div
-            className="status-indicator"
-            style={{ color: getStateColor(context.state) }}
-          >
-            {getStateText(context.state)}
-          </div>
-
-          <div className="loop-progress-text">
-            进度: {context.currentIteration}/{context.totalIterations}
-            ({context.progress.toFixed(1)}%)
-          </div>
-
-          <div className="loop-time">
-            运行时间: {(context.elapsedTime / 1000).toFixed(1)}s
-          </div>
-
-          {context.error && (
-            <div className="loop-error" style={{ color: '#F44336' }}>
-              错误: {context.error}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="loop-controls">
-        {!context || context.state === 'idle' || context.state === 'completed' || context.state === 'error' || context.state === 'cancelled' ? (
-          <button
-            className="btn-loop-start"
-            onClick={onStart}
-            title="开始循环"
-          >
-            ▶️ 开始
-          </button>
-        ) : context.state === 'running' ? (
-          <>
-            <button
-              className="btn-loop-pause"
-              onClick={onPause}
-              title="暂停循环"
-            >
-              ⏸️ 暂停
-            </button>
-            <button
-              className="btn-loop-cancel"
-              onClick={onCancel}
-              title="取消循环"
-            >
-              ❌ 取消
-            </button>
-          </>
-        ) : context.state === 'paused' ? (
-          <>
-            <button
-              className="btn-loop-resume"
-              onClick={onResume}
-              title="恢复循环"
-            >
-              ▶️ 恢复
-            </button>
-            <button
-              className="btn-loop-cancel"
-              onClick={onCancel}
-              title="取消循环"
-            >
-              ❌ 取消
-            </button>
-          </>
-        ) : null}
-
-        <button
-          className="btn-loop-reset"
-          onClick={onReset}
-          title="重置循环"
-        >
-          🔄 重置
-        </button>
-      </div>
-    </div>
-  );
-};
 
 /**
  * 循环可视化主组件
@@ -189,16 +42,8 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
   className = '',
   style = {},
   zoomLevel = 1,
-  canvasOffsetY = 0,
-  onLoopStart,
-  onLoopPause,
-  onLoopResume,
-  onLoopCancel,
-  onLoopReset
+  canvasOffsetY = 0
 }) => {
-  const [isHovered, setIsHovered] = React.useState(false);
-  const [showDetails, setShowDetails] = React.useState(false);
-
   // 获取循环内的节点 - 按照循环路径顺序
   const loopNodes = React.useMemo(() => {
     const orderedNodes: typeof nodes = [];
@@ -222,15 +67,8 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
     return loopNodes.find(n => n.id === loop.end_node_id);
   }, [loopNodes, loop.end_node_id]);
 
-  // 调试日志
-  console.log('[LoopVisualizer Debug] 循环ID:', loop.id);
-  console.log('[LoopVisualizer Debug] 开始节点:', startNode);
-  console.log('[LoopVisualizer Debug] 结束节点:', endNode);
-  console.log('[LoopVisualizer Debug] 循环内节点数量:', loopNodes.length);
-
   // 如果找不到开始或结束节点，不渲染
   if (!startNode || !endNode || loopNodes.length === 0) {
-    console.log('[LoopVisualizer Debug] 未找到节点，返回null');
     return null;
   }
 
@@ -244,7 +82,7 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
       id: node.id,
       name: node.name || `${type}_${node.id}`,
       category: 'flow_control' as const,
-      position: { x: node.position.x, y: node.position.y },
+      position: { x: node.position?.x || 0, y: node.position?.y || 0 },
       data: {
         name: node.name || `${type}_${node.id}`,
         description: `${type} node for loop ${loop.id}`,
@@ -263,7 +101,7 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
         createdAt: now,
         updatedAt: now
       },
-      status: ExecutionState.PENDING,
+      status: 'pending' as const,
       input: {
         id: `${node.id}_input`,
         name: 'Input',
@@ -337,11 +175,11 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
   }, [loop.id, loop.iteration_count, loop.parameters]);
 
   const startNodeData = React.useMemo(() => {
-    return adaptNodeToLoopNode(startNode, 'loop_start') as LoopStartNode;
+    return startNode ? adaptNodeToLoopNode(startNode, 'loop_start') as LoopStartNode : null;
   }, [startNode, adaptNodeToLoopNode]);
 
   const endNodeData = React.useMemo(() => {
-    return adaptNodeToLoopNode(endNode, 'loop_end') as LoopEndNode;
+    return endNode ? adaptNodeToLoopNode(endNode, 'loop_end') as LoopEndNode : null;
   }, [endNode, adaptNodeToLoopNode]);
 
   // 根据执行状态设置样式类
@@ -364,63 +202,21 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
     return 0;
   }, []);
 
-  // 监听循环事件
-  React.useEffect(() => {
-    if (!context) return;
-
-    const handleLoopEvent = (event: LoopEvent) => {
-      // 可以在这里添加对循环事件的响应
-      console.log(`循环 ${event.loopId} 事件:`, event.type, event);
-    };
-
-    LoopContextManager.addEventListener(
-      loop.id,
-      ['iteration_start', 'iteration_end', 'node_start', 'node_end', 'completed', 'error'],
-      handleLoopEvent
-    );
-
-    return () => {
-      LoopContextManager.removeEventListener(
-        loop.id,
-        ['iteration_start', 'iteration_end', 'node_start', 'node_end', 'completed', 'error'],
-        handleLoopEvent
-      );
-    };
-  }, [loop.id, context]);
-
-  const handleLoopStart = () => {
-    onLoopStart?.(loop.id);
-  };
-
-  const handleLoopPause = () => {
-    onLoopPause?.(loop.id);
-  };
-
-  const handleLoopResume = () => {
-    onLoopResume?.(loop.id);
-  };
-
-  const handleLoopCancel = () => {
-    onLoopCancel?.(loop.id);
-  };
-
-  const handleLoopReset = () => {
-    onLoopReset?.(loop.id);
-  };
-
   return (
     <>
-      {/* 使用我们创建的LoopBoundary组件 */}
-      <LoopBoundary
-        startNode={startNodeData}
-        endNode={endNodeData}
-        nodesInLoop={loopNodes}
-        state={context?.state}
-        zoomLevel={zoomLevel}
-        canvasOffsetY={canvasOffsetY}
-      />
+      {/* 使用LoopBoundary组件显示循环边界 */}
+      {startNodeData && endNodeData && (
+        <LoopBoundary
+          startNode={startNodeData}
+          endNode={endNodeData}
+          nodesInLoop={loopNodes}
+          state={context?.state}
+          zoomLevel={zoomLevel}
+          canvasOffsetY={canvasOffsetY}
+        />
+      )}
 
-      {/* 应用状态样式到括号容器 */}
+      {/* 应用状态样式到循环区域 */}
       <div
         className={`bracket-container level-${loopLevel} ${getStateClass()}`}
         style={{
@@ -434,95 +230,6 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
           ...style
         }}
       />
-
-      {/* 循环控制覆盖层 */}
-      <div
-        className="loop-visualizer-overlay"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: isHovered ? 'auto' : 'none',
-          zIndex: 10
-        }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {isHovered && (
-          <div
-            className="loop-visualizer-popup"
-            style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              background: 'var(--glass-bg)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: '12px',
-              minWidth: '250px',
-              maxWidth: '300px',
-              backdropFilter: 'blur(10px)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-            }}
-          >
-            <LoopControlPanel
-              loop={loop}
-              context={context}
-              onStart={handleLoopStart}
-              onPause={handleLoopPause}
-              onResume={handleLoopResume}
-              onCancel={handleLoopCancel}
-              onReset={handleLoopReset}
-            />
-
-            {/* 详细信息切换按钮 */}
-            <button
-              className="btn-loop-details"
-              onClick={() => setShowDetails(!showDetails)}
-              style={{
-                marginTop: '8px',
-                width: '100%',
-                padding: '4px 8px',
-                background: 'var(--glass-hover)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: '4px',
-                fontSize: '12px',
-                cursor: 'pointer'
-              }}
-            >
-              {showDetails ? '隐藏' : '显示'}详细信息
-            </button>
-
-            {/* 详细信息面板 */}
-            {showDetails && (
-              <div
-                className="loop-details-panel"
-                style={{
-                  marginTop: '8px',
-                  padding: '8px',
-                  background: 'var(--glass-hover)',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}
-              >
-                <div>循环ID: {loop.id}</div>
-                <div>开始节点: {loop.start_node_id}</div>
-                <div>结束节点: {loop.end_node_id}</div>
-                <div>节点数量: {loop.node_ids.length}</div>
-                {context && (
-                  <>
-                    <div>当前迭代: {context.currentIteration}</div>
-                    <div>运行时间: {(context.elapsedTime / 1000).toFixed(1)}s</div>
-                    <div>数据点: {context.accumulatedData.length}</div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </>
   );
 };
@@ -585,7 +292,7 @@ export const LoopVisualizer = React.memo(LoopVisualizerComponent, (prevProps, ne
     prevProps.loop.iteration_count === nextProps.loop.iteration_count &&
     prevProps.nodes.length === nextProps.nodes.length &&
     prevProps.context?.state === nextProps.context?.state &&
-    prevProps.context?.currentIteration === nextProps.context?.currentIteration
+    prevProps.context?.current_iteration === nextProps.context?.current_iteration
   );
 });
 

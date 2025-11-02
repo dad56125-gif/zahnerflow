@@ -167,13 +167,13 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
               {furnaceState.logs.map((log) => (
                 <div
                   key={log.id}
-                  className={`console-log ${(log.type === 'comm_rx' || log.type === 'comm_tx') ? 'comm' : 'operation'} ${(log.type === 'comm_rx' || log.type === 'comm_tx') ? (log.details as CommLog)?.direction?.toLowerCase() || '' : ''}`}
+                  className={`console-log ${(log.type as any === 'comm_rx' || log.type as any === 'comm_tx') ? 'comm' : 'operation'} ${(log.type as any === 'comm_rx' || log.type as any === 'comm_tx') ? (log as any).details?.direction?.toLowerCase() || '' : ''}`}
                 >
                   <span className="log-timestamp">{log.timestamp}</span>
-                  {(log.type === 'comm_rx' || log.type === 'comm_tx') ? (
+                  {(log.type as any === 'comm_rx' || log.type as any === 'comm_tx') ? (
                     <>
-                      <span className="log-direction">{(log.details as CommLog)?.direction}:</span>
-                      <span className="log-data">{(log.details as CommLog)?.data}</span>
+                      <span className="log-direction">{(log as any).details?.direction}:</span>
+                      <span className="log-data">{(log as any).details?.data}</span>
                     </>
                   ) : (
                     <span className="log-message">

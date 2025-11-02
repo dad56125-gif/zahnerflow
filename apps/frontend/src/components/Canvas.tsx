@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../nodes/types';
 import { useCanvasStore } from '../stores/canvasStore';
 import { NodeListRenderer } from './NodeRenderer';
@@ -158,7 +158,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const handleNodeDoubleClick = (node: ElectrochemicalNode) => {
-    console.log('双击节点:', node.name);
+    
     // 可以在这里添加双击节点的高级功能，如打开详细配置
   };
 
@@ -181,14 +181,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const handleNodeDragStartEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
-    console.log(`节点拖拽开始：${node.name}`);
+    
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('nodeId', node.id);
     (event.currentTarget as HTMLElement).style.opacity = '0.5';
   };
 
   const handleNodeDragEndEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
-    console.log('节点拖拽结束');
+    
     (event.currentTarget as HTMLElement).style.opacity = '1';
 
     // 获取拖拽结束位置
@@ -263,11 +263,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     // 检测循环
     const detectionResult = LoopDetector.detectLoops(nodes, connections);
 
-    // 调试日志
-    console.log('[Canvas Debug] 检测到的循环数量:', detectionResult.loops.length);
-    console.log('[Canvas Debug] 检测到的循环:', detectionResult.loops);
-    console.log('[Canvas Debug] 节点数量:', nodes.length);
-    console.log('[Canvas Debug] 连接数量:', connections.length);
+    // removed debug logs for lightweight UI
 
     setDetectedLoops(detectionResult.loops);
 
@@ -295,40 +291,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     setLoopContexts(newContexts);
   }, [nodes, connections, loopDetectionEnabled]);
 
-  // 循环控制事件处理函数
-  const handleLoopStart = async (loopId: string) => {
-    const loop = detectedLoops.find(l => l.id === loopId);
-    if (!loop) return;
-
-    try {
-      const context = LoopContextManager.getLoopContext(loopId);
-      if (context) {
-        await LoopContextManager.startLoop(loopId, nodes, async (nodeId, iteration) => {
-          // 模拟节点执行
-          console.log(`执行节点 ${nodeId}，迭代 ${iteration}`);
-          await new Promise(resolve => setTimeout(resolve, 100));
-        });
-      }
-    } catch (error) {
-      console.error('循环执行错误:', error);
-    }
-  };
-
-  const handleLoopPause = (loopId: string) => {
-    LoopContextManager.pauseLoop(loopId);
-  };
-
-  const handleLoopResume = (loopId: string) => {
-    LoopContextManager.resumeLoop(loopId);
-  };
-
-  const handleLoopCancel = (loopId: string) => {
-    LoopContextManager.cancelLoop(loopId);
-  };
-
-  const handleLoopReset = (loopId: string) => {
-    LoopContextManager.resetLoop(loopId);
-  };
+  // 移除了循环控制事件处理函数，只保留循环检测和可视化功能
 
   // 更新循环上下文状态
   useEffect(() => {
@@ -468,11 +431,6 @@ export const Canvas: React.FC<CanvasProps> = ({
               context={context}
               zoomLevel={zoomLevel}
               canvasOffsetY={canvasOffsetY}
-              onLoopStart={handleLoopStart}
-              onLoopPause={handleLoopPause}
-              onLoopResume={handleLoopResume}
-              onLoopCancel={handleLoopCancel}
-              onLoopReset={handleLoopReset}
             />
           );
         })}

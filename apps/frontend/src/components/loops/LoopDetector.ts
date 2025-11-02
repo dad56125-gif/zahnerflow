@@ -138,7 +138,7 @@ export class LoopDetector {
 
     // 如果没有连接数据，按照节点顺序构建连接（像连接线服务那样）
     if (graph.size === 0 || Array.from(graph.values()).every(connections => connections.length === 0)) {
-      console.log('[LoopDetector] 没有连接数据，按节点顺序构建连接图');
+      // no explicit connections; build graph by node order
 
       // 建立节点ID到索引的映射
       const nodeIndexMap = new Map<string, number>();
@@ -183,7 +183,7 @@ export class LoopDetector {
     for (const startNode of loopStartNodes) {
       const loopId = startNode.data.parameters?.loop_id;
       if (!loopId) {
-        console.warn(`循环开始节点 ${startNode.id} 缺少 loop_id 参数`);
+        // skip invalid start node without loop_id
         continue;
       }
 
@@ -193,7 +193,7 @@ export class LoopDetector {
       );
 
       if (!endNode) {
-        console.warn(`循环 ${loopId} 缺少对应的结束节点`);
+        // skip if no matching end node
         continue;
       }
 
@@ -219,7 +219,7 @@ export class LoopDetector {
         };
 
         loops.push(loopInfo);
-        console.log(`[LoopDetector] 检测到循环 ${loopId}，包含节点:`, forwardPath);
+        // detected loop
       }
     }
 

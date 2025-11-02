@@ -5,7 +5,7 @@
  * 支持工作流的版本控制和配置管理
  */
 
-import { ElectrochemicalNode } from '../../nodes/types';
+import { ElectrochemicalNode, NodeType, NodeCategory } from '../../nodes/types';
 import { LoopInfo } from '../loops/LoopDetector';
 
 // 工作流数据接口
@@ -480,7 +480,8 @@ export class WorkflowManager {
             const node: ElectrochemicalNode = {
               id: key,
               name: value,
-              type: lines[lines.indexOf(line) + 1]?.split(',')[2]?.trim() || 'unknown',
+              type: (lines[lines.indexOf(line) + 1]?.split(',')[2]?.trim() || 'unknown') as NodeType,
+              category: 'basic_measurement', // 添加必需的category字段
               position: {
                 x: parseFloat(lines[lines.indexOf(line) + 1]?.split(',')[3] || '0'),
                 y: parseFloat(lines[lines.indexOf(line) + 1]?.split(',')[4] || '0')
@@ -490,7 +491,23 @@ export class WorkflowManager {
                 height: parseFloat(lines[lines.indexOf(line) + 1]?.split(',')[6] || '60')
               },
               status: (lines[lines.indexOf(line) + 1]?.split(',')[7]?.trim() || 'ready') as any,
-              data: { parameters: {} }
+              data: {
+                name: value,
+                description: `Imported node: ${key}`,
+                parameters: {},
+                createdAt: new Date(),
+                updatedAt: new Date()
+              },
+              input: { // 添加必需的input字段
+                id: `${key}_input`,
+                name: 'Input',
+                dataType: 'flow' as const
+              },
+              output: { // 添加必需的output字段
+                id: `${key}_output`,
+                name: 'Output',
+                dataType: 'flow' as const
+              }
             };
             workflow.nodes.push(node);
           }
@@ -515,8 +532,8 @@ export class WorkflowManager {
               end_node_id: parts[2]?.trim() || '',
               node_ids: parts[4]?.trim().split(';').filter(Boolean) || [],
               iteration_count: parseInt(parts[3] || '1'),
-              currentIteration: 0,
-              isActive: false,
+              current_iteration: 0,
+              is_active: false,
               parameters: {}
             });
           }
@@ -526,7 +543,11 @@ export class WorkflowManager {
 
     if (metadata.name || metadata.description) {
       workflow.metadata = {
-        ...metadata,
+        name: metadata?.name || 'Imported Workflow',
+        description: metadata?.description || '',
+        author: metadata?.author || '',
+        tags: metadata?.tags || [],
+        category: metadata?.category || '',
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -547,6 +568,7 @@ export class WorkflowManager {
         // 1.0.0 -> 1.1.0: 添加循环支持
         upgradedWorkflow.loops = upgradedWorkflow.loops || [];
         upgradedWorkflow.version = '1.1.0';
+        break;
 
       case '1.1.0':
         // 1.1.0 -> 2.0.0: 添加新的设置和元数据
@@ -678,10 +700,27 @@ export class WorkflowManager {
       id: `template_node_${index}`,
       name: `模板节点 ${index + 1}`,
       type: type as any,
+      category: 'basic_measurement', // 添加必需的category字段
       position: { x: 100 + index * 200, y: 100 },
       style: { width: 140, height: 60 },
       status: 'ready' as any,
-      data: { parameters: {} }
+      data: { // 修复NodeData接口
+        name: `模板节点 ${index + 1}`,
+        description: `Template node: ${type}`,
+        parameters: {},
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      input: { // 添加必需的input字段
+        id: `template_node_${index}_input`,
+        name: 'Input',
+        dataType: 'flow' as const
+      },
+      output: { // 添加必需的output字段
+        id: `template_node_${index}_output`,
+        name: 'Output',
+        dataType: 'flow' as const
+      }
     }));
 
     return {

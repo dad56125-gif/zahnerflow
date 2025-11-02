@@ -1,11 +1,11 @@
 /**
  * 循环上下文管理器
  *
- * 负责管理循环的执行状态、数据传递和控制逻辑
- * 提供循环生命周期的完整管理功能
+ * 负责管理循环的状态信息和数据展示
+ * 专注于循环检测、状态监控和数据管理，不包含执行控制功能
  */
 
-import { ElectrochemicalNode } from '../../nodes/types';
+import { ElectrochemicalNode, LoopStartNode, LoopEndNode, LoopContext as PairLoopContext, LoopPair } from '../../nodes/types';
 import { LoopInfo } from './LoopDetector';
 
 // 循环执行状态
@@ -21,35 +21,35 @@ export type LoopExecutionState =
 export interface LoopData {
   iteration: number;
   timestamp: number;
-  nodeId: string;
-  dataType: string;
+  node_id: string;
+  data_type: string;
   data: any;
   metadata?: Record<string, any>;
 }
 
 // 循环执行上下文
 export interface LoopExecutionContext {
-  loopId: string;
+  loop_id: string;
   state: LoopExecutionState;
-  currentIteration: number;
-  totalIterations: number;
-  startTime: number;
-  endTime?: number;
-  elapsedTime: number;
-  accumulatedData: LoopData[];
-  currentNodeId?: string;
+  current_iteration: number;
+  total_iterations: number;
+  start_time: number;
+  end_time?: number;
+  elapsed_time: number;
+  accumulated_data: LoopData[];
+  current_node_id?: string;
   error?: string;
   progress: number; // 0-100
   // Nodes inside this loop in execution order
-  nodeIds?: string[];
+  node_ids?: string[];
 }
 
 // 循环事件接口
 export interface LoopEvent {
   type: 'iteration_start' | 'iteration_end' | 'node_start' | 'node_end' | 'error' | 'completed';
-  loopId: string;
+  loop_id: string;
   iteration?: number;
-  nodeId?: string;
+  node_id?: string;
   timestamp: number;
   data?: any;
   error?: string;
@@ -82,6 +82,11 @@ export class LoopContextManager {
   private static eventListeners: Map<string, Array<(event: LoopEvent) => void>> = new Map();
   private static updateIntervals: Map<string, NodeJS.Timeout> = new Map();
 
+  // Pair/stack and suffix utilities (merged from services/LoopContextManager)
+  private static pairLoopStack: PairLoopContext[] = [];
+  private static executionNodeNames: Map<string, string> = new Map();
+  private static loopPairs: Map<string, LoopPair> = new Map();
+
   /**
    * 初始化循环上下文
    */
@@ -92,15 +97,15 @@ export class LoopContextManager {
     const finalConfig = { ...this.DEFAULT_CONFIG, ...config };
 
     const context: LoopExecutionContext = {
-      loopId: loopInfo.id,
+      loop_id: loopInfo.id,
       state: 'idle',
-      currentIteration: 0,
-      totalIterations: (loopInfo as any).iteration_count ?? (loopInfo as any).iterationCount ?? 0,
-      startTime: Date.now(),
-      elapsedTime: 0,
-      accumulatedData: [],
+      current_iteration: 0,
+      total_iterations: (loopInfo as any).iteration_count ?? 0,
+      start_time: Date.now(),
+      elapsed_time: 0,
+      accumulated_data: [],
       progress: 0,
-      nodeIds: (loopInfo as any).node_ids ?? (loopInfo as any).nodeIds ?? []
+      node_ids: (loopInfo as any).node_ids ?? []
     };
 
     this.loopContexts.set(loopInfo.id, context);
@@ -112,163 +117,29 @@ export class LoopContextManager {
 
     this.emitEvent({
       type: 'iteration_start',
-      loopId: loopInfo.id,
+      loop_id: loopInfo.id,
       timestamp: Date.now()
     });
 
     return context;
   }
 
-  /**
-   * 开始循环执行
-   */
-  public static async startLoop(
-    loopId: string,
-    nodes: ElectrochemicalNode[],
-    onNodeExecute?: (nodeId: string, iteration: number) => Promise<void>
-  ): Promise<void> {
-    const context = this.loopContexts.get(loopId);
-    if (!context) {
-      throw new Error(`循环 ${loopId} 未初始化`);
-    }
-
-    context.state = 'running';
-    context.startTime = Date.now();
-
-    this.emitEvent({
-      type: 'iteration_start',
-      loopId,
-      iteration: 1,
-      timestamp: Date.now()
-    });
-
-    try {
-      for (let iteration = 1; iteration <= context.totalIterations; iteration++) {
-        // 检查是否被暂停或取消
-        if (context.state === 'paused') {
-          await this.waitForResume(loopId);
-        }
-
-        if (context.state === 'cancelled' || context.state === 'error') {
-          break;
-        }
-
-        context.currentIteration = iteration;
-        context.progress = (iteration / context.totalIterations) * 100;
-
-        // 执行循环中的所有节点
-        for (const nodeId of this.getLoopNodeIds(loopId)) {
-          if (context.state === 'cancelled' || context.state === 'error') {
-            break;
-          }
-
-          context.currentNodeId = nodeId;
-
-          this.emitEvent({
-            type: 'node_start',
-            loopId,
-            iteration,
-            nodeId,
-            timestamp: Date.now()
-          });
-
-          if (onNodeExecute) {
-            await onNodeExecute(nodeId, iteration);
-          }
-
-          this.emitEvent({
-            type: 'node_end',
-            loopId,
-            iteration,
-            nodeId,
-            timestamp: Date.now()
-          });
-        }
-
-        // 更新运行时间
-        context.elapsedTime = Date.now() - context.startTime;
-
-        this.emitEvent({
-          type: 'iteration_end',
-          loopId,
-          iteration,
-          timestamp: Date.now()
-        });
-      }
-
-      // 循环完成
-      if (context.state === 'running') {
-        context.state = 'completed';
-        context.endTime = Date.now();
-        context.progress = 100;
-
-        this.emitEvent({
-          type: 'completed',
-          loopId,
-          timestamp: Date.now()
-        });
-      }
-    } catch (error) {
-      context.state = 'error';
-      context.error = error instanceof Error ? error.message : '未知错误';
-
-      this.emitEvent({
-        type: 'error',
-        loopId,
-        timestamp: Date.now(),
-        error: context.error
-      });
-
-      throw error;
-    } finally {
-      this.cleanupLoop(loopId);
-    }
-  }
-
-  /**
-   * 暂停循环
-   */
-  public static pauseLoop(loopId: string): void {
-    const context = this.loopContexts.get(loopId);
-    if (context && context.state === 'running') {
-      context.state = 'paused';
-    }
-  }
-
-  /**
-   * 恢复循环
-   */
-  public static resumeLoop(loopId: string): void {
-    const context = this.loopContexts.get(loopId);
-    if (context && context.state === 'paused') {
-      context.state = 'running';
-    }
-  }
-
-  /**
-   * 取消循环
-   */
-  public static cancelLoop(loopId: string): void {
-    const context = this.loopContexts.get(loopId);
-    if (context) {
-      context.state = 'cancelled';
-      context.endTime = Date.now();
-    }
-  }
+  // 移除了执行相关的方法：startLoop, pauseLoop, resumeLoop, cancelLoop
+  // 循环系统现在只提供状态管理和信息展示功能
 
   /**
    * 重置循环
    */
-  public static resetLoop(loopId: string): void {
+  public static resetExecutionLoop(loopId: string): void {
     const context = this.loopContexts.get(loopId);
     if (context) {
       context.state = 'idle';
-      context.currentIteration = 0;
-      context.elapsedTime = 0;
+      context.current_iteration = 0;
+      context.elapsed_time = 0;
       context.progress = 0;
-      context.accumulatedData = [];
+      context.accumulated_data = [];
       context.error = undefined;
-      context.currentNodeId = undefined;
+      context.current_node_id = undefined;
     }
   }
 
@@ -289,12 +160,12 @@ export class LoopContextManager {
       timestamp: Date.now()
     };
 
-    context.accumulatedData.push(loopData);
+    context.accumulated_data.push(loopData);
 
     // 限制数据点数量
     const maxDataPoints = this.DEFAULT_CONFIG.maxDataPoints;
-    if (context.accumulatedData.length > maxDataPoints) {
-      context.accumulatedData = context.accumulatedData.slice(-maxDataPoints);
+    if (context.accumulated_data.length > maxDataPoints) {
+      context.accumulated_data = context.accumulated_data.slice(-maxDataPoints);
     }
   }
 
@@ -330,17 +201,17 @@ export class LoopContextManager {
       return [];
     }
 
-    let data = [...context.accumulatedData];
+    let data = [...context.accumulated_data];
 
     if (filter) {
       if (filter.iteration !== undefined) {
         data = data.filter(d => d.iteration === filter.iteration);
       }
       if (filter.nodeId) {
-        data = data.filter(d => d.nodeId === filter.nodeId);
+        data = data.filter(d => d.node_id === filter.nodeId);
       }
       if (filter.dataType) {
-        data = data.filter(d => d.dataType === filter.dataType);
+        data = data.filter(d => d.data_type === filter.dataType);
       }
       if (filter.startTime !== undefined) {
         data = data.filter(d => d.timestamp >= filter.startTime!);
@@ -386,21 +257,21 @@ export class LoopContextManager {
       return null;
     }
 
-    const averageIterationTime = context.currentIteration > 0
-      ? context.elapsedTime / context.currentIteration
+    const averageIterationTime = context.current_iteration > 0
+      ? context.elapsed_time / context.current_iteration
       : 0;
 
-    const remainingIterations = context.totalIterations - context.currentIteration;
+    const remainingIterations = context.total_iterations - context.current_iteration;
     const estimatedTimeRemaining = context.state === 'running'
       ? remainingIterations * averageIterationTime
       : 0;
 
     return {
-      totalIterations: context.totalIterations,
-      completedIterations: context.currentIteration,
+      totalIterations: context.total_iterations,
+      completedIterations: context.current_iteration,
       progress: context.progress,
-      elapsedTime: context.elapsedTime,
-      dataPointsCount: context.accumulatedData.length,
+      elapsedTime: context.elapsed_time,
+      dataPointsCount: context.accumulated_data.length,
       averageIterationTime,
       estimatedTimeRemaining
     };
@@ -418,6 +289,142 @@ export class LoopContextManager {
     const listeners = this.eventListeners.get(key) || [];
     listeners.push(listener);
     this.eventListeners.set(key, listeners);
+  }
+
+  // ----------------------
+  // Pair/Stack API (snake_case data)
+  // ----------------------
+
+  public static enterLoop(startNode: LoopStartNode, endNode: LoopEndNode, level: number): void {
+    const loop_id = startNode.data.parameters.loop_id;
+    const iterations = startNode.data.parameters.loop_count;
+    const variable_name = startNode.data.parameters.loop_variable;
+    const start_value = startNode.data.parameters.start_value;
+
+    const context: PairLoopContext = {
+      loop_id,
+      start_node: startNode,
+      end_node: endNode,
+      level,
+      iterations,
+      current_iteration: 0,
+      variable_name,
+      variable_value: start_value
+    };
+
+    this.pairLoopStack.push(context);
+
+    this.loopPairs.set(loop_id, {
+      start_node_id: startNode.id,
+      end_node_id: endNode.id,
+      loop_id,
+      level
+    });
+  }
+
+  public static exitLoop(): PairLoopContext | null {
+    const context = this.pairLoopStack.pop();
+    if (context) {
+      this.clearExecutionNodeNames(context.loop_id);
+    }
+    return context || null;
+  }
+
+  public static getCurrentLoop(): PairLoopContext | null {
+    return this.pairLoopStack.length > 0 ? this.pairLoopStack[this.pairLoopStack.length - 1] : null;
+  }
+
+  public static getAllLoops(): PairLoopContext[] {
+    return [...this.pairLoopStack];
+  }
+
+  public static getLoopLevel(loop_id: string): number {
+    const pair = this.loopPairs.get(loop_id);
+    return pair ? pair.level : -1;
+  }
+
+  public static isInLoop(): boolean {
+    return this.pairLoopStack.length > 0;
+  }
+
+  public static getLoopDepth(): number {
+    return this.pairLoopStack.length;
+  }
+
+  public static advanceLoop(): boolean {
+    const current = this.getCurrentLoop();
+    if (!current) return false;
+    current.current_iteration++;
+    current.variable_value += current.start_node.data.parameters.step;
+    if (current.current_iteration >= current.iterations) {
+      this.exitLoop();
+      return false;
+    }
+    return true;
+  }
+
+  // 移除了resetLoop方法，只保留状态管理功能
+
+  public static getVariableValue(variable_name: string): number | null {
+    for (let i = this.pairLoopStack.length - 1; i >= 0; i--) {
+      const context = this.pairLoopStack[i];
+      if (context.variable_name === variable_name) {
+        return context.variable_value;
+      }
+    }
+    return null;
+  }
+
+  public static generateExecutionNodeName(original_node_id: string, node_name: string): string {
+    const current = this.getCurrentLoop();
+    if (!current) return node_name;
+    const cacheKey = `${current.loop_id}_${original_node_id}_${current.current_iteration}`;
+    const cached = this.executionNodeNames.get(cacheKey);
+    if (cached) return cached;
+    const outer = this.pairLoopStack.slice(0, -1).map(ctx => ctx.current_iteration + 1);
+    const curr = current.current_iteration + 1;
+    const suffix = [...outer, curr].map(n => n.toString().padStart(2, '0')).join('_');
+    const newName = `${node_name}_${suffix}`;
+    this.executionNodeNames.set(cacheKey, newName);
+    return newName;
+  }
+
+  private static clearExecutionNodeNames(loop_id: string): void {
+    const keys: string[] = [];
+    for (const [key] of this.executionNodeNames) {
+      if (key.startsWith(`${loop_id}_`)) keys.push(key);
+    }
+    keys.forEach(k => this.executionNodeNames.delete(k));
+  }
+
+  public static getLoopPair(loop_id: string): LoopPair | null {
+    return this.loopPairs.get(loop_id) || null;
+  }
+
+  public static getAllLoopPairs(): LoopPair[] {
+    return Array.from(this.loopPairs.values());
+  }
+
+  public static validateLoopPair(startNode: LoopStartNode, endNode: LoopEndNode): boolean {
+    return startNode.data.parameters.loop_id === endNode.data.parameters.loop_id;
+  }
+
+  public static validateLoopNesting(): boolean {
+    const pairs = this.getAllLoopPairs().slice().sort((a, b) => a.level - b.level);
+    for (let i = 0; i < pairs.length - 1; i++) {
+      for (let j = i + 1; j < pairs.length; j++) {
+        const outer = pairs[i];
+        const inner = pairs[j];
+        if (inner.level <= outer.level) return false;
+      }
+    }
+    return true;
+  }
+
+  public static clearPairs(): void {
+    this.pairLoopStack = [];
+    this.executionNodeNames.clear();
+    this.loopPairs.clear();
   }
 
   /**
@@ -469,11 +476,11 @@ export class LoopContextManager {
   }
 
   /**
-   * 获取循环节点ID列表（新）
+   * 获取循环节点ID列表
    */
   private static getLoopNodeIds(loopId: string): string[] {
     const ctx = this.loopContexts.get(loopId);
-    return ctx?.nodeIds ?? [];
+    return (ctx as any)?.node_ids ?? [];
   }
 
   // 私有方法
@@ -485,7 +492,7 @@ export class LoopContextManager {
     // 查找匹配的监听器
     for (const [key, listeners] of this.eventListeners) {
       const [loopId, eventTypes] = key.split(':');
-      if (loopId === event.loopId && eventTypes.split(',').includes(event.type)) {
+      if (loopId === event.loop_id && eventTypes.split(',').includes(event.type)) {
         listeners.forEach(listener => {
           try {
             listener(event);
@@ -504,11 +511,11 @@ export class LoopContextManager {
     const timer = setInterval(() => {
       const context = this.loopContexts.get(loopId);
       if (context && context.state === 'running') {
-        context.elapsedTime = Date.now() - context.startTime;
+        context.elapsed_time = Date.now() - context.start_time;
 
         this.emitEvent({
           type: 'iteration_start',
-          loopId,
+          loop_id: loopId,
           timestamp: Date.now()
         });
       }
@@ -520,17 +527,7 @@ export class LoopContextManager {
   /**
    * 等待恢复
    */
-  private static async waitForResume(loopId: string): Promise<void> {
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        const context = this.loopContexts.get(loopId);
-        if (!context || context.state !== 'paused') {
-          clearInterval(checkInterval);
-          resolve();
-        }
-      }, 100);
-    });
-  }
+  // 移除了waitForResume方法，因为不再需要暂停/恢复功能
 
   /**
    * 获取循环节点ID列表
@@ -553,8 +550,8 @@ export class LoopContextManager {
     const rows = data.map(item => [
       item.iteration,
       item.timestamp,
-      item.nodeId,
-      item.dataType,
+      item.node_id,
+      item.data_type,
       JSON.stringify(item.data)
     ]);
 
@@ -563,3 +560,8 @@ export class LoopContextManager {
 }
 
 export default LoopContextManager;
+
+// Convenience instance for components expecting an instance API
+// 代理对象已删除 - 直接使用 LoopContextManager 静态方法
+// 原因：代理模式只是简单转发，没有增加价值，反而增加复杂性
+// 推荐直接使用：LoopContextManager.getLoopPair(), LoopContextManager.getCurrentLoop() 等

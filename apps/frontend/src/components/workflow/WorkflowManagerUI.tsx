@@ -100,7 +100,13 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
     // 应用导入的工作流
     setNodes(workflow.nodes);
-    setConnections(workflow.connections);
+    // 转换连接线格式：从 camelCase 到 snake_case
+    const formattedConnections = workflow.connections.map(conn => ({
+      id: conn.id,
+      source_id: conn.sourceId,
+      target_id: conn.targetId
+    }));
+    setConnections(formattedConnections);
 
     setShowImporter(false);
   };
@@ -129,7 +135,13 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const applyTemplate = (template: WorkflowData) => {
     if (window.confirm(`确定要应用模板 "${template.metadata?.name}" 吗？这将替换当前工作流。`)) {
       setNodes(template.nodes);
-      setConnections(template.connections);
+      // 转换连接线格式：从 camelCase 到 snake_case
+      const formattedConnections = template.connections.map(conn => ({
+        id: conn.id,
+        source_id: conn.sourceId,
+        target_id: conn.targetId
+      }));
+      setConnections(formattedConnections);
     }
   };
 
