@@ -5,7 +5,7 @@
  * 专注于循环检测、状态监控和数据管理，不包含执行控制功能
  */
 
-import { ElectrochemicalNode, LoopStartNode, LoopEndNode, LoopContext as PairLoopContext, LoopPair } from '../../nodes/types';
+import { ElectrochemicalNode, LoopStartNode, LoopEndNode, LoopContext as PairLoopContext, LoopPair } from '../../../../types/nodes';
 import { LoopInfo } from './LoopDetector';
 
 // 循环执行状态

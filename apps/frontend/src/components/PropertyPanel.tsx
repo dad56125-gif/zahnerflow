@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../nodes/types';
-import { useCanvasStore } from '../stores/canvasStore';
+import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
+import { useCanvasStore } from '../services/stores/canvasStore';
 
 interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;

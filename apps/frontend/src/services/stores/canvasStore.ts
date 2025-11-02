@@ -6,12 +6,12 @@ import {
   WorkstationType,
   createDefaultNodeDataWithWorkstation,
   getNodeConfigByWorkstation
-} from '../nodes/types';
+} from '../../types/nodes';
 import {
   layout_service,
   Position,
   LayoutCalculationOptions
-} from '../services/layout';
+} from '../layout';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {

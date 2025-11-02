@@ -5,8 +5,8 @@
  * 支持工作流的版本控制和配置管理
  */
 
-import { ElectrochemicalNode, NodeType, NodeCategory } from '../../nodes/types';
-import { LoopInfo } from '../loops/LoopDetector';
+import { ElectrochemicalNode, NodeType, NodeCategory } from '@/types/nodes';
+import { LoopInfo } from '.';
 
 // 工作流数据接口
 export interface WorkflowData {

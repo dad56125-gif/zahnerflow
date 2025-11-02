@@ -25,7 +25,7 @@
  */
 
 import { workflowWebSocketService, NodeStatusUpdate, ExecutionUpdate, NodeCompleted, ConsoleLog } from '../services/websocket.service';
-import { ElectrochemicalNode, NodeStatus } from '../nodes/types';
+import { ElectrochemicalNode, NodeStatus } from '../types/nodes';
 
 export interface ExecutionState {
   executionId: string;

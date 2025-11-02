@@ -9,7 +9,7 @@ import React, { useRef } from 'react';
 import { useMfc } from '../services/hooks/useMfc';
 import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 import { MFCDeviceCard } from './MFCDeviceCard';
-import { MFCConnectionPanel } from './mfc/MFCConnectionPanel';
+import { MFCConnectionPanel } from './features/mfc/MFCConnectionPanel';
 import { mfcWebSocketService } from '../services/mfc-websocket.service';
 
 interface MFCModalProps {

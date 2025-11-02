@@ -5,7 +5,7 @@
  * 所有参数命名使用snake_case规范
  */
 
-import { ElectrochemicalNode } from '../../nodes/types';
+import { ElectrochemicalNode } from '../../types/nodes';
 
 // 重新导出ElectrochemicalNode类型
 export type { ElectrochemicalNode };

@@ -90,7 +90,7 @@ async function apiRequest<T>(
 /**
  * Furnace API 类
  */
-export class FurnaceApi {
+class FurnaceApi {
   /**
    * 获取设备状态
    */
@@ -475,5 +475,7 @@ export class FurnaceApi {
     );
   }
 }
+
+export { FurnaceApi };
 
 export default FurnaceApi;

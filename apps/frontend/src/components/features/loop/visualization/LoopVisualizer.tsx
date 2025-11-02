@@ -6,13 +6,13 @@
  */
 
 import React from 'react';
-import { LoopInfo } from './LoopDetector';
-import { LoopBoundary } from '../LoopBoundary';
-import { LoopStartNode, LoopEndNode } from '../../nodes/types';
+import { LoopInfo } from '../core/LoopDetector';
+import { LoopBoundary } from './LoopBoundary';
+import { LoopStartNode, LoopEndNode } from '../../../../types/nodes';
 import {
   type LoopExecutionContext,
   type LoopExecutionState
-} from './LoopContextManager';
+} from '../core/LoopContextManager';
 
 // 循环可视化属性接口
 export interface LoopVisualizerProps {

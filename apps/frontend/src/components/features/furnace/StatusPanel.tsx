@@ -1,6 +1,6 @@
 import React from 'react';
-import { TemperatureChart } from '../TemperatureChart';
-import type { FurnaceState, FurnaceControls } from '../../services/hooks/useFurnace';
+import { TemperatureChart } from '../../TemperatureChart';
+import type { FurnaceState, FurnaceControls } from '../../../services/hooks/useFurnace';
 
 interface StatusPanelProps {
   furnaceState: FurnaceState;

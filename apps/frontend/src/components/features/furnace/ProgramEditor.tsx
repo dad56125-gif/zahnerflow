@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { FurnaceState, FurnaceControls } from '../../services/hooks/useFurnace';
-import type { ProgramSegment } from '../../types/devices';
+import type { FurnaceState, FurnaceControls } from '../../../services/hooks/useFurnace';
+import type { ProgramSegment } from '../../../types/devices';
 
 interface ProgramEditorProps {
   furnaceState: FurnaceState;

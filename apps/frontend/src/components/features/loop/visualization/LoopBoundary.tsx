@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { LoopStartNode, LoopEndNode } from '../nodes/types';
-import { LoopContextManager } from './loops';
-import { calculateConvexHull, getCenterPoint, generateSVGPath, getBounds, Point } from '../utils/geometry';
+import { LoopStartNode, LoopEndNode } from '../../../../types/nodes';
+import { LoopContextManager } from '../core/LoopContextManager';
+import { calculateConvexHull, getCenterPoint, generateSVGPath, getBounds, Point } from '../../../../utils/geometry';
 
 interface LoopBoundaryProps {
   startNode: LoopStartNode;

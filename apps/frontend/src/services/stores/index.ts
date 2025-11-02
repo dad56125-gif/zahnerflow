@@ -1,13 +1,16 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { 
-  Workflow, 
-  Execution, 
-  Device, 
+import {
+  Workflow,
+  Execution,
+  Device,
 } from '@zahnerflow/types';
-import { workflowService, executionService } from '../services/workflowService';
-import { deviceService } from '../services/deviceService';
-import { workflowWebSocketService } from '../services/websocket.service';
+import { workflowService, executionService } from '../workflowService';
+import { deviceService } from '../deviceService';
+import { workflowWebSocketService } from '../websocket.service';
+
+// 导入 canvas store
+export { useCanvasStore } from './canvasStore';
 
 // 工作流状态管理
 interface WorkflowState {

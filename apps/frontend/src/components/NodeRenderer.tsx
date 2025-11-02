@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { ElectrochemicalNode, getNodeConfig } from '../nodes/types';
+import { ElectrochemicalNode, getNodeConfig } from '../types/nodes';
 
 export interface NodeRendererProps {
   node: ElectrochemicalNode;

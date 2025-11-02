@@ -6,12 +6,12 @@
  */
 
 import React, { useState } from 'react';
-import { LoopInfo } from './LoopDetector';
+import { LoopInfo } from '../core/LoopDetector';
 import {
   LoopContextManager,
   type LoopExecutionContext,
   type LoopExecutionState
-} from './LoopContextManager';
+} from '../core/LoopContextManager';
 
 // 循环信息面板属性接口
 export interface LoopControlPanelProps {

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { MfcApi } from '../../services/api/index';
-import type { MfcState, MfcControls } from '../../services/hooks/useMfc';
+import { MfcApi } from '../../../services/api/mfcApi';
+import type { MfcState, MfcControls } from '../../../services/hooks/useMfc';
 
 interface MFCConnectionPanelProps {
   mfcState: MfcState;

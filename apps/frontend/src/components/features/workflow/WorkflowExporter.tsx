@@ -6,8 +6,8 @@
  */
 
 import React, { useState } from 'react';
-import { ElectrochemicalNode } from '../../nodes/types';
-import { LoopInfo } from '../loops/LoopDetector';
+import { ElectrochemicalNode } from '@/types/nodes';
+import { LoopInfo } from '.';
 import { WorkflowManager, type WorkflowMetadata, type WorkflowSettings, type WorkflowExportOptions } from './WorkflowManager';
 
 // 工作流导出器属性接口

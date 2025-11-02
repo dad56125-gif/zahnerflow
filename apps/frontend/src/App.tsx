@@ -1,21 +1,21 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
-import { WorkstationType, LoopStartNode, LoopEndNode, getNodeGroupsByWorkstation } from './nodes/types';
+import { WorkstationType, LoopStartNode, LoopEndNode, getNodeGroupsByWorkstation } from './types/nodes';
 import { Toolbar } from './components/Toolbar';
 import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
 import { PropertyPanel } from './components/PropertyPanel';
 import { StatusBar } from './components/StatusBar';
-import { LoopBoundary } from './components/LoopBoundary';
+import { LoopBoundary } from './components/features/loop';
 import { Canvas } from './components/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
 import { stateLinkageManager } from './managers/state-linkage.manager';
-import { useCanvasStore } from './stores/canvasStore';
+import { useCanvasStore } from './services/stores/canvasStore';
 import { DeviceModal } from './components/DeviceModal';
 import { MFCModal } from './components/MFCModal';
 import { workflowService } from './services/workflowService';
 import { useFurnace } from './services/hooks/useFurnace';
 import { UserProvider } from './contexts/UserContext';
-import type { LoopInfo } from './components/loops';
+import type { LoopInfo } from './components/features/loop';
 
 
 

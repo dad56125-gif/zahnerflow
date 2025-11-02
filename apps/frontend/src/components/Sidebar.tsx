@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { NodeCategory, WorkstationType, getNodeConfigByWorkstation, getNodeCategoryName } from '../nodes/types';
-import { useCanvasStore } from '../stores/canvasStore';
+import { NodeCategory, WorkstationType, getNodeConfigByWorkstation, getNodeCategoryName } from '../types/nodes';
+import { useCanvasStore } from '../services/stores/canvasStore';
 
 interface SidebarProps {
   activePanel: 'nodes';

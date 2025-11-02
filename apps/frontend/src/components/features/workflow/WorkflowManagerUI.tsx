@@ -6,13 +6,13 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { ElectrochemicalNode } from '../../nodes/types';
-import { useCanvasStore } from '../../stores/canvasStore';
-import { LoopDetector } from '../loops';
+import { ElectrochemicalNode } from '@/types/nodes';
+import { useCanvasStore } from '@/services/stores/canvasStore';
+import { LoopDetector } from '.';
 import WorkflowExporter, { WorkflowExporterProps } from './WorkflowExporter';
 import WorkflowImporter, { WorkflowImporterProps } from './WorkflowImporter';
 import WorkflowManager, { type WorkflowData, type WorkflowMetadata } from './WorkflowManager';
-import { useOnClickOutside } from '../../services/hooks/useOnClickOutside';
+import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';
 
 // 工作流管理UI属性接口
 export interface WorkflowManagerUIProps {

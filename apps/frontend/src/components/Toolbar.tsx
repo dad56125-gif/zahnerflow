@@ -1,6 +1,6 @@
 import React from 'react';
-import { WorkstationType } from '../nodes/types';
-import { useCanvasStore } from '../stores/canvasStore';
+import { WorkstationType } from '../types/nodes';
+import { useCanvasStore } from '../services/stores/canvasStore';
 import { FilePathManagerUI, FilePathConfig } from './FilePathManagerUI';
 import './FilePathManagerUI.css';
 

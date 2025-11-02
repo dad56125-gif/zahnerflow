@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { ElectrochemicalNode } from '../nodes/types';
+import { ElectrochemicalNode } from '../types/nodes';
 import {
   layout_service,
   connection_binding_service,

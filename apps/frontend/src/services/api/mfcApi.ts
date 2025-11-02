@@ -72,7 +72,7 @@ async function apiRequest<T>(
 /**
  * MFC API 类
  */
-export class MfcApi {
+class MfcApi {
   // ==================== 设备发现和管理 ====================
 
   /**
@@ -437,5 +437,7 @@ export class MfcApi {
     return percent.toFixed(precision);
   }
 }
+
+export { MfcApi };
 
 export default MfcApi;

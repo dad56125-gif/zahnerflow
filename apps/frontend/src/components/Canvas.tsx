@@ -1,6 +1,6 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ElectrochemicalNode, WorkstationType, NodeType } from '../nodes/types';
-import { useCanvasStore } from '../stores/canvasStore';
+import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
+import { useCanvasStore } from '../services/stores/canvasStore';
 import { NodeListRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
 import {
@@ -10,8 +10,8 @@ import {
   LoopStatusIndicator,
   LoopInfo,
   LoopExecutionContext
-} from './loops';
-import { WorkflowManagerUI } from './workflow';
+} from './features/loop';
+import { WorkflowManagerUI } from './features/workflow';
 import {
   layout_service,
   Position,

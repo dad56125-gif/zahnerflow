@@ -5,7 +5,7 @@
  * 提供循环结构分析和验证功能
  */
 
-import { ElectrochemicalNode, NodeType } from '../../nodes/types';
+import { ElectrochemicalNode, NodeType } from '../../../../types/nodes';
 
 // 循环信息接口
 export interface LoopInfo {

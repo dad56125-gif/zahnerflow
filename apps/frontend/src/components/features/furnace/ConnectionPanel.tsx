@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { FurnaceApi } from '../../services/api/index';
-import type { FurnaceState, FurnaceControls } from '../../services/hooks/useFurnace';
-import type { CommLog, OperationLog, LogEntry } from '../../types/devices';
+import { FurnaceApi } from '../../../services/api/furnaceApi';
+import type { FurnaceState, FurnaceControls } from '../../../services/hooks/useFurnace';
+import type { CommLog, OperationLog, LogEntry } from '../../../types/devices';
 
 interface ConnectionPanelProps {
   furnaceState: FurnaceState;
