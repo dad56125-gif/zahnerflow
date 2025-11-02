@@ -205,8 +205,8 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: '流程输出'
     },
     style: {
-      width: 160,
-      height: 80,
+      width: 140,
+      height: 60,
       background: 'linear-gradient(135deg, #FF6B35, #F4511E)',
       borderColor: '#F4511E',
       borderRadius: '8px',
@@ -242,8 +242,8 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: '流程输出'
     },
     style: {
-      width: 160,
-      height: 80,
+      width: 140,
+      height: 60,
       background: 'linear-gradient(135deg, #2196F3, #1976D2)',
       borderColor: '#1976D2',
       borderRadius: '8px',
@@ -281,7 +281,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'EIS数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
       borderColor: '#7B1FA2',
@@ -325,7 +325,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'EIS数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
       borderColor: '#7B1FA2',
@@ -367,7 +367,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'OCP数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #FF9800, #F57C00)',
       borderColor: '#F57C00',
@@ -400,7 +400,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'CA数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #2196F3, #1976D2)',
       borderColor: '#1976D2',
@@ -436,7 +436,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'CP数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #00BCD4, #0097A7)',
       borderColor: '#0097A7',
@@ -472,7 +472,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'LSV数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #4CAF50, #388E3C)',
       borderColor: '#388E3C',
@@ -510,7 +510,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: '电流扫描数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #FF5722, #D84315)',
       borderColor: '#D84315',
@@ -547,7 +547,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: 'LSV数据输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #795548, #5D4037)',
       borderColor: '#5D4037',
@@ -586,7 +586,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: '流程输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #FF9800, #F57C00)',
       borderColor: '#F57C00',
@@ -621,7 +621,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       description: '流程输出'
     },
     style: {
-      width: 160,
+      width: 140,
       height: 60,
       background: 'linear-gradient(135deg, #F44336, #D32F2F)',
       borderColor: '#D32F2F',

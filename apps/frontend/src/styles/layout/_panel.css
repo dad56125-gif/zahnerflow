@@ -1,9 +1,9 @@
-/* 右侧面板 */
+/* 右侧面板 - 使用glass UI风格 */
 .right-panels {
   grid-column: 3;
   grid-row: 1;
   inline-size: var(--property-w);
-  margin: 0; /* 贴住 main-viewport 上侧和右侧 */
+  margin: 0;
   border-radius: 0;
   display: flex;
   flex-direction: column;
@@ -19,20 +19,20 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: auto; /* 属性面板内部滚动 */
+  overflow: auto;
 }
 
 .property-panel-header {
-  padding: 12px 20px 8px 20px; /* 进一步减小边距 */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 4px; /* 进一步减小底部边距 */
+  padding: clamp(0.75rem, 1.2vw, 1rem) clamp(1rem, 2vw, 1.25rem) clamp(0.5rem, 0.8vw, 0.75rem);
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 0.25rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .property-panel-title {
-  font-size: 16px;
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
   font-weight: 600;
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -40,12 +40,12 @@
 }
 
 .property-panel-subtitle {
-  font-size: 12px;
+  font-size: clamp(0.6875rem, 1.5vw, 0.75rem);
   color: rgba(255, 255, 255, 0.7);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   margin: 0;
   text-align: right;
-  max-width: 120px;
+  max-width: clamp(100px, 20vw, 120px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -53,22 +53,28 @@
 
 .property-tabs {
   display: flex;
-  gap: clamp(6px, 2vw, 10px);
-  padding: 0 clamp(12px, 3vw, 20px);
-  margin-bottom: 1rem;
+  gap: clamp(0.375rem, 1.5vw, 0.625rem);
+  padding: 0 clamp(0.75rem, 2vw, 1.25rem);
+  margin-bottom: clamp(0.5rem, 1.5vw, 1rem);
 }
 
 .btn-property-tab {
   flex: 1;
   padding: clamp(0.4rem, 1.5vw, 0.5rem);
-  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  font-size: clamp(0.75rem, 2vw, 0.875rem);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 1.5vw, 8px);
-  height: var(--btn-h);
+  gap: clamp(0.25rem, 1vw, 0.5rem);
+  height: clamp(2rem, 5vw, 2.5rem);
   white-space: nowrap;
   overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  transition: var(--transition);
 }
 
 /* 当面板很窄时，标签页图标优先显示文字 */
@@ -86,193 +92,49 @@
 .property-panel-content {
   flex: 1;
   overflow-y: auto;
-  padding: 0 clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem) clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem) clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem);
-  padding-top: 0; /* 与sidebar-content对齐 */
+  padding: 0 clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem) clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem);
+  padding-top: 0;
 }
 
+/* 属性组布局 - 标签40%宽度，输入60%宽度 */
 .property-group {
-  margin-bottom: var(--space);
+  margin-bottom: clamp(0.75rem, 2vw, 1rem);
   display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-/* 默认：有值的属性组横向排列 */
-.property-group:has(.property-value) {
-  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: clamp(8px, 2vw, 16px);
+  gap: clamp(0.5rem, 1.5vw, 1rem);
+  width: 100%;
+  /* 启用容器查询 */
+  container-type: inline-size;
 }
 
-/* 参数标签和输入框两端对齐 */
-.property-group:has(.property-value) > .property-label {
-  flex: 0 0 auto !important;
-  min-width: 120px !important;
-  max-width: 50% !important;
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
-  hyphens: auto !important;
-  white-space: normal !important;
+/* 参数标签：固定40%宽度 */
+.property-group .property-label {
+  flex: 0 0 40%;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
-.property-group:has(.property-value) > .property-value {
-  flex: 0 0 auto !important;
-  min-width: 140px !important;
-  max-width: 50% !important;
-  display: flex !important;
-  justify-content: flex-end !important;
-}
-
-/* 在两端对齐模式下，输入框自适应容器宽度 */
-.property-group:has(.property-value) .property-input,
-.property-group:has(.property-value) .property-select {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-/* 温度输入组样式（输入框+单位） */
-.property-group .temperature-input-group,
-.property-group .flow-input-group {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  width: 100% !important;
-  justify-content: flex-end !important;
-}
-
-/* 在两端对齐模式下，输入组完全填充容器 */
-.property-group:has(.property-value) > .property-value .temperature-input-group,
-.property-group:has(.property-value) > .property-value .flow-input-group {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-.property-group .temperature-input-group .property-input,
-.property-group .flow-input-group .property-input {
-  width: calc(100% - 40px) !important;
-  max-width: calc(100% - 40px) !important;
-}
-
-.property-group .temperature-input-group .input-unit,
-.property-group .flow-input-group .input-unit {
-  flex: 0 0 auto !important;
-  font-size: 12px !important;
-  color: rgba(255, 255, 255, 0.7) !important;
-  min-width: 34px !important;
-  text-align: right !important;
-  white-space: nowrap !important;
-}
-
-/* 强制覆盖_input.css中的样式干扰 */
-.property-group input.property-input,
-.property-group select.property-select {
-  width: 100% !important;
-  min-height: auto !important;
-  padding: clamp(6px, 1.5vw, 8px) clamp(10px, 2.5vw, 14px) !important;
-  font-size: clamp(12px, 2.5vw, 14px) !important;
-  box-sizing: border-box !important;
-}
-
-/* 当面板较窄时，所有属性组改为纵向排列 */
-@container (max-width: 320px) {
-  .property-group:has(.property-value) {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-  }
-
-  .property-group:has(.property-value) > .property-label {
-    flex: 0 0 auto !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
-    /* 长标签在窄屏下可以换行 */
-    word-break: break-word !important;
-    overflow-wrap: break-word !important;
-    white-space: normal !important;
-  }
-
-  .property-group:has(.property-value) > .property-value {
-    flex: 0 0 auto !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
-    justify-content: stretch !important;
-  }
-
-  /* 窄屏模式下温度/流量输入组 */
-  .property-group:has(.property-value) > .property-value .temperature-input-group,
-  .property-group:has(.property-value) > .property-value .flow-input-group {
-    width: 100% !important;
-    justify-content: stretch !important;
-  }
-
-  .property-group-title {
-    margin-bottom: 4px;
-    font-size: 13px;
-  }
-
-  /* 输入框和选择框响应式调整 */
-  .property-input,
-  .property-select {
-    width: 100%;
-    min-height: 36px;
-    font-size: clamp(12px, 2.5vw, 14px);
-    padding: clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px);
-  }
-
-  .property-select {
-    background-size: clamp(16px, 4vw, 20px);
-    background-position: right clamp(8px, 2vw, 12px) center;
-  }
-}
-
-/* 输入框和选择框的响应式基础样式 */
-.property-input,
-.property-select {
-  transition: var(--transition);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  color: white;
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-}
-
-.property-input {
-  width: clamp(120px, 50%, 280px);
-  min-height: clamp(32px, 6vw, 40px);
-  padding: clamp(6px, 1.5vw, 8px) clamp(10px, 2.5vw, 14px);
-  font-size: clamp(12px, 2.5vw, 14px);
-  box-sizing: border-box;
-}
-
-.property-select {
-  width: clamp(120px, 50%, 280px);
-  min-height: clamp(32px, 6vw, 40px);
-  padding: clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 14px);
-  font-size: clamp(12px, 2.5vw, 14px);
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' opacity='0.7'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right clamp(8px, 2vw, 12px) center;
-  background-size: clamp(16px, 4vw, 20px);
-  cursor: pointer;
+/* 输入区域：自动填充剩余空间 */
+.property-group .property-value {
+  flex: 1;  /* 自动填充剩余空间 */
+  display: flex;
+  justify-content: stretch;
+  align-items: center;
 }
 
 .property-group-title {
-  font-size: 14px;
+  font-size: clamp(0.8125rem, 2vw, 0.875rem);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 4px; /* 大幅减小标题和参数之间的间距 */
+  margin-bottom: clamp(0.25rem, 0.5vw, 0.5rem);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .section-title {
-  font-size: 1rem;
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: clamp(0.75rem, 2vw, 1rem);
   color: white;
 }

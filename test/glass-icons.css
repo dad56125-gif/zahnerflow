@@ -1,0 +1,403 @@
+/* Glass Icon 效果测试样式
+ *
+ * 真正的图标边缘提取玻璃化效果：
+ * 1. 使用SVG滤镜进行边缘检测（Sobel算子）
+ * 2. 通过contrast()和invert()增强边缘对比度
+ * 3. 使用blur()和contrast()组合创建边缘轮廓
+ * 4. 通过background-clip: text创建玻璃光泽
+ * 5. 使用mix-blend-mode: screen实现背景穿透
+ * 6. 多层text-shadow创造边缘发光效果
+ * 7. backdrop-filter添加玻璃质感模糊
+ */
+
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: white;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 40px;
+    font-size: 2.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.test-section {
+    margin-bottom: 60px;
+}
+
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+    border-radius: var(--radius);
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.icon-item:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--glass-shadow);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.label {
+    font-size: 14px;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 普通图标样式 */
+.normal .icon {
+    opacity: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* 边缘检测图标样式 - 纯边缘轮廓效果 */
+.glass .icon {
+    /* 1. SVG边缘检测滤镜 */
+    filter: url(#edge-detect),
+            /* 2. 边缘增强 */
+            url(#edge-enhance),
+            /* 3. 高对比度边缘提取 */
+            contrast(1000%) brightness(300%) grayscale(100%),
+            /* 4. 反转显示边缘 */
+            invert(100%),
+            /* 5. 纯边缘发光 */
+            drop-shadow(0 0 1px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)),
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.6)),
+            /* 6. 边缘锐化 */
+            brightness(1.5);
+
+    /* 移除所有背景效果，只保留边缘 */
+    color: white;
+    background: none;
+    -webkit-text-fill-color: white;
+    text-shadow: none;
+
+    /* 纯边缘发光效果 */
+    filter: url(#edge-detect),
+            url(#edge-enhance),
+            contrast(1000%) brightness(300%) grayscale(100%),
+            invert(100%),
+            drop-shadow(0 0 2px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)),
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.5)),
+            drop-shadow(0 0 16px rgba(255, 255, 255, 0.3)),
+            brightness(1.8);
+
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass:hover .icon {
+    /* 增强边缘检测效果 */
+    filter: url(#outline-extract),
+            url(#edge-enhance),
+            /* 超高对比度边缘提取 */
+            contrast(2000%) brightness(400%) grayscale(100%),
+            /* 反转效果增强 */
+            invert(100%),
+            /* 强边缘发光 */
+            drop-shadow(0 0 3px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 8px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 16px rgba(255, 255, 255, 0.9)),
+            drop-shadow(0 0 32px rgba(255, 255, 255, 0.7)),
+            drop-shadow(0 0 64px rgba(255, 255, 255, 0.5)),
+            /* 边缘超锐化 */
+            brightness(2.5);
+
+    /* 移除所有背景效果，只保留边缘 */
+    color: white;
+    background: none;
+    -webkit-text-fill-color: white;
+    text-shadow: none;
+
+    transform: scale(1.1);
+}
+
+/* 不同透明度级别 - 纯边缘轮廓版本 */
+.opacity-light .icon {
+    filter: url(#edge-detect),
+            contrast(600%) brightness(200%) grayscale(100%),
+            invert(100%),
+            drop-shadow(0 0 1px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.9)),
+            brightness(1.3);
+
+    /* 纯边缘，无背景 */
+    color: white;
+    background: none;
+    -webkit-text-fill-color: white;
+    text-shadow: none;
+}
+
+.opacity-medium .icon {
+    filter: url(#edge-detect),
+            contrast(800%) brightness(250%) grayscale(100%),
+            invert(100%),
+            drop-shadow(0 0 1px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)),
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.5)),
+            brightness(1.4);
+
+    /* 纯边缘，无背景 */
+    color: white;
+    background: none;
+    -webkit-text-fill-color: white;
+    text-shadow: none;
+}
+
+.opacity-heavy .icon {
+    filter: url(#outline-extract),
+            contrast(1000%) brightness(300%) grayscale(100%),
+            invert(100%),
+            drop-shadow(0 0 2px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 6px rgba(255, 255, 255, 0.9)),
+            drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)),
+            drop-shadow(0 0 24px rgba(255, 255, 255, 0.3)),
+            brightness(1.6);
+
+    /* 纯边缘，无背景 */
+    color: white;
+    background: none;
+    -webkit-text-fill-color: white;
+    text-shadow: none;
+}
+
+.opacity-crystal .icon {
+    filter: url(#outline-extract),
+            contrast(1500%) brightness(400%) grayscale(100%),
+            invert(100%),
+            drop-shadow(0 0 2px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.8)),
+            drop-shadow(0 0 20px rgba(255, 255, 255, 0.5)),
+            drop-shadow(0 0 40px rgba(255, 255, 255, 0.3)),
+            drop-shadow(0 0 80px rgba(255, 255, 255, 0.15)),
+            brightness(2.0);
+
+    /* 纯边缘，无背景 */
+    color: white;
+    background: none;
+    -webkit-text-fill-color: white;
+    text-shadow: none;
+}
+
+/* 深色背景测试 */
+.dark-background {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    padding: 40px;
+    border-radius: var(--radius);
+    margin-top: 20px;
+}
+
+.dark-background .icon-grid {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: var(--radius);
+}
+
+/* 节点模拟效果 */
+.node-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 20px;
+}
+
+.glass-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 80px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px solid var(--glass-border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-node::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+}
+
+.glass-node:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.node-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+
+    /* 边缘检测玻璃化图标效果 */
+    filter: url(#edge-detect),
+            url(#edge-enhance),
+            contrast(600%) brightness(180%) grayscale(100%),
+            invert(100%),
+            opacity(0.75),
+            drop-shadow(0 0 1px rgba(255, 255, 255, 1)),
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.6)),
+            drop-shadow(0 0 6px rgba(255, 255, 255, 0.3)),
+            brightness(1.25);
+
+    /* 背景穿透和混合模式 */
+    mix-blend-mode: screen;
+
+    /* 玻璃光泽渐变 */
+    background: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.35) 0%,
+        rgba(255, 255, 255, 0.12) 20%,
+        rgba(255, 255, 255, 0.06) 40%,
+        rgba(255, 255, 255, 0.1) 60%,
+        rgba(255, 255, 255, 0.18) 80%,
+        rgba(255, 255, 255, 0.28) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* 玻璃质感 */
+    backdrop-filter: blur(0.8px) brightness(1.15) contrast(130%);
+    -webkit-backdrop-filter: blur(0.8px) brightness(1.15) contrast(130%);
+
+    /* 边缘发光 */
+    text-shadow:
+        0 0 1px rgba(255, 255, 255, 1),
+        0 0 3px rgba(255, 255, 255, 0.8),
+        0 0 6px rgba(255, 255, 255, 0.5),
+        0 0 10px rgba(255, 255, 255, 0.3),
+        inset 0 0 2px rgba(255, 255, 255, 0.9),
+        inset 0 0 5px rgba(255, 255, 255, 0.7);
+
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.node-title {
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .icon-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+    }
+
+    .icon {
+        font-size: 36px;
+    }
+
+    .node-container {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+
+    .glass-node {
+        width: 120px;
+        height: 70px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+    }
+}
+
+/* 动画效果 */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.icon-item:nth-child(odd):hover {
+    animation: float 3s ease-in-out infinite;
+}
+
+.icon-item:nth-child(even):hover {
+    animation: float 3s ease-in-out infinite 0.5s;
+}
+
+/* 添加一些装饰性背景元素 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}

@@ -303,7 +303,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           <textarea
             value={node.data.description || ''}
             onChange={(e) => updateNodeData({ description: e.target.value })}
-            className="property-textarea glass"
+            className="textarea glass"
             placeholder="输入节点描述"
             rows={3}
           />
@@ -359,7 +359,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             <select
               value={currentValue ?? defaultValue}
               onChange={(e) => updateParameters({ ...node.data.parameters, [key]: e.target.value })}
-              className="property-select glass"
+              className="select glass"
             >
               {enumValues[key].map((value: string) => (
                 <option key={value} value={value}>
@@ -375,7 +375,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             <select
               value={(currentValue ?? defaultValue) ? 'true' : 'false'}
               onChange={(e) => updateParameters({ ...node.data.parameters, [key]: e.target.value === 'true' })}
-              className="property-select glass"
+              className="select glass"
             >
               <option value="true">启用</option>
               <option value="false">禁用</option>
@@ -400,7 +400,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 // 禁用滚轮改变数值
                 e.preventDefault();
               }}
-              className="property-input glass"
+              className="input glass"
               placeholder={getParameterPlaceholder(key)}
             />
           );
@@ -410,7 +410,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             type="text"
             value={currentValue ?? defaultValue}
             onChange={(e) => updateParameters({ ...node.data.parameters, [key]: e.target.value })}
-            className="property-input glass"
+            className="input glass"
             placeholder={getParameterPlaceholder(key)}
           />
         );
@@ -426,7 +426,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
               type="text"
               value={currentValue ?? defaultValue}
               disabled
-              className="property-input glass disabled"
+              className="input glass disabled"
               placeholder={getParameterPlaceholder(key)}
               title="运行时自动计算"
             />
@@ -435,125 +435,119 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
         if (key === 'target_temperature') {
           return (
-            <div className="temperature-input-group">
-              <input
-                type="text"
-                value={currentValue ?? defaultValue}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // 只允许数字输入
-                  if (!/^\d*$/.test(value)) return;
+            <input
+              type="text"
+              value={currentValue ?? defaultValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                // 只允许数字输入
+                if (!/^\d*$/.test(value)) return;
 
-                  const numValue = Number(value);
-                  // 边界检查和静默修正
-                  const correctedValue = Math.max(25, Math.min(1000, numValue));
+                const numValue = Number(value);
+                // 边界检查和静默修正
+                const correctedValue = Math.max(25, Math.min(1000, numValue));
 
+                updateParameters({
+                  ...node.data.parameters,
+                  [key]: correctedValue
+                });
+              }}
+              onBlur={(e) => {
+                const value = e.target.value;
+                if (!value) {
+                  updateParameters({
+                    ...node.data.parameters,
+                    [key]: defaultValue
+                  });
+                  return;
+                }
+
+                const numValue = Number(value);
+                const correctedValue = Math.max(25, Math.min(1000, numValue));
+
+                if (correctedValue !== numValue) {
                   updateParameters({
                     ...node.data.parameters,
                     [key]: correctedValue
                   });
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value;
-                  if (!value) {
-                    updateParameters({
-                      ...node.data.parameters,
-                      [key]: defaultValue
-                    });
-                    return;
-                  }
-
-                  const numValue = Number(value);
-                  const correctedValue = Math.max(25, Math.min(1000, numValue));
-
-                  if (correctedValue !== numValue) {
-                    updateParameters({
-                      ...node.data.parameters,
-                      [key]: correctedValue
-                    });
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // 阻止非数字输入
-                  if (!/^\d$/.test(e.key) &&
-                      !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                className="property-input glass"
-                min={25}
-                max={1000}
-                step={1}
-                placeholder={getParameterPlaceholder(key)}
-                title="目标温度 (25-1000°C)"
-              />
-              <span className="input-unit">°C</span>
-            </div>
+                }
+              }}
+              onKeyDown={(e) => {
+                // 阻止非数字输入
+                if (!/^\d$/.test(e.key) &&
+                    !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              className="input glass"
+              min={25}
+              max={1000}
+              step={1}
+              placeholder={getParameterPlaceholder(key)}
+              title="目标温度 (25-1000°C)"
+            />
           );
         }
 
         if (key === 'rate') {
           return (
-            <div className="temperature-input-group">
-              <input
-                type="text"
-                value={currentValue ?? defaultValue}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // 允许数字和一位小数点
-                  if (!/^\d*\.?\d?$/.test(value)) return;
+            <input
+              type="text"
+              value={currentValue ?? defaultValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                // 允许数字和一位小数点
+                if (!/^\d*\.?\d?$/.test(value)) return;
 
-                  const numValue = Number(value);
-                  // 边界检查和静默修正
-                  const correctedValue = Math.max(0.1, Math.min(20, numValue));
+                const numValue = Number(value);
+                // 边界检查和静默修正
+                const correctedValue = Math.max(0.1, Math.min(20, numValue));
 
+                updateParameters({
+                  ...node.data.parameters,
+                  [key]: correctedValue
+                });
+              }}
+              onBlur={(e) => {
+                const value = e.target.value;
+                if (!value) {
+                  updateParameters({
+                    ...node.data.parameters,
+                    [key]: defaultValue
+                  });
+                  return;
+                }
+
+                const numValue = Number(value);
+                const correctedValue = Math.max(0.1, Math.min(20, numValue));
+
+                if (correctedValue !== numValue) {
                   updateParameters({
                     ...node.data.parameters,
                     [key]: correctedValue
                   });
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value;
-                  if (!value) {
-                    updateParameters({
-                      ...node.data.parameters,
-                      [key]: defaultValue
-                    });
-                    return;
-                  }
+                }
+              }}
+              onKeyDown={(e) => {
+                // 允许数字、小数点和控制键
+                if (!/^\d$/.test(e.key) &&
+                    e.key !== '.' &&
+                    !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                  e.preventDefault();
+                }
 
-                  const numValue = Number(value);
-                  const correctedValue = Math.max(0.1, Math.min(20, numValue));
-
-                  if (correctedValue !== numValue) {
-                    updateParameters({
-                      ...node.data.parameters,
-                      [key]: correctedValue
-                    });
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // 允许数字、小数点和控制键
-                  if (!/^\d$/.test(e.key) &&
-                      e.key !== '.' &&
-                      !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault();
-                  }
-
-                  // 防止多个小数点
-                  if (e.key === '.' && e.currentTarget.value.includes('.')) {
-                    e.preventDefault();
-                  }
-                }}
-                className="property-input glass"
-                min={0.1}
-                max={20}
-                step={0.1}
-                placeholder={getParameterPlaceholder(key)}
-                title="温度变化速率 (0.1-20 °C/min)"
-              />
-              <span className="input-unit">°C/min</span>
-            </div>
+                // 防止多个小数点
+                if (e.key === '.' && e.currentTarget.value.includes('.')) {
+                  e.preventDefault();
+                }
+              }}
+              className="input glass"
+              min={0.1}
+              max={20}
+              step={0.1}
+              placeholder={getParameterPlaceholder(key)}
+              title="温度变化速率 (0.1-20 °C/min)"
+            />
           );
         }
 
@@ -562,7 +556,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             type="text"
             value={currentValue ?? defaultValue}
             disabled
-            className="property-input glass disabled"
+            className="input glass disabled"
             title="系统参数"
           />
         );
@@ -591,7 +585,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                   max_flow_sccm: selectedDevice?.maxFlow || 200
                 });
               }}
-              className="property-select glass"
+              className="select glass"
               title="选择MFC设备和气体类型"
             >
               {availableDevices.map(device => (
@@ -608,66 +602,63 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           const maxFlow = node.data.parameters?.max_flow_sccm || 200;
 
           return (
-            <div className="flow-input-group">
-              <input
-                type="text"
-                value={currentValue ?? defaultValue}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // 允许数字和一位小数点
-                  if (!/^\d*\.?\d?$/.test(value)) return;
+            <input
+              type="text"
+              value={currentValue ?? defaultValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                // 允许数字和一位小数点
+                if (!/^\d*\.?\d?$/.test(value)) return;
 
-                  const numValue = Number(value);
-                  // 边界检查和静默修正
-                  const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
+                const numValue = Number(value);
+                // 边界检查和静默修正
+                const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
 
+                updateParameters({
+                  ...node.data.parameters,
+                  [key]: correctedValue
+                });
+              }}
+              onBlur={(e) => {
+                const value = e.target.value;
+                if (!value) {
+                  updateParameters({
+                    ...node.data.parameters,
+                    [key]: defaultValue
+                  });
+                  return;
+                }
+
+                const numValue = Number(value);
+                const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
+
+                if (correctedValue !== numValue) {
                   updateParameters({
                     ...node.data.parameters,
                     [key]: correctedValue
                   });
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value;
-                  if (!value) {
-                    updateParameters({
-                      ...node.data.parameters,
-                      [key]: defaultValue
-                    });
-                    return;
-                  }
+                }
+              }}
+              onKeyDown={(e) => {
+                // 允许数字、小数点和控制键
+                if (!/^\d$/.test(e.key) &&
+                    e.key !== '.' &&
+                    !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                  e.preventDefault();
+                }
 
-                  const numValue = Number(value);
-                  const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
-
-                  if (correctedValue !== numValue) {
-                    updateParameters({
-                      ...node.data.parameters,
-                      [key]: correctedValue
-                    });
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // 允许数字、小数点和控制键
-                  if (!/^\d$/.test(e.key) &&
-                      e.key !== '.' &&
-                      !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault();
-                  }
-
-                  // 防止多个小数点
-                  if (e.key === '.' && e.currentTarget.value.includes('.')) {
-                    e.preventDefault();
-                  }
-                }}
-                className="property-input glass"
-                min={0}
-                max={maxFlow}
-                step={0.1}
-                placeholder={getParameterPlaceholder(key)}
-                title={`目标流量 (0-${maxFlow} sccm)`}
-              />
-              <span className="input-unit">sccm</span>
-            </div>
+                // 防止多个小数点
+                if (e.key === '.' && e.currentTarget.value.includes('.')) {
+                  e.preventDefault();
+                }
+              }}
+              className="input glass"
+              min={0}
+              max={maxFlow}
+              step={0.1}
+              placeholder={getParameterPlaceholder(key)}
+              title={`目标流量 (0-${maxFlow} sccm)`}
+            />
           );
         }
 
@@ -679,7 +670,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
               type="text"
               value={currentValue ?? defaultValue}
               disabled
-              className="property-input glass disabled"
+              className="input glass disabled"
               placeholder={getParameterPlaceholder(key)}
               title="运行时自动设置"
             />
@@ -692,16 +683,33 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             type="text"
             value={currentValue ?? defaultValue}
             disabled
-            className="property-input glass disabled"
+            className="input glass disabled"
             title="系统参数"
           />
         );
       };
 
+      // 定义需要隐藏的自动计算参数
+      const getHiddenParameters = (nodeType: string): string[] => {
+        switch (nodeType) {
+          case 'change_temperature':
+            return ['current_temperature', 'calculated_duration', 'tolerance', 'stabilization_time'];
+          case 'change_gas_flow':
+            return ['current_flow_rate', 'device_address', 'gas_type', 'max_flow_sccm', 'stabilization_time'];
+          default:
+            return [];
+        }
+      };
+
+      const hiddenParams = getHiddenParameters(node.type);
+
+      // 过滤掉隐藏的参数
+      const visibleParameters = Object.entries(defaults).filter(([key]) => !hiddenParams.includes(key));
+
       return (
         <div className="properties-section">
           <h3 className="section-title">参数</h3>
-          {Object.entries(defaults).map(([key, defaultValue]) => (
+          {visibleParameters.map(([key, defaultValue]) => (
             <div key={key} className="property-group">
               <label className="property-label">{getParameterLabel(key)}</label>
               <div className="property-value">
