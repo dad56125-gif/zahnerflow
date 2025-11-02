@@ -86,7 +86,8 @@
 .property-panel-content {
   flex: 1;
   overflow-y: auto;
-  padding: 0 var(--space) var(--space) calc(var(--space) - 20px); /* 移除顶部padding，显示更多参数，左边距减少20px */
+  padding: 0 clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem) clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem) clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem);
+  padding-top: 0; /* 与sidebar-content对齐 */
 }
 
 .property-group {
@@ -104,21 +105,110 @@
   gap: clamp(8px, 2vw, 16px);
 }
 
+/* 参数标签和输入框两端对齐 */
+.property-group:has(.property-value) > .property-label {
+  flex: 0 0 auto !important;
+  min-width: 120px !important;
+  max-width: 50% !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  hyphens: auto !important;
+  white-space: normal !important;
+}
+
+.property-group:has(.property-value) > .property-value {
+  flex: 0 0 auto !important;
+  min-width: 140px !important;
+  max-width: 50% !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+
+/* 在两端对齐模式下，输入框自适应容器宽度 */
+.property-group:has(.property-value) .property-input,
+.property-group:has(.property-value) .property-select {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 温度输入组样式（输入框+单位） */
+.property-group .temperature-input-group,
+.property-group .flow-input-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  justify-content: flex-end !important;
+}
+
+/* 在两端对齐模式下，输入组完全填充容器 */
+.property-group:has(.property-value) > .property-value .temperature-input-group,
+.property-group:has(.property-value) > .property-value .flow-input-group {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.property-group .temperature-input-group .property-input,
+.property-group .flow-input-group .property-input {
+  width: calc(100% - 40px) !important;
+  max-width: calc(100% - 40px) !important;
+}
+
+.property-group .temperature-input-group .input-unit,
+.property-group .flow-input-group .input-unit {
+  flex: 0 0 auto !important;
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  min-width: 34px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+/* 强制覆盖_input.css中的样式干扰 */
+.property-group input.property-input,
+.property-group select.property-select {
+  width: 100% !important;
+  min-height: auto !important;
+  padding: clamp(6px, 1.5vw, 8px) clamp(10px, 2.5vw, 14px) !important;
+  font-size: clamp(12px, 2.5vw, 14px) !important;
+  box-sizing: border-box !important;
+}
+
 /* 当面板较窄时，所有属性组改为纵向排列 */
 @container (max-width: 320px) {
   .property-group:has(.property-value) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .property-group:has(.property-value) > .property-label {
+    flex: 0 0 auto !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    /* 长标签在窄屏下可以换行 */
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+  }
+
+  .property-group:has(.property-value) > .property-value {
+    flex: 0 0 auto !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    justify-content: stretch !important;
+  }
+
+  /* 窄屏模式下温度/流量输入组 */
+  .property-group:has(.property-value) > .property-value .temperature-input-group,
+  .property-group:has(.property-value) > .property-value .flow-input-group {
+    width: 100% !important;
+    justify-content: stretch !important;
   }
 
   .property-group-title {
     margin-bottom: 4px;
     font-size: 13px;
-  }
-
-  .property-value {
-    width: 100%;
   }
 
   /* 输入框和选择框响应式调整 */

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker
+      id="arrowhead"
+      markerWidth="30"
+      markerHeight="30"
+      refX="25"
+      refY="15"
+      orient="auto"
+      markerUnits="userSpaceOnUse"
+    >
+      <path
+        d="M 5 15 L 13 8.5 A 3 3 0 0 1 17 8.5 L 25 15"
+        fill="none"
+        stroke="rgba(255, 255, 255, 0.8)"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </marker>
+  </defs>
+</svg>
