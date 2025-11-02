@@ -40,6 +40,8 @@ export interface LoopExecutionContext {
   currentNodeId?: string;
   error?: string;
   progress: number; // 0-100
+  // Nodes inside this loop in execution order
+  nodeIds?: string[];
 }
 
 // 循环事件接口
@@ -93,11 +95,12 @@ export class LoopContextManager {
       loopId: loopInfo.id,
       state: 'idle',
       currentIteration: 0,
-      totalIterations: loopInfo.iterationCount,
+      totalIterations: (loopInfo as any).iteration_count ?? (loopInfo as any).iterationCount ?? 0,
       startTime: Date.now(),
       elapsedTime: 0,
       accumulatedData: [],
-      progress: 0
+      progress: 0,
+      nodeIds: (loopInfo as any).node_ids ?? (loopInfo as any).nodeIds ?? []
     };
 
     this.loopContexts.set(loopInfo.id, context);
@@ -411,7 +414,7 @@ export class LoopContextManager {
     eventTypes: LoopEvent['type'][],
     listener: (event: LoopEvent) => void
   ): void {
-    const key = `${loopId}:${eventTypes.join(',')}`;
+    const key = `${loopId}:${[...eventTypes].sort().join(',')}`;
     const listeners = this.eventListeners.get(key) || [];
     listeners.push(listener);
     this.eventListeners.set(key, listeners);
@@ -425,7 +428,7 @@ export class LoopContextManager {
     eventTypes: LoopEvent['type'][],
     listener: (event: LoopEvent) => void
   ): void {
-    const key = `${loopId}:${eventTypes.join(',')}`;
+    const key = `${loopId}:${[...eventTypes].sort().join(',')}`;
     const listeners = this.eventListeners.get(key) || [];
     const index = listeners.indexOf(listener);
     if (index > -1) {
@@ -463,6 +466,14 @@ export class LoopContextManager {
       this.cleanupLoop(loopId);
     }
     this.loopContexts.clear();
+  }
+
+  /**
+   * 获取循环节点ID列表（新）
+   */
+  private static getLoopNodeIds(loopId: string): string[] {
+    const ctx = this.loopContexts.get(loopId);
+    return ctx?.nodeIds ?? [];
   }
 
   // 私有方法
@@ -524,7 +535,7 @@ export class LoopContextManager {
   /**
    * 获取循环节点ID列表
    */
-  private static getLoopNodeIds(loopId: string): string[] {
+  private static getLoopNodeIdsLegacy(loopId: string): string[] {
     // 这里应该从循环检测器或全局状态获取节点ID
     // 暂时返回空数组，实际实现时需要注入依赖
     return [];

@@ -114,8 +114,8 @@ const ZahnerFlowApp: React.FC = () => {
         })),
         edges: connections.map(conn => ({
           id: conn.id,
-          source: conn.sourceId,
-          target: conn.targetId,
+          source: conn.source_id,
+          target: conn.target_id,
           type: 'flow'
         })),
         version: 1

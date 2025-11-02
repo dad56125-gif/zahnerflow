@@ -95,7 +95,7 @@
 }
 
 /* 节点样式 */
-.node {
+.node.glass {
   position: absolute;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-xl));
@@ -103,10 +103,10 @@
   border: 2px solid var(--glass-border);
   border-radius: var(--radius);
   color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
   cursor: pointer;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.2),
@@ -117,6 +117,10 @@
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  padding: 8px 12px;
+  position: relative;
+  left: 0;
+  right: 0;
 }
 
 .node:hover {
@@ -140,6 +144,14 @@
 }
 
 /* 节点状态样式 */
+/* 确保所有节点状态都使用水平布局 */
+.node[class*="status-"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
 .node.status-ready {
   border-color: rgba(255, 255, 255, 0.2);
   background: var(--glass-bg);
@@ -310,7 +322,7 @@
 
 .node.selected {
   border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(255, 255, 255, 0.2),
     0 16px 48px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
@@ -318,8 +330,8 @@
 }
 
 .node-icon-large {
-  font-size: 20px;
-  margin-bottom: 4px;
+  font-size: 24px;
+  margin-right: 8px;
   opacity: 0.85;
   text-shadow:
     0 1px 2px rgba(0, 0, 0, 0.4),
@@ -331,12 +343,23 @@
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+/* 节点内容容器样式 */
+.node-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .node-title {
-  text-align: center;
-  padding: 0 4px;
   font-size: 10px;
+  font-weight: 600;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 端口样式 - 已隐藏 */
@@ -348,10 +371,6 @@
 
 /* change_temperature节点特殊样式 */
 .change_temperature-display {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   background: rgba(0, 0, 0, 0.7);
   padding: 4px 8px;
   border-radius: 4px;
@@ -362,6 +381,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   min-width: 60px;
   z-index: 10;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transform: translateY(-6px);
 }
 
 .temperature-target {
@@ -386,10 +408,6 @@
 
 /* change_gas_flow节点中心显示样式 */
 .change_gas_flow-display {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   background: rgba(0, 0, 0, 0.7);
   padding: 4px 8px;
   border-radius: 4px;
@@ -400,6 +418,16 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   min-width: 60px;
   z-index: 10;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transform: translateY(-6px);
+}
+
+/* EIS节点参数显示样式 */
+.eis-parameters {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
 }
 
 /* 文字样式 */
@@ -421,4 +449,26 @@
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   font-size: 9px;
+}
+
+/* EIS节点参数文字样式 */
+.eis-current {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 9px;
+  font-weight: 400;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.eis-frequency {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 9px;
+  font-weight: 400;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.eis-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 9px;
+  font-weight: 400;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }

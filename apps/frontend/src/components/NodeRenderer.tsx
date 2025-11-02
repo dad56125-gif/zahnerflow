@@ -111,8 +111,8 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
         position: 'absolute',
         left: node.position.x,
         top: node.position.y,
-        width: node.style.width || 140,
-        height: node.style.height || 60,
+        width: node.style.width || 140, // 与配置文件保持一致
+        height: node.style.height || 60, // 与配置文件保持一致
         cursor: 'grab',
       }}
       onClick={handleClick}
@@ -125,66 +125,254 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* 节点状态指示器 */}
-      <div className="node-status-indicator" />
-
-      {/* 节点图标 */}
+  
+      {/* 节点图标 - 左侧 */}
       <div className="node-icon-large">
         {icon}
       </div>
 
-      {/* 节点标题 */}
-      <div className="node-title">
-        {displayName}
-      </div>
+      {/* 节点内容容器 - 包含标题和特殊显示 */}
+      <div className="node-content">
+        {/* 节点标题 */}
+        <div className="node-title">
+          {displayName}
+        </div>
 
-      {/* change_temperature节点的特殊显示 */}
-      {node.type === 'change_temperature' && (
-        <div className="change_temperature-display">
-          {node.data.parameters?.current_temperature && node.data.parameters?.target_temperature ? (
-            <>
-              {/* 执行后显示温度区间 */}
-              <div className="temperature-range">
-                {Math.round(node.data.parameters.current_temperature / 10)}→{Math.round(node.data.parameters.target_temperature / 10)}
-              </div>
-              {/* 执行后显示计算时间 */}
-              {node.data.parameters?.calculated_duration && (
-                <div className="temperature-time">
-                  {node.data.parameters.calculated_duration}分钟
+        {/* change_temperature节点的特殊显示 */}
+        {node.type === 'change_temperature' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.current_temperature && node.data.parameters?.target_temperature ? (
+              <>
+                {/* 执行后显示温度区间 */}
+                <div className="eis-current">
+                  温度：{Math.round(node.data.parameters.current_temperature / 10)}→{Math.round(node.data.parameters.target_temperature / 10)}°C
                 </div>
-              )}
-            </>
-          ) : (
-            /* 执行前显示目标温度 */
-            <div className="temperature-target">
-              {Math.round((node.data.parameters?.target_temperature || 25) / 10)}°C
-            </div>
-          )}
-        </div>
-      )}
+                {/* 执行后显示计算时间 */}
+                {node.data.parameters?.calculated_duration && (
+                  <div className="eis-frequency">
+                    时间：{node.data.parameters.calculated_duration}分钟
+                  </div>
+                )}
+              </>
+            ) : (
+              /* 执行前显示目标温度 */
+              <div className="eis-current">
+                温度：{Math.round((node.data.parameters?.target_temperature || 25) / 10)}°C
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* change_gas_flow节点的特殊显示 */}
-      {node.type === 'change_gas_flow' && (
-        <div className="change_gas_flow-display">
-          {node.data.parameters?.current_flow_rate !== undefined && node.data.parameters?.target_flow_rate ? (
-            <>
-              {/* 执行后显示流量区间 */}
-              <div className="flow-range">
-                {node.data.parameters.current_flow_rate.toFixed(1)}→{node.data.parameters.target_flow_rate.toFixed(1)} sccm
+        {/* change_gas_flow节点的特殊显示 */}
+        {node.type === 'change_gas_flow' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.current_flow_rate !== undefined && node.data.parameters?.target_flow_rate ? (
+              <>
+                {/* 执行后显示流量区间 */}
+                <div className="eis-current">
+                  流量：{node.data.parameters.current_flow_rate.toFixed(1)}→{node.data.parameters.target_flow_rate.toFixed(1)} sccm
+                </div>
+                {/* 执行后显示设备信息 */}
+                <div className="eis-frequency">
+                  地址{node.data.parameters.device_address} ({node.data.parameters.gas_type})
+                </div>
+              </>
+            ) : (
+              /* 执行前显示目标流量 */
+              <div className="eis-current">
+                流量：{(node.data.parameters?.target_flow_rate || 0).toFixed(1)} sccm
               </div>
-              {/* 执行后显示设备信息 */}
-              <div className="flow-info">
-                地址{node.data.parameters.device_address} ({node.data.parameters.gas_type})
+            )}
+          </div>
+        )}
+
+        {/* eis_galvanostatic节点的特殊显示 */}
+        {node.type === 'eis_galvanostatic' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.eis_current && node.data.parameters?.eis_amplitude ? (
+              <>
+                {/* 显示直流偏置电流 */}
+                <div className="eis-current">
+                  直流：{node.data.parameters.eis_current}A
+                </div>
+                {/* 显示交流扰动幅值 */}
+                <div className="eis-frequency">
+                  扰动：{node.data.parameters.eis_amplitude}A
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
               </div>
-            </>
-          ) : (
-            /* 执行前显示目标流量 */
-            <div className="flow-target">
-              {(node.data.parameters?.target_flow_rate || 0).toFixed(1)} sccm
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+
+        {/* eis_potentiostatic节点的特殊显示 */}
+        {node.type === 'eis_potentiostatic' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.eis_potential && node.data.parameters?.eis_amplitude ? (
+              <>
+                {/* 显示直流偏置电位 */}
+                <div className="eis-current">
+                  直流：{node.data.parameters.eis_potential}V
+                </div>
+                {/* 显示交流扰动幅值 */}
+                <div className="eis-frequency">
+                  扰动：{node.data.parameters.eis_amplitude}V
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ocp_measurement节点的特殊显示 */}
+        {node.type === 'ocp_measurement' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.measurement_duration ? (
+              <>
+                {/* 显示测量时间 */}
+                <div className="eis-current">
+                  时间：{node.data.parameters.measurement_duration}s
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* chronoamperometry节点的特殊显示 */}
+        {node.type === 'chronoamperometry' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.polarization_voltage && node.data.parameters?.measurement_duration ? (
+              <>
+                {/* 显示直流电压 */}
+                <div className="eis-current">
+                  直流：{node.data.parameters.polarization_voltage}V
+                </div>
+                {/* 显示测量时间 */}
+                <div className="eis-frequency">
+                  时间：{node.data.parameters.measurement_duration}s
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* chronopotentiometry节点的特殊显示 */}
+        {node.type === 'chronopotentiometry' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.polarization_current && node.data.parameters?.measurement_duration ? (
+              <>
+                {/* 显示直流电流 */}
+                <div className="eis-current">
+                  直流：{Math.round(node.data.parameters.polarization_current * 1000)}mA
+                </div>
+                {/* 显示测量时间 */}
+                <div className="eis-frequency">
+                  时间：{node.data.parameters.measurement_duration}s
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* voltage_ramp节点的特殊显示 */}
+        {node.type === 'voltage_ramp' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.start_voltage !== undefined && node.data.parameters?.end_voltage !== undefined ? (
+              <>
+                {/* 显示电压范围 */}
+                <div className="eis-current">
+                  范围：{node.data.parameters.start_voltage}→{node.data.parameters.end_voltage}V
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* current_ramp节点的特殊显示 */}
+        {node.type === 'current_ramp' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.start_current !== undefined && node.data.parameters?.end_current !== undefined ? (
+              <>
+                {/* 显示电流范围 */}
+                <div className="eis-current">
+                  范围：{Math.round(node.data.parameters.start_current * 1000)}→{Math.round(node.data.parameters.end_current * 1000)}mA
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* lsv_measurement节点的特殊显示 */}
+        {node.type === 'lsv_measurement' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.start_voltage !== undefined && node.data.parameters?.end_voltage !== undefined ? (
+              <>
+                {/* 显示电压范围 */}
+                <div className="eis-current">
+                  范围：{node.data.parameters.start_voltage}→{node.data.parameters.end_voltage}V
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* wait_delay节点的特殊显示 */}
+        {node.type === 'wait_delay' && (
+          <div className="eis-parameters">
+            {node.data.parameters?.duration ? (
+              <>
+                {/* 显示等待时间 */}
+                <div className="eis-current">
+                  时间：{node.data.parameters.duration}s
+                </div>
+              </>
+            ) : (
+              /* 参数未设置时显示默认信息 */
+              <div className="eis-empty">
+                --
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* 节点端口（占位，后续在端口系统中实现） */}
       <div className="node-port-placeholder input" />
@@ -269,20 +457,18 @@ export const SimpleNodeRenderer: React.FC<{
         position: 'absolute',
         left: node.position.x,
         top: node.position.y,
-        width: node.style.width || 140,
-        height: node.style.height || 60,
+        width: node.style.width || 140, // 与配置文件保持一致
+        height: node.style.height || 60, // 与配置文件保持一致
       }}
       onClick={onClick}
     >
-      {/* 节点状态指示器 */}
-      <div className="node-status-indicator" />
-
-      {/* 节点图标 */}
+  
+      {/* 节点图标 - 左侧 */}
       <div className="node-icon-large">
         {node.style.icon || '🔧'}
       </div>
 
-      {/* 节点标题 */}
+      {/* 节点标题 - 右上角 */}
       <div className="node-title">
         {node.name}
       </div>

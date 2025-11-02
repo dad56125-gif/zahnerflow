@@ -940,20 +940,20 @@ export interface LoopEndNode extends ElectrochemicalNode {
 
 // 循环上下文接口
 export interface LoopContext {
-  loopId: string;
-  startNode: LoopStartNode;
-  endNode: LoopEndNode;
+  loop_id: string;
+  start_node: LoopStartNode;
+  end_node: LoopEndNode;
   level: number;
   iterations: number;
-  currentIteration: number;
-  variableName: string;
-  variableValue: number;
+  current_iteration: number;
+  variable_name: string;
+  variable_value: number;
 }
 
 // 循环配对信息
 export interface LoopPair {
-  startNodeId: string;
-  endNodeId: string;
-  loopId: string;
+  start_node_id: string;
+  end_node_id: string;
+  loop_id: string;
   level: number;
 }

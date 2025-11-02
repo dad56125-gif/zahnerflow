@@ -16,8 +16,8 @@ import {
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
   id: string;
-  sourceId: string;
-  targetId: string;
+  source_id: string;
+  target_id: string;
 }
 
 // --- 智能循环节点配对 ---
@@ -151,14 +151,14 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
         if (prevNode) {
           // 查找是否已存在相同的连接
           const existingConnection = newConnections.find(
-            conn => conn.sourceId === prevNode.id && conn.targetId === newNode.id
+            conn => conn.source_id === prevNode.id && conn.target_id === newNode.id
           );
 
           if (!existingConnection) {
             newConnections.push({
               id: `conn_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-              sourceId: prevNode.id,
-              targetId: newNode.id
+              source_id: prevNode.id,
+              target_id: newNode.id
             });
             console.log(`[Canvas Store] 自动创建连接: ${prevNode.name} → ${newNode.name}`);
           }
@@ -180,7 +180,7 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
         const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
         return {
           nodes: repositionedNodes,
-          connections: state.connections.filter(conn => conn.sourceId !== nodeId && conn.targetId !== nodeId),
+          connections: state.connections.filter(conn => conn.source_id !== nodeId && conn.target_id !== nodeId),
           selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
           validationError: validateNodes(repositionedNodes)
         };

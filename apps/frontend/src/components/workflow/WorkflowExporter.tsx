@@ -13,7 +13,7 @@ import { WorkflowManager, type WorkflowMetadata, type WorkflowSettings, type Wor
 // 工作流导出器属性接口
 export interface WorkflowExporterProps {
   nodes: ElectrochemicalNode[];
-  connections: Array<{ id: string; sourceId: string; targetId: string }>;
+  connections: Array<{ id: string; source_id: string; target_id: string }>;
   loops: LoopInfo[];
   className?: string;
   style?: React.CSSProperties;

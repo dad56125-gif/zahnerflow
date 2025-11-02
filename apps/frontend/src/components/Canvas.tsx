@@ -174,7 +174,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         // 如果没有deleteNode方法，手动实现
         setNodes(nodes.filter(n => n.id !== node.id));
         setConnections(connections.filter(
-          conn => conn.sourceId !== node.id && conn.targetId !== node.id
+          conn => conn.source_id !== node.id && conn.target_id !== node.id
         ));
       }
     }
@@ -466,6 +466,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               loop={loop}
               nodes={nodePositions}
               context={context}
+              zoomLevel={zoomLevel}
+              canvasOffsetY={canvasOffsetY}
               onLoopStart={handleLoopStart}
               onLoopPause={handleLoopPause}
               onLoopResume={handleLoopResume}

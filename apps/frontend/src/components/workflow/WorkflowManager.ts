@@ -271,10 +271,10 @@ export class WorkflowManager {
         if (!loop.id) {
           errors.push(`循环 ${index} 缺少 ID`);
         }
-        if (!loop.startNodeId || !loop.endNodeId) {
+        if (!loop.start_node_id || !loop.end_node_id) {
           errors.push(`循环 ${loop.id || index} 缺少开始或结束节点`);
         }
-        if (!loop.nodeIds || !Array.isArray(loop.nodeIds)) {
+        if (!loop.node_ids || !Array.isArray(loop.node_ids)) {
           errors.push(`循环 ${loop.id || index} 节点列表无效`);
         }
       });
@@ -357,10 +357,10 @@ export class WorkflowManager {
       workflow.loops.forEach(loop => {
         csvLines.push([
           loop.id,
-          loop.startNodeId,
-          loop.endNodeId,
-          loop.iterationCount,
-          loop.nodeIds.join(';')
+          loop.start_node_id,
+          loop.end_node_id,
+          loop.iteration_count,
+          loop.node_ids.join(';')
         ].join(','));
       });
     }
@@ -422,7 +422,7 @@ export class WorkflowManager {
 
     if (config.loops && config.loops.length > 0) {
       config.loops.forEach((loop, index) => {
-        if (!loop.startNodeId || !loop.endNodeId) {
+        if (!loop.start_node_id || !loop.end_node_id) {
           errors.push(`循环 ${index + 1} 缺少开始或结束节点`);
         }
       });
@@ -511,10 +511,10 @@ export class WorkflowManager {
             const parts = trimmedLine.split(',');
             workflow.loops.push({
               id: key,
-              startNodeId: value,
-              endNodeId: parts[2]?.trim() || '',
-              nodeIds: parts[4]?.trim().split(';').filter(Boolean) || [],
-              iterationCount: parseInt(parts[3] || '1'),
+              start_node_id: value,
+              end_node_id: parts[2]?.trim() || '',
+              node_ids: parts[4]?.trim().split(';').filter(Boolean) || [],
+              iteration_count: parseInt(parts[3] || '1'),
               currentIteration: 0,
               isActive: false,
               parameters: {}
@@ -593,9 +593,9 @@ export class WorkflowManager {
     // 更新循环中的节点ID
     const newLoops = workflow.loops.map(loop => ({
       ...loop,
-      startNodeId: idMap.get(loop.startNodeId) || loop.startNodeId,
-      endNodeId: idMap.get(loop.endNodeId) || loop.endNodeId,
-      nodeIds: loop.nodeIds.map(nodeId => idMap.get(nodeId) || nodeId)
+      start_node_id: idMap.get(loop.start_node_id) || loop.start_node_id,
+      end_node_id: idMap.get(loop.end_node_id) || loop.end_node_id,
+      node_ids: loop.node_ids.map(nodeId => idMap.get(nodeId) || nodeId)
     }));
 
     return {

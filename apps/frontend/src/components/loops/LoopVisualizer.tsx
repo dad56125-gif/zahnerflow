@@ -31,6 +31,8 @@ export interface LoopVisualizerProps {
   context?: LoopExecutionContext;
   className?: string;
   style?: React.CSSProperties;
+  zoomLevel?: number;
+  canvasOffsetY?: number;
   onLoopStart?: (loopId: string) => void;
   onLoopPause?: (loopId: string) => void;
   onLoopResume?: (loopId: string) => void;
@@ -86,8 +88,8 @@ const LoopControlPanel: React.FC<{
       <div className="loop-info">
         <h4>循环 {loop.id}</h4>
         <div className="loop-parameters">
-          <div>迭代次数: {loop.iterationCount}</div>
-          <div>包含节点: {loop.nodeIds.length}</div>
+          <div>迭代次数: {loop.iteration_count}</div>
+          <div>包含节点: {loop.node_ids.length}</div>
           {loop.parameters.delay_ms && (
             <div>延迟: {loop.parameters.delay_ms}ms</div>
           )}
@@ -186,6 +188,8 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
   context,
   className = '',
   style = {},
+  zoomLevel = 1,
+  canvasOffsetY = 0,
   onLoopStart,
   onLoopPause,
   onLoopResume,
@@ -195,18 +199,28 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
   const [isHovered, setIsHovered] = React.useState(false);
   const [showDetails, setShowDetails] = React.useState(false);
 
-  // 获取循环内的节点
+  // 获取循环内的节点 - 按照循环路径顺序
   const loopNodes = React.useMemo(() => {
-    return nodes.filter(node => loop.nodeIds.includes(node.id));
-  }, [nodes, loop.nodeIds]);
+    const orderedNodes: typeof nodes = [];
+
+    // 按照循环路径的顺序获取节点
+    loop.node_ids.forEach(nodeId => {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node) {
+        orderedNodes.push(node);
+      }
+    });
+
+    return orderedNodes;
+  }, [nodes, loop.node_ids]);
 
   const startNode = React.useMemo(() => {
-    return loopNodes.find(n => n.id === loop.startNodeId);
-  }, [loopNodes, loop.startNodeId]);
+    return loopNodes.find(n => n.id === loop.start_node_id);
+  }, [loopNodes, loop.start_node_id]);
 
   const endNode = React.useMemo(() => {
-    return loopNodes.find(n => n.id === loop.endNodeId);
-  }, [loopNodes, loop.endNodeId]);
+    return loopNodes.find(n => n.id === loop.end_node_id);
+  }, [loopNodes, loop.end_node_id]);
 
   // 调试日志
   console.log('[LoopVisualizer Debug] 循环ID:', loop.id);
@@ -230,13 +244,13 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
       id: node.id,
       name: node.name || `${type}_${node.id}`,
       category: 'flow_control' as const,
-      position: { x: node.x, y: node.y },
+      position: { x: node.position.x, y: node.position.y },
       data: {
         name: node.name || `${type}_${node.id}`,
         description: `${type} node for loop ${loop.id}`,
         parameters: {
           loop_id: loop.id,
-          loop_count: loop.iterationCount,
+          loop_count: loop.iteration_count,
           loop_variable: loop.parameters.loop_variable || 'i',
           start_value: loop.parameters.start_value || 0,
           step: loop.parameters.step || 1,
@@ -278,7 +292,7 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
           description: baseNode.data.description,
           parameters: {
             loop_id: loop.id,
-            loop_count: loop.iterationCount,
+            loop_count: loop.iteration_count,
             loop_variable: loop.parameters.loop_variable || 'i',
             start_value: loop.parameters.start_value || 0,
             step: loop.parameters.step || 1,
@@ -320,7 +334,7 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
       };
       return endNode;
     }
-  }, [loop.id, loop.iterationCount, loop.parameters]);
+  }, [loop.id, loop.iteration_count, loop.parameters]);
 
   const startNodeData = React.useMemo(() => {
     return adaptNodeToLoopNode(startNode, 'loop_start') as LoopStartNode;
@@ -401,6 +415,9 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
         startNode={startNodeData}
         endNode={endNodeData}
         nodesInLoop={loopNodes}
+        state={context?.state}
+        zoomLevel={zoomLevel}
+        canvasOffsetY={canvasOffsetY}
       />
 
       {/* 应用状态样式到括号容器 */}
@@ -491,9 +508,9 @@ const LoopVisualizerComponent: React.FC<LoopVisualizerProps> = ({
                 }}
               >
                 <div>循环ID: {loop.id}</div>
-                <div>开始节点: {loop.startNodeId}</div>
-                <div>结束节点: {loop.endNodeId}</div>
-                <div>节点数量: {loop.nodeIds.length}</div>
+                <div>开始节点: {loop.start_node_id}</div>
+                <div>结束节点: {loop.end_node_id}</div>
+                <div>节点数量: {loop.node_ids.length}</div>
                 {context && (
                   <>
                     <div>当前迭代: {context.currentIteration}</div>
@@ -564,8 +581,8 @@ export const LoopVisualizer = React.memo(LoopVisualizerComponent, (prevProps, ne
   // 自定义比较函数，只在关键数据变化时重新渲染
   return (
     prevProps.loop.id === nextProps.loop.id &&
-    prevProps.loop.nodeIds.length === nextProps.loop.nodeIds.length &&
-    prevProps.loop.iterationCount === nextProps.loop.iterationCount &&
+    prevProps.loop.node_ids.length === nextProps.loop.node_ids.length &&
+    prevProps.loop.iteration_count === nextProps.loop.iteration_count &&
     prevProps.nodes.length === nextProps.nodes.length &&
     prevProps.context?.state === nextProps.context?.state &&
     prevProps.context?.currentIteration === nextProps.context?.currentIteration

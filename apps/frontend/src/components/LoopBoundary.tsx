@@ -7,12 +7,19 @@ interface LoopBoundaryProps {
   startNode: LoopStartNode;
   endNode: LoopEndNode;
   nodesInLoop: any[];
+  zoomLevel?: number;
+  canvasOffsetY?: number;
+  // Optional execution state to drive CSS animations
+  state?: 'idle' | 'running' | 'paused' | 'completed' | 'error' | 'cancelled';
 }
 
 const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
   startNode,
   endNode,
-  nodesInLoop
+  nodesInLoop,
+  zoomLevel = 1,
+  canvasOffsetY = 0,
+  state
 }) => {
   const [boundaryPath, setBoundaryPath] = useState<string>('');
   const [isValid, setIsValid] = useState<boolean>(true);
@@ -37,52 +44,130 @@ const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
 
   
   const calculateBoundary = () => {
-    if (!startNode.position || !endNode.position) {
+    if (!startNode.position || !endNode.position || nodesInLoop.length === 0) {
       setBoundaryPath('');
       setSvgBounds(null);
       return;
     }
 
-    // 收集所有点
-    const points: Point[] = [
-      { x: startNode.position.x, y: startNode.position.y },
-      { x: endNode.position.x, y: endNode.position.y }
-    ];
+    // 收集所有点 - 简化版本
+    const points: Point[] = [];
 
-    // 添加循环内节点位置（考虑节点大小）
-    nodesInLoop.forEach(node => {
-      if (node.position) {
+    // 添加循环路径上的所有节点位置（考虑节点大小和canvas变换）
+    console.log('[LoopBoundary] 开始处理节点，原始节点数据:', nodesInLoop);
+
+    nodesInLoop.forEach((node, index) => {
+      // 使用 node.position 数据结构
+      const nodeX = node.position.x;
+      const nodeY = node.position.y;
+
+      if (nodeX !== 0 || nodeY !== 0) {
+        // 使用与节点配置一致的默认值
         const nodeWidth = node.style?.width || 140;
-        const nodeHeight = 80;
+        // 考虑CSS盒模型：基础高度60px + padding 16px(8px×2) + border 4px(2px×2)
+        const nodeHeight = (node.style?.height || 60) + 20; // 总CSS影响约20px
 
-        // 添加四个角点
-        points.push(
-          { x: node.position.x - 20, y: node.position.y - 20 },
-          { x: node.position.x + nodeWidth + 20, y: node.position.y - 20 },
-          { x: node.position.x + nodeWidth + 20, y: node.position.y + nodeHeight + 20 },
-          { x: node.position.x - 20, y: node.position.y + nodeHeight + 20 }
-        );
+        // 应用canvas变换：缩放和垂直偏移
+        const transformX = nodeX * zoomLevel;
+        const transformY = (nodeY + canvasOffsetY) * zoomLevel;
+        const transformedWidth = nodeWidth * zoomLevel;
+        const transformedHeight = nodeHeight * zoomLevel;
+        const transformedPadding = 15 * zoomLevel;
+
+        console.log(`[LoopBoundary] 节点 ${node.id} 变换计算:`, {
+          nodeWidth,
+          nodeHeight,
+          originalCoords: { x: nodeX, y: nodeY },
+          transformX,
+          transformY,
+          transformedWidth,
+          transformedHeight,
+          transformedPadding
+        });
+
+        // 添加节点中心点（用于路径追踪）
+        const centerPoint = {
+          x: transformX + transformedWidth / 2,
+          y: transformY + transformedHeight / 2
+        };
+        points.push(centerPoint);
+
+        // 添加四个角点（用于边界计算）
+        const cornerPoints = [
+          { x: transformX - transformedPadding, y: transformY - transformedPadding },
+          { x: transformX + transformedWidth + transformedPadding, y: transformY - transformedPadding },
+          { x: transformX + transformedWidth + transformedPadding, y: transformY + transformedHeight + transformedPadding },
+          { x: transformX - transformedPadding, y: transformY + transformedHeight + transformedPadding }
+        ];
+
+        cornerPoints.forEach(point => points.push(point));
+
+        console.log(`[LoopBoundary] 节点 ${node.id} 添加的点:`, { centerPoint, cornerPoints });
+      } else {
+        console.warn(`[LoopBoundary] 节点 ${node.id} 缺少有效的坐标数据`);
       }
     });
+
+    console.log('[LoopBoundary] 所有收集的点:', points);
+    console.log('[LoopBoundary] 点数量:', points.length);
 
     // 计算凸包
     const hull = calculateConvexHull(points);
 
-    // 添加边距
-    const padding = 30;
-    const center = getCenterPoint(points);
-    const expandedHull = hull.map(point => ({
-      x: point.x < center.x ? point.x - padding : point.x + padding,
-      y: point.y < center.y ? point.y - padding : point.y + padding
-    }));
-
     // 生成SVG路径
-    const pathData = generateSVGPath(expandedHull);
+    const pathData = generateSVGPath(hull);
     setBoundaryPath(pathData);
 
     // 计算SVG边界
-    const bounds = getBounds(expandedHull);
+    const bounds = getBounds(hull);
     setSvgBounds(bounds);
+
+    // 调试日志
+    console.log('[LoopBoundary] 计算循环边界，节点数量:', nodesInLoop.length);
+    console.log('[LoopBoundary] 循环路径:', nodesInLoop.map(n => n.id));
+    console.log('[LoopBoundary] Canvas变换参数:', { zoomLevel, canvasOffsetY });
+    console.log('[LoopBoundary] 节点详细信息（变换后）:', nodesInLoop.map(n => {
+      const configWidth = n.style?.width || 140;
+      const configHeight = n.style?.height || 60;
+      const actualHeight = configHeight + 20; // 包含CSS影响
+
+      // 原始坐标
+      const originalX = n.position.x;
+      const originalY = n.position.y;
+
+      // 变换后坐标
+      const transformX = originalX * zoomLevel;
+      const transformY = (originalY + canvasOffsetY) * zoomLevel;
+      const transformedWidth = configWidth * zoomLevel;
+      const transformedHeight = actualHeight * zoomLevel;
+
+      return {
+        id: n.id,
+        originalPosition: { x: originalX, y: originalY },
+        transformedPosition: { x: transformX, y: transformY },
+        configSize: { width: configWidth, height: configHeight },
+        actualSize: { width: configWidth, height: actualHeight },
+        transformedSize: { width: transformedWidth, height: transformedHeight },
+        centerPoint: {
+          x: transformX + transformedWidth / 2,
+          y: transformY + transformedHeight / 2
+        }
+      };
+    }));
+    console.log('[LoopBoundary] 计算的边界框（变换后）:', bounds);
+    console.log('[LoopBoundary] 使用的变换后padding值:', 15 * zoomLevel);
+    console.log('[LoopBoundary] 边界是否包含所有变换后节点:', nodesInLoop.every(node => {
+      const originalX = node.position.x;
+      const originalY = node.position.y;
+      const transformX = originalX * zoomLevel;
+      const transformY = (originalY + canvasOffsetY) * zoomLevel;
+      const width = (node.style?.width || 140) * zoomLevel;
+      const height = ((node.style?.height || 60) + 20) * zoomLevel;
+      return transformX >= bounds.x - 5 &&
+             transformY >= bounds.y - 5 &&
+             transformX + width <= bounds.x + bounds.width + 5 &&
+             transformY + height <= bounds.y + bounds.height + 5;
+    }));
   };
 
   const validateLoopPair = () => {
@@ -129,7 +214,7 @@ const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
 
   return (
     <svg
-      className="loop-boundary-svg"
+      className={`loop-boundary-svg${state ? ' ' + state : ''}`}
       style={{
         position: 'absolute',
         left: 0,
@@ -154,7 +239,7 @@ const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
       <g>
         <rect
           x={svgBounds.x + 8}
-          y={svgBounds.y - 30}
+          y={svgBounds.y + 8}
           width="200"
           height="24"
           rx="4"
@@ -165,7 +250,7 @@ const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
 
         <text
           x={svgBounds.x + 12}
-          y={svgBounds.y - 17}
+          y={svgBounds.y + 25}
           fill="#64B5F6"
           fontSize="11"
           fontWeight="600"
@@ -176,7 +261,7 @@ const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
 
         <text
           x={svgBounds.x + 80}
-          y={svgBounds.y - 17}
+          y={svgBounds.y + 25}
           fill="#81C784"
           fontSize="11"
           fontWeight="500"
@@ -187,7 +272,7 @@ const LoopBoundaryComponent: React.FC<LoopBoundaryProps> = ({
 
         <text
           x={svgBounds.x + 120}
-          y={svgBounds.y - 17}
+          y={svgBounds.y + 25}
           fill="#FFB74D"
           fontSize="11"
           fontWeight="500"
