@@ -7854,7 +7854,376 @@
         "createdAt": "2025-10-16T03:10:17.080Z",
         "updatedAt": "2025-10-16T03:10:17.080Z"
       }
+    ],
+    [
+      "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+      {
+        "id": "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+        "name": "电化学工作流2025/11/3 08:20:05",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1762129205965",
+          "name": "电化学工作流2025/11/3 08:20:05",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1762129166315_zurk5ttzd",
+              "type": "startup",
+              "name": "启动程序",
+              "config": {
+                "host": "localhost",
+                "workstation": "zahner-zennium"
+              },
+              "position": {
+                "x": 100,
+                "y": 100
+              },
+              "data": {
+                "name": "启动程序",
+                "description": "启动电化学工作站程序 (FastAPI)",
+                "parameters": {
+                  "host": "localhost",
+                  "workstation": "zahner-zennium"
+                },
+                "createdAt": "2025-11-03T00:19:26.315Z",
+                "updatedAt": "2025-11-03T00:19:26.315Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1762129167646_8gy3ayutd",
+              "type": "loop_start",
+              "name": "循环开始",
+              "config": {
+                "loop_count": 1,
+                "loop_variable": "i",
+                "start_value": 0,
+                "step": 1,
+                "loop_id": "loop_1762129167646_0nkwn1vba"
+              },
+              "position": {
+                "x": 536,
+                "y": 100
+              },
+              "data": {
+                "name": "循环开始",
+                "description": "定义循环参数和开始位置",
+                "parameters": {
+                  "loop_count": 1,
+                  "loop_variable": "i",
+                  "start_value": 0,
+                  "step": 1,
+                  "loop_id": "loop_1762129167646_0nkwn1vba"
+                },
+                "createdAt": "2025-11-03T00:19:27.646Z",
+                "updatedAt": "2025-11-03T00:19:27.646Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1762129168348_6sfb9vdr5",
+              "type": "wait_delay",
+              "name": "等待/延时",
+              "config": {
+                "duration": 1,
+                "description": "",
+                "allow_cancel": true,
+                "progress_updates": true
+              },
+              "position": {
+                "x": 536,
+                "y": 200
+              },
+              "data": {
+                "name": "等待/延时",
+                "description": "在工作流执行过程中插入指定时间的等待",
+                "parameters": {
+                  "duration": 1,
+                  "description": "",
+                  "allow_cancel": true,
+                  "progress_updates": true
+                },
+                "createdAt": "2025-11-03T00:19:28.348Z",
+                "updatedAt": "2025-11-03T00:19:28.348Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1762129169014_m79ynwtzw",
+              "type": "loop_end",
+              "name": "循环结束",
+              "config": {
+                "loop_id": "loop_1762129167646_0nkwn1vba"
+              },
+              "position": {
+                "x": 100,
+                "y": 200
+              },
+              "data": {
+                "name": "循环结束",
+                "description": "标记循环结束位置",
+                "parameters": {
+                  "loop_id": "loop_1762129167646_0nkwn1vba"
+                },
+                "createdAt": "2025-11-03T00:19:29.014Z",
+                "updatedAt": "2025-11-03T00:19:29.014Z"
+              },
+              "status": "ready"
+            }
+          ],
+          "edges": [
+            {
+              "id": "conn_1762129167646_yxm5n5cbl",
+              "source": "node_1762129166315_zurk5ttzd",
+              "target": "node_1762129167646_8gy3ayutd",
+              "type": "flow"
+            },
+            {
+              "id": "conn_1762129168348_cluh43tig",
+              "source": "node_1762129167646_8gy3ayutd",
+              "target": "node_1762129168348_6sfb9vdr5",
+              "type": "flow"
+            },
+            {
+              "id": "conn_1762129169014_v4jk66nlg",
+              "source": "node_1762129168348_6sfb9vdr5",
+              "target": "node_1762129169014_m79ynwtzw",
+              "type": "flow"
+            }
+          ],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-11-03T00:20:05.976Z",
+        "updatedAt": "2025-11-03T00:20:05.976Z"
+      }
+    ],
+    [
+      "workflow_d4bb79e1-0fa0-438e-9e57-03f94c5c12db",
+      {
+        "id": "workflow_d4bb79e1-0fa0-438e-9e57-03f94c5c12db",
+        "name": "电化学工作流2025/11/3 10:45:16",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1762137916662",
+          "name": "电化学工作流2025/11/3 10:45:16",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1762137901517_59cb77s4f",
+              "type": "loop_start",
+              "name": "循环开始",
+              "config": {
+                "loop_count": 10,
+                "loop_variable": "i",
+                "start_value": 0,
+                "step": 1,
+                "loop_id": "loop_1762137901517_c2zdlel4r"
+              },
+              "position": {
+                "x": 100,
+                "y": 100
+              },
+              "data": {
+                "name": "循环开始",
+                "description": "定义循环参数和开始位置",
+                "parameters": {
+                  "loop_count": 10,
+                  "loop_variable": "i",
+                  "start_value": 0,
+                  "step": 1,
+                  "loop_id": "loop_1762137901517_c2zdlel4r"
+                },
+                "createdAt": "2025-11-03T02:45:01.517Z",
+                "updatedAt": "2025-11-03T02:45:14.735Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1762137901932_8pokdn6ff",
+              "type": "wait_delay",
+              "name": "等待/延时",
+              "config": {
+                "duration": 10,
+                "description": "",
+                "allow_cancel": true,
+                "progress_updates": true
+              },
+              "position": {
+                "x": 460.53125,
+                "y": 100
+              },
+              "data": {
+                "name": "等待/延时",
+                "description": "在工作流执行过程中插入指定时间的等待",
+                "parameters": {
+                  "duration": 10,
+                  "description": "",
+                  "allow_cancel": true,
+                  "progress_updates": true
+                },
+                "createdAt": "2025-11-03T02:45:01.932Z",
+                "updatedAt": "2025-11-03T02:45:06.749Z"
+              },
+              "status": "ready"
+            },
+            {
+              "id": "node_1762137910482_8c6ffg5nz",
+              "type": "loop_end",
+              "name": "循环结束",
+              "config": {
+                "loop_id": "loop_1762137901517_c2zdlel4r"
+              },
+              "position": {
+                "x": 821.0625,
+                "y": 100
+              },
+              "data": {
+                "name": "循环结束",
+                "description": "标记循环结束位置",
+                "parameters": {
+                  "loop_id": "loop_1762137901517_c2zdlel4r"
+                },
+                "createdAt": "2025-11-03T02:45:10.482Z",
+                "updatedAt": "2025-11-03T02:45:10.482Z"
+              },
+              "status": "ready"
+            }
+          ],
+          "edges": [
+            {
+              "id": "conn_1762137901932_0hcxe9f6r",
+              "source": "node_1762137901517_59cb77s4f",
+              "target": "node_1762137901932_8pokdn6ff",
+              "type": "flow"
+            },
+            {
+              "id": "conn_1762137910482_jvebutjdh",
+              "source": "node_1762137901932_8pokdn6ff",
+              "target": "node_1762137910482_8c6ffg5nz",
+              "type": "flow"
+            }
+          ],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-11-03T02:45:16.673Z",
+        "updatedAt": "2025-11-03T02:45:16.673Z"
+      }
+    ],
+    [
+      "workflow_42f4c1da-7b16-46f2-85f9-28ec753ebfff",
+      {
+        "id": "workflow_42f4c1da-7b16-46f2-85f9-28ec753ebfff",
+        "name": "电化学工作流2025/11/3 10:46:14",
+        "description": "通过前端界面创建的电化学测量流程",
+        "definition": {
+          "id": "workflow_1762137974045",
+          "name": "电化学工作流2025/11/3 10:46:14",
+          "description": "通过前端界面创建的电化学测量流程",
+          "nodes": [
+            {
+              "id": "node_1762137901517_59cb77s4f",
+              "type": "loop_start",
+              "name": "循环开始",
+              "config": {
+                "loop_count": 10,
+                "loop_variable": "i",
+                "start_value": 0,
+                "step": 1,
+                "loop_id": "loop_1762137901517_c2zdlel4r"
+              },
+              "position": {
+                "x": 100,
+                "y": 100
+              },
+              "data": {
+                "name": "循环开始",
+                "description": "定义循环参数和开始位置",
+                "parameters": {
+                  "loop_count": 10,
+                  "loop_variable": "i",
+                  "start_value": 0,
+                  "step": 1,
+                  "loop_id": "loop_1762137901517_c2zdlel4r"
+                },
+                "createdAt": "2025-11-03T02:45:01.517Z",
+                "updatedAt": "2025-11-03T02:45:14.735Z"
+              },
+              "status": "completed"
+            },
+            {
+              "id": "node_1762137901932_8pokdn6ff",
+              "type": "wait_delay",
+              "name": "等待/延时",
+              "config": {
+                "duration": 100,
+                "description": "",
+                "allow_cancel": true,
+                "progress_updates": true
+              },
+              "position": {
+                "x": 460.53125,
+                "y": 100
+              },
+              "data": {
+                "name": "等待/延时",
+                "description": "在工作流执行过程中插入指定时间的等待",
+                "parameters": {
+                  "duration": 100,
+                  "description": "",
+                  "allow_cancel": true,
+                  "progress_updates": true
+                },
+                "createdAt": "2025-11-03T02:45:01.932Z",
+                "updatedAt": "2025-11-03T02:46:12.594Z"
+              },
+              "status": "completed"
+            },
+            {
+              "id": "node_1762137910482_8c6ffg5nz",
+              "type": "loop_end",
+              "name": "循环结束",
+              "config": {
+                "loop_id": "loop_1762137901517_c2zdlel4r"
+              },
+              "position": {
+                "x": 821.0625,
+                "y": 100
+              },
+              "data": {
+                "name": "循环结束",
+                "description": "标记循环结束位置",
+                "parameters": {
+                  "loop_id": "loop_1762137901517_c2zdlel4r"
+                },
+                "createdAt": "2025-11-03T02:45:10.482Z",
+                "updatedAt": "2025-11-03T02:45:10.482Z"
+              },
+              "status": "completed"
+            }
+          ],
+          "edges": [
+            {
+              "id": "conn_1762137901932_0hcxe9f6r",
+              "source": "node_1762137901517_59cb77s4f",
+              "target": "node_1762137901932_8pokdn6ff",
+              "type": "flow"
+            },
+            {
+              "id": "conn_1762137910482_jvebutjdh",
+              "source": "node_1762137901932_8pokdn6ff",
+              "target": "node_1762137910482_8c6ffg5nz",
+              "type": "flow"
+            }
+          ],
+          "version": 1
+        },
+        "version": 1,
+        "createdAt": "2025-11-03T02:46:14.049Z",
+        "updatedAt": "2025-11-03T02:46:14.049Z"
+      }
     ]
   ],
-  "lastUpdated": "2025-10-16T03:10:17.082Z"
+  "lastUpdated": "2025-11-03T02:46:14.052Z"
 }

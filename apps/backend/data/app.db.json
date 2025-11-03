@@ -1,7 +1,360 @@
 {
-  "workflow": [],
-  "node": [],
-  "node_param": [],
+  "workflow": [
+    {
+      "id": "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+      "owner_name": null,
+      "individual_name": null,
+      "title": "电化学工作流2025/11/3 08:20:05",
+      "description": "通过前端界面创建的电化学测量流程",
+      "tags": null,
+      "created_at": "2025-11-03T00:20:05.976Z",
+      "updated_at": "2025-11-03T00:20:05.976Z"
+    },
+    {
+      "id": "workflow_d4bb79e1-0fa0-438e-9e57-03f94c5c12db",
+      "owner_name": null,
+      "individual_name": null,
+      "title": "电化学工作流2025/11/3 10:45:16",
+      "description": "通过前端界面创建的电化学测量流程",
+      "tags": null,
+      "created_at": "2025-11-03T02:45:16.673Z",
+      "updated_at": "2025-11-03T02:45:16.673Z"
+    },
+    {
+      "id": "workflow_42f4c1da-7b16-46f2-85f9-28ec753ebfff",
+      "owner_name": null,
+      "individual_name": null,
+      "title": "电化学工作流2025/11/3 10:46:14",
+      "description": "通过前端界面创建的电化学测量流程",
+      "tags": null,
+      "created_at": "2025-11-03T02:46:14.049Z",
+      "updated_at": "2025-11-03T02:46:14.049Z"
+    }
+  ],
+  "node": [
+    {
+      "id": "node_node_1762129166315_zurk5ttzd",
+      "workflow_id": "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+      "node_key": "node_1762129166315_zurk5ttzd",
+      "node_type": "startup",
+      "display_name": "启动程序",
+      "sort_order": 0,
+      "enabled": 1,
+      "position_json": "{\"x\":100,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762129167646_8gy3ayutd",
+      "workflow_id": "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+      "node_key": "node_1762129167646_8gy3ayutd",
+      "node_type": "loop_start",
+      "display_name": "循环开始",
+      "sort_order": 1,
+      "enabled": 1,
+      "position_json": "{\"x\":536,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762129168348_6sfb9vdr5",
+      "workflow_id": "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+      "node_key": "node_1762129168348_6sfb9vdr5",
+      "node_type": "wait_delay",
+      "display_name": "等待/延时",
+      "sort_order": 2,
+      "enabled": 1,
+      "position_json": "{\"x\":536,\"y\":200}"
+    },
+    {
+      "id": "node_node_1762129169014_m79ynwtzw",
+      "workflow_id": "workflow_a017ef0c-49a3-40fd-bc57-7929ccfdabbe",
+      "node_key": "node_1762129169014_m79ynwtzw",
+      "node_type": "loop_end",
+      "display_name": "循环结束",
+      "sort_order": 3,
+      "enabled": 1,
+      "position_json": "{\"x\":100,\"y\":200}"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f",
+      "workflow_id": "workflow_d4bb79e1-0fa0-438e-9e57-03f94c5c12db",
+      "node_key": "node_1762137901517_59cb77s4f",
+      "node_type": "loop_start",
+      "display_name": "循环开始",
+      "sort_order": 0,
+      "enabled": 1,
+      "position_json": "{\"x\":100,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762137901932_8pokdn6ff",
+      "workflow_id": "workflow_d4bb79e1-0fa0-438e-9e57-03f94c5c12db",
+      "node_key": "node_1762137901932_8pokdn6ff",
+      "node_type": "wait_delay",
+      "display_name": "等待/延时",
+      "sort_order": 1,
+      "enabled": 1,
+      "position_json": "{\"x\":460.53125,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762137910482_8c6ffg5nz",
+      "workflow_id": "workflow_d4bb79e1-0fa0-438e-9e57-03f94c5c12db",
+      "node_key": "node_1762137910482_8c6ffg5nz",
+      "node_type": "loop_end",
+      "display_name": "循环结束",
+      "sort_order": 2,
+      "enabled": 1,
+      "position_json": "{\"x\":821.0625,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f",
+      "workflow_id": "workflow_42f4c1da-7b16-46f2-85f9-28ec753ebfff",
+      "node_key": "node_1762137901517_59cb77s4f",
+      "node_type": "loop_start",
+      "display_name": "循环开始",
+      "sort_order": 0,
+      "enabled": 1,
+      "position_json": "{\"x\":100,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762137901932_8pokdn6ff",
+      "workflow_id": "workflow_42f4c1da-7b16-46f2-85f9-28ec753ebfff",
+      "node_key": "node_1762137901932_8pokdn6ff",
+      "node_type": "wait_delay",
+      "display_name": "等待/延时",
+      "sort_order": 1,
+      "enabled": 1,
+      "position_json": "{\"x\":460.53125,\"y\":100}"
+    },
+    {
+      "id": "node_node_1762137910482_8c6ffg5nz",
+      "workflow_id": "workflow_42f4c1da-7b16-46f2-85f9-28ec753ebfff",
+      "node_key": "node_1762137910482_8c6ffg5nz",
+      "node_type": "loop_end",
+      "display_name": "循环结束",
+      "sort_order": 2,
+      "enabled": 1,
+      "position_json": "{\"x\":821.0625,\"y\":100}"
+    }
+  ],
+  "node_param": [
+    {
+      "id": "node_node_1762129166315_zurk5ttzd:host",
+      "node_id": "node_node_1762129166315_zurk5ttzd",
+      "key": "host",
+      "value_text": "localhost",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129166315_zurk5ttzd:workstation",
+      "node_id": "node_node_1762129166315_zurk5ttzd",
+      "key": "workstation",
+      "value_text": "zahner-zennium",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129167646_8gy3ayutd:loop_count",
+      "node_id": "node_node_1762129167646_8gy3ayutd",
+      "key": "loop_count",
+      "value_text": null,
+      "value_num": 1,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129167646_8gy3ayutd:loop_variable",
+      "node_id": "node_node_1762129167646_8gy3ayutd",
+      "key": "loop_variable",
+      "value_text": "i",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129167646_8gy3ayutd:start_value",
+      "node_id": "node_node_1762129167646_8gy3ayutd",
+      "key": "start_value",
+      "value_text": null,
+      "value_num": 0,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129167646_8gy3ayutd:step",
+      "node_id": "node_node_1762129167646_8gy3ayutd",
+      "key": "step",
+      "value_text": null,
+      "value_num": 1,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129167646_8gy3ayutd:loop_id",
+      "node_id": "node_node_1762129167646_8gy3ayutd",
+      "key": "loop_id",
+      "value_text": "loop_1762129167646_0nkwn1vba",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129168348_6sfb9vdr5:duration",
+      "node_id": "node_node_1762129168348_6sfb9vdr5",
+      "key": "duration",
+      "value_text": null,
+      "value_num": 1,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129168348_6sfb9vdr5:description",
+      "node_id": "node_node_1762129168348_6sfb9vdr5",
+      "key": "description",
+      "value_text": "",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129168348_6sfb9vdr5:allow_cancel",
+      "node_id": "node_node_1762129168348_6sfb9vdr5",
+      "key": "allow_cancel",
+      "value_text": null,
+      "value_num": null,
+      "value_json": "true",
+      "value_type": "json",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129168348_6sfb9vdr5:progress_updates",
+      "node_id": "node_node_1762129168348_6sfb9vdr5",
+      "key": "progress_updates",
+      "value_text": null,
+      "value_num": null,
+      "value_json": "true",
+      "value_type": "json",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762129169014_m79ynwtzw:loop_id",
+      "node_id": "node_node_1762129169014_m79ynwtzw",
+      "key": "loop_id",
+      "value_text": "loop_1762129167646_0nkwn1vba",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T00:20:05.981Z"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f:loop_count",
+      "node_id": "node_node_1762137901517_59cb77s4f",
+      "key": "loop_count",
+      "value_text": null,
+      "value_num": 10,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f:loop_variable",
+      "node_id": "node_node_1762137901517_59cb77s4f",
+      "key": "loop_variable",
+      "value_text": "i",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f:start_value",
+      "node_id": "node_node_1762137901517_59cb77s4f",
+      "key": "start_value",
+      "value_text": null,
+      "value_num": 0,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f:step",
+      "node_id": "node_node_1762137901517_59cb77s4f",
+      "key": "step",
+      "value_text": null,
+      "value_num": 1,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901517_59cb77s4f:loop_id",
+      "node_id": "node_node_1762137901517_59cb77s4f",
+      "key": "loop_id",
+      "value_text": "loop_1762137901517_c2zdlel4r",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901932_8pokdn6ff:duration",
+      "node_id": "node_node_1762137901932_8pokdn6ff",
+      "key": "duration",
+      "value_text": null,
+      "value_num": 100,
+      "value_json": null,
+      "value_type": "number",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901932_8pokdn6ff:description",
+      "node_id": "node_node_1762137901932_8pokdn6ff",
+      "key": "description",
+      "value_text": "",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901932_8pokdn6ff:allow_cancel",
+      "node_id": "node_node_1762137901932_8pokdn6ff",
+      "key": "allow_cancel",
+      "value_text": null,
+      "value_num": null,
+      "value_json": "true",
+      "value_type": "json",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137901932_8pokdn6ff:progress_updates",
+      "node_id": "node_node_1762137901932_8pokdn6ff",
+      "key": "progress_updates",
+      "value_text": null,
+      "value_num": null,
+      "value_json": "true",
+      "value_type": "json",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    },
+    {
+      "id": "node_node_1762137910482_8c6ffg5nz:loop_id",
+      "node_id": "node_node_1762137910482_8c6ffg5nz",
+      "key": "loop_id",
+      "value_text": "loop_1762137901517_c2zdlel4r",
+      "value_num": null,
+      "value_json": null,
+      "value_type": "string",
+      "updated_at": "2025-11-03T02:46:14.055Z"
+    }
+  ],
   "data_file": [],
   "users": [
     {

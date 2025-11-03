@@ -6,8 +6,7 @@ import { ConnectionLines } from './ConnectionLines';
 import {
   LoopDetector,
   LoopContextManager,
-  LoopVisualizer,
-  LoopStatusIndicator,
+  LoopBoundary,
   LoopInfo,
   LoopExecutionContext
 } from './features/loop';
@@ -377,17 +376,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           {loopVisualizationEnabled ? '👁️' : '🙈'}
         </button>
 
-        {/* 循环状态指示器 - 新增 */}
-        {detectedLoops.length > 0 && (
-          <div className="loop-status-wrapper">
-            <LoopStatusIndicator
-              loops={detectedLoops}
-              contexts={loopContexts}
-              className="loop-status-indicator-inline"
-            />
-          </div>
-        )}
-
+  
         
         
         <button className="btn-zoom" onClick={onZoomOut} title="缩小">
@@ -420,15 +409,16 @@ export const Canvas: React.FC<CanvasProps> = ({
         />
 
         
-        {/* 循环可视化组件 - 新增 */}
+        {/* 循环边界组件 - 新的统一组件 */}
         {loopVisualizationEnabled && detectedLoops.map(loop => {
           const context = loopContexts.get(loop.id);
           return (
-            <LoopVisualizer
+            <LoopBoundary
               key={loop.id}
               loop={loop}
               nodes={nodePositions}
               context={context}
+              layoutStable={layoutStable}
               zoomLevel={zoomLevel}
               canvasOffsetY={canvasOffsetY}
             />

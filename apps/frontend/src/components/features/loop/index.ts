@@ -8,7 +8,6 @@ export { LoopContextManager } from './core/LoopContextManager';
 
 // 可视化组件导出
 export { LoopBoundary } from './visualization/LoopBoundary';
-export { LoopVisualizer, LoopStatusIndicator } from './visualization/LoopVisualizer';
 export { LoopControlPanel } from './visualization/LoopControlPanel';
 
 // 类型导出
@@ -20,5 +19,5 @@ export type {
   LoopEvent,
   LoopExecutionConfig
 } from './core/LoopContextManager';
-export type { LoopVisualizerProps } from './visualization/LoopVisualizer';
+export type { LoopBoundaryProps } from './visualization/LoopBoundary';
 export type { LoopControlPanelProps } from './visualization/LoopControlPanel';

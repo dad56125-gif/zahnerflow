@@ -20,8 +20,7 @@
 @import './components/_connection.css';
 @import './components/_modal.css';
 @import './components/_canvas.css';
-@import './components/_loop-boundary.css';  /* 循环边界括号样式 */
-@import './components/_loop-boundary-svg.css';  /* SVG循环边界样式 */
+@import './components/_loop-boundary-new.css';  /* 新循环边界样式（合并后） */
 @import './components/_loop.css';
 @import './components/_workflow.css';
 @import './components/_notification.css';  /* 新增：通知面板样式 */
