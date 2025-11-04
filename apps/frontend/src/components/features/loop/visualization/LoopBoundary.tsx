@@ -47,7 +47,7 @@ function getNodeCenterPoint(
   const nodeY = node.position?.y || node.y || 0;
 
   const nodeWidth = node.style?.width || node.width || 140;
-  const nodeHeight = (node.style?.height || node.height || 60) + 20;
+  const nodeHeight = node.style?.height || node.height || 60;
 
   const transformX = nodeX * zoomLevel;
   const transformY = (nodeY + canvasOffsetY) * zoomLevel;
@@ -97,9 +97,45 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
     // 获取从 start_node 到 end_node 的完整节点序列
     if (startIndex <= endIndex) {
-      return allNodes.slice(startIndex, endIndex + 1);
+      const pathNodes = allNodes.slice(startIndex, endIndex + 1);
+
+      // 在开始节点左侧添加宽度一半的扩展点
+      const startNode = pathNodes[0];
+      const nodeWidth = startNode.style?.width || startNode.width || 140;
+      const extendedStart = {
+        ...startNode,
+        x: startNode.x - nodeWidth / 3
+      };
+
+      // 在结束节点右侧添加宽度三分之一的扩展点
+      const endNode = pathNodes[pathNodes.length - 1];
+      const endNodeWidth = endNode.style?.width || endNode.width || 140;
+      const extendedEnd = {
+        ...endNode,
+        x: endNode.x + endNodeWidth / 3
+      };
+
+      return [extendedStart, ...pathNodes, extendedEnd];
     } else {
-      return allNodes.slice(endIndex, startIndex + 1).reverse();
+      const pathNodes = allNodes.slice(endIndex, startIndex + 1).reverse();
+
+      // 在开始节点（原endNode）左侧添加宽度一半的扩展点
+      const startNode = pathNodes[0];
+      const nodeWidth = startNode.style?.width || startNode.width || 140;
+      const extendedStart = {
+        ...startNode,
+        x: startNode.x - nodeWidth / 3
+      };
+
+      // 在结束节点右侧添加宽度三分之一的扩展点
+      const endNode = pathNodes[pathNodes.length - 1];
+      const endNodeWidth = endNode.style?.width || endNode.width || 140;
+      const extendedEnd = {
+        ...endNode,
+        x: endNode.x + endNodeWidth / 3
+      };
+
+      return [extendedStart, ...pathNodes, extendedEnd];
     }
   }, []);
 
@@ -186,8 +222,8 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   }, [context]);
 
   // 计算带状宽度（基于循环内节点）
-  const nodeHeight = (loopInnerNodes[0]?.style?.height || 60) + 20;
-  const beltWidth = nodeHeight * 1.05;
+  const nodeHeight = loopInnerNodes[0]?.style?.height || loopInnerNodes[0]?.height || 60;
+  const beltWidth = nodeHeight * 1.15;
 
   // 生成 SVG path（单个路径，同时用于填充和边框）
   const beltPath = React.useMemo(() => {
@@ -232,106 +268,39 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
           return (
             <>
-              {/* 循环级别标签背景 */}
-              <rect
-                x={firstPoint.x - 100}
-                y={firstPoint.y - 80}
-                width="200"
-                height="24"
-                rx="4"
-                fill="rgba(0, 0, 0, 0.85)"
-                stroke="rgba(255, 255, 255, 0.1)"
-                strokeWidth="1"
-              />
-
               {/* 循环级别文本 */}
               <text
                 x={firstPoint.x}
-                y={firstPoint.y - 62}
+                y={firstPoint.y - 50}
                 fill="#64B5F6"
                 fontSize="12"
                 fontWeight="600"
                 fontFamily="system-ui, -apple-system, sans-serif"
                 textAnchor="middle"
+                style={{
+                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
+                }}
               >
-                第{loopLevel + 1}级循环
-              </text>
-
-              {/* 循环ID标签背景 */}
-              <rect
-                x={firstPoint.x - 100}
-                y={firstPoint.y - 50}
-                width="200"
-                height="24"
-                rx="4"
-                fill="rgba(0, 0, 0, 0.85)"
-                stroke="rgba(255, 255, 255, 0.1)"
-                strokeWidth="1"
-              />
-
-              {/* 循环ID文本 */}
-              <text
-                x={firstPoint.x - 90}
-                y={firstPoint.y - 35}
-                fill="#81C784"
-                fontSize="11"
-                fontWeight="600"
-                fontFamily="system-ui, -apple-system, sans-serif"
-              >
-                ID: {loop.id}
-              </text>
-
-              {/* 循环次数信息 */}
-              <text
-                x={firstPoint.x + 40}
-                y={firstPoint.y - 35}
-                fill="#FFB74D"
-                fontSize="11"
-                fontWeight="500"
-                fontFamily="system-ui, -apple-system, sans-serif"
-              >
-                {loop.iteration_count}次
+                第{loopLevel + 1}级循环 • {loop.id} • {loop.iteration_count}次
               </text>
 
               {/* 执行状态信息 */}
               {context && (
                 <>
-                  {/* 执行状态标签背景 */}
-                  <rect
-                    x={firstPoint.x - 100}
-                    y={firstPoint.y - 20}
-                    width="200"
-                    height="24"
-                    rx="4"
-                    fill="rgba(0, 0, 0, 0.85)"
-                    stroke="rgba(255, 255, 255, 0.1)"
-                    strokeWidth="1"
-                  />
-
-                  {/* 当前迭代次数 */}
+                  {/* 执行状态信息 */}
                   <text
                     x={firstPoint.x}
-                    y={firstPoint.y - 5}
-                    fill="#4FC3F7"
-                    fontSize="11"
-                    fontWeight="500"
-                    fontFamily="system-ui, -apple-system, sans-serif"
-                    textAnchor="middle"
-                  >
-                    {context.current_iteration}/{context.total_iterations}
-                  </text>
-
-                  {/* 执行状态 */}
-                  <text
-                    x={firstPoint.x}
-                    y={firstPoint.y + 10}
+                    y={firstPoint.y - 30}
                     fill="#A5D6A7"
                     fontSize="10"
                     fontWeight="500"
                     fontFamily="system-ui, -apple-system, sans-serif"
                     textAnchor="middle"
+                    style={{
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
+                    }}
                   >
-                    {context.state === 'running' ? '运行中' :
+                    {context.current_iteration}/{context.total_iterations} • {context.state === 'running' ? '运行中' :
                      context.state === 'paused' ? '已暂停' :
                      context.state === 'completed' ? '已完成' :
                      context.state === 'error' ? '错误' :

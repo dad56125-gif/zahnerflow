@@ -15,6 +15,7 @@
   /* 圆角/模糊/层级（复用项目现有） */
   --radius-sm: 0.9375rem; /* 15px */
   --radius: 1.25rem;      /* 20px */
+  --radius-md: 1.125rem;  /* 18px */
   --radius-lg: 1.5625rem; /* 25px */
   --blur-xl: 1.5rem;      /* 24px */
   --z-navbar: 40;
@@ -26,6 +27,18 @@
   --glass-bg: rgba(0, 0, 0, 0.15);
   --glass-border: rgba(255, 255, 255, 0.12);
   --glass-shadow: rgba(0, 0, 0, 0.2);
+  --glass-hover: rgba(255, 255, 255, 0.1);
+
+  /* 文本颜色系统 */
+  --text-primary: white;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.5);
+
+  /* 模糊程度 */
+  --blur-sm: 0.5rem;
+  --blur-md: 1rem;
+  --blur-lg: 1.5rem;
+
 
   /* 布局边界位置变量（相对于 viewport） */
   --sidebar-l: var(--space);  /* 左侧边栏左边距（viewport） */

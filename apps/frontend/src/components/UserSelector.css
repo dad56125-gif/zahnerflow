@@ -152,7 +152,11 @@
   z-index: 3000; /* 鎻愰珮鍒拌秴杩嘥opBar鍜屼笅鎷夎彍鍗曠殑灞傜骇 */
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-`n  pointer-events: auto;`n  display: flex;`n  align-items: center;`n  justify-content: center;`n}
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .dialog-content {
   background: var(--glass-bg);

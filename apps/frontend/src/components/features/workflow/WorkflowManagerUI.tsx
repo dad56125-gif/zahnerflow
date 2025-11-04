@@ -5,7 +5,7 @@
  * 集成工作流模板、历史记录和配置管理
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
 import { useCanvasStore } from '@/services/stores/canvasStore';
 import { LoopDetector } from '.';
@@ -13,6 +13,8 @@ import WorkflowExporter, { WorkflowExporterProps } from './WorkflowExporter';
 import WorkflowImporter, { WorkflowImporterProps } from './WorkflowImporter';
 import WorkflowManager, { type WorkflowData, type WorkflowMetadata } from './WorkflowManager';
 import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';
+import { api } from '@/services/api';
+import { useUser } from '@/contexts/UserContext';
 
 // 工作流管理UI属性接口
 export interface WorkflowManagerUIProps {
@@ -25,11 +27,14 @@ export interface WorkflowManagerUIProps {
 interface WorkflowHistory {
   id: string;
   name: string;
-  timestamp: number;
-  nodeCount: number;
-  connectionCount: number;
-  loopCount: number;
-  fileData?: string;
+  filename: string;
+  filepath: string;
+  project_name: string;
+  created_at: string;
+  file_size?: number;
+  node_count?: number;
+  connection_count?: number;
+  loop_count?: number;
 }
 
 /**
@@ -47,10 +52,15 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     setConnections
   } = useCanvasStore();
 
+  const { currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'templates' | 'history'>('export');
   const [showExporter, setShowExporter] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [workflowHistory, setWorkflowHistory] = useState<WorkflowHistory[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [projects, setProjects] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [templates] = useState<WorkflowData[]>([
@@ -80,6 +90,100 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
       onClose();
     }
   });
+
+  // 加载项目列表和历史工作流
+  useEffect(() => {
+    if (currentUser) {
+      loadProjects();
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadWorkflowHistory();
+    }
+  }, [activeTab, selectedProject]);
+
+  const loadProjects = async () => {
+    try {
+      const response: any = await api.get(`/files/projects?user=${currentUser}`);
+      if (response?.success) {
+        const list = Array.isArray(response.projects)
+          ? (response.projects as string[])
+          : (Array.isArray(response.data) ? (response.data as string[]) : []);
+        setProjects(list);
+      }
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    }
+  };
+
+  const loadWorkflowHistory = async () => {
+    setLoadingHistory(true);
+    setHistoryError('');
+
+    try {
+      // 使用现有的工作流API，请求50条记录
+      const response: any = await api.get('/workflows?limit=50');
+
+      console.log('Raw API response:', response); // 调试日志
+
+      // 检查不同的响应格式
+      let workflows = [];
+      let paginationInfo = null;
+
+      if (response?.items && Array.isArray(response.items)) {
+        // PaginatedResponse格式
+        workflows = response.items;
+        paginationInfo = response.pagination;
+      } else if (Array.isArray(response)) {
+        // 直接返回数组格式
+        workflows = response;
+      } else if (response?.data && Array.isArray(response.data)) {
+        // ApiResponse格式
+        workflows = response.data;
+      } else {
+        console.warn('Unexpected response format:', response);
+        setHistoryError('无法解析工作流数据格式');
+        setWorkflowHistory([]);
+        return;
+      }
+
+      console.log('Parsed workflows:', workflows); // 调试日志
+      console.log('Pagination info:', paginationInfo); // 调试日志
+
+      const formattedWorkflows = workflows.map((workflow: any) => ({
+        id: workflow.id,
+        name: workflow.name,
+        filename: `${workflow.id}.json`,
+        filepath: `/api/workflows/${workflow.id}`,
+        project_name: workflow.individualName || workflow.ownerName || '默认项目',
+        created_at: workflow.createdAt,
+        node_count: workflow.definition?.nodes?.length || 0,
+        connection_count: workflow.definition?.edges?.length || 0,
+        loop_count: Math.floor((workflow.definition?.nodes?.length || 0) / 2) // 估算循环数
+      }));
+
+      console.log('Formatted workflows:', formattedWorkflows); // 调试日志
+
+      // 如果选择了项目，进行过滤
+      const filteredWorkflows = selectedProject
+        ? formattedWorkflows.filter(w => w.project_name === selectedProject)
+        : formattedWorkflows;
+
+      setWorkflowHistory(filteredWorkflows);
+
+      if (filteredWorkflows.length === 0) {
+        setHistoryError('没有找到匹配的工作流');
+      }
+    } catch (error) {
+      console.error('Failed to load workflow history:', error);
+      setHistoryError('网络错误，无法加载历史工作流');
+      setWorkflowHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   // 导出完成处理
   const handleExportComplete = (filename: string) => {
@@ -117,18 +221,101 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     alert('导入失败: ' + error);
   };
 
-  // 添加到历史记录
+  // 添加到历史记录（现在直接重新加载历史记录）
   const addToHistory = (filename: string) => {
-    const historyItem: WorkflowHistory = {
-      id: Date.now().toString(),
-      name: filename.replace(/\.json$/, '').replace(/_\d{4}-\d{2}-\d{2}$/, ''),
-      timestamp: Date.now(),
-      nodeCount: nodes.length,
-      connectionCount: connections.length,
-      loopCount: detectedLoops.length
-    };
+    // 导出完成后重新加载历史记录列表
+    if (activeTab === 'history') {
+      loadWorkflowHistory();
+    }
+  };
 
-    setWorkflowHistory(prev => [historyItem, ...prev.slice(0, 9)]); // 保留最近10条记录
+  // 加载历史工作流
+  const loadHistoryWorkflow = async (workflow: WorkflowHistory) => {
+    try {
+      console.log('Loading workflow:', workflow.id); // 调试日志
+
+      // 使用现有的工作流API获取特定工作流
+      const response = await api.get(`/workflows/${workflow.id}`);
+
+      console.log('Single workflow response:', response); // 调试日志
+
+      // 检查响应格式
+      let workflowData = response;
+
+      if (response?.data) {
+        workflowData = response.data;
+      }
+
+      if (!workflowData) {
+        throw new Error(`找不到工作流 "${workflow.name}"`);
+      }
+
+      console.log('Workflow data to process:', workflowData); // 调试日志
+
+      // 转换工作流数据格式以适配前端期望的结构
+      const convertedNodes = workflowData.data?.definition?.nodes?.map((node: any) => ({
+        id: node.id,
+        type: node.type,
+        name: node.name,
+        category: 'basic_measurement', // 添加必需的category字段
+        position: node.position,
+        style: { width: 140, height: 60 },
+        status: 'ready' as any,
+        data: {
+          name: node.name,
+          description: `Node: ${node.type}`,
+          parameters: node.config?.parameters || {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        input: {
+          id: `${node.id}_input`,
+          name: 'Input',
+          dataType: 'flow' as const
+        },
+        output: {
+          id: `${node.id}_output`,
+          name: 'Output',
+          dataType: 'flow' as const
+        }
+      })) || [];
+
+      const formattedConnections = workflowData.data?.definition?.edges?.map((edge: any) => ({
+        id: edge.id,
+        source_id: edge.source,
+        target_id: edge.target
+      })) || [];
+
+      console.log('Converted nodes:', convertedNodes);
+      console.log('Formatted connections:', formattedConnections);
+
+      // 应用加载的工作流
+      setNodes(convertedNodes);
+      setConnections(formattedConnections);
+
+      console.log(`历史工作流 "${workflow.name}" 加载成功`);
+
+    } catch (error) {
+      console.error('加载历史工作流失败:', error);
+      alert(`加载工作流 "${workflow.name}" 失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  };
+
+  // 删除历史工作流文件
+  const deleteHistoryWorkflow = async (workflow: WorkflowHistory) => {
+    if (!confirm(`确定要删除历史工作流 "${workflow.name}" 吗？此操作不可撤销。`)) {
+      return;
+    }
+
+    try {
+      // 这里可以添加删除文件的API调用
+      // 暂时只从本地列表中移除
+      setWorkflowHistory(prev => prev.filter(item => item.id !== workflow.id));
+      console.log(`历史工作流 "${workflow.name}" 已从列表中移除`);
+    } catch (error) {
+      console.error('删除历史工作流失败:', error);
+      alert(`删除工作流 "${workflow.name}" 失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
   };
 
   // 应用模板
@@ -303,15 +490,60 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         {activeTab === 'history' && (
           <div className="history-tab">
             <div className="history-header">
-              <h4>工作流历史</h4>
-              <p>最近导出的工作流记录</p>
+              <h4>历史工作流</h4>
+              <p>查询和加载历史保存的工作流文件</p>
+
+              {/* 项目筛选器 */}
+              <div className="history-filter">
+                <select
+                  value={selectedProject}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                  className="project-filter-select"
+                >
+                  <option value="">所有项目</option>
+                  {projects.map(project => (
+                    <option key={project} value={project}>{project}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={loadWorkflowHistory}
+                  className="refresh-btn"
+                  disabled={loadingHistory}
+                  title="刷新列表"
+                >
+                  {loadingHistory ? '🔄' : '🔄'}
+                </button>
+              </div>
             </div>
 
-            {workflowHistory.length === 0 ? (
+            {historyError && (
+              <div className="history-error">
+                {historyError}
+                <button
+                  onClick={loadWorkflowHistory}
+                  className="retry-btn"
+                  disabled={loadingHistory}
+                >
+                  重试
+                </button>
+              </div>
+            )}
+
+            {loadingHistory ? (
+              <div className="history-loading">
+                <div className="loading-spinner">🔄</div>
+                <div>正在加载历史工作流...</div>
+              </div>
+            ) : workflowHistory.length === 0 ? (
               <div className="history-empty">
                 <div className="empty-icon">📋</div>
-                <div className="empty-text">暂无历史记录</div>
-                <div className="empty-hint">导出工作流后会在这里显示记录</div>
+                <div className="empty-text">暂无历史工作流</div>
+                <div className="empty-hint">
+                  {selectedProject
+                    ? `项目 "${selectedProject}" 中没有找到历史工作流`
+                    : '导出工作流后会在这里显示记录'
+                  }
+                </div>
               </div>
             ) : (
               <div className="history-list">
@@ -319,20 +551,34 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                   <div key={item.id} className="history-item">
                     <div className="history-info">
                       <div className="history-name">{item.name}</div>
+                      <div className="history-project">
+                        项目: {item.project_name}
+                      </div>
                       <div className="history-details">
-                        <span>节点: {item.nodeCount}</span>
-                        <span>连接: {item.connectionCount}</span>
-                        <span>循环: {item.loopCount}</span>
+                        <span>节点: {item.node_count || 0}</span>
+                        <span>连接: {item.connection_count || 0}</span>
+                        <span>循环: {item.loop_count || 0}</span>
+                        {item.file_size && (
+                          <span>大小: {Math.round(item.file_size / 1024)}KB</span>
+                        )}
                       </div>
                       <div className="history-time">
-                        {new Date(item.timestamp).toLocaleString()}
+                        {new Date(item.created_at).toLocaleString()}
                       </div>
                     </div>
                     <div className="history-actions">
-                      <button className="btn-reuse" title="重新使用">
-                        🔄
+                      <button
+                        onClick={() => loadHistoryWorkflow(item)}
+                        className="btn-load"
+                        title="加载工作流"
+                      >
+                        📂
                       </button>
-                      <button className="btn-delete" title="删除记录">
+                      <button
+                        onClick={() => deleteHistoryWorkflow(item)}
+                        className="btn-delete"
+                        title="删除记录"
+                      >
                         🗑️
                       </button>
                     </div>

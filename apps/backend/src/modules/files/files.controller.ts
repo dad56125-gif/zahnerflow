@@ -64,5 +64,28 @@ export class FilesController {
       };
     }
   }
+
+  @Get('workflows')
+  async getWorkflowFiles(@Query('user') user: string, @Query('project') project?: string) {
+    if (!user) {
+      return {
+        success: false,
+        message: 'User parameter is required'
+      };
+    }
+
+    try {
+      const workflows = await this.filesService.getWorkflowFiles(user, project);
+      return {
+        success: true,
+        data: workflows
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
 }
 

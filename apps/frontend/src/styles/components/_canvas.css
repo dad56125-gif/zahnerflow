@@ -410,3 +410,119 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* 工作流ID/名称显示组件样式 */
+.workflow-id-display {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  padding: 8px 12px;
+  z-index: 50;
+  min-width: 200px;
+  max-width: 300px;
+  transition: all 0.2s ease;
+}
+
+.workflow-id-display:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--glass-shadow);
+}
+
+.workflow-id-display.placeholder {
+  opacity: 0.6;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.workflow-id-display.placeholder .display-text {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.display-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.display-text {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-hint {
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.workflow-id-display:hover .edit-hint {
+  opacity: 0.7;
+}
+
+.workflow-id-display.editing {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 12px rgba(33, 150, 243, 0.3);
+}
+
+.workflow-name-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 2px 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workflow-name-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.workflow-name-input:focus {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .workflow-id-display {
+    bottom: 10px;
+    left: 10px;
+    min-width: 150px;
+    max-width: 200px;
+    padding: 6px 10px;
+  }
+
+  .display-text {
+    font-size: 12px;
+  }
+
+  .workflow-name-input {
+    font-size: 12px;
+  }
+
+  .edit-hint {
+    font-size: 10px;
+  }
+}

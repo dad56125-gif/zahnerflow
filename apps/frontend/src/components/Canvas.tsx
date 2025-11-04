@@ -11,6 +11,7 @@ import {
   LoopExecutionContext
 } from './features/loop';
 import { WorkflowManagerUI } from './features/workflow';
+import { WorkflowIdDisplay } from './common/WorkflowIdDisplay';
 import {
   layout_service,
   Position,
@@ -440,7 +441,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       {showWorkflowManager && (
         <div className="workflow-manager-overlay">
           <div className="workflow-manager-panel">
-            <WorkflowManagerUI />
+            <WorkflowManagerUI onClose={onToggleWorkflowManager} />
           </div>
         </div>
       )}
@@ -451,6 +452,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           {/* FilePathManagerUI will be rendered by Toolbar */}
         </div>
       )}
+
+      {/* 工作流ID/名称显示 - 新增 */}
+      <WorkflowIdDisplay />
     </div>
   );
 };

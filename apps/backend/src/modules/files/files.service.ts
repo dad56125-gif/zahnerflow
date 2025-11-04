@@ -73,4 +73,89 @@ export class FilesService {
       individual_name: firstPath.individual_name
     };
   }
+
+  async getWorkflowFiles(user: string, project?: string): Promise<Array<{
+    id: string;
+    name: string;
+    filename: string;
+    filepath: string;
+    project_name: string;
+    created_at: string;
+    file_size?: number;
+    node_count?: number;
+    connection_count?: number;
+  }>> {
+    // 导入文件系统模块
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    try {
+      // 读取工作流JSON文件
+      const workflowsPath = path.join(process.cwd(), 'data', 'workflows', 'workflows.json');
+
+      try {
+        const workflowsData = JSON.parse(await fs.readFile(workflowsPath, 'utf8'));
+        const workflowArray = workflowsData.workflows || [];
+
+        const workflowFiles: Array<{
+          id: string;
+          name: string;
+          filename: string;
+          filepath: string;
+          project_name: string;
+          created_at: string;
+          file_size?: number;
+          node_count?: number;
+          connection_count?: number;
+        }> = [];
+
+        // 处理工作流数组
+        for (const [workflowKey, workflowData] of workflowArray) {
+          if (workflowData && typeof workflowData === 'object') {
+            const workflow = workflowData as any;
+
+            // 计算节点和连接数
+            let node_count = 0;
+            let connection_count = 0;
+
+            if (workflow.definition && workflow.definition.nodes) {
+              node_count = Array.isArray(workflow.definition.nodes) ? workflow.definition.nodes.length : 0;
+            }
+
+            if (workflow.definition && workflow.definition.edges) {
+              connection_count = Array.isArray(workflow.definition.edges) ? workflow.definition.edges.length : 0;
+            }
+
+            // 从项目列表中获取项目名，如果没有则使用默认值
+            const projects = this.getProjects(user);
+            const project_name = project || (projects.length > 0 ? projects[0] : '默认项目');
+
+            workflowFiles.push({
+              id: workflow.id || workflowKey,
+              name: workflow.name || '未命名工作流',
+              filename: `${workflow.id || workflowKey}.json`,
+              filepath: workflowsPath,
+              project_name,
+              created_at: workflow.createdAt || workflow.updated_at || new Date().toISOString(),
+              node_count,
+              connection_count
+            });
+          }
+        }
+
+        // 按创建时间排序，最新的在前
+        workflowFiles.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        return workflowFiles;
+
+      } catch (readError) {
+        console.warn('无法读取工作流文件，返回空列表:', readError);
+        return [];
+      }
+
+    } catch (error) {
+      console.error('Error getting workflow files:', error);
+      return [];
+    }
+  }
 }

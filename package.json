@@ -4,6 +4,7 @@
   "description": "ZahnerFlow 电化学工作流管理系统",
   "private": true,
   "scripts": {
+    "postinstall": "pnpm --filter @zahnerflow/types build",
     "dev": "concurrently \"pnpm --filter frontend dev\" \"pnpm --filter backend start:dev\"",
     "build": "pnpm --filter frontend build && pnpm --filter backend build",
     "test": "vitest",
