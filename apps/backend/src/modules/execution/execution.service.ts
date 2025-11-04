@@ -32,11 +32,12 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   private currentNodeId: string | null = null;
   private hookRules: HookRule[] = [];
 
-  // 执行上下文管理 - 存储workflowId引用
+  // 执行上下文管理 - 存储workflowId引用和工作流时间戳
   private executionContexts = new Map<string, {
     workflowId: string;
     executionId: string;
     startTime: Date;
+    workflowTimestamp: string; // 工作流级别的时间戳
   }>();
 
   constructor(
@@ -174,12 +175,16 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     this.currentExecutionId = executionId; // 设置当前执行ID
     const startTime = Date.now();
 
-    // 保存执行上下文 - 关键修复！
+    // 保存执行上下文 - 包含工作流级别的时间戳
+    const workflowTimestamp = this.generateWorkflowTimestamp();
     this.executionContexts.set(executionId, {
       workflowId,
       executionId,
-      startTime: new Date()
+      startTime: new Date(),
+      workflowTimestamp
     });
+
+    this.consoleManager.log('ExecutionService', 'enableLog', `工作流开始执行 - 时间戳: ${workflowTimestamp}`);
 
     // 发送执行开始通知
     this.executionNotificationService.sendExecutionStartNotification(executionId, workflowId);
@@ -535,7 +540,8 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
           workflow.individualName
         );
 
-        // 使用FilesService构建路径
+        // 使用FilesService构建路径 - 传递工作流级别的时间戳
+        const workflowTimestamp = this.getWorkflowTimestamp(executionId);
         const outputPath = this.filesService.buildOutputPath({
           base_path: projectConfig?.base_path,
           project_name: workflow.definition.name,
@@ -544,8 +550,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
           measurement_type: measurementType,
           workflow_id: workflowId, // 使用工作流ID
           workflow_name: workflow.definition?.name,
-          useDefaultStructure: !workflow?.ownerName || !workflow?.individualName || !projectConfig?.test_type
+          useDefaultStructure: !workflow?.ownerName || !workflow?.individualName || !projectConfig?.test_type,
+          workflow_timestamp: workflowTimestamp // 使用工作流级别的时间戳
         });
+
+        this.consoleManager.log('ExecutionService', 'enableLog', `使用工作流时间戳 ${workflowTimestamp} 构建路径: ${outputPath}`);
 
         // 添加 output_path 到参数中
         parameters = {
@@ -561,9 +570,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     // 如果仍然没有 output_path，使用默认值（包含test_type）
     if (!parameters.output_path) {
+      const workflowTimestamp = this.getWorkflowTimestamp(executionId);
       const outputPath = this.filesService.buildOutputPath({
         measurement_type: measurementType,
-        workflow_id: 'unknown_workflow'
+        workflow_id: 'unknown_workflow',
+        workflow_timestamp: workflowTimestamp // 使用工作流级别的时间戳
       });
 
       parameters.output_path = outputPath;
@@ -780,6 +791,25 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private generateExecutionId(): string {
     return `exec_${++this.executionCounter}_${Date.now()}`;
+  }
+
+  /**
+   * 生成工作流级别的时间戳 (YYMMDD_HHmm格式)
+   */
+  private generateWorkflowTimestamp(): string {
+    const now = new Date();
+    return now.toISOString()
+      .slice(2, 16) // YYMMDD_HHmm 格式
+      .replace(/[-:]/g, '')
+      .replace('T', '_');
+  }
+
+  /**
+   * 获取工作流时间戳
+   */
+  private getWorkflowTimestamp(executionId: string): string {
+    const context = this.executionContexts.get(executionId);
+    return context?.workflowTimestamp || this.generateWorkflowTimestamp();
   }
 
   getStatus(): ModuleStatus {

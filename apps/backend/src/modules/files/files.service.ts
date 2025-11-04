@@ -28,6 +28,7 @@ export interface BuildOutputPathOptions {
   workflow_id?: string;
   workflow_name?: string;
   useDefaultStructure?: boolean;
+  workflow_timestamp?: string; // 工作流级别的时间戳
 }
 
 @Injectable()
@@ -207,7 +208,8 @@ export class FilesService {
       measurement_type,
       workflow_id,
       workflow_name,
-      useDefaultStructure = false
+      useDefaultStructure = false,
+      workflow_timestamp
     } = options;
 
     // 确定test_type
@@ -230,12 +232,15 @@ export class FilesService {
         finalTestType
       );
     } else {
-      // 默认路径结构
-      const now = new Date();
-      const timestamp = now.toISOString()
-        .slice(2, 16) // YYMMDD_HHmm 格式（正确：slice(2,16)）
-        .replace(/[-:]/g, '')
-        .replace('T', '_');
+      // 默认路径结构 - 使用工作流级别的时间戳
+      const timestamp = workflow_timestamp || (() => {
+        // 如果没有提供时间戳，生成新的（向后兼容）
+        const now = new Date();
+        return now.toISOString()
+          .slice(2, 16) // YYMMDD_HHmm 格式
+          .replace(/[-:]/g, '')
+          .replace('T', '_');
+      })();
 
       // 优先使用workflow_id，如果没有则使用workflow_name
       const workflowIdForPath = workflow_id || workflow_name || 'unknown_workflow';
