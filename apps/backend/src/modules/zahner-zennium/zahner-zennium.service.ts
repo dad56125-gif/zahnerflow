@@ -24,22 +24,11 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-      this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'ZahnerZenniumService 初始化...');
-    }
-
     try {
-      // 连接设备
-      await this.zahnerDeviceService.connect();
-      this.deviceConnected = true;
-
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner设备连接成功');
-      }
+      // 仅检查 FastAPI 服务是否可用，不连接设备
+      await this.zahnerDeviceService.healthCheck();
     } catch (error) {
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableError', `Zahner设备连接失败: ${error.message}`);
-      }
+      console.warn(`FastAPI 服务检查失败: ${error.message}`);
     }
   }
 
@@ -90,7 +79,8 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.zahnerDeviceService.connect();
+      // 实际连接设备
+      await this.zahnerDeviceService.connect(endpoint);
       this.deviceConnected = true;
 
       // 发送设备连接事件
@@ -153,7 +143,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
 
       const targetEndpoint = parameters.host || process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000';
 
-      // 使用connect方法进行连接
+      // 使用connect方法进行连接，将host参数传递下去
       await this.connect(targetEndpoint);
 
       // 发送启动事件

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { BaseDeviceService } from './base-device.service';
 import { SimpleEventBus } from '../notification/simple-event-bus.service';
 import { ConsoleDisplayManager } from '../common/console-display-manager.service';
@@ -19,19 +19,42 @@ export class ZahnerDeviceService extends BaseDeviceService {
     this.endpoint = process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000';
   }
 
-  // 连接设备
-  async connect(): Promise<void> {
-    this.updateStatus(false, false);
-
+  // 仅健康检查 - 检查 FastAPI 服务是否可用
+  async healthCheck(): Promise<boolean> {
     try {
-      // 健康检查
       const response = await firstValueFrom(
         this.httpService.get(`${this.endpoint}/health`, {
           timeout: this.timeoutMs,
         })
       );
 
-      if (response?.status === 200) {
+      return response?.status === 200;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // 连接设备 - 实际连接硬件设备
+  async connect(host?: string): Promise<void> {
+    this.updateStatus(false, false);
+
+    try {
+      // 1. 首先检查 FastAPI 服务是否可用
+      const isHealthy = await this.healthCheck();
+      if (!isHealthy) {
+        throw new Error('FastAPI 服务不可用');
+      }
+
+      // 2. 然后调用 /connect 端点实际连接硬件设备
+      const connectResponse = await firstValueFrom(
+        this.httpService.post(`${this.endpoint}/connect`, {
+          host: host || 'localhost'
+        }, {
+          timeout: this.timeoutMs,
+        })
+      );
+
+      if (connectResponse?.data?.status === 'success') {
         this.updateStatus(true, false);
 
         // 发送设备连接事件
@@ -42,7 +65,7 @@ export class ZahnerDeviceService extends BaseDeviceService {
           context: { source: 'zahner-device-service' }
         });
       } else {
-        throw new Error(`健康检查失败: ${response?.status}`);
+        throw new Error(`设备连接失败: ${connectResponse?.data?.error || '未知错误'}`);
       }
     } catch (error) {
       this.updateStatus(false, false, error.message);
@@ -79,26 +102,6 @@ export class ZahnerDeviceService extends BaseDeviceService {
     }
   }
 
-  // 健康检查
-  async healthCheck(): Promise<boolean> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${this.endpoint}/health`, {
-          timeout: this.timeoutMs,
-        })
-      );
-
-      const isHealthy = response?.status === 200;
-      if (!isHealthy) {
-        this.updateStatus(false, false, 'Health check failed');
-      }
-
-      return isHealthy;
-    } catch (error) {
-      this.updateStatus(false, false, error.message);
-      return false;
-    }
-  }
 
   // 执行测量（无通知，返回结构化结果）
   async executeMeasurement(measurementType: string, parameters: Record<string, any>): Promise<any> {
