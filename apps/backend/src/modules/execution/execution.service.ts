@@ -429,49 +429,6 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     }
     return { id, type, name: `hook:${type}`, data };
   }
-  private async executeNodes(executionId: string, workflowDefinition: any): Promise<string[]> {
-    const nodes = workflowDefinition.definition.nodes || [];
-    const totalNodes = nodes.length;
-    const completedNodes: string[] = [];
-
-    this.consoleManager.log('ExecutionService', 'enableLog', `执行工作流节点 - 总节点数: ${totalNodes}`);
-
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      this.currentNodeId = node.id; // 设置当前节点ID
-
-      this.consoleManager.log('ExecutionService', 'enableLog', `开始执行节点 ${i + 1}/${totalNodes}: ${node.id} (类型: ${node.type})`);
-
-      // 事件驱动架构：发送节点开始事件
-      this.eventBus.emit('node.started', {
-        nodeId: node.id,
-        executionId,
-        workflowId: this.getCurrentWorkflowId(executionId), // 添加workflowId
-        nodeType: node.type,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
-
-      await this.executeNode(executionId, node);
-      completedNodes.push(node.id);
-
-      this.consoleManager.log('ExecutionService', 'enableLog', `完成执行节点: ${node.id}`);
-
-      // 事件驱动架构：发送节点完成事件
-      this.eventBus.emit('node.completed', {
-        nodeId: node.id,
-        executionId,
-        workflowId: this.getCurrentWorkflowId(executionId), // 添加workflowId
-        nodeType: node.type,
-        result: true,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
-    }
-
-    this.consoleManager.log('ExecutionService', 'enableLog', `工作流节点执行完成 - 完成节点数: ${completedNodes.length}/${totalNodes}`);
-    return completedNodes;
-  }
 
   private async executeNode(executionId: string, node: any): Promise<void> {
     const nodeId = node.id;
