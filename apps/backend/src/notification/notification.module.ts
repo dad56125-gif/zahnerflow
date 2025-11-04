@@ -8,9 +8,10 @@ import { MetricsEventHandler } from './event-handlers/metrics.handler';
 import { HookDbBridgeHandler } from './event-handlers/hook-db-bridge.handler';
 import { GatewaysModule } from '../modules/shared/gateways.module';
 import { CommonModule } from '../common/common.module';
+import { FilesModule } from '../modules/files/files.module';
 
 @Module({
-  imports: [GatewaysModule, CommonModule],
+  imports: [GatewaysModule, CommonModule, FilesModule],
   controllers: [NotificationController],
   providers: [
     NotificationService,

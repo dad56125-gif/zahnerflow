@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SimpleEventBus, EventPayload, EventHandler } from '../simple-event-bus.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { WorkflowGateway } from '../../gateways/workflow.gateway';
+import { FilesService } from '../../modules/files/files.service';
 
 export enum NodeStatus {
   READY = 'ready',
@@ -13,16 +14,29 @@ export enum NodeStatus {
   PENDING = 'pending'
 }
 
+interface NodeTimeRecord {
+  nodeId: string;
+  nodeType: string;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+  status: NodeStatus;
+  executionId: string;
+  workflowId: string;
+}
+
 @Injectable()
 export class StateEventHandler implements EventHandler {
   private readonly nodeStates = new Map<string, NodeStatus>();
   private readonly workflowStates = new Map<string, any>();
   private readonly deviceStates = new Map<string, any>();
+  private readonly nodeTimeRecords = new Map<string, NodeTimeRecord>();
 
   constructor(
     private readonly eventBus: SimpleEventBus,
     private readonly consoleManager: ConsoleDisplayManager,
     private readonly workflowGateway: WorkflowGateway,
+    private readonly filesService: FilesService,
   ) {
     // 注册事件处理器
     this.registerEventHandlers();
@@ -150,6 +164,9 @@ export class StateEventHandler implements EventHandler {
       timestamp: event.timestamp,
       context: event.context
     });
+
+    // 生成工作流时间日志文件
+    await this.generateWorkflowTimeLog(executionId);
   }
 
   private async handleWorkflowFailed(event: EventPayload): Promise<void> {
@@ -206,6 +223,16 @@ export class StateEventHandler implements EventHandler {
 
     this.nodeStates.set(nodeId, newState);
 
+    // 记录节点开始时间
+    this.nodeTimeRecords.set(nodeId, {
+      nodeId,
+      nodeType,
+      startTime: event.timestamp,
+      status: newState,
+      executionId,
+      workflowId
+    });
+
     this.consoleManager.log('StateEventHandler', 'enableDebug', `Node state updated: ${nodeId}`, {
       nodeId,
       executionId,
@@ -254,6 +281,14 @@ export class StateEventHandler implements EventHandler {
 
     this.nodeStates.set(nodeId, newState);
 
+    // 更新节点时间记录
+    const timeRecord = this.nodeTimeRecords.get(nodeId);
+    if (timeRecord) {
+      timeRecord.endTime = event.timestamp;
+      timeRecord.duration = duration;
+      timeRecord.status = newState;
+    }
+
     this.consoleManager.log('StateEventHandler', 'enableDebug', `Node state updated: ${nodeId}`, {
       nodeId,
       executionId,
@@ -301,6 +336,14 @@ export class StateEventHandler implements EventHandler {
     }
 
     this.nodeStates.set(nodeId, newState);
+
+    // 更新节点时间记录
+    const timeRecord = this.nodeTimeRecords.get(nodeId);
+    if (timeRecord) {
+      timeRecord.endTime = event.timestamp;
+      timeRecord.duration = duration;
+      timeRecord.status = newState;
+    }
 
     this.consoleManager.log('StateEventHandler', 'enableDebug', `Node state updated: ${nodeId}`, {
       nodeId,
@@ -524,5 +567,89 @@ export class StateEventHandler implements EventHandler {
       totalDevices: this.deviceStates.size,
       timestamp: new Date()
     };
+  }
+
+  /**
+   * 生成工作流时间日志文件
+   */
+  private async generateWorkflowTimeLog(executionId: string): Promise<void> {
+    const workflowState = this.workflowStates.get(executionId);
+    if (!workflowState) {
+      this.consoleManager.log('StateEventHandler', 'enableWarn',
+        `No workflow state found for execution: ${executionId}`);
+      return;
+    }
+
+    // 筛选属于该工作流的节点记录
+    const workflowNodeRecords = Array.from(this.nodeTimeRecords.values())
+      .filter(record => record.executionId === executionId);
+
+    // 获取工作流时间戳（从工作流状态中提取或生成）
+    const workflowTimestamp = this.extractWorkflowTimestamp(workflowState);
+
+    const timeLog = {
+      workflow_id: workflowState.workflowId,
+      execution_id: executionId,
+      workflow_start_time: workflowState.startTime?.toISOString(),
+      workflow_end_time: workflowState.endTime?.toISOString(),
+      total_duration_ms: workflowState.duration,
+      workflow_timestamp: workflowTimestamp,
+      nodes: workflowNodeRecords.map(record => ({
+        node_id: record.nodeId,
+        node_type: record.nodeType,
+        start_time: record.startTime.toISOString(),
+        end_time: record.endTime?.toISOString(),
+        duration_ms: record.duration,
+        status: record.status
+      })),
+      created_at: new Date().toISOString()
+    };
+
+    // 使用现有的 FilesService 构建路径
+    const outputPath = this.filesService.buildOutputPath({
+      workflow_id: workflowState.workflowId,
+      workflow_timestamp: workflowTimestamp,
+      test_type: 'workflow_log'
+    });
+
+    // 写入JSON文件
+    const fs = require('fs').promises;
+    const path = require('path');
+    const filePath = path.join(outputPath, 'workflow_time_log.json');
+
+    try {
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, JSON.stringify(timeLog, null, 2), 'utf8');
+      this.consoleManager.log('StateEventHandler', 'enableLog',
+        `Workflow time log saved: ${filePath}`);
+    } catch (error) {
+      this.consoleManager.log('StateEventHandler', 'enableError',
+        `Failed to save workflow time log: ${error}`);
+    }
+  }
+
+  /**
+   * 从工作流状态中提取时间戳
+   */
+  private extractWorkflowTimestamp(workflowState: any): string {
+    // 尝试从context中获取时间戳
+    if (workflowState.context?.workflow_timestamp) {
+      return workflowState.context.workflow_timestamp;
+    }
+
+    // 如果没有，从开始时间生成
+    if (workflowState.startTime) {
+      return workflowState.startTime.toISOString()
+        .slice(2, 16) // YYMMDD_HHmm 格式
+        .replace(/[-:]/g, '')
+        .replace('T', '_');
+    }
+
+    // 降级：使用当前时间
+    const now = new Date();
+    return now.toISOString()
+      .slice(2, 16)
+      .replace(/[-:]/g, '')
+      .replace('T', '_');
   }
 }
