@@ -114,7 +114,7 @@ export class ZahnerDeviceService extends BaseDeviceService {
 
       const response = await firstValueFrom(
         this.httpService.post(`${this.endpoint}/measure`, {
-          type: measurementType,
+          measurement_type: measurementType,
           parameters,
         }, {
           timeout: this.timeoutMs,
