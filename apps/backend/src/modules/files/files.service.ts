@@ -233,9 +233,9 @@ export class FilesService {
       // 默认路径结构
       const now = new Date();
       const timestamp = now.toISOString()
+        .slice(2, 16) // YYMMDD_HHmm 格式（正确：slice(2,16)）
         .replace(/[-:]/g, '')
-        .replace('T', '_')
-        .slice(2, 16); // YYMMDD_HHmm 格式
+        .replace('T', '_');
 
       // 优先使用workflow_id，如果没有则使用workflow_name
       const workflowIdForPath = workflow_id || workflow_name || 'unknown_workflow';
