@@ -12,6 +12,7 @@ import { NotificationModule } from '../../notification/notification.module';
 import { CommonModule } from '../../common/common.module';
 import { HttpModule } from '@nestjs/axios';
 import { DbModule } from '../../db/db.module';
+import { FilesModule } from '../files/files.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { DbModule } from '../../db/db.module';
     ZahnerZenniumModule,
     FurnaceModule,
     MfcModule,
+    FilesModule,
     forwardRef(() => NotificationModule),
     CommonModule,
     HttpModule,

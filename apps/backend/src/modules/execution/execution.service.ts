@@ -8,6 +8,8 @@ import { SimpleEventBus } from '../../notification/simple-event-bus.service';
 import { ExecutionNotificationService } from './execution-notification.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { DbService } from '../../db/db.service';
+import { FilesService } from '../files/files.service';
+import * as path from 'path';
 
 type HookRule = {
   id: string;
@@ -47,6 +49,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     protected readonly executionNotificationService: ExecutionNotificationService,
     private readonly db: DbService,
     private readonly consoleManager: ConsoleDisplayManager,
+    private readonly filesService: FilesService,
   ) {
     // 监听设备事件，发送节点和工作流通知
     this.setupDeviceEventListeners();
@@ -561,7 +564,48 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private async executeMeasurement(executionId: string, node: any, measurementType?: string): Promise<void> {
-    const parameters = node.data?.parameters || {};
+    let parameters = node.data?.parameters || {};
+
+    // 动态构建 output_path - 从工作流 ownerName 和 individualName 获取
+    try {
+      const workflowId = this.getCurrentWorkflowId(executionId);
+      const workflow = await this.workflowService.getWorkflow(workflowId);
+
+      if (workflow?.ownerName && workflow?.individualName) {
+        const projectConfig = this.filesService.getProjectConfig(
+          workflow.ownerName,
+          workflow.definition.name, // 使用工作流名称作为 project_name
+          workflow.individualName
+        );
+
+        if (projectConfig?.base_path) {
+          // 构建输出路径: base_path/project_name/individual_name/measurement_type/
+          const measurementTypeForPath = measurementType || 'measurement';
+          const outputPath = path.join(
+            projectConfig.base_path,
+            workflow.definition.name,
+            workflow.individualName,
+            measurementTypeForPath
+          );
+
+          // 添加 output_path 到参数中
+          parameters = {
+            ...parameters,
+            output_path: outputPath
+          };
+
+          this.consoleManager.log('ExecutionService', 'enableLog', `动态生成 output_path: ${outputPath}`);
+        }
+      }
+    } catch (error) {
+      this.consoleManager.log('ExecutionService', 'enableWarn', `获取文件路径配置失败: ${error.message}`);
+    }
+
+    // 如果仍然没有 output_path，使用默认值
+    if (!parameters.output_path) {
+      parameters.output_path = 'C:\\data\\archive';
+      this.consoleManager.log('ExecutionService', 'enableWarn', `使用默认输出路径: ${parameters.output_path}`);
+    }
 
     // 映射节点类型到设备服务的方法（事件发送由 ZahnerZenniumService 处理）
     let result;
