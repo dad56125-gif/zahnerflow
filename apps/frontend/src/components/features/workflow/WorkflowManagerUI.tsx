@@ -8,6 +8,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
 import { useCanvasStore } from '@/services/stores/canvasStore';
+import { useWorkflowStore } from '@/services/stores';
 import { LoopDetector } from '.';
 import WorkflowExporter, { WorkflowExporterProps } from './WorkflowExporter';
 import WorkflowImporter, { WorkflowImporterProps } from './WorkflowImporter';
@@ -51,6 +52,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     setNodes,
     setConnections
   } = useCanvasStore();
+
+  const { setCurrentWorkflow } = useWorkflowStore();
 
   const { currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'templates' | 'history'>('export');
@@ -166,10 +169,15 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
       console.log('Formatted workflows:', formattedWorkflows); // 调试日志
 
+      // 按创建时间降序排列（最新的在前面）
+      const sortedWorkflows = formattedWorkflows.sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
       // 如果选择了项目，进行过滤
       const filteredWorkflows = selectedProject
-        ? formattedWorkflows.filter(w => w.project_name === selectedProject)
-        : formattedWorkflows;
+        ? sortedWorkflows.filter(w => w.project_name === selectedProject)
+        : sortedWorkflows;
 
       setWorkflowHistory(filteredWorkflows);
 
@@ -239,12 +247,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
       console.log('Single workflow response:', response); // 调试日志
 
-      // 检查响应格式
+      // 直接使用响应数据
       let workflowData = response;
-
-      if (response?.data) {
-        workflowData = response.data;
-      }
 
       if (!workflowData) {
         throw new Error(`找不到工作流 "${workflow.name}"`);
@@ -253,34 +257,41 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
       console.log('Workflow data to process:', workflowData); // 调试日志
 
       // 转换工作流数据格式以适配前端期望的结构
-      const convertedNodes = workflowData.data?.definition?.nodes?.map((node: any) => ({
-        id: node.id,
-        type: node.type,
-        name: node.name,
-        category: 'basic_measurement', // 添加必需的category字段
-        position: node.position,
-        style: { width: 140, height: 60 },
-        status: 'ready' as any,
-        data: {
-          name: node.name,
-          description: `Node: ${node.type}`,
-          parameters: node.config?.parameters || {},
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        input: {
-          id: `${node.id}_input`,
-          name: 'Input',
-          dataType: 'flow' as const
-        },
-        output: {
-          id: `${node.id}_output`,
-          name: 'Output',
-          dataType: 'flow' as const
-        }
-      })) || [];
+      const convertedNodes = workflowData.definition?.nodes?.map((node: any) => {
+        // 兼容性处理：处理新旧版本节点结构差异
+        const isOldVersion = !node.data; // 旧版本没有data字段
 
-      const formattedConnections = workflowData.data?.definition?.edges?.map((edge: any) => ({
+        return {
+          id: node.id,
+          type: node.type,
+          name: node.name,
+          category: 'basic_measurement',
+          position: node.position,
+          style: { width: 140, height: 60 },
+          status: node.status || 'ready', // 优先使用原有status，否则默认为ready
+          data: {
+            name: node.name,
+            description: isOldVersion ? `Node: ${node.type}` : (node.data?.description || `Node: ${node.type}`),
+            parameters: isOldVersion
+              ? (node.config?.parameters || {})
+              : (node.data?.parameters || node.config?.parameters || {}),
+            createdAt: isOldVersion ? new Date() : (node.data?.createdAt ? new Date(node.data.createdAt) : new Date()),
+            updatedAt: isOldVersion ? new Date() : (node.data?.updatedAt ? new Date(node.data.updatedAt) : new Date())
+          },
+          input: {
+            id: `${node.id}_input`,
+            name: 'Input',
+            dataType: 'flow' as const
+          },
+          output: {
+            id: `${node.id}_output`,
+            name: 'Output',
+            dataType: 'flow' as const
+          }
+        };
+      }) || [];
+
+      const formattedConnections = workflowData.definition?.edges?.map((edge: any) => ({
         id: edge.id,
         source_id: edge.source,
         target_id: edge.target
@@ -292,6 +303,20 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
       // 应用加载的工作流
       setNodes(convertedNodes);
       setConnections(formattedConnections);
+
+      // 同步更新WorkflowStore状态
+      setCurrentWorkflow({
+        id: workflow.id,
+        name: workflow.name,
+        created_at: workflow.created_at,
+        updated_at: workflow.created_at,
+        // 构建完整的工作流对象
+        definition: {
+          nodes: convertedNodes,
+          edges: formattedConnections
+        },
+        ownerName: workflow.project_name || '默认项目'
+      });
 
       console.log(`历史工作流 "${workflow.name}" 加载成功`);
 

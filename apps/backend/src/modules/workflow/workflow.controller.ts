@@ -23,8 +23,8 @@ export class WorkflowController {
   }
 
   @Put(':id')
-  async updateWorkflow(@Param('id') id: string, @Body() definition: WorkflowDefinition): Promise<Workflow> {
-    return this.workflowService.updateWorkflow(id, definition);
+  async updateWorkflow(@Param('id') id: string, @Body() updates: Partial<WorkflowDefinition>): Promise<Workflow> {
+    return this.workflowService.updateWorkflow(id, updates);
   }
 
   @Delete(':id')

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useWorkflowStore } from '../../services/stores';
+import { useOnClickOutside } from '../../services/hooks/useOnClickOutside';
 
 interface WorkflowIdDisplayProps {
   className?: string;
@@ -10,6 +11,7 @@ export const WorkflowIdDisplay: React.FC<WorkflowIdDisplayProps> = ({ className 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 同步当前工作流名称到编辑状态
   useEffect(() => {
@@ -56,14 +58,11 @@ export const WorkflowIdDisplay: React.FC<WorkflowIdDisplayProps> = ({ className 
     }
   };
 
-  // 失去焦点时保存
+  // 失去焦点时保存（作为备用方案）
   const handleBlur = () => {
-    // 延迟保存，避免与点击事件冲突
-    setTimeout(() => {
-      if (isEditing) {
-        handleSave();
-      }
-    }, 200);
+    if (isEditing) {
+      handleSave();
+    }
   };
 
   // 自动聚焦输入框
@@ -74,17 +73,20 @@ export const WorkflowIdDisplay: React.FC<WorkflowIdDisplayProps> = ({ className 
     }
   }, [isEditing]);
 
+  // 使用点击外部关闭Hook作为onBlur的补充
+  useOnClickOutside(containerRef, handleSave, isEditing);
+
   // 如果没有当前工作流，显示占位符
   if (!currentWorkflow) {
     return (
-      <div className={`workflow-id-display placeholder ${className}`}>
+      <div ref={containerRef} className={`workflow-id-display placeholder ${className}`}>
         <span className="display-text">未选择工作流</span>
       </div>
     );
   }
 
   return (
-    <div className={`workflow-id-display ${isEditing ? 'editing' : ''} ${className}`}>
+    <div ref={containerRef} className={`workflow-id-display ${isEditing ? 'editing' : ''} ${className}`}>
       {isEditing ? (
         <input
           ref={inputRef}

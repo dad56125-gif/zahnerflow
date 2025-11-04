@@ -54,20 +54,43 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     return workflow;
   }
 
-  async updateWorkflow(id: string, definition: WorkflowDefinition): Promise<Workflow> {
+  async updateWorkflow(id: string, updates: Partial<WorkflowDefinition>): Promise<Workflow> {
     const current = await this.getWorkflow(id);
 
-    const validation = this.validateWorkflow(definition);
-    if (!validation.valid) {
-      throw new Error(`Workflow validation failed: ${validation.errors.join(', ')}`);
+    // 更新工作流基本属性
+    if (typeof updates.name === 'string') {
+      current.name = updates.name;
+      current.definition.name = updates.name;
+    }
+    if (typeof updates.description === 'string') {
+      current.description = updates.description;
+      current.definition.description = updates.description;
+    }
+    if (typeof updates.ownerName !== 'undefined') {
+      current.ownerName = updates.ownerName;
+      current.definition.ownerName = updates.ownerName;
+    }
+    if (typeof updates.individualName !== 'undefined') {
+      current.individualName = updates.individualName;
+      current.definition.individualName = updates.individualName;
     }
 
-    if (typeof definition.ownerName !== 'undefined') current.ownerName = definition.ownerName;
-    if (typeof definition.individualName !== 'undefined') current.individualName = definition.individualName;
-    if (typeof definition.name === 'string') current.name = definition.name;
-    if (typeof definition.description === 'string') current.description = definition.description;
+    // 如果更新包含节点或边，进行完整验证
+    if (updates.nodes || updates.edges) {
+      const updatedDefinition: WorkflowDefinition = {
+        ...current.definition,
+        nodes: updates.nodes || current.definition.nodes,
+        edges: updates.edges || current.definition.edges
+      };
 
-    current.definition = definition;
+      const validation = this.validateWorkflow(updatedDefinition);
+      if (!validation.valid) {
+        throw new Error(`Workflow validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      current.definition = updatedDefinition;
+    }
+
     current.version += 1;
     current.updatedAt = new Date();
 
@@ -95,7 +118,9 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
   async listWorkflows(): Promise<Workflow[]> {
     if (this.workflows.size === 0) await this.loadWorkflowsFromStorage();
-    return Array.from(this.workflows.values());
+    // 按创建时间降序排列（最新的在前面），确保分页能获取到最新记录
+    return Array.from(this.workflows.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async duplicateWorkflow(id: string, newName?: string): Promise<Workflow> {
