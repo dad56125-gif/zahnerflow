@@ -107,10 +107,13 @@ const ZahnerFlowApp: React.FC = () => {
           id: node.id,
           type: node.type,
           name: node.name,
-          config: node.data?.parameters || {},
           position: node.position,
-          data: node.data,
-          status: node.status
+          status: node.status,
+          // 统一数据结构，消除config/data双重结构导致的执行问题
+          data: {
+            ...node.data,
+            parameters: node.data?.parameters || node.config?.parameters || {}
+          }
         })),
         edges: connections.map(conn => ({
           id: conn.id,
