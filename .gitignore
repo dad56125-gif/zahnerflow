@@ -102,6 +102,11 @@ docs/api/
 *.db
 *.sqlite
 *.sqlite3
+*.db.json
+
+# 应用数据目录
+**/data/
+apps/backend/data/
 
 # Windows特定文件
 desktop.ini
