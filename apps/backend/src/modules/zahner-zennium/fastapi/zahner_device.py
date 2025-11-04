@@ -412,11 +412,17 @@ def measure_eis_potentiostatic(params):
         print(f"[INFO] 设置EIS输出路径: {output_path}")
         device_wrapper.setEISOutputPath(output_path)
 
-        # 设置命名模式 - 直接使用INDIVIDUAL模式
+        # 设置命名模式 - 使用统一的时间戳命名
         device_wrapper.setEISNaming(FileNaming.INDIVIDUAL)
 
-        # 设置文件名
-        device_wrapper.setEISOutputFileName(params.get("filename", "eis_potentiostatic"))
+        # 使用与其他测量类型一致的文件命名格式
+        import datetime
+        filename = params.get("filename", "eis_potentiostatic")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        unified_filename = f"{filename}_{timestamp}"
+
+        device_wrapper.setEISOutputFileName(unified_filename)
+        print(f"[INFO] 设置EIS输出文件名: {unified_filename}")
 
         # 设置恒电位模式
         device_wrapper.setPotentiostatMode(PotentiostatMode.POTMODE_POTENTIOSTATIC)
@@ -583,11 +589,17 @@ def measure_eis_galvanostatic(params):
         print(f"[INFO] 设置EIS输出路径: {output_path}")
         device_wrapper.setEISOutputPath(output_path)
 
-        # 设置命名模式 - 直接使用INDIVIDUAL模式
+        # 设置命名模式 - 使用统一的时间戳命名
         device_wrapper.setEISNaming(FileNaming.INDIVIDUAL)
 
-        # 设置文件名
-        device_wrapper.setEISOutputFileName(params.get("filename", "eis_galvanostatic"))
+        # 使用与其他测量类型一致的文件命名格式
+        import datetime
+        filename = params.get("filename", "eis_galvanostatic")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+        unified_filename = f"{filename}_{timestamp}"
+
+        device_wrapper.setEISOutputFileName(unified_filename)
+        print(f"[INFO] 设置EIS输出文件名: {unified_filename}")
 
         # 设置恒电流模式
         device_wrapper.setPotentiostatMode(PotentiostatMode.POTMODE_GALVANOSTATIC)

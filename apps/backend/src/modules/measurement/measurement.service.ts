@@ -17,20 +17,17 @@ export class MeasurementService {
     this.logger.log(`Starting EIS measurement for user: ${params.user}, project: ${params.project_name}`);
 
     try {
-      // 1. Register file path using FilesService
-      const filename = `eis_${Date.now()}.csv`;
+      // 1. Register file path using FilesService (移除文件名生成，交给设备端处理)
       const pathResult = await this.filesService.registerFile({
         user: params.user,
         project_name: params.project_name,
         individual_name: params.individual_name,
         test_type: params.test_type.toLowerCase(),
         base_path: params.base_path,
-        filename
+        filename: 'placeholder.csv' // 设备端会生成实际文件名
       });
 
-      // Construct full file path
-      const fullFilePath = path.join(pathResult.dir_path, filename);
-      this.logger.log(`File path registered: ${fullFilePath}`);
+      this.logger.log(`Directory path registered: ${pathResult.dir_path}`);
 
       // 2. Ensure directory exists
       const fs = require('fs');
@@ -70,11 +67,10 @@ export class MeasurementService {
 
       this.logger.log(`EIS measurement completed successfully`);
 
-      // 5. Return results
+      // 5. Return results (文件名由设备端生成，返回目录路径)
       return {
         success: true,
-        file_path: fullFilePath,
-        dir_path: pathResult.dir_path,
+        dir_path: pathResult.dir_path, // 设备端在此目录生成文件
         message: 'EIS measurement completed successfully',
         output: stdout.trim(),
         timestamp: new Date().toISOString()
