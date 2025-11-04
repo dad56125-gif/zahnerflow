@@ -9,7 +9,6 @@ import { ExecutionNotificationService } from './execution-notification.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { DbService } from '../../db/db.service';
 import { FilesService } from '../files/files.service';
-import * as path from 'path';
 
 type HookRule = {
   id: string;
@@ -523,43 +522,51 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   private async executeMeasurement(executionId: string, node: any, measurementType?: string): Promise<void> {
     let parameters = node.data?.parameters || {};
 
-    // 动态构建 output_path - 从工作流 ownerName 和 individualName 获取
+    // 动态构建 output_path
     try {
       const workflowId = this.getCurrentWorkflowId(executionId);
       const workflow = await this.workflowService.getWorkflow(workflowId);
 
-      if (workflow?.ownerName && workflow?.individualName) {
+      if (workflow) {
+        // 获取项目配置
         const projectConfig = this.filesService.getProjectConfig(
           workflow.ownerName,
-          workflow.definition.name, // 使用工作流名称作为 project_name
+          workflow.definition.name,
           workflow.individualName
         );
 
-        if (projectConfig?.base_path && projectConfig?.test_type) {
-          // 构建输出路径: base_path/project_name/individual_name/test_type/
-          const outputPath = path.join(
-            projectConfig.base_path,
-            workflow.definition.name,
-            workflow.individualName,
-            projectConfig.test_type
-          );
+        // 使用FilesService构建路径
+        const outputPath = this.filesService.buildOutputPath({
+          base_path: projectConfig?.base_path,
+          project_name: workflow.definition.name,
+          individual_name: workflow.individualName,
+          test_type: projectConfig?.test_type,
+          measurement_type: measurementType,
+          workflow_id: workflowId, // 使用工作流ID
+          workflow_name: workflow.definition?.name,
+          useDefaultStructure: !workflow?.ownerName || !workflow?.individualName || !projectConfig?.test_type
+        });
 
-          // 添加 output_path 到参数中
-          parameters = {
-            ...parameters,
-            output_path: outputPath
-          };
+        // 添加 output_path 到参数中
+        parameters = {
+          ...parameters,
+          output_path: outputPath
+        };
 
-          this.consoleManager.log('ExecutionService', 'enableLog', `动态生成 output_path: ${outputPath}`);
-        }
+        this.consoleManager.log('ExecutionService', 'enableLog', `动态生成 output_path: ${outputPath}`);
       }
     } catch (error) {
       this.consoleManager.log('ExecutionService', 'enableWarn', `获取文件路径配置失败: ${error.message}`);
     }
 
-    // 如果仍然没有 output_path，使用默认值
+    // 如果仍然没有 output_path，使用默认值（包含test_type）
     if (!parameters.output_path) {
-      parameters.output_path = 'C:\\data\\archive';
+      const outputPath = this.filesService.buildOutputPath({
+        measurement_type: measurementType,
+        workflow_id: 'unknown_workflow'
+      });
+
+      parameters.output_path = outputPath;
       this.consoleManager.log('ExecutionService', 'enableWarn', `使用默认输出路径: ${parameters.output_path}`);
     }
 

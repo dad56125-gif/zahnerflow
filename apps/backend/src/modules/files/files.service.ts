@@ -19,6 +19,17 @@ export interface RegisterFileResult {
   test_type: string;
 }
 
+export interface BuildOutputPathOptions {
+  base_path?: string;
+  project_name?: string;
+  individual_name?: string;
+  test_type?: string;
+  measurement_type?: string;
+  workflow_id?: string;
+  workflow_name?: string;
+  useDefaultStructure?: boolean;
+}
+
 @Injectable()
 export class FilesService {
   constructor(private readonly dbService: DbService) {}
@@ -157,6 +168,84 @@ export class FilesService {
     } catch (error) {
       console.error('Error getting workflow files:', error);
       return [];
+    }
+  }
+
+  /**
+   * 从measurementType推断test_type
+   */
+  getTestTypeFromMeasurement(measurementType: string): string {
+    const testTypeMap: Record<string, string> = {
+      'eis_potentiostatic': 'eis',
+      'eis_galvanostatic': 'eis',
+      'ocp_measurement': 'ocp',
+      'chronoamperometry': 'ca',
+      'chronopotentiometry': 'cp',
+      'voltage_ramp': 'lsv',
+      'current_ramp': 'cv',
+      'lsv_measurement': 'lsv'
+    };
+
+    return testTypeMap[measurementType] || 'general';
+  }
+
+  /**
+   * 构建输出路径
+   *
+   * 规则：
+   * 1. test_type必须存在作为最后一级目录
+   * 2. base_path默认为 C:\data\archive
+   * 3. 完整信息：base_path/project_name/individual_name/test_type
+   * 4. 默认结构：base_path/workflow_id/YYMMDD_HHmm/test_type
+   */
+  buildOutputPath(options: BuildOutputPathOptions): string {
+    const {
+      base_path = 'C:\\data\\archive',
+      project_name,
+      individual_name,
+      test_type,
+      measurement_type,
+      workflow_id,
+      workflow_name,
+      useDefaultStructure = false
+    } = options;
+
+    // 确定test_type
+    let finalTestType: string;
+    if (test_type) {
+      finalTestType = test_type;
+    } else if (measurement_type) {
+      finalTestType = this.getTestTypeFromMeasurement(measurement_type);
+    } else {
+      finalTestType = 'general';
+    }
+
+    // 判断是否使用默认结构
+    if (!useDefaultStructure && project_name && individual_name && test_type) {
+      // 完整信息路径
+      return path.join(
+        base_path,
+        project_name,
+        individual_name,
+        finalTestType
+      );
+    } else {
+      // 默认路径结构
+      const now = new Date();
+      const timestamp = now.toISOString()
+        .replace(/[-:]/g, '')
+        .replace('T', '_')
+        .slice(2, 16); // YYMMDD_HHmm 格式
+
+      // 优先使用workflow_id，如果没有则使用workflow_name
+      const workflowIdForPath = workflow_id || workflow_name || 'unknown_workflow';
+
+      return path.join(
+        base_path,
+        workflowIdForPath,
+        timestamp,
+        finalTestType
+      );
     }
   }
 }
