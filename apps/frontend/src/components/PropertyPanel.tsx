@@ -1,27 +1,38 @@
 import React, { useState } from 'react';
 import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
 import { useCanvasStore } from '../services/stores/canvasStore';
+import { useMfc } from '../services/hooks/useMfc';
+import { MfcDeviceInfo } from '../types/devices';
 
 interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;
 }
 
-// 辅助函数：获取可用MFC设备列表
-const getAvailableMfcDevices = () => {
-  // 从MFC WebSocket服务或缓存获取已连接的设备信息
-  // 这里使用静态示例，实际应该从MFC服务动态获取
-  return [
-    { value: '1:N2', label: '设备1: 氮气 (N2)', maxFlow: 200 },
-    { value: '2:O2', label: '设备2: 氧气 (O2)', maxFlow: 150 },
-    { value: '3:H2', label: '设备3: 氢气 (H2)', maxFlow: 100 },
-    { value: '4:Ar', label: '设备4: 氩气 (Ar)', maxFlow: 180 },
-  ];
-};
-
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
     const { selectedNode: node, updateNode } = useCanvasStore();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'data'>('basic');
+
+    // 获取真实的MFC设备信息
+    const [mfcState] = useMfc();
+    const { availableDevices } = mfcState;
+
+    // 辅助函数：将真实MFC设备转换为下拉选择格式
+    const getAvailableMfcDevices = () => {
+      if (availableDevices.length === 0) {
+        // 如果没有真实设备，返回空数组或显示提示信息
+        return [
+          { value: '', label: '未检测到MFC设备', maxFlow: 0 }
+        ];
+      }
+
+      // 转换真实设备信息为下拉选择格式（按照文档要求：地址:气体类型）
+      return availableDevices.map((device: MfcDeviceInfo) => ({
+        value: `${device.address}:${device.gas_type}`,
+        label: `${device.address}:${device.gas_type}`,
+        maxFlow: device.max_flow_sccm
+      }));
+    };
 
     if (!node) {
       return (
@@ -576,7 +587,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 const [address, gasType] = selection.split(':');
 
                 // 解析设备信息，更新相关参数
-                const selectedDevice = availableDevices.find(d => d.value === selection);
+                const selectedDevice = availableDevices.find((d: { value: string; label: string; maxFlow: number }) => d.value === selection);
                 updateParameters({
                   ...node.data.parameters,
                   [key]: selection,
@@ -588,7 +599,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
               className="select glass"
               title="选择MFC设备和气体类型"
             >
-              {availableDevices.map(device => (
+              {availableDevices.map((device: { value: string; label: string; maxFlow: number }) => (
                 <option key={device.value} value={device.value}>
                   {device.label}
                 </option>
