@@ -598,8 +598,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private async executeDelay(executionId: string, node: any): Promise<void> {
-    const delayMs = node.data?.duration || 1000;
-    this.consoleManager.log('ExecutionService', 'enableLog', `Executing delay node ${node.id} for ${delayMs}ms`);
+    // 从正确的路径获取duration参数（单位：秒），然后转换为毫秒
+    const delaySeconds = node.data?.parameters?.duration || 1.0;
+    const delayMs = Math.round(delaySeconds * 1000); // 将秒转换为毫秒
+    this.consoleManager.log('ExecutionService', 'enableLog', `Executing delay node ${node.id} for ${delaySeconds}s (${delayMs}ms)`);
 
     await new Promise(resolve => setTimeout(resolve, delayMs));
     this.consoleManager.log('ExecutionService', 'enableLog', `Delay completed for node ${node.id}`);
