@@ -7,7 +7,7 @@ import { ConsoleDisplayManager } from '../common/console-display-manager.service
 
 @Injectable()
 export class ZahnerDeviceService extends BaseDeviceService {
-  private readonly timeoutMs = 30000;
+  private readonly timeoutMs = 900000; // 15分钟超时 (15 * 60 * 1000)
   private readonly endpoint: string;
 
   constructor(
