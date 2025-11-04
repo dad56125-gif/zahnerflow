@@ -70,7 +70,8 @@ export class FilesService {
     return {
       base_path: firstPath.base_path,
       project_name: firstPath.project_name,
-      individual_name: firstPath.individual_name
+      individual_name: firstPath.individual_name,
+      test_type: firstPath.test_type
     };
   }
 

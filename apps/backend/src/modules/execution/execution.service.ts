@@ -578,14 +578,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
           workflow.individualName
         );
 
-        if (projectConfig?.base_path) {
-          // 构建输出路径: base_path/project_name/individual_name/measurement_type/
-          const measurementTypeForPath = measurementType || 'measurement';
+        if (projectConfig?.base_path && projectConfig?.test_type) {
+          // 构建输出路径: base_path/project_name/individual_name/test_type/
           const outputPath = path.join(
             projectConfig.base_path,
             workflow.definition.name,
             workflow.individualName,
-            measurementTypeForPath
+            projectConfig.test_type
           );
 
           // 添加 output_path 到参数中
