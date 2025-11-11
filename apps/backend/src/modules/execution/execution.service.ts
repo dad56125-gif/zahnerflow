@@ -282,12 +282,12 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
       // 进入 loop_start：若不在栈顶则压栈
       if (node.type === 'loop_start') {
-        const { loop_id, loop_count } = this.getLoopParams(node);
+        const { loop_count } = this.getLoopParams(node);
         const endIp = bounds.get(ip);
         if (endIp != null) {
           const top = frames[frames.length - 1];
           if (!top || top.startIp !== ip) {
-            frames.push({ loopNodeId: String(loop_id || node.id), depth: frames.length + 1, startIp: ip, endIp, iteration: 1, total: Math.max(1, Number(loop_count) || 1) });
+            frames.push({ loopNodeId: node.id, depth: frames.length + 1, startIp: ip, endIp, iteration: 1, total: Math.max(1, Number(loop_count) || 1) });
           }
         }
       }
@@ -344,32 +344,27 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   // 读取循环参数（兼容 data.parameters 与 config）
-  private getLoopParams(node: any): { loop_id?: string; loop_count?: number } {
+  // 不再返回loop_id，基于遍历顺序自动配对
+  private getLoopParams(node: any): { loop_count?: number } {
     const p = node?.data?.parameters || node?.config || {};
     return {
-      loop_id: p.loop_id,
       loop_count: typeof p.loop_count === 'number' ? p.loop_count : (p.loop_count ? Number(p.loop_count) : undefined)
     };
   }
 
   // 扫描并配对 loop_start / loop_end，返回 startIp->endIp 映射
+  // 基于遍历顺序自动配对，不再依赖loop_id
   private buildLoopBoundaries(nodes: any[]): Map<number, number> {
     const map = new Map<number, number>();
-    const stack: Array<{ ip: number; loop_id?: string }> = [];
+    const stack: number[] = [];
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       if (n?.type === 'loop_start') {
-        const { loop_id } = this.getLoopParams(n);
-        stack.push({ ip: i, loop_id });
+        stack.push(i);
       } else if (n?.type === 'loop_end') {
-        const { loop_id } = this.getLoopParams(n);
-        for (let s = stack.length - 1; s >= 0; s--) {
-          if ((stack[s].loop_id || '') === (loop_id || '')) {
-            const start = stack[s].ip;
-            map.set(start, i);
-            stack.splice(s, 1);
-            break;
-          }
+        if (stack.length > 0) {
+          const start = stack.pop()!;
+          map.set(start, i);
         }
       }
     }
@@ -627,13 +622,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private async executeLoopStart(executionId: string, node: any): Promise<void> {
     const parameters = node.data?.parameters || {};
-    this.consoleManager.log('ExecutionService', 'enableLog', `Loop start: ${parameters.loop_id}, count: ${parameters.loop_count}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `Loop start: node=${node.id}, count=${parameters.loop_count}`);
     // 循环逻辑在工作流层面处理，这里只记录日志
   }
 
   private async executeLoopEnd(executionId: string, node: any): Promise<void> {
     const parameters = node.data?.parameters || {};
-    this.consoleManager.log('ExecutionService', 'enableLog', `Loop end: ${parameters.loop_id}`);
+    this.consoleManager.log('ExecutionService', 'enableLog', `Loop end: node=${node.id}`);
     // 循环逻辑在工作流层面处理，这里只记录日志
   }
 
