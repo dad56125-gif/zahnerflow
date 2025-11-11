@@ -289,7 +289,7 @@ export class LoopDetector {
 
     return {
       loop_id: startParams.loop_id || endParams.loop_id,
-      iteration_count: parseInt(startParams.iteration_count) || 1,
+      iteration_count: parseInt(startParams.loop_count) || 1,
       delay_ms: parseInt(startParams.delay_ms) || 0,
       break_condition: startParams.break_condition || null,
       continue_condition: startParams.continue_condition || null,

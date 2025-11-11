@@ -281,34 +281,10 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
                   textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
                 }}
               >
-                第{loopLevel + 1}级循环 • {loop.id} • {loop.iteration_count}次
+                第{loopLevel + 1}级循环 • {loop.iteration_count}次
               </text>
 
-              {/* 执行状态信息 */}
-              {context && (
-                <>
-                  {/* 执行状态信息 */}
-                  <text
-                    x={firstPoint.x}
-                    y={firstPoint.y - 30}
-                    fill="#A5D6A7"
-                    fontSize="10"
-                    fontWeight="500"
-                    fontFamily="system-ui, -apple-system, sans-serif"
-                    textAnchor="middle"
-                    style={{
-                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
-                    }}
-                  >
-                    {context.current_iteration}/{context.total_iterations} • {context.state === 'running' ? '运行中' :
-                     context.state === 'paused' ? '已暂停' :
-                     context.state === 'completed' ? '已完成' :
-                     context.state === 'error' ? '错误' :
-                     context.state === 'cancelled' ? '已取消' : '未知状态'}
-                  </text>
-                </>
-              )}
-            </>
+              </>
           );
         })()}
       </g>

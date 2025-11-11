@@ -97,10 +97,7 @@ const LoopParameterDisplay: React.FC<{
     <div className="loop-parameter-display">
       <h4>循环参数</h4>
       <div className="parameter-grid">
-        <div className="parameter-item">
-          <label>循环ID:</label>
-          <span>{loop.id}</span>
-        </div>
+        {/* 循环ID已隐藏，不显示 */}
         <div className="parameter-item">
           <label>迭代次数:</label>
           <span>{loop.iteration_count}</span>
