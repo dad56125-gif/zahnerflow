@@ -55,7 +55,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   } = useCanvasStore();
 
   const { setCurrentWorkflow } = useWorkflowStore();
-n  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
+  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
 
   const { currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'templates' | 'history'>('export');
@@ -259,7 +259,7 @@ n  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
       console.log('Workflow data to process:', workflowData); // 调试日志
 
       // 转换工作流数据格式以适配前端期望的结构
-      const convertedNodes = workflowData.definition?.nodes?.map((node: any) => {
+      const convertedNodes = workflowData.data?.definition?.nodes?.map((node: any) => {
         // 兼容性处理：处理新旧版本节点结构差异
         const isOldVersion = !node.data; // 旧版本没有data字段
 
@@ -293,7 +293,7 @@ n  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
         };
       }) || [];
 
-      const formattedConnections = workflowData.definition?.edges?.map((edge: any) => ({
+      const formattedConnections = workflowData.data?.definition?.edges?.map((edge: any) => ({
         id: edge.id,
         source_id: edge.source,
         target_id: edge.target
@@ -310,16 +310,21 @@ n  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
       setCurrentWorkflow({
         id: workflow.id,
         name: workflow.name,
-        created_at: workflow.created_at,
-        updated_at: workflow.created_at,
+        createdAt: new Date(workflow.created_at),
+        updatedAt: new Date(workflow.created_at),
+        workstation: 'zahner-zennium', // 添加缺失的workstation字段
+        status: 'active', // 添加缺失的status字段
         // 构建完整的工作流对象
         definition: {
           nodes: convertedNodes,
+          id: workflow.id,
+          name: workflow.name,
+          version: 1.0,
           edges: formattedConnections
         },
         ownerName: workflow.project_name || '默认项目'
       });
-n      // 同步设置当前编辑的工作流ID以加载对应的默认参数
+      // 同步设置当前编辑的工作流ID以加载对应的默认参数
       setCurrentEditingWorkflowId(workflow.id);
 
       console.log(`历史工作流 "${workflow.name}" 加载成功`);
