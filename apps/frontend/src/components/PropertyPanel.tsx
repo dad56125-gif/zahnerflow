@@ -399,13 +399,16 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
               type="text"
               value={currentValue ?? defaultValue}
               onChange={(e) => {
-                const value = parseScientificNotation(e.target.value);
-                updateParameters({ ...node.data.parameters, [key]: value });
+                const input = e.target.value;
+                // 允许空值和正在输入的数字（包括小数点）
+                if (input === '' || /^-?\d*\.?\d*$/.test(input)) {
+                  updateParameters({ ...node.data.parameters, [key]: input });
+                }
               }}
               onBlur={(e) => {
-                // 失去焦点时格式化显示
+                // 失去焦点时解析并转换为数值
                 const value = parseScientificNotation(e.target.value);
-                // 这里可以添加格式化逻辑，比如 1000 -> 1k
+                updateParameters({ ...node.data.parameters, [key]: value });
               }}
               onWheel={(e) => {
                 // 禁用滚轮改变数值

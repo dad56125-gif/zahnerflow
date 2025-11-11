@@ -644,15 +644,15 @@ def measure_eis_galvanostatic(params):
 
         print(f"[INFO] 扫描策略: {scan_strat}, 方向: {scan_dir}")
 
-        # 根据模式启动测量
-        enable_dc_bias = params.get("enable_dc_bias", False)
+        # 根据模式启动测量 - 恒流EIS默认开启直流偏置
+        enable_dc_bias = params.get("enable_dc_bias", True)
         if enable_dc_bias:
-            dc_current = params.get("eis_current", 0.0)
+            dc_current = params.get("eis_current", 1e-3)
             device_wrapper.setCurrent(dc_current)
             device_wrapper.enablePotentiostat()
             print(f"[INFO] 恒流模式 - 启用直流偏置: {dc_current * 1000} mA")
         else:
-            print(f"[INFO] 恒流模式 - 在开路电位(OCP)下测量")
+            print(f"[WARNING] 恒流模式在无直流偏置下测量可能失去意义")
 
         # 执行测量
         print(f"[INFO] 开始执行恒流EIS测量...")
