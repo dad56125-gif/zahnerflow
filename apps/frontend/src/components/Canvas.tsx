@@ -72,8 +72,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   // 新增：循环系统状态
   const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
   const [loopContexts, setLoopContexts] = useState<Map<string, LoopExecutionContext>>(new Map());
-  const [loopDetectionEnabled, setLoopDetectionEnabled] = useState(true);
-  const [loopVisualizationEnabled, setLoopVisualizationEnabled] = useState(true);
 
   
   // 拖动切换处理
@@ -259,14 +257,15 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // 循环检测和管理逻辑
   useEffect(() => {
-    if (!loopDetectionEnabled) return;
-
     // 检测循环
     const detectionResult = LoopDetector.detectLoops(nodes, connections);
 
     // removed debug logs for lightweight UI
 
     setDetectedLoops(detectionResult.loops);
+
+    // 通知父组件检测到循环
+    onLoopDetected?.(detectionResult.loops);
 
     // 初始化循环系统（计算嵌套层级等）
     const initResult = LoopSystemController.initialize({
@@ -303,7 +302,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
 
     setLoopContexts(newContexts);
-  }, [nodes, connections, loopDetectionEnabled]);
+  }, [nodes, connections]);
 
   // 移除了循环控制事件处理函数，只保留循环检测和可视化功能
 
@@ -370,30 +369,6 @@ export const Canvas: React.FC<CanvasProps> = ({
           ✋
         </button>
 
-        
-        
-  
-        {/* 循环检测切换按钮 - 新增 */}
-        <button
-          className={`btn-zoom btn-loop-detection ${loopDetectionEnabled ? 'active' : ''}`}
-          onClick={() => setLoopDetectionEnabled(!loopDetectionEnabled)}
-          title={loopDetectionEnabled ? "关闭循环检测" : "开启循环检测"}
-        >
-          {loopDetectionEnabled ? '🔄' : '⏸️'}
-        </button>
-
-        {/* 循环可视化切换按钮 - 新增 */}
-        <button
-          className={`btn-zoom btn-loop-visualization ${loopVisualizationEnabled ? 'active' : ''}`}
-          onClick={() => setLoopVisualizationEnabled(!loopVisualizationEnabled)}
-          title={loopVisualizationEnabled ? "关闭循环可视化" : "开启循环可视化"}
-        >
-          {loopVisualizationEnabled ? '👁️' : '🙈'}
-        </button>
-
-  
-        
-        
         <button className="btn-zoom" onClick={onZoomOut} title="缩小">
           ➖
         </button>
@@ -423,9 +398,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           layoutStable={layoutStable}
         />
 
-        
+
         {/* 循环边界组件 - 新的统一组件 */}
-        {loopVisualizationEnabled && detectedLoops.map(loop => {
+        {detectedLoops.map(loop => {
           const context = loopContexts.get(loop.id);
           return (
             <LoopBoundary
