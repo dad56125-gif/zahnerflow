@@ -14,7 +14,8 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
     const {
       currentEditingWorkflowId,
       setWorkflowDefaultParameters,
-      generateTemporaryWorkflowId
+      generateTemporaryWorkflowId,
+      getWorkflowDefaultParameters
     } = useWorkflowParameterStore();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'data'>('basic');
 
@@ -68,6 +69,38 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
     const updateParameters = (parameters: Record<string, any>) => {
       updateNodeData({ parameters });
+    };
+
+    // 检查当前节点参数是否与工作流默认参数相同
+    const isCurrentParametersSameAsDefault = () => {
+      if (!node || !node.data.parameters) {
+        return false;
+      }
+
+      const defaultParameters = getWorkflowDefaultParameters(node.type);
+      if (!defaultParameters) {
+        return false;
+      }
+
+      // 深度比较两个参数对象
+      const currentParams = node.data.parameters;
+      const defaultParams = defaultParameters;
+
+      // 比较所有键值对
+      for (const key in currentParams) {
+        if (currentParams[key] !== defaultParams[key]) {
+          return false;
+        }
+      }
+
+      // 确保默认参数中没有当前参数没有的键
+      for (const key in defaultParams) {
+        if (!(key in currentParams)) {
+          return false;
+        }
+      }
+
+      return true;
     };
 
     // 保存当前节点参数为工作流默认参数
@@ -744,17 +777,23 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       // 过滤掉隐藏的参数
       const visibleParameters = Object.entries(defaults).filter(([key]) => !hiddenParams.includes(key));
 
+      // 判断按钮状态
+      const isDefaultButtonActive = isCurrentParametersSameAsDefault();
+
       return (
         <div className="properties-section">
-          <div className="section-header">
+          <div className="section-header-with-button">
             <h3 className="section-title">参数</h3>
             <button
               onClick={saveAsWorkflowDefault}
-              className="btn btn-secondary btn-sm"
-              title="将当前参数保存为工作流默认配置"
+              className={`btn btn-sm workflow-default-btn ${isDefaultButtonActive ? 'btn-success active' : 'btn-secondary'}`}
+              disabled={isDefaultButtonActive}
+              title={isDefaultButtonActive ? "当前参数已是工作流默认配置" : "将当前参数保存为工作流默认配置"}
             >
-              <span className="btn-icon">💾</span>
-              <span className="btn-text">设为工作流默认</span>
+              <span className="btn-icon">{isDefaultButtonActive ? '✅' : '💾'}</span>
+              <span className="btn-text">
+                {isDefaultButtonActive ? '当前工作流默认' : '设为工作流默认'}
+              </span>
             </button>
           </div>
           {visibleParameters.map(([key, defaultValue]) => (
