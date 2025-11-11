@@ -5,7 +5,7 @@
  * 支持WebSocket实时通信和多设备管理
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useMfc } from '../services/hooks/useMfc';
 import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 import { MFCDeviceCard } from './MFCDeviceCard';
@@ -33,7 +33,10 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   // 使用 useOnClickOutside Hook 实现点击外部关闭
   useOnClickOutside(modalRef, on_close);
 
-  // WebSocket 连接由 useMfc hook 统一管理，这里不需要重复初始化
+  // 在MFC模态框打开时才建立WebSocket连接
+  useEffect(() => {
+    mfcControls.ensureConnection();
+  }, []);
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modal_top; void modal_left; void modal_width; void modal_height;

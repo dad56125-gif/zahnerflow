@@ -52,11 +52,17 @@
 .user-selector-button .dropdown-arrow {
   width: 12px;
   height: 12px;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   position: relative;
-  top: 2.5px;
-  transform: rotate(90deg);
+  transform-origin: center center;
+  transform: scaleY(1);
+}
+
+/* 箭头翻转状态 - 以箭头尾部（中心点）为轴进行上下翻转 */
+.user-selector-button .dropdown-arrow.rotated {
+  transform: scaleY(-1);
+  transform-origin: center center;
 }
 
 /* 鍦嗗舰鏂板缓鐢ㄦ埛鎸夐挳 */
@@ -89,19 +95,30 @@
   position: fixed;
   top: auto;
   left: auto;
-  z-index: 2500; /* 鎻愰珮鍒拌秴杩囧伐浣滅珯涓嬫媺鑿滃崟鐨剒-index */
+  z-index: 1500; /* 调整层级避免冲突 */
   min-width: 280px;
-  max-height: 300px; /* 鍚堢悊鐨勬渶澶ч珮搴﹂檺鍒?*/
-  background: var(--glass-bg);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  max-height: 300px; /* 合理的最大高度限制 */
+  background: rgba(30, 30, 40, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  isolation: isolate;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+
+  /* 缓出动画效果 */
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+
+/* 下拉菜单打开状态 */
+.user-dropdown.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 .user-list {

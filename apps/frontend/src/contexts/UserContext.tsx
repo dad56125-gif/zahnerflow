@@ -12,7 +12,6 @@ interface UserContextType {
   currentUser: string;
   setCurrentUser: (user: string) => void;
   users: User[];
-  loadUsers: () => Promise<void>;
   createUser: (userData: { user: string; email?: string }) => Promise<User>;
   deleteUser: (user: string) => Promise<boolean>;
 }
@@ -41,22 +40,13 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const userList = (response as any).users as string[];
       const fullUsers: User[] = userList.map(username => {
         return {
-          id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
           user: username,
           email: null,
           created_at: new Date().toISOString()
         };
       });
       setUsers(fullUsers);
-
-      if (!currentUser && fullUsers.length > 0) {
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser && fullUsers.find(u => u.user === savedUser)) {
-          setCurrentUserState(savedUser);
-        } else {
-          setCurrentUserState(fullUsers[0].user);
-        }
-      }
     }
   };
 
@@ -71,7 +61,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
     if (response && response.success) {
       const newUser: User = {
-        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         user: userData.user,
         email: userData.email || null,
         created_at: new Date().toISOString()
@@ -79,9 +69,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       setUsers(prev => [...prev, newUser]);
 
-      if (!currentUser) {
-        setCurrentUserState(newUser.user);
-      }
+      // 创建用户后不自动选择，让用户手动选择
 
       return newUser;
     } else {
@@ -95,28 +83,24 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     if (response.success) {
       setUsers(prev => prev.filter(u => u.user !== user));
       if (currentUser === user) {
-        const remainingUsers = users.filter(u => u.user !== user);
-        setCurrentUserState(remainingUsers.length > 0 ? remainingUsers[0].user : '');
+        // 删除当前用户后清空选择，让用户手动选择
+        setCurrentUserState('');
+        localStorage.removeItem('currentUser');
       }
       return true;
     }
     return false;
   };
 
-  // 初始化时加载用户和当前用户
+  // 初始化时只加载用户列表，不选择任何用户
   useEffect(() => {
     loadUsers();
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      setCurrentUserState(savedUser);
-    }
   }, []);
 
   const value: UserContextType = {
     currentUser,
     setCurrentUser,
     users,
-    loadUsers,
     createUser,
     deleteUser
   };

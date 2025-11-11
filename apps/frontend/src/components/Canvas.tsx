@@ -257,6 +257,13 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // 循环检测和管理逻辑
   useEffect(() => {
+    // 只有在有节点时才进行循环检测和初始化
+    if (nodes.length === 0) {
+      setDetectedLoops([]);
+      setLoopContexts(new Map());
+      return;
+    }
+
     // 检测循环
     const detectionResult = LoopDetector.detectLoops(nodes, connections);
 

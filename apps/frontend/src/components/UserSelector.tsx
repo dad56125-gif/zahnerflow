@@ -11,7 +11,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   currentUser,
   onUserChange
 }) => {
-  const { users, loadUsers, createUser } = useUser();
+  const { users, createUser } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newUserName, setNewUserName] = useState('');
@@ -19,9 +19,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // 用户列表已在UserProvider中加载，这里不需要重复加载
 
   // 使用 useOnClickOutside Hook 实现下拉菜单点击外部关闭
   useOnClickOutside(dropdownRef, () => {
@@ -97,7 +95,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     setError('');
     try {
       await createUser({ user: newUserName.trim() });
-      onUserChange(newUserName.trim());
+      // 创建用户后不自动选择，让用户手动选择
       setShowCreateDialog(false);
       setNewUserName('');
       setIsOpen(false);
@@ -115,9 +113,9 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="user-display">{currentUser || '选择用户'}</span>
-        <svg className="dropdown-arrow" viewBox="-10 -12 20 24" width="12" height="12">
+        <svg className={`dropdown-arrow ${isOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
                   <path
-                    d="M -10 -12 L 0 0 L -10 12"
+                    d="M -8 -3 L 0 5 L 8 -3"
                     fill="none"
                     stroke="rgba(255,255,255,0.8)"
                     strokeWidth="2.5"
@@ -141,28 +139,26 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </button>
 
       {/* 用户下拉菜单 - 仅包含用户列表 */}
-      {isOpen && (
-        <div className="user-dropdown">
-          <div className="user-list">
-            {users.length > 0 ? (
-              users.map(user => (
-                <button
-                  key={user.user}
-                  className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
-                  onClick={() => {
-                    onUserChange(user.user);
-                    setIsOpen(false);
-                  }}
-                >
-                  {user.user}
-                </button>
-              ))
-            ) : (
-              <div className="empty-users">暂无用户</div>
-            )}
-          </div>
+      <div className={`user-dropdown ${isOpen ? 'show' : ''}`}>
+        <div className="user-list">
+          {users.length > 0 ? (
+            users.map(user => (
+              <button
+                key={user.user}
+                className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
+                onClick={() => {
+                  onUserChange(user.user);
+                  setIsOpen(false);
+                }}
+              >
+                {user.user}
+              </button>
+            ))
+          ) : (
+            <div className="empty-users">暂无用户</div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 新建用户弹窗 */}
       {showCreateDialog && (

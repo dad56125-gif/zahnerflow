@@ -56,6 +56,9 @@ export interface MfcState {
  * MFC Hook 控制方法
  */
 export interface MfcControls {
+  // WebSocket连接
+  ensureConnection: () => void;
+
   // 设备发现
   scanDevices: (params?: MfcScanRequest) => Promise<void>;
   refreshDevices: () => Promise<void>;
@@ -710,20 +713,8 @@ export function useMfc(): [MfcState, MfcControls] {
       });
     };
 
-    // 注册WebSocket事件监听
-    mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
-    mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
-    mfcWebSocketService.onConnected(handleConnected);
-
-    // 确保WebSocket连接
-    if (!mfcWebSocketService.connected) {
-      mfcWebSocketService.connect();
-    }
-
-    // 订阅MFC更新
-    if (mfcWebSocketService.connected && !mfcWebSocketService.subscribed) {
-      mfcWebSocketService.subscribeToMfc();
-    }
+    // 移除自动连接逻辑，只在需要时连接
+    // WebSocket连接将延迟到ensureConnection()方法被调用时才建立
 
     // 清理函数
     return () => {
@@ -733,8 +724,21 @@ export function useMfc(): [MfcState, MfcControls] {
     };
   }, []);
 
+  // 延迟连接WebSocket的方法
+  const ensureConnection = () => {
+    if (!mfcWebSocketService.connected) {
+      // 注册WebSocket事件监听（只在连接前注册一次）
+      mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
+      mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
+      mfcWebSocketService.onConnected(handleConnected);
+
+      mfcWebSocketService.connect();
+    }
+  };
+
   // 控制方法集合
   const controls: MfcControls = {
+    ensureConnection,
     scanDevices,
     refreshDevices,
     connect,
