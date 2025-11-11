@@ -136,7 +136,7 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       }
 
       const newNode: ElectrochemicalNode = {
-        id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        id: `node_${String(Date.now()).slice(-8)}`, // 简化为8位数字（使用时间戳的后8位作为简单计数器）
         type: type as NodeType,
         name: config.name,
         category: config.category,

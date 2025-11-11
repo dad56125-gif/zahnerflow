@@ -2,6 +2,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { IWorkflowModule, Workflow, WorkflowDefinition, ValidationResult } from '../../interfaces/module-interfaces';
 import { WorkflowStorageService } from './workflow-storage.service';
 import { DbService } from '../../db/db.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class WorkflowService implements IWorkflowModule, OnModuleInit {
@@ -228,17 +230,67 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
   }
 
   private generateWorkflowId(): string {
+    const counterPath = path.join(process.cwd(), 'data', 'counters');
+
+    // 确保计数器目录存在
+    if (!fs.existsSync(counterPath)) {
+      fs.mkdirSync(counterPath, { recursive: true });
+    }
+
+    const workflowCounterFile = path.join(counterPath, 'workflow-counter.txt');
+
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { randomUUID } = require('crypto');
-      return `workflow_${randomUUID()}`;
-    } catch {
-      return `workflow_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      // 读取当前计数器值
+      let currentCount = 1;
+      if (fs.existsSync(workflowCounterFile)) {
+        const content = fs.readFileSync(workflowCounterFile, 'utf8').trim();
+        currentCount = parseInt(content, 10) || 1;
+      }
+
+      // 生成8位数字的工作流ID
+      const workflowId = `workflow_${String(currentCount).padStart(8, '0')}`;
+
+      // 保存下一个计数器值
+      fs.writeFileSync(workflowCounterFile, String(currentCount + 1), 'utf8');
+
+      return workflowId;
+    } catch (error) {
+      // 如果文件操作失败，回退到时间戳方案
+      console.warn('Failed to generate workflow ID with counter, falling back to timestamp:', error);
+      return `workflow_${Date.now()}`;
     }
   }
 
   private generateNodeId(): string {
-    return `node_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const counterPath = path.join(process.cwd(), 'data', 'counters');
+
+    // 确保计数器目录存在
+    if (!fs.existsSync(counterPath)) {
+      fs.mkdirSync(counterPath, { recursive: true });
+    }
+
+    const nodeCounterFile = path.join(counterPath, 'node-counter.txt');
+
+    try {
+      // 读取当前计数器值
+      let currentCount = 1;
+      if (fs.existsSync(nodeCounterFile)) {
+        const content = fs.readFileSync(nodeCounterFile, 'utf8').trim();
+        currentCount = parseInt(content, 10) || 1;
+      }
+
+      // 生成8位数字的节点ID
+      const nodeId = `node_${String(currentCount).padStart(8, '0')}`;
+
+      // 保存下一个计数器值
+      fs.writeFileSync(nodeCounterFile, String(currentCount + 1), 'utf8');
+
+      return nodeId;
+    } catch (error) {
+      // 如果文件操作失败，回退到时间戳方案
+      console.warn('Failed to generate node ID with counter, falling back to timestamp:', error);
+      return `node_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
   }
 
   async batchUpdateNodeParam(id: string, key: string, value: any, nodeType?: string): Promise<Workflow> {
