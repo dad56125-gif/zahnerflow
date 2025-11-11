@@ -786,7 +786,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             <h3 className="section-title">参数</h3>
             <button
               onClick={saveAsWorkflowDefault}
-              className={`btn btn-sm workflow-default-btn ${isDefaultButtonActive ? 'btn-success active' : 'btn-secondary'}`}
+              className={`btn btn-sm workflow-default-btn ${isDefaultButtonActive ? 'active' : 'btn-secondary'}`}
               disabled={isDefaultButtonActive}
               title={isDefaultButtonActive ? "当前参数已是工作流默认配置" : "将当前参数保存为工作流默认配置"}
             >

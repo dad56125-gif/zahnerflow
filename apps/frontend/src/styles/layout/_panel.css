@@ -137,6 +137,7 @@
   font-weight: 600;
   margin-bottom: clamp(0.75rem, 2vw, 1rem);
   color: white;
+  line-height: 1.2; /* 确保标题有合适的行高 */
 }
 
 /* 参数标题与按钮在同一行的布局 */
@@ -150,6 +151,7 @@
 
 .section-header-with-button .section-title {
   margin-bottom: 0; /* 移除标题的下边距，因为容器已经处理了间距 */
+  line-height: 1.2; /* 确保标题有合适的行高 */
 }
 
 /* 工作流默认按钮特殊样式 */
@@ -157,25 +159,26 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  font-size: clamp(0.6875rem, 1.5vw, 0.75rem);
+  padding: 0.25rem 0.75rem; /* 调整padding使高度与标题一致 */
+  font-size: clamp(0.75rem, 2.5vw, 1rem); /* 与标题字体大小一致 */
+  font-weight: 600; /* 与标题字体粗细一致 */
+  line-height: 1.2; /* 与标题行高一致 */
   border-radius: var(--radius-sm);
   min-width: fit-content;
   white-space: nowrap;
   transition: var(--transition);
+  height: fit-content; /* 确保高度适应内容 */
 }
 
-.workflow-default-btn.btn-success.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  border-color: #28a745;
-  color: white;
+.workflow-default-btn.active {
   cursor: default;
-  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+  opacity: 0.7;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.workflow-default-btn.btn-success.active:hover {
-  background: linear-gradient(135deg, #28a745, #20c997);
+.workflow-default-btn.active:hover {
   transform: none; /* 移除hover时的变换效果 */
+  background: var(--glass-bg);
 }
 
 /* 当面板很窄时，按钮只显示图标 */
