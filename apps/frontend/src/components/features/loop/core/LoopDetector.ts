@@ -204,6 +204,9 @@ export class LoopDetector {
         // 直接使用前向路径作为循环路径（不需要显式返回连接）
         // 在实际执行中，循环会自动从end回到下一个节点或start
 
+        // ✅ 修复：确保node_ids包含start_node（用于层级验证）
+        const complete_path = [startNode.id, ...forwardPath];
+
         // 获取循环参数
         const loopParams = this.extractLoopParameters(startNode, endNode);
 
@@ -211,7 +214,7 @@ export class LoopDetector {
           id: loopId,
           start_node_id: startNode.id,
           end_node_id: endNode.id,
-          node_ids: forwardPath, // 包含所有中间节点的路径
+          node_ids: complete_path, // 包含所有节点（包括start）
           iteration_count: loopParams.iteration_count || 1,
           current_iteration: 0,
           is_active: false,

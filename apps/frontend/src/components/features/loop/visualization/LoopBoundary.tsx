@@ -9,6 +9,7 @@
 import React from 'react';
 import { LoopInfo } from '../core/LoopDetector';
 import { type LoopExecutionContext } from '../core/LoopContextManager';
+import { LoopMetadataManager } from '../core/loop_metadata_manager';
 import { useNodeChangeDetection } from '../../../../services/hooks/useNodeChangeDetection';
 import { generateBeltPath } from '../../../../utils/clipper';
 
@@ -201,11 +202,12 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     return segments;
   }, [completeLoopNodes, zoomLevel, canvasOffsetY, updateTrigger]);
 
-  // 计算循环层级（基于嵌套深度的简单实现）
+  // 计算循环层级（从LoopMetadataManager获取）
   const loopLevel = React.useMemo(() => {
-    // TODO: 实现更精确的嵌套循环层级检测
-    // 可以通过检查循环的包含关系来确定层级
-    return 0;
+    // 从元数据管理器获取真实的层级
+    const level = LoopMetadataManager.get_loop_level(loop.id);
+    console.log(`[LoopBoundary] 循环 ${loop.id} - 计算层级: ${level}`);
+    return level >= 0 ? level : 0;
   }, [loop]);
 
   // 根据执行状态设置样式类

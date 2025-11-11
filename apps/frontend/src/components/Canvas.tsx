@@ -8,7 +8,8 @@ import {
   LoopContextManager,
   LoopBoundary,
   LoopInfo,
-  LoopExecutionContext
+  LoopExecutionContext,
+  LoopSystemController
 } from './features/loop';
 import { WorkflowManagerUI } from './features/workflow';
 import { WorkflowIdDisplay } from './common/WorkflowIdDisplay';
@@ -266,6 +267,19 @@ export const Canvas: React.FC<CanvasProps> = ({
     // removed debug logs for lightweight UI
 
     setDetectedLoops(detectionResult.loops);
+
+    // 初始化循环系统（计算嵌套层级等）
+    const initResult = LoopSystemController.initialize({
+      loops: detectionResult.loops,
+      nodes: nodes,
+      connections: connections
+    });
+
+    if (initResult.success) {
+      console.log(`[Canvas] 循环系统初始化成功: ${detectionResult.loops.length} 个循环`);
+    } else {
+      console.error('[Canvas] 循环系统初始化失败:', initResult.error);
+    }
 
     // 更新循环上下文
     const newContexts = new Map<string, LoopExecutionContext>();

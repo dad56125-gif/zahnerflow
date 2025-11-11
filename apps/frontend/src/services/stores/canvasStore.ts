@@ -14,6 +14,8 @@ import {
 } from '../layout';
 import { useWorkflowParameterStore } from './workflowParameterStore';
 import { useWorkflowStore } from './index';
+import { LoopSystemController } from '../../components/features/loop/core/loop_system_controller';
+import { ChangeHandler } from '../../components/features/loop/core/fingerprint_cache';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
@@ -210,6 +212,17 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
           validationError: validateNodes(repositionedNodes)
         };
       });
+
+      // 通知循环系统（异步）
+      setTimeout(() => {
+        const state = get();
+        const change = ChangeHandler.handle_parameter_change({
+          loops: [],
+          nodes: state.nodes,
+          connections: state.connections
+        });
+        LoopSystemController.handle_workflow_change(change);
+      }, 0);
     },
 
     moveNode: (nodeId, newPosition) => {
@@ -243,14 +256,43 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     selectNode: (node) => set({ selectedNode: node }),
 
     updateNode: (updatedNode) => set(state => ({
-      nodes: state.nodes.map(node => 
+      nodes: state.nodes.map(node =>
         node.id === updatedNode.id ? updatedNode : node
       ),
       selectedNode: state.selectedNode?.id === updatedNode.id ? updatedNode : state.selectedNode
     })),
 
-    setNodes: (nodes) => set({ nodes: nodes, validationError: validateNodes(nodes) }),
-    setConnections: (connections) => set({ connections }),
+    setNodes: (nodes) => {
+      // 更新节点
+      set({ nodes: nodes, validationError: validateNodes(nodes) });
+
+      // 通知循环系统（异步，避免阻塞UI）
+      setTimeout(() => {
+        const state = get();
+        const change = ChangeHandler.handle_parameter_change({
+          loops: [], // loops将在Canvas中重新检测
+          nodes: state.nodes,
+          connections: state.connections
+        });
+        LoopSystemController.handle_workflow_change(change);
+      }, 0);
+    },
+
+    setConnections: (connections) => {
+      // 更新连接
+      set({ connections });
+
+      // 通知循环系统
+      setTimeout(() => {
+        const state = get();
+        const change = ChangeHandler.handle_parameter_change({
+          loops: [],
+          nodes: state.nodes,
+          connections: state.connections
+        });
+        LoopSystemController.handle_workflow_change(change);
+      }, 0);
+    },
 
     clearCanvas: () => {
       // 清除临时工作流状态
