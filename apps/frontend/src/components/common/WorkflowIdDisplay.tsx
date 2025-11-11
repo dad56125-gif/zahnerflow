@@ -23,6 +23,7 @@ export const WorkflowIdDisplay: React.FC<WorkflowIdDisplayProps> = ({ className 
   // 双击开始编辑
   const handleDoubleClick = () => {
     if (currentWorkflow) {
+      // 只编辑工作流名称
       setEditValue(currentWorkflow.name || '');
       setIsEditing(true);
     }
@@ -96,14 +97,14 @@ export const WorkflowIdDisplay: React.FC<WorkflowIdDisplayProps> = ({ className 
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           className="workflow-name-input"
-          placeholder="输入工作流名称"
+          placeholder={`编辑 ${currentWorkflow.id} 的工作流名称`}
           maxLength={50}
         />
       ) : (
         <div
           className="display-content"
           onDoubleClick={handleDoubleClick}
-          title="双击编辑工作流名称"
+          title={`双击编辑工作流名称 (ID: ${currentWorkflow.id})`}
         >
           <span className="display-text">
             {currentWorkflow.name || currentWorkflow.id}

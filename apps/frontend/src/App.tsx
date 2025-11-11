@@ -10,6 +10,7 @@ import { Canvas } from './components/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
 import { stateLinkageManager } from './managers/state-linkage.manager';
 import { useCanvasStore } from './services/stores/canvasStore';
+import { useWorkflowStore } from './services/stores';
 import { DeviceModal } from './components/DeviceModal';
 import { MFCModal } from './components/MFCModal';
 import { workflowService } from './services/workflowService';
@@ -99,36 +100,55 @@ const ZahnerFlowApp: React.FC = () => {
         return;
     }
     try {
-      const workflowDefinition = {
-        id: `workflow_${Date.now()}`,
-        name: `电化学工作流${new Date().toLocaleString()}`,
-        description: '通过前端界面创建的电化学测量流程',
-        nodes: nodes.map(node => ({
-          id: node.id,
-          type: node.type,
-          name: node.name,
-          config: node.data?.parameters || {},
-          position: node.position,
-          data: node.data,
-          status: node.status
-        })),
-        edges: connections.map(conn => ({
-          id: conn.id,
-          source: conn.source_id,
-          target: conn.target_id,
-          type: 'flow'
-        })),
-        version: 1
-      };
+      // 检查是否有当前编辑的工作流
+      const { currentWorkflow } = useWorkflowStore.getState();
 
-    
-      // 直接发送WorkflowDefinition到后端
-      const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
+      if (currentWorkflow && !currentWorkflow.id.startsWith('temp-workflow-')) {
+        // 历史工作流：直接使用现有工作流执行
+        console.log(`执行历史工作流 "${currentWorkflow.name}" (ID: ${currentWorkflow.id})`);
+        await stateLinkageManager.startExecution(currentWorkflow.id, nodes);
+      } else {
+        // 临时工作流或新工作流：创建新的工作流定义，提供临时ID（后端会重新生成）
+        const workflowDefinition = {
+          id: `temp_workflow_${Date.now()}`, // 临时ID，后端会重新生成
+          name: (currentWorkflow?.name && currentWorkflow.name !== '临时工作流')
+            ? currentWorkflow.name
+            : undefined, // 工作流只依靠ID，name字段不是必需的
+          description: '通过前端界面创建的电化学测量流程',
+          ownerName: '默认用户',
+          individualName: '默认项目',
+          nodes: nodes.map(node => ({
+            id: node.id,
+            type: node.type,
+            name: node.name,
+            config: node.data?.parameters || {},
+            position: node.position,
+            data: node.data,
+            status: node.status
+          })),
+          edges: connections.map(conn => ({
+            id: conn.id,
+            source: conn.source_id,
+            target: conn.target_id,
+            type: 'flow'
+          })),
+          version: 1
+        };
 
-      if (!createdWorkflow) {
-        throw new Error("Failed to create workflow");
+        // 创建新工作流（后端会生成ID）
+        const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
+
+        if (!createdWorkflow) {
+          throw new Error("Failed to create workflow");
+        }
+        console.log(`创建并执行新工作流 "${createdWorkflow.name}" (ID: ${createdWorkflow.id})`);
+
+        // 更新WorkflowStore的currentWorkflow状态，确保workflow-id-display能正确显示
+        const { setCurrentWorkflow } = useWorkflowStore.getState();
+        setCurrentWorkflow(createdWorkflow);
+
+        await stateLinkageManager.startExecution(createdWorkflow.id, nodes);
       }
-      await stateLinkageManager.startExecution((createdWorkflow || { id: "" }).id, nodes);
     } catch (error) {
       console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);

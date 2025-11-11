@@ -13,6 +13,7 @@ import {
   LayoutCalculationOptions
 } from '../layout';
 import { useWorkflowParameterStore } from './workflowParameterStore';
+import { useWorkflowStore } from './index';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
@@ -103,6 +104,17 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       const config = getNodeConfigByWorkstation(type, selectedWorkstation);
       if (!config) return;
 
+      // 临时工作流逻辑：添加第一个节点时创建临时工作流
+      if (nodes.length === 0) {
+        const { setCurrentWorkflow } = useWorkflowStore.getState();
+        const tempWorkflow: any = {
+          id: `temp-workflow-${Date.now()}`,
+          name: '临时工作流'
+        };
+        setCurrentWorkflow(tempWorkflow);
+        console.log('[Canvas Store] 创建临时工作流:', tempWorkflow.id);
+      }
+
       const targetIndex = (index !== undefined && index >= 0 && index <= nodes.length) ? index : nodes.length;
 
       // 智能配对：如果是 loop_end 节点，查找未配对的 loop_start
@@ -136,7 +148,7 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       }
 
       const newNode: ElectrochemicalNode = {
-        id: `node_${String(Date.now()).slice(-8)}`, // 简化为8位数字（使用时间戳的后8位作为简单计数器）
+        id: `temp_node_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`, // 临时ID，后端会重新生成
         type: type as NodeType,
         name: config.name,
         category: config.category,
@@ -222,7 +234,10 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       // 使用统一布局服务重新计算位置
       const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
 
-      set({ nodes: repositionedNodes, validationError: validateNodes(repositionedNodes) });
+      set({
+        nodes: repositionedNodes,
+        validationError: validateNodes(repositionedNodes)
+      });
     },
 
     selectNode: (node) => set({ selectedNode: node }),
@@ -237,7 +252,12 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     setNodes: (nodes) => set({ nodes: nodes, validationError: validateNodes(nodes) }),
     setConnections: (connections) => set({ connections }),
 
-    clearCanvas: () => set({ nodes: [], connections: [], selectedNode: null, validationError: null }),
+    clearCanvas: () => {
+      // 清除临时工作流状态
+      const { setCurrentWorkflow } = useWorkflowStore.getState();
+      setCurrentWorkflow(null);
+      set({ nodes: [], connections: [], selectedNode: null, validationError: null });
+    },
 
     recalculateNodePositions: () => {
       const { nodes, canvasSize } = get();
@@ -256,6 +276,5 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       };
       return layout_service.calculateNodeIndexFromPosition(position, options);
     }
-
-  }
+  };
 }));

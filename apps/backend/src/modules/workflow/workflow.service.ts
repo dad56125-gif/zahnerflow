@@ -38,13 +38,39 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     }
 
     const id = this.generateWorkflowId();
+
+    // 为所有临时节点ID生成真正的ID
+    const nodeIdMap = new Map<string, string>();
+    const updatedNodes = definition.nodes.map(node => {
+      const newId = node.id.startsWith('temp_node_') ? this.generateNodeId() : node.id;
+      nodeIdMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId
+      };
+    });
+
+    // 更新边的连接关系
+    const updatedEdges = definition.edges.map(edge => ({
+      ...edge,
+      source: nodeIdMap.get(edge.source) || edge.source,
+      target: nodeIdMap.get(edge.target) || edge.target
+    }));
+
+    const updatedDefinition = {
+      ...definition,
+      id, // 更新工作流ID
+      nodes: updatedNodes,
+      edges: updatedEdges
+    };
+
     const workflow: Workflow = {
       id,
       name: definition.name,
       description: definition.description,
       ownerName: definition.ownerName,
       individualName: definition.individualName,
-      definition,
+      definition: updatedDefinition,
       version: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -157,7 +183,8 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!definition.name?.trim()) errors.push('Workflow name is required');
+    // 工作流只依靠ID，name字段不是必需的
+    // if (!definition.name?.trim()) errors.push('Workflow name is required');
     if (!definition.description?.trim()) warnings.push('Workflow description is recommended');
 
     if (!Array.isArray(definition.nodes) || definition.nodes.length === 0) {

@@ -18,7 +18,7 @@ interface WorkflowState {
   currentWorkflow: Workflow | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // 操作方法
   fetchWorkflows: () => Promise<void>;
   createWorkflow: (data: any) => Promise<void>;
@@ -31,7 +31,7 @@ interface WorkflowState {
 export const useWorkflowStore = create<WorkflowState>()(
   devtools(
     persist(
-      (set) => ({
+      (set, get) => ({
         workflows: [],
         currentWorkflow: null,
         isLoading: false,
@@ -51,9 +51,9 @@ export const useWorkflowStore = create<WorkflowState>()(
           set({ isLoading: true, error: null });
           try {
             const workflow = await workflowService.createWorkflow(data);
-            set(state => ({ 
-              workflows: [...state.workflows, workflow], 
-              isLoading: false 
+            set(state => ({
+              workflows: [...state.workflows, workflow],
+              isLoading: false
             }));
             } catch (error) {
             set({ error: '创建工作流失败', isLoading: false });
@@ -101,9 +101,9 @@ export const useWorkflowStore = create<WorkflowState>()(
       }),
       {
         name: 'workflow-storage',
-        partialize: (state) => ({ 
+        partialize: (state) => ({
           workflows: state.workflows,
-          currentWorkflow: state.currentWorkflow 
+          // 不持久化currentWorkflow，每次刷新应该是未选择状态
         }),
       }
     ),
