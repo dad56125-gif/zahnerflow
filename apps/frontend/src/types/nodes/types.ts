@@ -598,8 +598,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       loop_count: 1,
       loop_variable: 'i',
       start_value: 0,
-      step: 1,
-      loop_id: ''
+      step: 1
     }
   },
   loop_end: {
@@ -629,9 +628,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       textColor: '#ffffff',
       icon: '⏹️'
     },
-    defaultParameters: {
-      loop_id: ''
-    }
+    defaultParameters: {}
   },
 
   // 等待/延时节点
@@ -908,7 +905,6 @@ export interface LoopStartNode extends ElectrochemicalNode {
       loop_variable: string;
       start_value: number;
       step: number;
-      loop_id: string;
     };
   };
 }
@@ -916,13 +912,11 @@ export interface LoopStartNode extends ElectrochemicalNode {
 export interface LoopEndNode extends ElectrochemicalNode {
   type: 'loop_end';
   data: NodeData & {
-    parameters: {
-      loop_id: string;
-    };
+    parameters: {};
   };
 }
 
-// 循环上下文接口
+// 循环上下文接口（内部使用）
 export interface LoopContext {
   loop_id: string;
   start_node: LoopStartNode;
