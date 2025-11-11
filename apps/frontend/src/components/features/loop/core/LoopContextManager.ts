@@ -296,7 +296,8 @@ export class LoopContextManager {
   // ----------------------
 
   public static enterLoop(startNode: LoopStartNode, endNode: LoopEndNode, level: number): void {
-    const loop_id = startNode.data.parameters.loop_id;
+    // 循环ID基于start节点ID（不再依赖parameters.loop_id）
+    const loop_id = `loop_${startNode.id}`;
     const iterations = startNode.data.parameters.loop_count;
     const variable_name = startNode.data.parameters.loop_variable;
     const start_value = startNode.data.parameters.start_value;
@@ -403,10 +404,6 @@ export class LoopContextManager {
 
   public static getAllLoopPairs(): LoopPair[] {
     return Array.from(this.loopPairs.values());
-  }
-
-  public static validateLoopPair(startNode: LoopStartNode, endNode: LoopEndNode): boolean {
-    return startNode.data.parameters.loop_id === endNode.data.parameters.loop_id;
   }
 
   public static validateLoopNesting(): boolean {

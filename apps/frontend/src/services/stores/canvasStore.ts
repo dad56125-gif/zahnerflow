@@ -24,25 +24,6 @@ interface Connection {
   target_id: string;
 }
 
-// --- 智能循环节点配对 ---
-const findLastUnpairedLoopStart = (nodes: ElectrochemicalNode[]): ElectrochemicalNode | null => {
-  // 从后往前查找最近的未配对的 loop_start 节点
-  for (let i = nodes.length - 1; i >= 0; i--) {
-    const node = nodes[i];
-    if (node.type === 'loop_start' && node.data.parameters?.loop_id) {
-      // 检查是否已经有配对的 loop_end
-      const hasMatchingEnd = nodes.some(n =>
-        n.type === 'loop_end' &&
-        n.data.parameters?.loop_id === node.data.parameters?.loop_id
-      );
-      if (!hasMatchingEnd) {
-        return node;
-      }
-    }
-  }
-  return null;
-};
-
 // --- Store Definition ---
 
 interface CanvasState {
@@ -120,22 +101,10 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
       const targetIndex = (index !== undefined && index >= 0 && index <= nodes.length) ? index : nodes.length;
 
       // 智能配对：如果是 loop_end 节点，查找未配对的 loop_start
+      // 基于遍历顺序自动配对，不再需要复制loop_id
       let nodeData = createDefaultNodeDataWithWorkstation(type, selectedWorkstation);
+      console.log(`[Canvas Store] 创建 ${type} 节点（基于遍历顺序自动配对）`);
 
-      if (type === 'loop_end') {
-        const unpairedStart = findLastUnpairedLoopStart(nodes);
-        if (unpairedStart && unpairedStart.data.parameters?.loop_id) {
-          // 使用匹配的 loop_start 节点的 loop_id
-          nodeData = {
-            ...nodeData,
-            parameters: {
-              ...nodeData.parameters,
-              loop_id: unpairedStart.data.parameters.loop_id
-            }
-          };
-          console.log(`[Canvas Store] loop_end 节点自动配对，使用 loop_id: ${unpairedStart.data.parameters.loop_id}`);
-        }
-      }
       // 合并工作流级别默认参数
       const workflowDefaults = useWorkflowParameterStore.getState().getWorkflowDefaultParameters(type);
       if (workflowDefaults) {
