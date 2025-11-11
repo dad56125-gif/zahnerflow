@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
-import { useCanvasStore } from '../services/stores/canvasStore';
+import { useCanvasStore, useWorkflowParameterStore } from '../services/stores';
 import { useMfc } from '../services/hooks/useMfc';
 import { MfcDeviceInfo } from '../types/devices';
 
@@ -11,6 +11,11 @@ interface PropertyPanelProps {
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
     const { selectedNode: node, updateNode } = useCanvasStore();
+    const {
+      currentEditingWorkflowId,
+      setWorkflowDefaultParameters,
+      generateTemporaryWorkflowId
+    } = useWorkflowParameterStore();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'data'>('basic');
 
     // 获取真实的MFC设备信息
@@ -63,6 +68,25 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
     const updateParameters = (parameters: Record<string, any>) => {
       updateNodeData({ parameters });
+    };
+
+    // 保存当前节点参数为工作流默认参数
+    const saveAsWorkflowDefault = () => {
+      if (!node || !node.data.parameters) {
+        return;
+      }
+
+      // 如果没有当前编辑的工作流，创建一个临时工作流
+      if (!currentEditingWorkflowId) {
+        const tempWorkflowId = generateTemporaryWorkflowId();
+        useWorkflowParameterStore.getState().setCurrentEditingWorkflowId(tempWorkflowId);
+      }
+
+      // 保存参数
+      setWorkflowDefaultParameters(node.type, node.data.parameters);
+
+      // 显示成功消息（可选）
+      console.log(`✅ 已保存 ${node.name} 的参数为工作流默认配置`);
     };
 
     // 科学计数法解析函数
@@ -722,7 +746,17 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
       return (
         <div className="properties-section">
-          <h3 className="section-title">参数</h3>
+          <div className="section-header">
+            <h3 className="section-title">参数</h3>
+            <button
+              onClick={saveAsWorkflowDefault}
+              className="btn btn-secondary btn-sm"
+              title="将当前参数保存为工作流默认配置"
+            >
+              <span className="btn-icon">💾</span>
+              <span className="btn-text">设为工作流默认</span>
+            </button>
+          </div>
           {visibleParameters.map(([key, defaultValue]) => (
             <div key={key} className="property-group">
               <label className="property-label">{getParameterLabel(key)}</label>

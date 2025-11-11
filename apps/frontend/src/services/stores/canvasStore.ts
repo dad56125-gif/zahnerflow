@@ -12,6 +12,7 @@ import {
   Position,
   LayoutCalculationOptions
 } from '../layout';
+import { useWorkflowParameterStore } from './workflowParameterStore';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
@@ -120,6 +121,18 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
           };
           console.log(`[Canvas Store] loop_end 节点自动配对，使用 loop_id: ${unpairedStart.data.parameters.loop_id}`);
         }
+      }
+      // 合并工作流级别默认参数
+      const workflowDefaults = useWorkflowParameterStore.getState().getWorkflowDefaultParameters(type);
+      if (workflowDefaults) {
+        nodeData = {
+          ...nodeData,
+          parameters: {
+            ...nodeData.parameters,
+            ...workflowDefaults
+          }
+        };
+        console.log(`[Canvas Store] 应用工作流默认参数到 ${type} 节点:`, Object.keys(workflowDefaults));
       }
 
       const newNode: ElectrochemicalNode = {

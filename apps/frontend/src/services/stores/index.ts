@@ -520,3 +520,5 @@ if (typeof window !== 'undefined') {
     });
   });
 }
+// 导出工作流参数管理store
+export { useWorkflowParameterStore } from './workflowParameterStore';

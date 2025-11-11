@@ -9,6 +9,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
 import { useCanvasStore } from '@/services/stores/canvasStore';
 import { useWorkflowStore } from '@/services/stores';
+import { useWorkflowParameterStore } from '@/services/stores';
 import { LoopDetector } from '.';
 import WorkflowExporter, { WorkflowExporterProps } from './WorkflowExporter';
 import WorkflowImporter, { WorkflowImporterProps } from './WorkflowImporter';
@@ -54,6 +55,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   } = useCanvasStore();
 
   const { setCurrentWorkflow } = useWorkflowStore();
+n  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
 
   const { currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'templates' | 'history'>('export');
@@ -317,6 +319,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         },
         ownerName: workflow.project_name || '默认项目'
       });
+n      // 同步设置当前编辑的工作流ID以加载对应的默认参数
+      setCurrentEditingWorkflowId(workflow.id);
 
       console.log(`历史工作流 "${workflow.name}" 加载成功`);
 
