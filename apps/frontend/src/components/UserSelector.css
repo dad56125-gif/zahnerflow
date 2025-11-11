@@ -90,40 +90,71 @@
   transform: scale(1.05);
 }
 
-/* 鐢ㄦ埛涓嬫媺鑿滃崟 - 妯′豢宸ヤ綔绔欎笅鎷夎彍鍗曟牱寮忥紝浣跨敤fixed瀹氫綅绐佺牬瀹瑰櫒杈圭晫 */
+/* 下拉菜单入场动画 */
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 下拉菜单出场动画 */
+@keyframes dropdownOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
+/* 用户下拉菜单 - 模拟工作站下拉菜单样式，使用fixed定位突破容器边界 */
 .user-dropdown {
   position: fixed;
-  top: auto;
-  left: auto;
   z-index: 1500; /* 调整层级避免冲突 */
   min-width: 280px;
   max-height: 300px; /* 合理的最大高度限制 */
-  background: rgba(30, 30, 40, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  /* 玻璃态效果 - 锁定模糊强度9px，增加透明度到0.5 */
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
   overflow: hidden;
-  display: flex;
+  display: none; /* 初始完全隐藏，不参与布局 */
   flex-direction: column;
-
-  /* 缓出动画效果 */
-  opacity: 0;
-  transform: translateY(-10px) scale(0.95);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+
+  /* 性能优化 */
+  will-change: opacity, transform, backdrop-filter;
 }
 
-
-/* 下拉菜单打开状态 */
+/* 下拉菜单打开状态 - 缓入动画 */
 .user-dropdown.show {
+  display: flex;
   opacity: 1;
-  transform: translateY(0) scale(1);
   pointer-events: auto;
+  animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
 }
 
+/* 下拉菜单关闭状态 - 缓出动画（使用类控制） */
+.user-dropdown.hiding {
+  animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* 用户列表 */
 .user-list {
-  min-height: var(--user-option-height); /* 鏈€灏?涓敤鎴烽珮搴?*/
-  max-height: calc(var(--user-option-height) * 5); /* 鏈€澶?涓敤鎴烽珮搴?*/
+  min-height: var(--user-option-height); /* 最小1个用户高度 */
+  max-height: calc(var(--user-option-height) * 5); /* 最大5个用户高度 */
   overflow-y: auto;
 }
 
@@ -301,3 +332,29 @@
 .user-list::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
+
+/* ===== 调试用：测试模糊效果是否生效 ===== */
+/* 使用方法：
+   1. 打开浏览器开发者工具
+   2. 找到.user-dropdown元素
+   3. 添加此类名: class="user-dropdown show test-blur"
+   4. 观察下方内容是否模糊
+*/
+.user-dropdown.test-blur {
+  background: rgba(0, 0, 0, 0.5) !important; /* 更明显的不透明度 */
+  /* 使用CSS变量或固定值测试 */
+  --blur-intensity: 30px !important;
+  backdrop-filter: blur(var(--blur-intensity)) !important;
+  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
+  border: 2px solid red !important; /* 红色边框便于观察 */
+}
+
+/* 调试用：测试不同背景色 */
+.user-dropdown.test-blue {
+  background: rgba(33, 150, 243, 0.3) !important; /* 蓝色半透明 */
+}
+
+.user-dropdown.test-dark {
+  background: rgba(0, 0, 0, 0.6) !important; /* 更暗背景 */
+}
+

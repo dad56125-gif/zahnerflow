@@ -82,25 +82,45 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   position: relative;
   top: 2.5px;
-  transform: rotate(90deg);
+  margin-left: 4px;
 }
 
+.workstation-selector-btn .dropdown-arrow.rotated {
+  transform: rotate(180deg);
+}
 
+/* 工作站下拉菜单 - 使用Portal渲染，样式与user-dropdown保持一致 */
 .workstation-dropdown-menu {
   position: fixed;
-  top: auto;
-  left: auto;
+  z-index: 1500; /* 调整层级避免冲突 */
   min-width: 280px;
-  z-index: 2000 !important;
-  opacity: 1 !important;
-  transform: translateY(0) !important;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  display: block !important;
-  visibility: visible !important;
-  overflow: visible;
-  will-change: backdrop-filter;
-  transform: translateZ(0);
+  max-height: 300px;
+
+  /* 玻璃态效果 - 锁定模糊强度9px，与用户选择器保持一致 */
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  overflow: hidden;
+  display: none; /* 初始完全隐藏 */
+  flex-direction: column;
+  pointer-events: none;
+
+  /* 性能优化 */
+  will-change: opacity, transform, backdrop-filter;
 }
+
+/* 工作站下拉菜单打开状态 - 复用user-dropdown的入场动画 */
+.workstation-dropdown-menu.show {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
 
 .workstation-option {
   display: flex;

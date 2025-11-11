@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
+import { Portal } from './common/Portal';
 
 interface UserSelectorProps {
   currentUser: string;
@@ -16,38 +16,85 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [error, setError] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // 用户列表已在UserProvider中加载，这里不需要重复加载
-
-  // 使用 useOnClickOutside Hook 实现下拉菜单点击外部关闭
-  useOnClickOutside(dropdownRef, () => {
-    setIsOpen(false);
-  }, isOpen);
-
-  // 动态定位下拉菜单
+  // 手动处理点击外部关闭（替代useOnClickOutside）
+  // 因为下拉菜单在Portal中，无法被containerRef捕获
   useEffect(() => {
-    if (isOpen && dropdownRef.current) {
-      const button = dropdownRef.current.querySelector('.user-selector-button') as HTMLElement;
-      const dropdown = dropdownRef.current.querySelector('.user-dropdown') as HTMLElement;
+    if (!isOpen) return;
 
-      if (button && dropdown) {
-        const buttonRect = button.getBoundingClientRect();
-        dropdown.style.position = 'fixed';
-        dropdown.style.top = `${buttonRect.bottom + 8}px`;
-        dropdown.style.left = `${buttonRect.left}px`;
-        dropdown.style.width = `${Math.max(280, buttonRect.width)}px`;
-      }
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      // 如果点击在按钮上，不关闭（按钮会自己处理toggle）
+      if (buttonRef.current?.contains(target)) return;
+
+      // 如果点击在下拉菜单上，不关闭
+      if (dropdownRef.current?.contains(target)) return;
+
+      // 点击在其他地方，关闭下拉菜单
+      setIsOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // 计算下拉菜单位置（相对于视口）
+  const updateDropdownPosition = () => {
+    if (!buttonRef.current) return;
+
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    setDropdownPosition({
+      top: buttonRect.bottom + 13, // 按钮底部 + 间距（下移13px，比之前多5px）
+      left: buttonRect.left,
+      width: Math.max(280, buttonRect.width)
+    });
+  };
+
+  // 打开下拉菜单时更新位置
+  useEffect(() => {
+    if (isOpen) {
+      updateDropdownPosition();
+
+      // 监听窗口变化，实时更新位置
+      const handleResize = () => updateDropdownPosition();
+      const handleScroll = () => updateDropdownPosition();
+
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('scroll', handleScroll, true);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('scroll', handleScroll, true);
+      };
     }
   }, [isOpen]);
 
-  // 使用 useOnClickOutside Hook 实现新建用户对话框点击外部关闭
-  useOnClickOutside(dialogRef, () => {
-    setShowCreateDialog(false);
-    setNewUserName('');
-    setError('');
-  }, showCreateDialog);
+  // 手动处理新建用户对话框点击外部关闭
+  useEffect(() => {
+    if (!showCreateDialog) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      // 如果点击在对话框内容区域，不关闭
+      const dialogContent = dialogRef.current?.querySelector('.dialog-content');
+      if (dialogContent?.contains(target)) return;
+
+      // 点击遮罩层，关闭对话框
+      setShowCreateDialog(false);
+      setNewUserName('');
+      setError('');
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCreateDialog]);
 
   // 动态定位新建用户对话框到 app-root 中心
   useEffect(() => {
@@ -106,10 +153,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   };
 
   return (
-    <div className="user-selector-container" ref={dropdownRef}>
-      {/* 用户选择器按钮 - 仿工作站样式但不复用其 class */}
+    <div className="user-selector-container" ref={containerRef}>
+      {/* 用户选择器按钮 - 移除glass类以避免transform隔离 */}
       <button
-        className="user-selector-button glass"
+        ref={buttonRef}
+        className="user-selector-button"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="user-display">{currentUser || '选择用户'}</span>
@@ -138,27 +186,39 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         +
       </button>
 
-      {/* 用户下拉菜单 - 仅包含用户列表 */}
-      <div className={`user-dropdown ${isOpen ? 'show' : ''}`}>
-        <div className="user-list">
-          {users.length > 0 ? (
-            users.map(user => (
-              <button
-                key={user.user}
-                className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
-                onClick={() => {
-                  onUserChange(user.user);
-                  setIsOpen(false);
-                }}
-              >
-                {user.user}
-              </button>
-            ))
-          ) : (
-            <div className="empty-users">暂无用户</div>
-          )}
-        </div>
-      </div>
+      {/* 用户下拉菜单 - 使用Portal渲染到body下，绕过层叠上下文限制 */}
+      <Portal>
+        {isOpen && (
+          <div
+            ref={dropdownRef}
+            className="user-dropdown show"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`
+            } as React.CSSProperties}
+          >
+            <div className="user-list">
+              {users.length > 0 ? (
+                users.map(user => (
+                  <button
+                    key={user.user}
+                    className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
+                    onClick={() => {
+                      onUserChange(user.user);
+                      setIsOpen(false);
+                    }}
+                  >
+                    {user.user}
+                  </button>
+                ))
+              ) : (
+                <div className="empty-users">暂无用户</div>
+              )}
+            </div>
+          </div>
+        )}
+      </Portal>
 
       {/* 新建用户弹窗 */}
       {showCreateDialog && (

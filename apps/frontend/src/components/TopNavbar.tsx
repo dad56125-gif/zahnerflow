@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { UserSelector } from './UserSelector';
 import { useUser } from '../contexts/UserContext';
-import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
+import { Portal } from './common/Portal';
 import './UserSelector.css';
 
 interface Workstation {
@@ -22,50 +22,49 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
   const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
   const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const dropdownMenuRef = useRef<HTMLDivElement>(null);
+  const [workstationPosition, setWorkstationPosition] = useState({ top: 0, left: 0, width: 0 });
+  const workstationButtonRef = useRef<HTMLButtonElement>(null);
+  const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
-  const resolveFrostedGlassConflict = useCallback((menuElement: HTMLElement) => {
-    (menuElement.style as any).backdropFilter = 'blur(30px)';
-    (menuElement.style as any).webkitBackdropFilter = 'blur(30px)';
-    menuElement.style.background = 'rgba(0, 0, 0, 0.4)';
-    menuElement.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-    menuElement.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.6)';
-    menuElement.style.isolation = 'isolate';
-    return true;
-  }, []);
+  // 手动处理点击外部关闭（替代useOnClickOutside，因为下拉菜单在Portal中）
+  useEffect(() => {
+    if (!isWorkstationDropdownOpen) return;
 
-  const positionDropdown = useCallback(() => {
-    if (dropdownRef.current && dropdownMenuRef.current && isWorkstationDropdownOpen) {
-      const buttonRect = dropdownRef.current.getBoundingClientRect();
-      const menu = dropdownMenuRef.current;
-      menu.style.position = 'fixed';
-      menu.style.top = `${buttonRect.bottom + 8}px`;
-      menu.style.left = `${buttonRect.right - 280}px`;
-      menu.style.width = '280px';
-      menu.style.zIndex = '2000';
-      resolveFrostedGlassConflict(menu);
-    }
-  }, [isWorkstationDropdownOpen, resolveFrostedGlassConflict]);
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (workstationButtonRef.current?.contains(target)) return;
+      setIsWorkstationDropdownOpen(false);
+    };
 
-  // 使用 useOnClickOutside Hook 实现工作站下拉菜单点击外部关闭
-  useOnClickOutside(dropdownRef, () => {
-    setIsWorkstationDropdownOpen(false);
-  }, isWorkstationDropdownOpen);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isWorkstationDropdownOpen]);
+
+  // 计算工作站下拉菜单位置（相对于视口）
+  const updateWorkstationPosition = () => {
+    if (!workstationButtonRef.current) return;
+
+    const buttonRect = workstationButtonRef.current.getBoundingClientRect();
+    setWorkstationPosition({
+      top: buttonRect.bottom + 13, // 按钮底部 + 间距（下移13px，与用户选择器保持一致）
+      left: buttonRect.right - 280,
+      width: 280
+    });
+  };
 
   useEffect(() => {
     if (isWorkstationDropdownOpen) {
-      positionDropdown();
-      const handleScroll = () => positionDropdown();
-      const handleResize = () => positionDropdown();
-      window.addEventListener('scroll', handleScroll);
+      updateWorkstationPosition();
+      const handleScroll = () => updateWorkstationPosition();
+      const handleResize = () => updateWorkstationPosition();
+      window.addEventListener('scroll', handleScroll, true);
       window.addEventListener('resize', handleResize);
       return () => {
-        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('scroll', handleScroll, true);
         window.removeEventListener('resize', handleResize);
       };
     }
-  }, [isWorkstationDropdownOpen, positionDropdown]);
+  }, [isWorkstationDropdownOpen]);
 
   const workstations: Workstation[] = [
     {
@@ -128,47 +127,59 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
             <span className="device-status-indicator disconnected" />
           </div>
 
-          <div className="workstation-selector">
-            <div className="workstation-dropdown" ref={dropdownRef}>
-              <button className="workstation-selector-btn workstation-button-base glass" onClick={handleToggleDropdown}>
-                <span className="workstation-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
-                <span className="workstation-name">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
-                <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
-                <svg className="dropdown-arrow" viewBox="-10 -12 20 24" width="12" height="12">
-                  <path
-                    d="M -10 -12 L 0 0 L -10 12"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.8)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-
-              {isWorkstationDropdownOpen && (
-                <div className="workstation-dropdown-menu" ref={dropdownMenuRef}>
-                  {workstations.map((workstation) => (
-                    <div
-                      key={workstation.id}
-                      className={`workstation-option ${workstation.status}`}
-                      onClick={() => handleWorkstationSelect(workstation)}
-                    >
-                      <div className="workstation-option-icon">{workstation.icon}</div>
-                      <div className="workstation-option-info">
-                        <div className="workstation-option-name">{workstation.name}</div>
-                        <div className="workstation-option-type">{workstation.type}</div>
-                      </div>
-                      <div className={`workstation-option-status ${workstation.status}`}>
-                        <span className="status-dot" />
-                        <span className="status-text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="workstation-selector" ref={dropdownContainerRef}>
+            <button
+              ref={workstationButtonRef}
+              className="workstation-selector-btn workstation-button-base glass"
+              onClick={handleToggleDropdown}
+            >
+              <span className="workstation-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
+              <span className="workstation-name">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
+              <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
+              <svg className={`dropdown-arrow ${isWorkstationDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+                <path
+                  d="M -8 -3 L 0 5 L 8 -3"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.8)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
+
+          {/* 工作站下拉菜单 - 使用Portal渲染 */}
+          <Portal>
+            {isWorkstationDropdownOpen && (
+              <div
+                className="workstation-dropdown-menu show"
+                style={{
+                  top: `${workstationPosition.top}px`,
+                  left: `${workstationPosition.left}px`,
+                  width: `${workstationPosition.width}px`
+                } as React.CSSProperties}
+              >
+                {workstations.map((workstation) => (
+                  <div
+                    key={workstation.id}
+                    className={`workstation-option ${workstation.status}`}
+                    onClick={() => handleWorkstationSelect(workstation)}
+                  >
+                    <div className="workstation-option-icon">{workstation.icon}</div>
+                    <div className="workstation-option-info">
+                      <div className="workstation-option-name">{workstation.name}</div>
+                      <div className="workstation-option-type">{workstation.type}</div>
+                    </div>
+                    <div className={`workstation-option-status ${workstation.status}`}>
+                      <span className="status-dot" />
+                      <span className="status-text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Portal>
 
         </div>
       </div>
