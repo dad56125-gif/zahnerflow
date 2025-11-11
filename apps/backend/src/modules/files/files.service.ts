@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { DbService } from '../../db/db.service';
 import * as path from 'path';
 
@@ -33,7 +33,10 @@ export interface BuildOutputPathOptions {
 
 @Injectable()
 export class FilesService {
-  constructor(private readonly dbService: DbService) {}
+  constructor(
+    @Inject(forwardRef(() => DbService))
+    private readonly dbService: DbService
+  ) {}
 
   async registerFile(payload: RegisterFilePayload): Promise<RegisterFileResult> {
     const basePath = payload.base_path || 'C:\\data\\archive';
