@@ -163,8 +163,11 @@ export class LoopDetector {
   }
 
   /**
-   * 检测循环结构
-   * 修正：循环应该经过所有中间节点，而不是直接从start跳到end
+   * 检测循环结构（终极KISS版本）
+   *
+   * 不再依赖loop_id，而是基于遍历顺序自动配对循环
+   * 工作流是线性的，使用栈来跟踪未闭合的循环
+   * 看到loop_start就入栈，看到loop_end就与栈顶配对
    */
   private static detectLoopStructures(
     loopStartNodes: ElectrochemicalNode[],
@@ -174,47 +177,68 @@ export class LoopDetector {
   ): LoopInfo[] {
     const loops: LoopInfo[] = [];
 
-    // 首先建立节点ID到索引的映射，用于确定节点顺序
-    const nodeIndexMap = new Map<string, number>();
-    allNodes.forEach((node, index) => {
-      nodeIndexMap.set(node.id, index);
+    // 建立节点ID到节点的映射，方便查找
+    const loopStartNodeById = new Map(loopStartNodes.map(n => [n.id, n]));
+    const loopEndNodeById = new Map(loopEndNodes.map(n => [n.id, n]));
+
+    // 使用栈来跟踪未闭合的循环
+    const startStack: ElectrochemicalNode[] = [];
+    const loopPairQueue: Array<{id: string; start: ElectrochemicalNode; end: ElectrochemicalNode}> = [];
+
+    console.log('[LoopDetector] 基于遍历顺序自动配对循环...');
+
+    // 遍历所有节点，按顺序配对循环
+    allNodes.forEach(node => {
+      if (node.type === 'loop_start' && loopStartNodeById.has(node.id)) {
+        // 遇到循环开始节点，入栈
+        startStack.push(node);
+        console.log(`  节点 ${node.id.slice(-8)}: loop_start 入栈, 栈深度=${startStack.length}`);
+
+      } else if (node.type === 'loop_end' && loopEndNodeById.has(node.id)) {
+        // 遇到循环结束节点，与栈顶配对
+        if (startStack.length > 0) {
+          const startNode = startStack.pop()!;
+
+          // 生成循环ID（基于开始节点ID）
+          const loopId = `loop_${startNode.id}`;
+
+          loopPairQueue.push({
+            id: loopId,
+            start: startNode,
+            end: node
+          });
+
+          console.log(`  节点 ${node.id.slice(-8)}: loop_end 配对, start=${startNode.id.slice(-8)}, id=${loopId}`);
+        } else {
+          // 栈为空，说明有问题（孤立的loop_end）
+          console.warn(`[LoopDetector] 警告: 孤立的循环结束节点 ${node.id}`);
+        }
+      }
     });
 
-    for (const startNode of loopStartNodes) {
-      const loopId = startNode.data.parameters?.loop_id;
-      if (!loopId) {
-        // skip invalid start node without loop_id
-        continue;
-      }
+    // 建立节点ID到索引的映射，用于路径查找
+    const nodeIndexMap = new Map<string, number>();
+    allNodes.forEach((n, index) => {
+      nodeIndexMap.set(n.id, index);
+    });
 
-      // 查找对应的循环结束节点
-      const endNode = loopEndNodes.find(n =>
-        n.data.parameters?.loop_id === loopId
-      );
-
-      if (!endNode) {
-        // skip if no matching end node
-        continue;
-      }
-
-      // 查找前向循环路径：start → 中间节点 → end
-      const forwardPath = this.findForwardLoopPath(startNode.id, endNode.id, connectionGraph, nodeIndexMap);
+    // 为每对循环查找路径并创建LoopInfo
+    loopPairQueue.forEach(({id, start, end}) => {
+      // 查找前向循环路径
+      const forwardPath = this.findForwardLoopPath(start.id, end.id, connectionGraph, nodeIndexMap);
 
       if (forwardPath.length > 0) {
-        // 直接使用前向路径作为循环路径（不需要显式返回连接）
-        // 在实际执行中，循环会自动从end回到下一个节点或start
-
-        // ✅ 修复：确保node_ids包含start_node（用于层级验证）
-        const complete_path = [startNode.id, ...forwardPath];
+        // 完整路径包含start_node
+        const complete_path = [start.id, ...forwardPath];
 
         // 获取循环参数
-        const loopParams = this.extractLoopParameters(startNode, endNode);
+        const loopParams = this.extractLoopParameters(start, end);
 
         const loopInfo: LoopInfo = {
-          id: loopId,
-          start_node_id: startNode.id,
-          end_node_id: endNode.id,
-          node_ids: complete_path, // 包含所有节点（包括start）
+          id: id,
+          start_node_id: start.id,
+          end_node_id: end.id,
+          node_ids: complete_path,
           iteration_count: loopParams.iteration_count || 1,
           current_iteration: 0,
           is_active: false,
@@ -222,9 +246,17 @@ export class LoopDetector {
         };
 
         loops.push(loopInfo);
-        // detected loop
+        console.log(`[LoopDetector] 检测到循环: id=${id}, start=${start.id.slice(-8)}, end=${end.id.slice(-8)}`);
       }
+    });
+
+    // 检查是否有未配对的start节点（栈不为空）
+    const orphanStartNodes = startStack.map(n => n.id);
+    if (orphanStartNodes.length > 0) {
+      console.warn(`[LoopDetector] 警告: 未配对的循环开始节点:`, orphanStartNodes);
     }
+
+    console.log(`[LoopDetector] 检测到 ${loops.length} 个循环, ${orphanStartNodes.length} 个孤立开始节点`);
 
     return loops;
   }
@@ -282,6 +314,8 @@ export class LoopDetector {
   
   /**
    * 提取循环参数
+   *
+   * 现在不再依赖loop_id，只提取与循环执行相关的参数
    */
   private static extractLoopParameters(
     startNode: ElectrochemicalNode,
@@ -290,14 +324,19 @@ export class LoopDetector {
     const startParams = startNode.data.parameters || {};
     const endParams = endNode.data.parameters || {};
 
+    // 合并参数：start节点优先
+    const iteration_count = parseInt(startParams.loop_count) || parseInt(endParams.loop_count) || 1;
+    const delay_ms = parseInt(startParams.delay_ms) || parseInt(endParams.delay_ms) || 0;
+
     return {
-      loop_id: startParams.loop_id || endParams.loop_id,
-      iteration_count: parseInt(startParams.loop_count) || 1,
-      delay_ms: parseInt(startParams.delay_ms) || 0,
-      break_condition: startParams.break_condition || null,
-      continue_condition: startParams.continue_condition || null,
-      data_accumulation: startParams.data_accumulation || 'all',
-      export_format: startParams.export_format || 'csv'
+      iteration_count,
+      delay_ms,
+      break_condition: startParams.break_condition || endParams.break_condition || null,
+      continue_condition: startParams.continue_condition || endParams.continue_condition || null,
+      data_accumulation: startParams.data_accumulation || endParams.data_accumulation || 'all',
+      export_format: startParams.export_format || endParams.export_format || 'csv',
+      // 参数优先级标记
+      params_from: startParams.loop_count !== undefined ? 'start_node' : 'end_node'
     };
   }
 
