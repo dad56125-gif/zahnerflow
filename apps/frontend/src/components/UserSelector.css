@@ -50,8 +50,13 @@
 }
 
 .user-selector-button .dropdown-arrow {
-  font-size: 0.8rem;
-  transition: transform 0.2s;
+  width: 12px;
+  height: 12px;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  position: relative;
+  top: 2.5px;
+  transform: rotate(90deg);
 }
 
 /* 鍦嗗舰鏂板缓鐢ㄦ埛鎸夐挳 */

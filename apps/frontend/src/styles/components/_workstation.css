@@ -76,13 +76,15 @@
 }
 
 .workstation-selector-btn .dropdown-arrow {
-  font-size: 12px;
+  width: 12px;
+  height: 12px;
   transition: transform 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  position: relative;
+  top: 2.5px;
+  transform: rotate(90deg);
 }
 
-.workstation-selector-btn:hover .dropdown-arrow {
-  transform: rotate(180deg);
-}
 
 .workstation-dropdown-menu {
   position: fixed;

@@ -134,7 +134,16 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
                 <span className="workstation-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
                 <span className="workstation-name">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
                 <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
-                <span className="dropdown-arrow">▼</span>
+                <svg className="dropdown-arrow" viewBox="-10 -12 20 24" width="12" height="12">
+                  <path
+                    d="M -10 -12 L 0 0 L -10 12"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.8)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
 
               {isWorkstationDropdownOpen && (
