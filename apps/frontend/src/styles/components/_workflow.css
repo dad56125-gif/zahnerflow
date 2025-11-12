@@ -1,15 +1,32 @@
 /* 工作流系统样式 */
 
+/* Portal 容器样式 - 完全透明背景 */
+.portal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
 /* 工作流管理UI样式 */
 .workflow-manager-ui {
+  position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--glass-bg);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
-  backdrop-filter: blur(10px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-height: 80vh;
+  max-height: calc(100vh - 200px);
+  max-width: 90vw;
+  width: 600px;
   overflow: hidden;
 }
 
@@ -909,10 +926,13 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   transition: all 0.2s ease;
+  cursor: pointer; /* 添加指针样式 */
 }
 
 .history-item:hover {
   background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px); /* 添加悬停提升效果 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .history-info {
@@ -967,6 +987,73 @@
 .btn-delete:hover {
   background: rgba(244, 67, 54, 0.1);
   color: var(--error-color);
+}
+
+/* 内联删除确认样式 */
+.delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: var(--radius-sm);
+  animation: confirmIn 0.2s ease-out;
+}
+
+.delete-confirm-text {
+  font-size: 11px;
+  color: #f44336;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.delete-confirm-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.delete-confirm-btn.confirm {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.delete-confirm-btn.confirm:hover {
+  background: #f44336;
+  color: white;
+  transform: scale(1.1);
+}
+
+.delete-confirm-btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.delete-confirm-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: scale(1.1);
+}
+
+@keyframes confirmIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* 快捷操作样式 */
@@ -1061,4 +1148,113 @@
   .quick-btn {
     justify-content: center;
   }
+}
+
+/* 历史记录筛选器样式 - 完全复制用户选择器样式 */
+.history-filter {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  min-width: 200px;
+}
+
+/* 项目筛选按钮 - 完全复制用户选择器按钮样式 */
+.project-filter-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  height: calc(var(--btn-h) * 0.75); /* 减小高度 */
+  color: white;
+  min-width: 120px;
+  justify-content: space-between;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.project-filter-select:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.project-filter-select .user-display {
+  font-size: calc(0.9rem - 2px); /* 减小2px */
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.project-filter-select .dropdown-arrow {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  position: relative;
+  transform-origin: center center;
+  transform: scaleY(1);
+}
+
+/* 箭头翻转状态 - 复制用户选择器箭头样式 */
+.project-filter-select .dropdown-arrow.rotated {
+  transform: scaleY(-1);
+  transform-origin: center center;
+}
+
+/* 项目下拉列表容器 - 适应减小的选项高度 */
+.user-dropdown .user-list {
+  min-height: calc(var(--user-option-height) * 0.7); /* 最小1个减小高度的选项 */
+  max-height: calc(var(--user-option-height) * 3.5); /* 最大5个减小高度的选项 (0.6 * 5 = 3) */
+  overflow-y: auto;
+}
+
+/* 项目下拉选项样式 - 减小高度，增加黑透 */
+.user-dropdown .user-option {
+  width: 100%;
+  padding: 6px 16px; /* 减小padding，从12px改为6px */
+  height: calc(var(--user-option-height) * 0.6); /* 减小到0.6倍高度 */
+  background: rgba(0, 0, 0, 0.5); /* 增加黑透，透明度0.5 */
+  border: none;
+  color: var(--text-primary);
+  transition: var(--transition);
+  font-size: calc(0.9rem - 2px); /* 与按钮文字大小一致 */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* 暂无项目提示样式 - 与选项高度一致 */
+.user-dropdown .empty-users {
+  padding: 6px 16px; /* 与选项相同的padding */
+  height: calc(var(--user-option-height) * 0.7); /* 与选项相同的高度 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: calc(0.9rem - 2px); /* 与选项文字大小一致 */
+  font-style: italic;
+  cursor: default;
+  user-select: none;
+}
+
+.user-dropdown .user-option:hover {
+  background: rgba(0, 0, 0, 0.7); /* 悬停时更深的黑透 */
+}
+
+.user-dropdown .user-option.selected {
+  background: rgba(33, 150, 243, 0.3);
+  border-left: 3px solid #2196f3;
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
 }

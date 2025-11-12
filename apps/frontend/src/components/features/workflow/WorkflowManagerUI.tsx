@@ -11,12 +11,11 @@ import { useCanvasStore } from '@/services/stores/canvasStore';
 import { useWorkflowStore } from '@/services/stores';
 import { useWorkflowParameterStore } from '@/services/stores';
 import { LoopDetector } from '.';
-import WorkflowExporter, { WorkflowExporterProps } from './WorkflowExporter';
-import WorkflowImporter, { WorkflowImporterProps } from './WorkflowImporter';
 import WorkflowManager, { type WorkflowData, type WorkflowMetadata } from './WorkflowManager';
 import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';
 import { api } from '@/services/api';
 import { useUser } from '@/contexts/UserContext';
+import Portal from '@/components/Portal';
 
 // 工作流管理UI属性接口
 export interface WorkflowManagerUIProps {
@@ -58,15 +57,19 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
 
   const { currentUser } = useUser();
-  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'templates' | 'history'>('export');
-  const [showExporter, setShowExporter] = useState(false);
-  const [showImporter, setShowImporter] = useState(false);
+  const [activeTab, setActiveTab] = useState<'templates' | 'history'>('history');
   const [workflowHistory, setWorkflowHistory] = useState<WorkflowHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState('');
   const [projects, setProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [isProjectDropdownHiding, setIsProjectDropdownHiding] = useState(false);
+  const [projectDropdownPosition, setProjectDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const projectDropdownButtonRef = useRef<HTMLButtonElement>(null);
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
 
   const [templates] = useState<WorkflowData[]>([
     WorkflowManager.createWorkflowTemplate(
@@ -95,6 +98,92 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
       onClose();
     }
   });
+
+  // 项目下拉菜单点击外部关闭处理
+  useEffect(() => {
+    if (!isProjectDropdownOpen && !isProjectDropdownHiding) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      // 如果点击在按钮上，不关闭
+      if (projectDropdownButtonRef.current?.contains(target)) return;
+
+      // 如果点击在下拉菜单上，不关闭
+      if (projectDropdownRef.current?.contains(target)) return;
+
+      // 点击在其他地方，开始关闭动画
+      setIsProjectDropdownHiding(true);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isProjectDropdownOpen, isProjectDropdownHiding]);
+
+  // 处理项目下拉菜单动画结束事件
+  useEffect(() => {
+    if (!isProjectDropdownHiding) return;
+
+    const dropdown = projectDropdownRef.current;
+    if (!dropdown) return;
+
+    let animationCompleted = false;
+    const fallbackTimer = setTimeout(() => {
+      if (!animationCompleted) {
+        setIsProjectDropdownOpen(false);
+        setIsProjectDropdownHiding(false);
+      }
+    }, 300);
+
+    const handleAnimationEnd = (e: AnimationEvent) => {
+      if (e.animationName === 'dropdownOut') {
+        animationCompleted = true;
+        clearTimeout(fallbackTimer);
+        setIsProjectDropdownOpen(false);
+        setIsProjectDropdownHiding(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      dropdown.addEventListener('animationend', handleAnimationEnd);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+      dropdown.removeEventListener('animationend', handleAnimationEnd);
+    };
+  }, [isProjectDropdownHiding]);
+
+  // 计算项目下拉菜单位置
+  const updateProjectDropdownPosition = () => {
+    if (!projectDropdownButtonRef.current) return;
+
+    const buttonRect = projectDropdownButtonRef.current.getBoundingClientRect();
+    setProjectDropdownPosition({
+      top: buttonRect.bottom + 8, // 按钮底部 + 小间距
+      left: buttonRect.left,
+      width: Math.max(200, buttonRect.width)
+    });
+  };
+
+  // 打开项目下拉菜单时更新位置
+  useEffect(() => {
+    if (isProjectDropdownOpen) {
+      updateProjectDropdownPosition();
+
+      const handleResize = () => updateProjectDropdownPosition();
+      const handleScroll = () => updateProjectDropdownPosition();
+
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('scroll', handleScroll, true);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('scroll', handleScroll, true);
+      };
+    }
+  }, [isProjectDropdownOpen]);
 
   // 加载项目列表和历史工作流
   useEffect(() => {
@@ -195,50 +284,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     }
   };
 
-  // 导出完成处理
-  const handleExportComplete = (filename: string) => {
-    console.log('工作流导出成功:', filename);
-    setShowExporter(false);
-    addToHistory(filename);
-  };
-
-  // 导出错误处理
-  const handleExportError = (error: string) => {
-    console.error('工作流导出失败:', error);
-    alert('导出失败: ' + error);
-  };
-
-  // 导入完成处理
-  const handleImportComplete = (workflow: WorkflowData) => {
-    console.log('工作流导入成功:', workflow.metadata?.name);
-
-    // 应用导入的工作流
-    setNodes(workflow.nodes);
-    // 转换连接线格式：从 camelCase 到 snake_case
-    const formattedConnections = workflow.connections.map(conn => ({
-      id: conn.id,
-      source_id: conn.sourceId,
-      target_id: conn.targetId
-    }));
-    setConnections(formattedConnections);
-
-    setShowImporter(false);
-  };
-
-  // 导入错误处理
-  const handleImportError = (error: string) => {
-    console.error('工作流导入失败:', error);
-    alert('导入失败: ' + error);
-  };
-
-  // 添加到历史记录（现在直接重新加载历史记录）
-  const addToHistory = (filename: string) => {
-    // 导出完成后重新加载历史记录列表
-    if (activeTab === 'history') {
-      loadWorkflowHistory();
-    }
-  };
-
+  
+  
   // 加载历史工作流
   const loadHistoryWorkflow = async (workflow: WorkflowHistory) => {
     try {
@@ -337,19 +384,27 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
   // 删除历史工作流文件
   const deleteHistoryWorkflow = async (workflow: WorkflowHistory) => {
-    if (!confirm(`确定要删除历史工作流 "${workflow.name}" 吗？此操作不可撤销。`)) {
-      return;
-    }
-
     try {
       // 这里可以添加删除文件的API调用
       // 暂时只从本地列表中移除
       setWorkflowHistory(prev => prev.filter(item => item.id !== workflow.id));
+      setDeletingItemId(null); // 清除删除状态
       console.log(`历史工作流 "${workflow.name}" 已从列表中移除`);
     } catch (error) {
       console.error('删除历史工作流失败:', error);
+      setDeletingItemId(null); // 清除删除状态
       alert(`删除工作流 "${workflow.name}" 失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
+  };
+
+  // 显示删除确认
+  const showDeleteConfirm = (workflow: WorkflowHistory) => {
+    setDeletingItemId(workflow.id);
+  };
+
+  // 取消删除
+  const cancelDelete = () => {
+    setDeletingItemId(null);
   };
 
   // 应用模板
@@ -366,14 +421,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     }
   };
 
-  // 清空工作流
-  const clearWorkflow = () => {
-    if (window.confirm('确定要清空当前工作流吗？此操作不可撤销。')) {
-      setNodes([]);
-      setConnections([]);
-    }
-  };
-
+  
   // 获取工作流统计
   const getWorkflowStats = () => {
     return {
@@ -387,276 +435,255 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const stats = getWorkflowStats();
 
   return (
-    <div
-      ref={panelRef}
-      className={`workflow-manager-ui ${className}`}
-      style={style}
-    >
-      <div className="manager-header">
-        <h3>工作流管理</h3>
-        <div className="workflow-stats">
-          <span>节点: {stats.nodes}</span>
-          <span>连接: {stats.connections}</span>
-          <span>循环: {stats.loops}</span>
-        </div>
-      </div>
-
-      {/* 标签导航 */}
-      <div className="tab-navigation">
-        <button
-          className={`tab-btn ${activeTab === 'export' ? 'active' : ''}`}
-          onClick={() => setActiveTab('export')}
+    <Portal>
+      <div className="portal-overlay">
+        <div
+          ref={panelRef}
+          className={`workflow-manager-ui ${className}`}
+          style={style}
         >
-          导出工作流
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'import' ? 'active' : ''}`}
-          onClick={() => setActiveTab('import')}
-        >
-          导入工作流
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
-          onClick={() => setActiveTab('templates')}
-        >
-          模板库
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          历史记录
-        </button>
-      </div>
-
-      {/* 标签内容 */}
-      <div className="tab-content">
-        {/* 导出标签 */}
-        {activeTab === 'export' && (
-          <div className="export-tab">
-            <div className="tab-actions">
-              <button
-                onClick={() => setShowExporter(!showExporter)}
-                className="btn-primary"
-              >
-                {showExporter ? '隐藏导出界面' : '导出当前工作流'}
-              </button>
-              <button
-                onClick={clearWorkflow}
-                className="btn-danger"
-                disabled={nodes.length === 0}
-              >
-                清空工作流
-              </button>
+          <div className="manager-header">
+            <h3>工作流管理</h3>
+            <div className="workflow-stats">
+              <span>节点: {stats.nodes}</span>
+              <span>连接: {stats.connections}</span>
+              <span>循环: {stats.loops}</span>
             </div>
-
-            {showExporter && (
-              <WorkflowExporter
-                nodes={nodes}
-                connections={connections}
-                loops={detectedLoops}
-                onExportComplete={handleExportComplete}
-                onExportError={handleExportError}
-              />
-            )}
           </div>
-        )}
 
-        {/* 导入标签 */}
-        {activeTab === 'import' && (
-          <div className="import-tab">
-            <div className="tab-actions">
-              <button
-                onClick={() => setShowImporter(!showImporter)}
-                className="btn-primary"
-              >
-                {showImporter ? '隐藏导入界面' : '导入工作流文件'}
-              </button>
-            </div>
-
-            {showImporter && (
-              <WorkflowImporter
-                onImportComplete={handleImportComplete}
-                onImportError={handleImportError}
-                onImportCancel={() => setShowImporter(false)}
-              />
-            )}
+          {/* 标签导航 */}
+          <div className="tab-navigation">
+            <button
+              className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              历史记录
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
+              onClick={() => setActiveTab('templates')}
+            >
+              收藏
+            </button>
           </div>
-        )}
 
-        {/* 模板标签 */}
-        {activeTab === 'templates' && (
-          <div className="templates-tab">
-            <div className="templates-header">
-              <h4>工作流模板</h4>
-              <p>选择一个模板快速开始新的工作流</p>
-            </div>
+          {/* 标签内容 */}
+          <div className="tab-content">
 
-            <div className="templates-grid">
-              {templates.map((template, index) => (
-                <div key={index} className="template-card">
-                  <div className="template-header">
-                    <h5>{template.metadata?.name}</h5>
-                    <span className="template-badge">模板</span>
-                  </div>
-                  <div className="template-description">
-                    {template.metadata?.description}
-                  </div>
-                  <div className="template-stats">
-                    <span>节点: {template.nodes.length}</span>
-                    <span>连接: {template.connections.length}</span>
-                  </div>
-                  <div className="template-actions">
+            {/* 历史记录标签 */}
+            {activeTab === 'history' && (
+              <div className="history-tab">
+                <div className="history-header">
+                  {/* 项目筛选器 - 自定义下拉菜单 */}
+                  <div className="history-filter">
                     <button
-                      onClick={() => applyTemplate(template)}
-                      className="btn-apply"
+                      ref={projectDropdownButtonRef}
+                      className="project-filter-select"
+                      onClick={() => {
+                        if (isProjectDropdownOpen) {
+                          setIsProjectDropdownOpen(false);
+                          setIsProjectDropdownHiding(true);
+                        } else {
+                          setIsProjectDropdownOpen(true);
+                        }
+                      }}
                     >
-                      应用模板
+                      <span className="user-display">{selectedProject || '所有项目'}</span>
+                      <svg className={`dropdown-arrow ${isProjectDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+                        <path
+                          d="M -8 -3 L 0 5 L 8 -3"
+                          fill="none"
+                          stroke="rgba(255,255,255,0.8)"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* 历史记录标签 */}
-        {activeTab === 'history' && (
-          <div className="history-tab">
-            <div className="history-header">
-              <h4>历史工作流</h4>
-              <p>查询和加载历史保存的工作流文件</p>
+                {historyError && (
+                  <div className="history-error">
+                    {historyError}
+                    <button
+                      onClick={loadWorkflowHistory}
+                      className="retry-btn"
+                      disabled={loadingHistory}
+                    >
+                      重试
+                    </button>
+                  </div>
+                )}
 
-              {/* 项目筛选器 */}
-              <div className="history-filter">
-                <select
-                  value={selectedProject}
-                  onChange={(e) => setSelectedProject(e.target.value)}
-                  className="project-filter-select"
-                >
-                  <option value="">所有项目</option>
-                  {projects.map(project => (
-                    <option key={project} value={project}>{project}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={loadWorkflowHistory}
-                  className="refresh-btn"
-                  disabled={loadingHistory}
-                  title="刷新列表"
-                >
-                  {loadingHistory ? '🔄' : '🔄'}
-                </button>
-              </div>
-            </div>
-
-            {historyError && (
-              <div className="history-error">
-                {historyError}
-                <button
-                  onClick={loadWorkflowHistory}
-                  className="retry-btn"
-                  disabled={loadingHistory}
-                >
-                  重试
-                </button>
-              </div>
-            )}
-
-            {loadingHistory ? (
-              <div className="history-loading">
-                <div className="loading-spinner">🔄</div>
-                <div>正在加载历史工作流...</div>
-              </div>
-            ) : workflowHistory.length === 0 ? (
-              <div className="history-empty">
-                <div className="empty-icon">📋</div>
-                <div className="empty-text">暂无历史工作流</div>
-                <div className="empty-hint">
-                  {selectedProject
-                    ? `项目 "${selectedProject}" 中没有找到历史工作流`
-                    : '导出工作流后会在这里显示记录'
-                  }
-                </div>
-              </div>
-            ) : (
-              <div className="history-list">
-                {workflowHistory.map((item) => (
-                  <div key={item.id} className="history-item">
-                    <div className="history-info">
-                      <div className="history-name">{item.name}</div>
-                      <div className="history-project">
-                        项目: {item.project_name}
-                      </div>
-                      <div className="history-details">
-                        <span>节点: {item.node_count || 0}</span>
-                        <span>连接: {item.connection_count || 0}</span>
-                        <span>循环: {item.loop_count || 0}</span>
-                        {item.file_size && (
-                          <span>大小: {Math.round(item.file_size / 1024)}KB</span>
-                        )}
-                      </div>
-                      <div className="history-time">
-                        {new Date(item.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="history-actions">
-                      <button
-                        onClick={() => loadHistoryWorkflow(item)}
-                        className="btn-load"
-                        title="加载工作流"
-                      >
-                        📂
-                      </button>
-                      <button
-                        onClick={() => deleteHistoryWorkflow(item)}
-                        className="btn-delete"
-                        title="删除记录"
-                      >
-                        🗑️
-                      </button>
+                {loadingHistory ? (
+                  <div className="history-loading">
+                    <div className="loading-spinner">🔄</div>
+                    <div>正在加载历史工作流...</div>
+                  </div>
+                ) : workflowHistory.length === 0 ? (
+                  <div className="history-empty">
+                    <div className="empty-icon">📋</div>
+                    <div className="empty-text">暂无历史工作流</div>
+                    <div className="empty-hint">
+                      {selectedProject
+                        ? `项目 "${selectedProject}" 中没有找到历史工作流`
+                        : '导出工作流后会在这里显示记录'
+                      }
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <div className="history-list">
+                    {workflowHistory.map((item) => (
+                      <div
+                        key={item.id}
+                        className="history-item"
+                        onDoubleClick={() => loadHistoryWorkflow(item)}
+                        title="双击加载工作流"
+                      >
+                        <div className="history-info">
+                          <div className="history-name">{item.name}</div>
+                          <div className="history-project">
+                            项目: {item.project_name}
+                          </div>
+                          <div className="history-details">
+                            <span>节点: {item.node_count || 0}</span>
+                            <span>连接: {item.connection_count || 0}</span>
+                            <span>循环: {item.loop_count || 0}</span>
+                            {item.file_size && (
+                              <span>大小: {Math.round(item.file_size / 1024)}KB</span>
+                            )}
+                          </div>
+                          <div className="history-time">
+                            {new Date(item.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="history-actions">
+                        <button
+                          onClick={() => showDeleteConfirm(item)}
+                          className="delete-user-btn"
+                          title="删除记录"
+                          style={{ display: deletingItemId === item.id ? 'none' : 'flex' }}
+                        >
+                          ×
+                        </button>
+                        {deletingItemId === item.id && (
+                          <div className="delete-confirm">
+                            <span className="delete-confirm-text">确认删除？</span>
+                            <button
+                              onClick={() => deleteHistoryWorkflow(item)}
+                              className="delete-confirm-btn confirm"
+                              title="确认删除"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={cancelDelete}
+                              className="delete-confirm-btn cancel"
+                              title="取消删除"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 收藏标签 */}
+            {activeTab === 'templates' && (
+              <div className="templates-tab">
+                <div className="templates-header">
+                  <h4>收藏</h4>
+                  <p>选择一个收藏快速开始新的工作流</p>
+                </div>
+
+                <div className="templates-grid">
+                  {templates.map((template, index) => (
+                    <div key={index} className="template-card">
+                      <div className="template-header">
+                        <h5>{template.metadata?.name}</h5>
+                        <span className="template-badge">收藏</span>
+                      </div>
+                      <div className="template-description">
+                        {template.metadata?.description}
+                      </div>
+                      <div className="template-stats">
+                        <span>节点: {template.nodes.length}</span>
+                        <span>连接: {template.connections.length}</span>
+                      </div>
+                      <div className="template-actions">
+                        <button
+                          onClick={() => applyTemplate(template)}
+                          className="btn-apply"
+                        >
+                          应用模板
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* 快捷操作 */}
-      <div className="quick-actions">
-        <h5>快捷操作</h5>
-        <div className="action-buttons">
-          <button
-            onClick={() => {
-              setActiveTab('export');
-              setShowExporter(true);
-            }}
-            className="quick-btn export"
-            disabled={nodes.length === 0}
-          >
-            📤 快速导出
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('import');
-              setShowImporter(true);
-            }}
-            className="quick-btn import"
-          >
-            📥 快速导入
-          </button>
-          <button
-            onClick={clearWorkflow}
-            className="quick-btn clear"
-            disabled={nodes.length === 0}
-          >
-            🗑️ 清空画布
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* 项目下拉菜单 - 使用Portal渲染 */}
+      <Portal>
+        {(isProjectDropdownOpen || isProjectDropdownHiding) && (
+          <div
+            ref={projectDropdownRef}
+            className={`user-dropdown ${isProjectDropdownHiding ? 'hiding' : 'show'}`}
+            style={{
+              top: `${projectDropdownPosition.top}px`,
+              left: `${projectDropdownPosition.left}px`,
+              width: `${projectDropdownPosition.width}px`
+            } as React.CSSProperties}
+          >
+            <div className="user-list">
+              <div
+                className={`user-option ${selectedProject === '' ? 'selected' : ''}`}
+              >
+                <span
+                  className="user-name"
+                  onClick={() => {
+                    setSelectedProject('');
+                    setIsProjectDropdownHiding(true);
+                  }}
+                >
+                  所有项目
+                </span>
+              </div>
+              {projects.length > 0 ? (
+                projects.map(project => (
+                  <div
+                    key={project}
+                    className={`user-option ${project === selectedProject ? 'selected' : ''}`}
+                  >
+                    <span
+                      className="user-name"
+                      onClick={() => {
+                        setSelectedProject(project);
+                        setIsProjectDropdownHiding(true);
+                      }}
+                    >
+                      {project}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-users">暂无项目</div>
+              )}
+            </div>
+          </div>
+        )}
+      </Portal>
+    </Portal>
   );
 };
 
