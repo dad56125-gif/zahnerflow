@@ -21,24 +21,65 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDeviceClick }) => {
   const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
+  const [isWorkstationHiding, setIsWorkstationHiding] = useState(false);
   const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
   const [workstationPosition, setWorkstationPosition] = useState({ top: 0, left: 0, width: 0 });
   const workstationButtonRef = useRef<HTMLButtonElement>(null);
+  const workstationDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
   // 手动处理点击外部关闭（替代useOnClickOutside，因为下拉菜单在Portal中）
   useEffect(() => {
-    if (!isWorkstationDropdownOpen) return;
+    if (!isWorkstationDropdownOpen && !isWorkstationHiding) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       if (workstationButtonRef.current?.contains(target)) return;
-      setIsWorkstationDropdownOpen(false);
+      // 如果点击在工作站下拉菜单上，不关闭
+      if (workstationDropdownRef.current?.contains(target)) return;
+      setIsWorkstationHiding(true);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isWorkstationDropdownOpen]);
+  }, [isWorkstationDropdownOpen, isWorkstationHiding]);
+
+  // 处理动画结束事件
+  useEffect(() => {
+    if (!isWorkstationHiding) return;
+
+    const dropdown = workstationDropdownRef.current;
+    if (!dropdown) return;
+
+    let animationCompleted = false;
+    const fallbackTimer = setTimeout(() => {
+      // 备用方案：如果动画事件没有触发，在300ms后强制关闭
+      if (!animationCompleted) {
+        setIsWorkstationDropdownOpen(false);
+        setIsWorkstationHiding(false);
+      }
+    }, 300);
+
+    const handleAnimationEnd = (e: AnimationEvent) => {
+      if (e.animationName === 'dropdownOut') {
+        animationCompleted = true;
+        clearTimeout(fallbackTimer);
+        setIsWorkstationDropdownOpen(false);
+        setIsWorkstationHiding(false);
+      }
+    };
+
+    // 延迟添加事件监听器，确保DOM已更新
+    const timer = setTimeout(() => {
+      dropdown.addEventListener('animationend', handleAnimationEnd);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+      dropdown.removeEventListener('animationend', handleAnimationEnd);
+    };
+  }, [isWorkstationHiding]);
 
   // 计算工作站下拉菜单位置（相对于视口）
   const updateWorkstationPosition = () => {
@@ -46,7 +87,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
 
     const buttonRect = workstationButtonRef.current.getBoundingClientRect();
     setWorkstationPosition({
-      top: buttonRect.bottom + 13, // 按钮底部 + 间距（下移13px，与用户选择器保持一致）
+      top: buttonRect.bottom + 18, // 按钮底部 + 间距（下移18px，比之前多5px）
       left: buttonRect.right - 280,
       width: 280
     });
@@ -78,11 +119,20 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
 
   const handleWorkstationSelect = (workstation: Workstation) => {
     setSelectedWorkstation(workstation);
-    setIsWorkstationDropdownOpen(false);
+    setIsWorkstationHiding(true);
     onWorkstationSelect?.(workstation);
   };
 
-  const handleToggleDropdown = () => setIsWorkstationDropdownOpen(!isWorkstationDropdownOpen);
+  const handleToggleDropdown = () => {
+    if (isWorkstationDropdownOpen) {
+      // 如果在打开状态，立即重置箭头状态，开始关闭动画
+      setIsWorkstationDropdownOpen(false);
+      setIsWorkstationHiding(true);
+    } else {
+      // 如果在关闭状态，直接打开
+      setIsWorkstationDropdownOpen(true);
+    }
+  };
 
   const handleDeviceClick = (device: 'furnace' | 'mfc') => onDeviceClick?.(device);
 
@@ -151,9 +201,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
 
           {/* 工作站下拉菜单 - 使用Portal渲染 */}
           <Portal>
-            {isWorkstationDropdownOpen && (
+            {(isWorkstationDropdownOpen || isWorkstationHiding) && (
               <div
-                className="workstation-dropdown-menu show"
+                ref={workstationDropdownRef}
+                className={`workstation-dropdown-menu ${isWorkstationHiding ? 'hiding' : 'show'}`}
                 style={{
                   top: `${workstationPosition.top}px`,
                   left: `${workstationPosition.left}px`,

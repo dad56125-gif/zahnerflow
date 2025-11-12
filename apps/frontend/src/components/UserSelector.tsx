@@ -11,9 +11,12 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   currentUser,
   onUserChange
 }) => {
-  const { users, createUser } = useUser();
+  const { users, createUser, deleteUser } = useUser();
   const [isOpen, setIsOpen] = useState(false);
+  const [isHiding, setIsHiding] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string>('');
   const [newUserName, setNewUserName] = useState('');
   const [error, setError] = useState('');
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -21,11 +24,12 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
 
   // 手动处理点击外部关闭（替代useOnClickOutside）
   // 因为下拉菜单在Portal中，无法被containerRef捕获
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !isHiding) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -36,13 +40,51 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       // 如果点击在下拉菜单上，不关闭
       if (dropdownRef.current?.contains(target)) return;
 
-      // 点击在其他地方，关闭下拉菜单
-      setIsOpen(false);
+      // 点击在其他地方，开始关闭动画
+      setIsHiding(true);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, isHiding]);
+
+  // 处理动画结束事件
+  useEffect(() => {
+    if (!isHiding) return;
+
+    const dropdown = dropdownRef.current;
+    if (!dropdown) return;
+
+    let animationCompleted = false;
+    const fallbackTimer = setTimeout(() => {
+      // 备用方案：如果动画事件没有触发，在300ms后强制关闭
+      if (!animationCompleted) {
+        setIsOpen(false);
+        setIsHiding(false);
+      }
+    }, 300);
+
+    const handleAnimationEnd = (e: AnimationEvent) => {
+      // 如果是关闭动画结束，完全关闭
+      if (e.animationName === 'dropdownOut') {
+        animationCompleted = true;
+        clearTimeout(fallbackTimer);
+        setIsOpen(false);
+        setIsHiding(false);
+      }
+    };
+
+    // 延迟添加事件监听器，确保DOM已更新
+    const timer = setTimeout(() => {
+      dropdown.addEventListener('animationend', handleAnimationEnd);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+      dropdown.removeEventListener('animationend', handleAnimationEnd);
+    };
+  }, [isHiding]);
 
   // 计算下拉菜单位置（相对于视口）
   const updateDropdownPosition = () => {
@@ -50,7 +92,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
     const buttonRect = buttonRef.current.getBoundingClientRect();
     setDropdownPosition({
-      top: buttonRect.bottom + 13, // 按钮底部 + 间距（下移13px，比之前多5px）
+      top: buttonRect.bottom + 18, // 按钮底部 + 间距（下移18px，比之前多5px）
       left: buttonRect.left,
       width: Math.max(280, buttonRect.width)
     });
@@ -96,46 +138,27 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCreateDialog]);
 
-  // 动态定位新建用户对话框到 app-root 中心
+  // 手动处理删除用户对话框点击外部关闭
   useEffect(() => {
-    if (!showCreateDialog || !dialogRef.current) return;
+    if (!showDeleteDialog) return;
 
-    const dialog = dialogRef.current;
-    const appRoot = document.querySelector('.app-root') as HTMLElement | null;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
 
-    const positionDialog = () => {
-      const rect = appRoot?.getBoundingClientRect();
+      // 如果点击在对话框内容区域，不关闭
+      const dialogContent = deleteDialogRef.current?.querySelector('.dialog-content');
+      if (dialogContent?.contains(target)) return;
 
-      dialog.style.position = 'fixed';
-      dialog.style.zIndex = '3000';
-      dialog.style.display = 'flex';
-      dialog.style.alignItems = 'center';
-      dialog.style.justifyContent = 'center';
-
-      if (rect) {
-        dialog.style.top = `${rect.top}px`;
-        dialog.style.left = `${rect.left}px`;
-        dialog.style.width = `${rect.width}px`;
-        dialog.style.height = `${rect.height}px`;
-      } else {
-        dialog.style.top = '0';
-        dialog.style.left = '0';
-        dialog.style.width = '100vw';
-        dialog.style.height = '100vh';
-      }
+      // 点击遮罩层，关闭对话框
+      cancelDeleteUser();
     };
 
-    positionDialog();
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDeleteDialog]);
 
-    window.addEventListener('resize', positionDialog);
-    window.addEventListener('scroll', positionDialog, true);
-
-    return () => {
-      window.removeEventListener('resize', positionDialog);
-      window.removeEventListener('scroll', positionDialog, true);
-    };
-  }, [showCreateDialog]);
-
+  
+  
   const handleCreateUser = async () => {
     if (!newUserName.trim()) return;
 
@@ -152,13 +175,48 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     }
   };
 
+  const handleDeleteUser = async (userToDelete: string) => {
+    setUserToDelete(userToDelete);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    try {
+      const success = await deleteUser(userToDelete);
+      if (success) {
+        console.log(`用户 ${userToDelete} 已删除`);
+      } else {
+        console.error(`删除用户 ${userToDelete} 失败`);
+      }
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+    } finally {
+      setShowDeleteDialog(false);
+      setUserToDelete('');
+    }
+  };
+
+  const cancelDeleteUser = () => {
+    setShowDeleteDialog(false);
+    setUserToDelete('');
+  };
+
   return (
     <div className="user-selector-container" ref={containerRef}>
       {/* 用户选择器按钮 - 移除glass类以避免transform隔离 */}
       <button
         ref={buttonRef}
         className="user-selector-button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isOpen) {
+            // 如果在打开状态，立即重置箭头状态，开始关闭动画
+            setIsOpen(false);
+            setIsHiding(true);
+          } else {
+            // 如果在关闭状态，直接打开
+            setIsOpen(true);
+          }
+        }}
       >
         <span className="user-display">{currentUser || '选择用户'}</span>
         <svg className={`dropdown-arrow ${isOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
@@ -188,10 +246,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
       {/* 用户下拉菜单 - 使用Portal渲染到body下，绕过层叠上下文限制 */}
       <Portal>
-        {isOpen && (
+        {(isOpen || isHiding) && (
           <div
             ref={dropdownRef}
-            className="user-dropdown show"
+            className={`user-dropdown ${isHiding ? 'hiding' : 'show'}`}
             style={{
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
@@ -201,16 +259,30 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             <div className="user-list">
               {users.length > 0 ? (
                 users.map(user => (
-                  <button
+                  <div
                     key={user.user}
                     className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
-                    onClick={() => {
-                      onUserChange(user.user);
-                      setIsOpen(false);
-                    }}
                   >
-                    {user.user}
-                  </button>
+                    <span
+                      className="user-name"
+                      onClick={() => {
+                        onUserChange(user.user);
+                        setIsHiding(true);
+                      }}
+                    >
+                      {user.user}
+                    </span>
+                    <button
+                      className="delete-user-btn"
+                      onClick={(e) => {
+                        e.stopPropagation(); // 防止触发用户选择
+                        handleDeleteUser(user.user);
+                      }}
+                      title="删除用户"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))
               ) : (
                 <div className="empty-users">暂无用户</div>
@@ -221,52 +293,86 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </Portal>
 
       {/* 新建用户弹窗 */}
-      {showCreateDialog && (
-        <div className="create-user-dialog" ref={dialogRef}>
-          <div className="dialog-content" onMouseDown={(e) => e.stopPropagation()}>
-            <h3>创建新用户</h3>
-            <input
-              type="text" autoComplete="off" spellCheck={false}
-              placeholder="输入用户名"
-              value={newUserName}
-              onChange={(e) => {
-                setNewUserName(e.target.value);
-                if (error) setError(''); // 清除之前的错误
-              }}
-              autoFocus
-            />
-            {error && (
-              <div className="error-message" style={{ color: 'red', fontSize: '12px', marginTop: '8px' }}>
-                {error}
+      <Portal>
+        {showCreateDialog && (
+          <div className="create-user-dialog portal-dialog" ref={dialogRef}>
+            <div className="dialog-content" onMouseDown={(e) => e.stopPropagation()}>
+              <h3>创建新用户</h3>
+              <input
+                type="text" autoComplete="off" spellCheck={false}
+                placeholder="输入用户名"
+                value={newUserName}
+                onChange={(e) => {
+                  setNewUserName(e.target.value);
+                  if (error) setError(''); // 清除之前的错误
+                }}
+                autoFocus
+              />
+              {error && (
+                <div className="error-message" style={{ color: 'red', fontSize: '12px', marginTop: '8px' }}>
+                  {error}
+                </div>
+              )}
+              <div className="dialog-buttons">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowCreateDialog(false);
+                    setNewUserName('');
+                    setError('');
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCreateUser}
+                  disabled={!newUserName.trim() || !!error}
+                  title={
+                    !newUserName.trim() ? '请输入用户名' :
+                    !!error ? error :
+                    '创建新用户'
+                  }
+                >
+                  确认
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+        )}
+      </Portal>
+
+      {/* 删除用户确认弹窗 */}
+      <Portal>
+        {showDeleteDialog && (
+          <div className="create-user-dialog portal-dialog" ref={deleteDialogRef}>
+          <div className="dialog-content" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="delete-warning-icon">⚠️</div>
+            <h3>确认删除用户</h3>
+            <p className="delete-warning-text">
+              确定要删除用户 <strong>"{userToDelete}"</strong> 吗？
+            </p>
+            <p className="delete-warning-subtext">
+              此操作无法撤销，用户相关数据将被永久删除。
+            </p>
             <div className="dialog-buttons">
               <button
                 className="btn btn-secondary"
-                onClick={() => {
-                  setShowCreateDialog(false);
-                  setNewUserName('');
-                  setError('');
-                }}
+                onClick={cancelDeleteUser}
               >
                 取消
               </button>
               <button
-                className="btn btn-primary"
-                onClick={handleCreateUser}
-                disabled={!newUserName.trim() || !!error}
-                title={
-                  !newUserName.trim() ? '请输入用户名' :
-                  !!error ? error :
-                  '创建新用户'
-                }
+                className="btn btn-danger"
+                onClick={confirmDeleteUser}
               >
-                确认
+                删除用户
               </button>
             </div>
           </div>
         </div>
-      )}
+        )}
+      </Portal>
     </div>
   );
 };

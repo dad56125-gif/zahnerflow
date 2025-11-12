@@ -78,15 +78,17 @@
 .workstation-selector-btn .dropdown-arrow {
   width: 12px;
   height: 12px;
-  transition: transform 0.3s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   position: relative;
-  top: 2.5px;
   margin-left: 4px;
+  transform-origin: center center;
+  transform: scaleY(1);
 }
 
 .workstation-selector-btn .dropdown-arrow.rotated {
-  transform: rotate(180deg);
+  transform: scaleY(-1);
+  transform-origin: center center;
 }
 
 /* 工作站下拉菜单 - 使用Portal渲染，样式与user-dropdown保持一致 */
@@ -97,7 +99,7 @@
   max-height: 300px;
 
   /* 玻璃态效果 - 锁定模糊强度9px，与用户选择器保持一致 */
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
   border: 1px solid var(--glass-border);
@@ -119,6 +121,37 @@
   opacity: 1;
   pointer-events: auto;
   animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* 工作站下拉菜单关闭状态 - 缓出动画 */
+.workstation-dropdown-menu.hiding {
+  display: flex;
+  pointer-events: none;
+  animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* 下拉菜单入场动画 */
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 下拉菜单出场动画 */
+@keyframes dropdownOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
 }
 
 

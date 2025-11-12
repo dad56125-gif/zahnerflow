@@ -52,7 +52,7 @@
 .user-selector-button .dropdown-arrow {
   width: 12px;
   height: 12px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   position: relative;
   transform-origin: center center;
@@ -121,8 +121,8 @@
   min-width: 280px;
   max-height: 300px; /* 合理的最大高度限制 */
 
-  /* 玻璃态效果 - 锁定模糊强度9px，增加透明度到0.5 */
-  background: rgba(0, 0, 0, 0.5);
+  /* 玻璃态效果 - 锁定模糊强度9px，增加透明度到0.1 */
+  background: rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
   border: 1px solid var(--glass-border);
@@ -148,6 +148,8 @@
 
 /* 下拉菜单关闭状态 - 缓出动画（使用类控制） */
 .user-dropdown.hiding {
+  display: flex;
+  pointer-events: none;
   animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
@@ -164,13 +166,12 @@
   height: var(--user-option-height);
   background: transparent;
   border: none;
-  text-align: left;
-  cursor: pointer;
   color: var(--text-primary);
   transition: var(--transition);
   font-size: 0.9rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   box-sizing: border-box;
 }
 
@@ -178,11 +179,56 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.user-name {
+  flex: 1;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.delete-user-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+  margin-left: 8px;
+}
+
+.delete-user-btn:hover {
+  background: rgba(244, 67, 54, 0.8);
+  color: white;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.delete-user-btn:active {
+  transform: scale(0.95);
+}
+
 .user-option.selected {
   background: rgba(33, 150, 243, 0.3);
   border-left: 3px solid #2196f3;
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
+}
+
+.user-option.selected .delete-user-btn {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0.8;
+}
+
+.user-option.selected .delete-user-btn:hover {
+  background: rgba(244, 67, 54, 0.9);
 }
 
 /* 鏆傛棤鐢ㄦ埛鎻愮ず鏍峰紡 */
@@ -199,30 +245,34 @@
   user-select: none;
 }
 
-/* 鏂板缓鐢ㄦ埛寮瑰嚭妗?- 绠€鍖栧畾浣嶇瓥鐣ワ紝閬垮厤CSS骞叉壈 */
+/* 创建用户对话框 - Portal渲染，与下拉栏相同的玻璃态效果 */
 .create-user-dialog {
-  /* 瀹氫綅鍜屾牱寮忓皢鐢盝avaScript鍔ㄦ€佽缃?*/
-  z-index: 3000; /* 鎻愰珮鍒拌秴杩嘥opBar鍜屼笅鎷夎彍鍗曠殑灞傜骇 */
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1500; /* Portal中的层级，确保在其他内容之上 */
+
+  /* 与下拉栏相同的玻璃态效果 */
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  padding: 24px;
 }
 
 .dialog-content {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: 24px;
+  /* 完全透明，让父容器的玻璃态效果显示出来 */
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
   min-width: 320px;
-  box-shadow:
-    0 8px 32px var(--glass-shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .dialog-content h3 {
@@ -333,28 +383,52 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* ===== 调试用：测试模糊效果是否生效 ===== */
-/* 使用方法：
-   1. 打开浏览器开发者工具
-   2. 找到.user-dropdown元素
-   3. 添加此类名: class="user-dropdown show test-blur"
-   4. 观察下方内容是否模糊
-*/
-.user-dropdown.test-blur {
-  background: rgba(0, 0, 0, 0.5) !important; /* 更明显的不透明度 */
-  /* 使用CSS变量或固定值测试 */
-  --blur-intensity: 30px !important;
-  backdrop-filter: blur(var(--blur-intensity)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-intensity)) !important;
-  border: 2px solid red !important; /* 红色边框便于观察 */
+/* 删除用户确认弹窗专用样式 - 复用create-user-dialog */
+.delete-warning-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  text-align: center;
 }
 
-/* 调试用：测试不同背景色 */
-.user-dropdown.test-blue {
-  background: rgba(33, 150, 243, 0.3) !important; /* 蓝色半透明 */
+.delete-warning-text {
+  margin: 16px 0;
+  font-size: 16px;
+  color: var(--text-primary);
+  text-align: center;
 }
 
-.user-dropdown.test-dark {
-  background: rgba(0, 0, 0, 0.6) !important; /* 更暗背景 */
+.delete-warning-text strong {
+  color: #f44336;
+  font-weight: 600;
 }
 
+.delete-warning-subtext {
+  margin: 8px 0 24px 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.btn-danger {
+  background: #f44336;
+  color: white;
+  border: 1px solid #d32f2f;
+}
+
+.btn-danger:hover {
+  background: #d32f2f;
+  border-color: #b71c1c;
+}
+
+.btn-danger:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
+}
+
+.btn-danger:disabled {
+  background: #ccc;
+  border-color: #bbb;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
