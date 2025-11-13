@@ -305,8 +305,13 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
       console.log('Workflow data to process:', workflowData); // 调试日志
 
+      // 适配后端返回的数据结构：直接访问definition.nodes，而不是通过.data.definition.nodes
+      const workflowDefinition = (workflowData as any)?.data?.definition || (workflowData as any)?.definition || {};
+
+      console.log('Workflow definition:', workflowDefinition); // 调试日志
+
       // 转换工作流数据格式以适配前端期望的结构
-      const convertedNodes = workflowData.data?.definition?.nodes?.map((node: any) => {
+      const convertedNodes = workflowDefinition.nodes?.map((node: any) => {
         // 兼容性处理：处理新旧版本节点结构差异
         const isOldVersion = !node.data; // 旧版本没有data字段
 
@@ -364,7 +369,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         };
       }) || [];
 
-      const formattedConnections = workflowData.data?.definition?.edges?.map((edge: any) => ({
+      const formattedConnections = workflowDefinition.edges?.map((edge: any) => ({
         id: edge.id,
         source_id: edge.source,
         target_id: edge.target
@@ -566,7 +571,10 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         title="双击加载工作流"
                       >
                         <div className="history-info">
-                          <div className="history-name">{item.name}</div>
+                          <div className="history-name">
+                            {item.name}
+                            <span className="history-id">({item.id})</span>
+                          </div>
                           <div className="history-project">
                             项目: {item.project_name}
                           </div>
