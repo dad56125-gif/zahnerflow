@@ -611,108 +611,110 @@ export function useMfc(): [MfcState, MfcControls] {
     get_available_ports();
   }, [get_available_ports]);
 
-  // WebSocket设备发现事件监听 - 实现实时设备发现
-  useEffect(() => {
-    // 处理设备发现事件
-    const handleDeviceDiscovered = (discovered: MfcDeviceDiscovered) => {
-      console.log('Real-time MFC device discovered:', discovered);
+  // WebSocket事件处理函数 - 实现实时设备发现和状态更新
 
-      const deviceData = discovered.data;
+  // 处理设备发现事件
+  const handleDeviceDiscovered = (discovered: MfcDeviceDiscovered) => {
+    console.log('Real-time MFC device discovered:', discovered);
 
-      // 转换为MfcDevice格式
-      const newDevice: MfcDevice = {
-        address: deviceData.device_address,
-        gas_type: deviceData.gas_type,
-        max_flow_sccm: deviceData.max_flow_sccm,
-        flow_sccm: 0,
-        set_flow: 0,
-        flow_percent: 0,
-        digital_setpoint_percent: 0,
-        active_setpoint_percent: 0,
-        mode: 'follow' as const,
-        status: deviceData.connection_status === 'connected' ? 'connected' as const : 'disconnected' as const,
+    const deviceData = discovered.data;
+
+    // 转换为MfcDevice格式
+    const newDevice: MfcDevice = {
+      address: deviceData.device_address,
+      gas_type: deviceData.gas_type,
+      max_flow_sccm: deviceData.max_flow_sccm,
+      flow_sccm: 0,
+      set_flow: 0,
+      flow_percent: 0,
+      digital_setpoint_percent: 0,
+      active_setpoint_percent: 0,
+      mode: 'follow' as const,
+      status: deviceData.connection_status === 'connected' ? 'connected' as const : 'disconnected' as const,
+    };
+
+    setState(prev => {
+      // 检查设备是否已存在
+      const existingDeviceIndex = prev.devices.findIndex(d => d.address === newDevice.address);
+      const existingDeviceInfoIndex = prev.availableDevices.findIndex(d => d.address === newDevice.address);
+
+      let updatedDevices = [...prev.devices];
+      let updatedAvailableDevices = [...prev.availableDevices];
+
+      // 更新或添加设备
+      if (existingDeviceIndex >= 0) {
+        updatedDevices[existingDeviceIndex] = newDevice;
+      } else {
+        updatedDevices.push(newDevice);
+      }
+
+      // 更新或添加设备信息
+      const deviceInfo: MfcDeviceInfo = {
+        address: newDevice.address,
+        gas_type: newDevice.gas_type,
+        max_flow_sccm: newDevice.max_flow_sccm,
       };
 
-      setState(prev => {
-        // 检查设备是否已存在
-        const existingDeviceIndex = prev.devices.findIndex(d => d.address === newDevice.address);
-        const existingDeviceInfoIndex = prev.availableDevices.findIndex(d => d.address === newDevice.address);
+      if (existingDeviceInfoIndex >= 0) {
+        updatedAvailableDevices[existingDeviceInfoIndex] = deviceInfo;
+      } else {
+        updatedAvailableDevices.push(deviceInfo);
+      }
 
-        let updatedDevices = [...prev.devices];
-        let updatedAvailableDevices = [...prev.availableDevices];
+      return {
+        ...prev,
+        devices: updatedDevices,
+        availableDevices: updatedAvailableDevices,
+        lastUpdate: new Date(),
+      };
+    });
+  };
 
-        // 更新或添加设备
-        if (existingDeviceIndex >= 0) {
-          updatedDevices[existingDeviceIndex] = newDevice;
-        } else {
-          updatedDevices.push(newDevice);
-        }
+  // 处理WebSocket连接成功事件
+  const handleConnected = () => {
+    console.log('MFC WebSocket connected, subscribing to updates');
+    mfcWebSocketService.subscribeToMfc();
+  };
 
-        // 更新或添加设备信息
-        const deviceInfo: MfcDeviceInfo = {
-          address: newDevice.address,
-          gas_type: newDevice.gas_type,
-          max_flow_sccm: newDevice.max_flow_sccm,
-        };
+  // 处理状态更新事件 - 实时流量数据
+  const handleStatusUpdate = (update: MfcStatusUpdate) => {
+    console.log('MFC status update received:', update);
 
-        if (existingDeviceInfoIndex >= 0) {
-          updatedAvailableDevices[existingDeviceInfoIndex] = deviceInfo;
-        } else {
-          updatedAvailableDevices.push(deviceInfo);
-        }
+    setState(prev => {
+      const updatedDevices = prev.devices.map(device => {
+        // 查找对应的状态数据
+        const statusData = update.data.find(d => d.device_address === device.address);
+        if (!statusData) return device;
 
-        return {
-          ...prev,
-          devices: updatedDevices,
-          availableDevices: updatedAvailableDevices,
-          lastUpdate: new Date(),
-        };
-      });
-    };
+        // 计算流量百分比
+        const flowPercent = device.max_flow_sccm > 0
+          ? (statusData.flow_sccm / device.max_flow_sccm) * 100
+          : 0;
 
-    // 处理WebSocket连接成功事件
-    const handleConnected = () => {
-      console.log('MFC WebSocket connected, subscribing to updates');
-      mfcWebSocketService.subscribeToMfc();
-    };
-
-    // 处理状态更新事件 - 实时流量数据
-    const handleStatusUpdate = (update: MfcStatusUpdate) => {
-      console.log('MFC status update received:', update);
-
-      setState(prev => {
-        const updatedDevices = prev.devices.map(device => {
-          // 查找对应的状态数据
-          const statusData = update.data.find(d => d.device_address === device.address);
-          if (!statusData) return device;
-
-          // 计算流量百分比
-          const flowPercent = device.max_flow_sccm > 0
-            ? (statusData.flow_sccm / device.max_flow_sccm) * 100
-            : 0;
-
-          const setpointPercent = device.max_flow_sccm > 0
-            ? (statusData.setpoint_sccm / device.max_flow_sccm) * 100
-            : 0;
-
-          return {
-            ...device,
-            flow_sccm: statusData.flow_sccm,
-            set_flow: statusData.setpoint_sccm,
-            flow_percent: flowPercent,
-            active_setpoint_percent: setpointPercent,
-            status: statusData.connection_status as 'connected' | 'disconnected' | 'error' | 'warning',
-          };
-        });
+        const setpointPercent = device.max_flow_sccm > 0
+          ? (statusData.setpoint_sccm / device.max_flow_sccm) * 100
+          : 0;
 
         return {
-          ...prev,
-          devices: updatedDevices,
-          lastUpdate: new Date(),
+          ...device,
+          flow_sccm: statusData.flow_sccm,
+          set_flow: statusData.setpoint_sccm,
+          flow_percent: flowPercent,
+          active_setpoint_percent: setpointPercent,
+          status: statusData.connection_status as 'connected' | 'disconnected' | 'error' | 'warning',
         };
       });
-    };
 
+      return {
+        ...prev,
+        devices: updatedDevices,
+        lastUpdate: new Date(),
+      };
+    });
+  };
+
+  // WebSocket设备发现事件监听 - 注册监听器
+  useEffect(() => {
     // 移除自动连接逻辑，只在需要时连接
     // WebSocket连接将延迟到ensureConnection()方法被调用时才建立
 
