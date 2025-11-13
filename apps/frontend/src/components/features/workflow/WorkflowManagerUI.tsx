@@ -310,20 +310,44 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         // 兼容性处理：处理新旧版本节点结构差异
         const isOldVersion = !node.data; // 旧版本没有data字段
 
+        // 获取参数对象并进行数据清理
+        let parameters: Record<string, any> = {};
+        if (isOldVersion) {
+          parameters = node.config?.parameters || {};
+        } else {
+          parameters = node.data?.parameters || node.config?.parameters || {};
+        }
+
+        // 数据清理：移除不再支持的字段以保持兼容性
+        // 移除 loop_id 字段（已在新版本中移除）
+        if ('loop_id' in parameters) {
+          console.log(`[WorkflowManagerUI] 移除历史节点 ${node.id} 中的废弃字段: loop_id`);
+          delete parameters.loop_id;
+        }
+
+        // 根据节点类型确定正确的分类
+        const getNodeTypeCategory = (nodeType: string) => {
+          if (['startup', 'shutdown', 'change_temperature', 'change_gas_flow'].includes(nodeType)) {
+            return 'device';
+          }
+          if (['loop_start', 'loop_end', 'wait_delay'].includes(nodeType)) {
+            return 'flow_control';
+          }
+          return 'basic_measurement';
+        };
+
         return {
           id: node.id,
           type: node.type,
           name: node.name,
-          category: 'basic_measurement',
+          category: getNodeTypeCategory(node.type),
           position: node.position,
           style: { width: 140, height: 60 },
           status: node.status || 'ready', // 优先使用原有status，否则默认为ready
           data: {
             name: node.name,
             description: isOldVersion ? `Node: ${node.type}` : (node.data?.description || `Node: ${node.type}`),
-            parameters: isOldVersion
-              ? (node.config?.parameters || {})
-              : (node.data?.parameters || node.config?.parameters || {}),
+            parameters: parameters, // 使用清理后的参数
             createdAt: isOldVersion ? new Date() : (node.data?.createdAt ? new Date(node.data.createdAt) : new Date()),
             updatedAt: isOldVersion ? new Date() : (node.data?.updatedAt ? new Date(node.data.updatedAt) : new Date())
           },

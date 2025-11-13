@@ -228,15 +228,36 @@ export class WorkflowManager {
     if (!workflow.nodes || !Array.isArray(workflow.nodes)) {
       errors.push('工作流缺少有效的节点数据');
     } else {
+      // 定义当前支持的节点类型
+      const supportedNodeTypes: NodeType[] = [
+        'startup', 'shutdown', 'change_temperature', 'change_gas_flow',
+        'eis_potentiostatic', 'eis_galvanostatic', 'ocp_measurement',
+        'chronoamperometry', 'chronopotentiometry', 'voltage_ramp',
+        'current_ramp', 'lsv_measurement', 'loop_start', 'loop_end', 'wait_delay'
+      ];
+
       workflow.nodes.forEach((node, index) => {
         if (!node.id) {
           errors.push(`节点 ${index} 缺少 ID`);
         }
         if (!node.type) {
           errors.push(`节点 ${node.id || index} 缺少类型`);
+        } else {
+          // 检查节点类型是否受支持
+          if (!supportedNodeTypes.includes(node.type)) {
+            warnings.push(`节点 ${node.id} 使用了未知类型 "${node.type}"，将使用默认配置显示`);
+          }
         }
         if (!node.position || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
           errors.push(`节点 ${node.id || index} 位置信息无效`);
+        }
+
+        // 检查节点数据结构
+        if (node.data && node.data.parameters) {
+          // 检查是否有废弃的参数字段
+          if ('loop_id' in node.data.parameters) {
+            warnings.push(`节点 ${node.id} 包含废弃的 loop_id 参数，将被忽略`);
+          }
         }
       });
     }

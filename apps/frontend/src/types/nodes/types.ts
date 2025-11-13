@@ -693,7 +693,41 @@ export const NODE_CATEGORY_NAMES: Record<NodeCategory, string> = {
 
 // 工具函数：获取节点配置
 export function getNodeConfig(type: NodeType): NodeConfig {
-  return NODE_CONFIGS[type];
+  const config = NODE_CONFIGS[type];
+
+  // 如果找不到配置，返回一个默认配置以保持兼容性
+  if (!config) {
+    console.warn(`[getNodeConfig] 未知节点类型: ${type}，使用默认配置`);
+    return {
+      type: type as NodeType,
+      name: `未知节点 (${type})`,
+      category: 'basic_measurement',
+      description: `未知的节点类型: ${type}`,
+      icon: '❓',
+      input: {
+        id: 'input',
+        name: '输入',
+        dataType: 'flow'
+      },
+      output: {
+        id: 'output',
+        name: '输出',
+        dataType: 'flow'
+      },
+      style: {
+        width: 140,
+        height: 60,
+        background: 'linear-gradient(135deg, #9E9E9E, #757575)',
+        borderColor: '#757575',
+        borderRadius: '8px',
+        textColor: '#ffffff',
+        icon: '❓'
+      },
+      defaultParameters: {}
+    };
+  }
+
+  return config;
 }
 
 // 工具函数：获取节点分类名称
