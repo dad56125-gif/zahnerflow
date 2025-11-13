@@ -168,6 +168,94 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       });
     });
 
+    // 监听设备启动成功事件，发送节点完成通知
+    this.eventBus.on('device.started').subscribe((event) => {
+      this.consoleManager.log('ExecutionService', 'enableLog', '收到设备启动成功事件，发送节点完成通知', {
+        deviceType: event.data.context?.source || 'zahner-service'
+      });
+
+      const nodeId = this.getCurrentNodeId();
+      const executionId = this.getCurrentExecutionId();
+      const workflowId = this.getCurrentWorkflowId(executionId);
+
+      if (nodeId) {
+        this.eventBus.emit('node.completed', {
+          nodeId,
+          executionId,
+          workflowId,
+          nodeType: 'startup',
+          result: {
+            status: 'success',
+            message: '设备服务启动成功'
+          },
+          timestamp: new Date(),
+          context: { source: 'execution-service', deviceType: 'zahner-service' }
+        });
+
+        this.eventBus.emit('workflow.node.completed', {
+          nodeId,
+          executionId,
+          workflowId,
+          result: {
+            status: 'success',
+            message: '设备服务启动成功'
+          },
+          timestamp: new Date(),
+          context: { source: 'execution-service', deviceType: 'zahner-service' }
+        });
+
+        this.consoleManager.log('ExecutionService', 'enableLog', '发送 workflow.node.completed 事件（设备启动成功）', {
+          nodeId,
+          executionId,
+          result: '设备服务启动成功'
+        });
+      }
+    });
+
+    // 监听设备关闭成功事件，发送节点完成通知
+    this.eventBus.on('device.stopped').subscribe((event) => {
+      this.consoleManager.log('ExecutionService', 'enableLog', '收到设备关闭成功事件，发送节点完成通知', {
+        deviceType: event.data.context?.source || 'zahner-service'
+      });
+
+      const nodeId = this.getCurrentNodeId();
+      const executionId = this.getCurrentExecutionId();
+      const workflowId = this.getCurrentWorkflowId(executionId);
+
+      if (nodeId) {
+        this.eventBus.emit('node.completed', {
+          nodeId,
+          executionId,
+          workflowId,
+          nodeType: 'shutdown',
+          result: {
+            status: 'success',
+            message: '设备服务关闭成功'
+          },
+          timestamp: new Date(),
+          context: { source: 'execution-service', deviceType: 'zahner-service' }
+        });
+
+        this.eventBus.emit('workflow.node.completed', {
+          nodeId,
+          executionId,
+          workflowId,
+          result: {
+            status: 'success',
+            message: '设备服务关闭成功'
+          },
+          timestamp: new Date(),
+          context: { source: 'execution-service', deviceType: 'zahner-service' }
+        });
+
+        this.consoleManager.log('ExecutionService', 'enableLog', '发送 workflow.node.completed 事件（设备关闭成功）', {
+          nodeId,
+          executionId,
+          result: '设备服务关闭成功'
+        });
+      }
+    });
+
     // 监听设备错误事件，发送节点失败通知
     this.eventBus.on('device.error').subscribe((event) => {
       this.consoleManager.log('ExecutionService', 'enableError', '收到设备错误事件，发送节点失败通知', {
