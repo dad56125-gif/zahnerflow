@@ -148,7 +148,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
               <>
                 {/* 执行后显示温度区间 */}
                 <div className="eis-current">
-                  温度：{Math.round(node.data.parameters.current_temperature / 10)}→{Math.round(node.data.parameters.target_temperature / 10)}°C
+                  温度：{Math.round(node.data.parameters.current_temperature)}→{Math.round(node.data.parameters.target_temperature)}°C
                 </div>
                 {/* 执行后显示计算时间 */}
                 {node.data.parameters?.calculated_duration && (
@@ -160,7 +160,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
             ) : (
               /* 执行前显示目标温度 */
               <div className="eis-current">
-                温度：{Math.round((node.data.parameters?.target_temperature || 25) / 10)}°C
+                温度：{Math.round(node.data.parameters?.target_temperature || 25)}°C
               </div>
             )}
           </div>
