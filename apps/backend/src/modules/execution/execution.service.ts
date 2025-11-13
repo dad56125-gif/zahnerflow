@@ -167,6 +167,44 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         error: event.data.error
       });
     });
+
+    // 监听设备错误事件，发送节点失败通知
+    this.eventBus.on('device.error').subscribe((event) => {
+      this.consoleManager.log('ExecutionService', 'enableError', '收到设备错误事件，发送节点失败通知', {
+        deviceType: event.data.deviceType,
+        error: event.data.error
+      });
+
+      const nodeId = this.getCurrentNodeId();
+      const executionId = this.getCurrentExecutionId();
+      const workflowId = this.getCurrentWorkflowId(executionId);
+
+      if (nodeId) {
+        this.eventBus.emit('node.failed', {
+          nodeId,
+          executionId,
+          workflowId,
+          error: `设备错误: ${event.data.error}`,
+          timestamp: new Date(),
+          context: { source: 'execution-service', deviceType: event.data.deviceType }
+        });
+
+        this.eventBus.emit('workflow.node.failed', {
+          nodeId,
+          executionId,
+          workflowId,
+          error: `设备错误: ${event.data.error}`,
+          timestamp: new Date(),
+          context: { source: 'execution-service', deviceType: event.data.deviceType }
+        });
+
+        this.consoleManager.log('ExecutionService', 'enableError', '发送 workflow.node.failed 事件（设备错误触发）', {
+          nodeId,
+          executionId,
+          error: event.data.error
+        });
+      }
+    });
   }
 
   

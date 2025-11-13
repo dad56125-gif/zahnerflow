@@ -98,6 +98,9 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
     (e.currentTarget as HTMLElement).style.opacity = '1';
   };
 
+  // 调试日志：检查节点状态
+  console.log(`[NodeRenderer] 渲染节点: ${node.id}, 状态: ${node.status}, 名称: ${node.name}`);
+
   return (
     <div
       className={`node glass status-${node.status} ${

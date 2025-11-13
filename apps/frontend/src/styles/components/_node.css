@@ -143,7 +143,7 @@
   transform: scale(1.05);
 }
 
-/* 节点状态样式 */
+/* 节点状态样式 - 使用 !important 确保状态变化时样式正确更新 */
 /* 确保所有节点状态都使用水平布局 */
 .node[class*="status-"] {
   display: flex !important;
@@ -153,31 +153,31 @@
 }
 
 .node.status-ready {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: var(--glass-bg);
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: var(--glass-bg) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 .node.status-ready .node-status-indicator {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
 .node.status-running {
-  border: none;
+  border: none !important;
   background: linear-gradient(to bottom,
     rgba(25, 118, 210, 0.02) 0%,
     rgba(25, 118, 210, 0.30) 100%
-  );
+  ) !important;
   box-shadow:
     0 0 3px rgba(25, 118, 210, 0.3),
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  animation: running-opacity-pulse 1.5s infinite;
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1) !important;
+  animation: running-opacity-pulse 1.5s infinite !important;
 }
 
 @keyframes running-opacity-pulse {
@@ -193,29 +193,29 @@
 }
 
 .node.status-completed {
-  border: none;
+  border: none !important;
   background: linear-gradient(to bottom,
     rgba(46, 125, 50, 0.02) 0%,
     rgba(46, 125, 50, 0.25) 100%
-  );
+  ) !important;
   box-shadow:
     0 0 3px rgba(46, 125, 50, 0.3),
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 .node.status-failed {
-  border: none;
+  border: none !important;
   background: linear-gradient(to bottom,
     rgba(211, 47, 47, 0.02) 0%,
     rgba(211, 47, 47, 0.16) 100%
-  );
+  ) !important;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  animation: failed-internal-pulse 1.5s infinite;
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1) !important;
+  animation: failed-internal-pulse 1.5s infinite !important;
 }
 
 

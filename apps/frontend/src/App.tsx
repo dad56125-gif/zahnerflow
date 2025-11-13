@@ -143,11 +143,37 @@ const ZahnerFlowApp: React.FC = () => {
         }
         console.log(`创建并执行新工作流 "${createdWorkflow.name}" (ID: ${createdWorkflow.id})`);
 
+        // 同步更新前端的节点ID，使其与后端生成的一致
+        const { nodes: backendNodes } = createdWorkflow.definition;
+        const idMap = new Map<string, string>();
+        nodes.forEach((node, index) => {
+          if (backendNodes[index]) {
+            idMap.set(node.id, backendNodes[index].id);
+            console.log(`节点ID映射: ${node.id} -> ${backendNodes[index].id}`);
+          }
+        });
+
+        // 更新节点数组使用新的ID
+        const updatedNodes = nodes.map((node) => ({
+          ...node,
+          id: idMap.get(node.id) || node.id
+        }));
+        setNodes(updatedNodes);
+
+        // 更新连接数组使用新的ID
+        const updatedConnections = connections.map(conn => ({
+          ...conn,
+          source_id: idMap.get(conn.source_id) || conn.source_id,
+          target_id: idMap.get(conn.target_id) || conn.target_id
+        }));
+        const { setConnections } = useCanvasStore.getState();
+        setConnections(updatedConnections);
+
         // 更新WorkflowStore的currentWorkflow状态，确保workflow-id-display能正确显示
         const { setCurrentWorkflow } = useWorkflowStore.getState();
         setCurrentWorkflow(createdWorkflow);
 
-        await stateLinkageManager.startExecution(createdWorkflow.id, nodes);
+        await stateLinkageManager.startExecution(createdWorkflow.id, updatedNodes);
       }
     } catch (error) {
       console.error('工作流执行失败:', error);

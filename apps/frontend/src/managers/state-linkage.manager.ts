@@ -284,7 +284,9 @@ export class StateLinkageManager {
   }
 
   private handleNodeStatusUpdate(update: NodeStatusUpdate): void {
-    this.nodes = this.nodes.map(node => 
+    console.log(`[StateLinkageManager] 接收节点状态更新: ${update.nodeId} -> ${update.status}`);
+
+    this.nodes = this.nodes.map(node =>
       node.id === update.nodeId ? { ...node, status: update.status as NodeStatus } : node
     );
     if (this.onNodesUpdate) this.onNodesUpdate(this.nodes);
@@ -293,9 +295,13 @@ export class StateLinkageManager {
       this.executionState.currentNode = update.nodeId;
       if (update.status === 'completed') {
         this.executionState.completedNodes.push(update.nodeId);
-        this.executionState.progress = Math.min(100, 
+        this.executionState.progress = Math.min(100,
           Math.round((this.executionState.completedNodes.length / this.nodes.length) * 100)
         );
+      }
+      if (update.status === 'failed') {
+        this.executionState.status = 'failed';
+        this.executionState.error = `节点 ${update.nodeId} 执行失败`;
       }
       if (this.onExecutionUpdate) this.onExecutionUpdate(this.executionState);
     }
@@ -326,6 +332,43 @@ export class StateLinkageManager {
 
   private handleConsoleLog(log: ConsoleLog): void {
     console.log(`[${log.level.toUpperCase()}] ${log.message}`, log.data);
+
+    // 检测设备错误并发送节点失败事件
+    if (log.level === 'error' && log.message && log.message.includes('设备错误')) {
+      // 提取设备信息
+      const deviceMatch = log.message.match(/Device error: (\w+)/);
+      if (deviceMatch) {
+        const deviceName = deviceMatch[1];
+        console.log(`[StateLinkageManager] 检测到设备错误: ${deviceName}`, log.data);
+
+        // 如果有当前执行节点，将其标记为失败
+        if (this.executionState?.currentNode) {
+          const currentNodeId = this.executionState.currentNode;
+          const failedNode = this.nodes.find(n => n.id === currentNodeId);
+
+          if (failedNode) {
+            console.log(`[StateLinkageManager] 将当前节点标记为失败: ${currentNodeId}`);
+
+            // 更新节点状态为 failed
+            this.nodes = this.nodes.map(node =>
+              node.id === currentNodeId ? { ...node, status: 'failed' as NodeStatus } : node
+            );
+
+            if (this.onNodesUpdate) {
+              this.onNodesUpdate(this.nodes);
+            }
+
+            // 更新执行状态
+            this.executionState.status = 'failed';
+            this.executionState.error = `设备错误: ${deviceName}`;
+
+            if (this.onExecutionUpdate) {
+              this.onExecutionUpdate(this.executionState);
+            }
+          }
+        }
+      }
+    }
   }
 
   cleanup(): void {

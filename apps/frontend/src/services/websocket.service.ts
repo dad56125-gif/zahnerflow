@@ -7,7 +7,7 @@ let notificationCounter = 0;
 export interface NodeStatusUpdate {
   workflowId: string;
   nodeId: string;
-  status: 'ready' | 'running' | 'completed' | 'error' | 'warning';
+  status: 'ready' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'pending';
   data?: any;
   timestamp: Date;
 }

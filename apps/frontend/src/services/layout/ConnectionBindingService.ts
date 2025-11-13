@@ -243,6 +243,11 @@ export class ConnectionBindingService implements IConnectionBindingService {
       if (prev_width !== curr_width || prev_height !== curr_height) {
         return true;
       }
+
+      // 节点状态变化
+      if (prev_node.status !== curr_node.status) {
+        return true;
+      }
     }
 
     return false;
