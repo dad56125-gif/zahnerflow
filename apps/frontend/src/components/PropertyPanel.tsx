@@ -241,7 +241,6 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
         current_temperature: '当前温度 (°C)',
         calculated_duration: '计算时长 (min)',
         tolerance: '温度容差 (°C)',
-        stabilization_time: '稳定时间 (min)',
 
         // MFC流量节点参数
         device_selection: '设备选择',
@@ -324,7 +323,6 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
         current_temperature: '当前温度（运行时显示）',
         calculated_duration: '计算时长（自动计算）',
         tolerance: '温度容差（系统参数）',
-        stabilization_time: '稳定时间（系统参数）',
 
         // MFC流量节点占位符
         device_selection: '选择MFC设备和气体类型',
@@ -515,13 +513,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 // 只允许数字输入
                 if (!/^\d*$/.test(value)) return;
 
-                const numValue = Number(value);
-                // 边界检查和静默修正
-                const correctedValue = Math.max(25, Math.min(1000, numValue));
-
+                // 实时更新显示值，不进行边界检查
                 updateParameters({
                   ...node.data.parameters,
-                  [key]: correctedValue
+                  [key]: value
                 });
               }}
               onBlur={(e) => {
@@ -535,14 +530,13 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 }
 
                 const numValue = Number(value);
+                // 只在失去焦点时进行边界检查
                 const correctedValue = Math.max(25, Math.min(1000, numValue));
 
-                if (correctedValue !== numValue) {
-                  updateParameters({
-                    ...node.data.parameters,
-                    [key]: correctedValue
-                  });
-                }
+                updateParameters({
+                  ...node.data.parameters,
+                  [key]: correctedValue
+                });
               }}
               onKeyDown={(e) => {
                 // 阻止非数字输入
@@ -682,13 +676,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 // 允许数字和一位小数点
                 if (!/^\d*\.?\d?$/.test(value)) return;
 
-                const numValue = Number(value);
-                // 边界检查和静默修正
-                const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
-
+                // 实时更新显示值，不进行边界检查
                 updateParameters({
                   ...node.data.parameters,
-                  [key]: correctedValue
+                  [key]: value
                 });
               }}
               onBlur={(e) => {
@@ -702,14 +693,13 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 }
 
                 const numValue = Number(value);
+                // 只在失去焦点时进行边界检查
                 const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
 
-                if (correctedValue !== numValue) {
-                  updateParameters({
-                    ...node.data.parameters,
-                    [key]: correctedValue
-                  });
-                }
+                updateParameters({
+                  ...node.data.parameters,
+                  [key]: correctedValue
+                });
               }}
               onKeyDown={(e) => {
                 // 允许数字、小数点和控制键
