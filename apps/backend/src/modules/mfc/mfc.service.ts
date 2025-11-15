@@ -66,10 +66,11 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   private polling_timer: NodeJS.Timeout | null = null;
   private polling_config: PollingConfig = {
     enabled: true,
-    interval: 2000, // 2秒
+    interval: 1000, // 基础间隔1秒
     retry_attempts: 3,
     retry_delay: 1000,
   };
+  private is_polling_busy = false; // 轮询忙碌标志
   private polling_status: PollingStatus = {
     is_running: false,
     last_poll: '',
@@ -506,29 +507,55 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       // 并发查询所有已知设备的状态
       const device_addresses = Array.from(this.device_statuses.keys());
       const statusPromises = device_addresses.map(async (address) => {
+        const device_start_time = Date.now();
         try {
           const result = await this.device.get_device_status(address);
+          const device_duration = Date.now() - device_start_time;
+
           if (result && result.device_address !== undefined) {
             this.update_device_status(result);
+            this.logger.debug(`Device ${address} status updated in ${device_duration}ms`);
           }
-          return { address, success: true, result };
+          return { address, success: true, result, duration: device_duration };
         } catch (error) {
-          this.logger.warn(`Failed to get status for device ${address}: ${error.message}`);
-          return { address, success: false, error };
+          const device_duration = Date.now() - device_start_time;
+          this.logger.warn(`Device ${address} failed in ${device_duration}ms: ${error.message}`);
+          return { address, success: false, error, duration: device_duration };
         }
       });
 
       // 等待所有状态查询完成
       const results = await Promise.allSettled(statusPromises);
 
-      // 统计结果
-      const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-      const failCount = results.length - successCount;
+      // 统计结果和性能数据
+      const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
+      const failedResults = results.filter(r => r.status === 'fulfilled' && !r.value.success);
 
+      const successCount = successResults.length;
+      const failCount = failedResults.length;
+
+      // 计算设备轮询耗时统计
+      const durations = results
+        .filter(r => r.status === 'fulfilled' && r.value.duration !== undefined)
+        .map(r => r.value.duration);
+
+      const totalDuration = durations.length > 0
+        ? durations.reduce((sum, duration) => sum + duration, 0)
+        : 0;
+
+      const avgDuration = durations.length > 0
+        ? Math.round(totalDuration / durations.length)
+        : 0;
+
+      const maxDuration = durations.length > 0
+        ? Math.max(...durations)
+        : 0;
+
+      // 输出详细的轮询性能信息
       if (failCount > 0) {
-        this.logger.warn(`Device status update: ${successCount} success, ${failCount} failed`);
+        this.logger.warn(`Device status update: ${successCount} success, ${failCount} failed | Avg: ${avgDuration}ms, Max: ${maxDuration}ms, Total: ${totalDuration}ms`);
       } else {
-        this.logger.debug(`Device status update: ${successCount} devices updated successfully`);
+        this.logger.debug(`Device status update: ${successCount} devices updated successfully | Avg: ${avgDuration}ms, Max: ${maxDuration}ms, Total: ${totalDuration}ms`);
       }
 
     } catch (error) {
@@ -833,8 +860,9 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     this.polling_status.is_running = true;
     this.polling_status.consecutive_errors = 0;
 
+    // 简化轮询：每1秒检查是否忙碌
     this.polling_timer = setInterval(() => {
-      this.perform_polling();
+      this.perform_simple_polling();
     }, this.polling_config.interval);
 
     this.logger.log(`✅ Started MFC polling with interval ${this.polling_config.interval}ms for ${this.device_statuses.size} devices and ${this.polling_subscribers.size} subscribers`);
@@ -851,6 +879,22 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
 
     this.polling_status.is_running = false;
     this.logger.log('Stopped MFC polling');
+  }
+
+  /**
+   * 简化轮询控制：每1秒检查是否忙碌
+   */
+  private perform_simple_polling(): void {
+    // 如果当前有轮询在进行，跳过本次
+    if (this.is_polling_busy) {
+      this.logger.debug('Polling in progress, skipping this cycle');
+      return;
+    }
+
+    // 开始轮询
+    this.perform_polling().catch(error => {
+      this.logger.error(`Simple polling failed: ${error.message}`);
+    });
   }
 
   /**
@@ -872,6 +916,14 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug('Skipping polling: no known devices');
       return;
     }
+
+    // 设置轮询忙碌标志
+    this.is_polling_busy = true;
+
+    const polling_start_time = Date.now();
+    const device_count = this.device_statuses.size;
+
+    this.logger.debug(`Starting polling for ${device_count} devices`);
 
     try {
       // 仅查询已发现的设备，提高效率
@@ -932,6 +984,10 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       const system_overview = this.dataService.getSystemOverview();
       this.gateway.broadcastSystemStatus(system_overview);
 
+      // 计算轮询耗时
+      const polling_duration = Date.now() - polling_start_time;
+      this.logger.debug(`Polling completed for ${device_count} devices in ${polling_duration}ms`);
+
     } catch (error) {
       this.polling_status.error_count++;
       this.polling_status.consecutive_errors++;
@@ -944,6 +1000,13 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         this.stop_polling();
         // 移除自动重启轮询机制 - 遵循KISS原则
       }
+
+      // 计算轮询耗时（即使失败也要清除忙碌状态）
+      const polling_duration = Date.now() - polling_start_time;
+      this.logger.debug(`Polling failed for ${device_count} devices in ${polling_duration}ms: ${error.message}`);
+    } finally {
+      // 清除轮询忙碌标志，允许下一次轮询
+      this.is_polling_busy = false;
     }
   }
 

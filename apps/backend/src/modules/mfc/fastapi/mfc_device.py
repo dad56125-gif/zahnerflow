@@ -330,7 +330,7 @@ class MfcSession:
 
                 response = bytearray()
                 start_time = time.time()
-                max_wait = 0.5  # 最多等0.5秒，按用户要求
+                max_wait = 0.1  # 最多等0.1秒，按用户要求
 
                 # 第一步：读取基本响应头（至少6字节才能获取长度信息）
                 while time.time() - start_time < max_wait and len(response) < 6:
