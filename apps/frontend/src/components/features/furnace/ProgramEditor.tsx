@@ -57,7 +57,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
             // 从受控组件状态中收集数据
             const segments: ProgramSegment[] = [];
 
-            for (let i = 1; i <= 27  # 限制程序段1-27，避免与温度节点地址冲突(28,29); i++) {
+            for (let i = 1; i <= 27; i++) {  // 限制程序段1-27，避免与温度节点地址冲突(28,29)
               const temperature = parseFloat(segmentInputs[`temp_${i}`] || '0') || 0;
               const time = parseInt(segmentInputs[`time_${i}`] || '0') || 0;
 
