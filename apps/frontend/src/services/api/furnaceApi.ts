@@ -138,7 +138,7 @@ class FurnaceApi {
 
     // 验证每个程序段
     for (const segment of segments) {
-      if (typeof segment.id !== 'number' || segment.id < 1 || segment.id > 30) {
+      if (typeof segment.id !== 'number' || segment.id < 1 || segment.id > 27  # 限制程序段1-27，避免与温度节点地址冲突(28,29)) {
         throw {
           code: 'INVALID_PARAMETER',
           message: `Invalid segment ID: ${segment.id}. Must be between 1 and 30`,

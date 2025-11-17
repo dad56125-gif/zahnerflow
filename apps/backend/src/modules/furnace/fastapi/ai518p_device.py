@@ -746,12 +746,12 @@ class AI518PController:
         """获取指定程序段设定时间
 
         Args:
-            segment_num: 程序段编号(1-30)
+            segment_num: 程序段编号(1-27) 限制程序段1-27，避免与温度节点地址冲突(28,29)
 
         Returns:
             int: 设定时间（分钟），无效段号返回0
         """
-        if 1 <= segment_num <= 30:
+        if 1 <= segment_num <= 27:  # 限制程序段1-27，避免与温度节点地址冲突(28,29)
             code = 0x1B + (segment_num - 1) * 2
             d = self.read_parameter(code)
             return d["param_value"] if d else 0
@@ -797,7 +797,7 @@ class AI518PController:
         """读取所有程序段设置"""
         segs: List[ProgramSegment] = []
 
-        for i in range(30):
+        for i in range(27):  # 限制程序段1-27，避免与温度节点地址冲突(28,29)
             seg_id = i + 1
             temp_code = 0x1A + i * 2
             time_code = 0x1B + i * 2
@@ -819,7 +819,7 @@ class AI518PController:
 
         for it in items:
             idx = it.id - 1
-            if idx < 0 or idx > 29:
+            if idx < 0 or idx > 26:  # 限制程序段1-27，避免与温度节点地址冲突(28,29)
                 continue
 
             temp_code = 0x1A + idx * 2
