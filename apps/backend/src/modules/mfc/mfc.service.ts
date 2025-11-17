@@ -504,9 +504,11 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      // 并发查询所有已知设备的状态
+      // 串行查询所有已知设备的状态
       const device_addresses = Array.from(this.device_statuses.keys());
-      const statusPromises = device_addresses.map(async (address) => {
+      const results = [];
+
+      for (const address of device_addresses) {
         const device_start_time = Date.now();
         try {
           const result = await this.device.get_device_status(address);
@@ -516,28 +518,31 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
             this.update_device_status(result);
             this.logger.debug(`Device ${address} status updated in ${device_duration}ms`);
           }
-          return { address, success: true, result, duration: device_duration };
+          results.push({ address, success: true, result, duration: device_duration });
+
+          // 设备间间隔，避免串口过载
+          if (device_addresses.indexOf(address) < device_addresses.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
         } catch (error) {
           const device_duration = Date.now() - device_start_time;
           this.logger.warn(`Device ${address} failed in ${device_duration}ms: ${error.message}`);
-          return { address, success: false, error, duration: device_duration };
+          results.push({ address, success: false, error, duration: device_duration });
         }
-      });
-
-      // 等待所有状态查询完成
-      const results = await Promise.allSettled(statusPromises);
+      }
 
       // 统计结果和性能数据
-      const successResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
-      const failedResults = results.filter(r => r.status === 'fulfilled' && !r.value.success);
+      const successResults = results.filter(r => r.success);
+      const failedResults = results.filter(r => !r.success);
 
       const successCount = successResults.length;
       const failCount = failedResults.length;
 
       // 计算设备轮询耗时统计
       const durations = results
-        .filter(r => r.status === 'fulfilled' && r.value.duration !== undefined)
-        .map(r => r.value.duration);
+        .filter(r => r.duration !== undefined)
+        .map(r => r.duration);
 
       const totalDuration = durations.length > 0
         ? durations.reduce((sum, duration) => sum + duration, 0)
