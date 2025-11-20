@@ -1,15 +1,15 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { IExecutionModule, ExecutionResult, ModuleStatus } from '../../interfaces/module-interfaces';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { IExecutionModule, ExecutionResult, ModuleStatus, ExecutionStatus } from '../../interfaces/module-interfaces';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
 import { FurnaceService } from '../furnace/furnace.service';
 import { MfcService } from '../mfc/mfc.service';
-import { SimpleEventBus } from '../../notification/simple-event-bus.service';
-import { ExecutionNotificationService } from './execution-notification.service';
+import { EventBus } from '../../notification/event-bus.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { DbService } from '../../db/db.service';
 import { FilesService } from '../files/files.service';
 
+// Hook 规则定义
 type HookRule = {
   id: string;
   name: string;
@@ -17,27 +17,26 @@ type HookRule = {
   loopBinding: { loopNodeId: string };
   trigger: { type: 'after_node' | 'before_node'; nodeSelector: { id?: string; type?: string } };
   cycle: { every: number; offset?: number };
-  limit?: { perIteration?: number; perRun?: number };
-  action: { type: 'insert_node'; placement: 'after' | 'before'; nodeTemplate: { type: string; params: Record<string, any> }; tag?: string; priority?: number };
+  action: { type: 'insert_node'; placement: 'after' | 'before'; nodeTemplate: { type: string; params: Record<string, any> }; tag?: string; };
 };
 
 @Injectable()
 export class ExecutionService implements IExecutionModule, OnModuleInit {
   readonly name = 'execution';
-  readonly version = '1.1.0';
+  readonly version = '2.0.0';
   readonly dependencies = [];
+  private readonly logger = new Logger(ExecutionService.name);
 
-  private executionCounter = 0;
+  // 运行时状态 (内存中保持)
   private currentExecutionId: string | null = null;
   private currentNodeId: string | null = null;
-  private hookRules: HookRule[] = [];
-
-  // 执行上下文管理 - 存储workflowId引用和工作流时间戳
+  
+  // 执行上下文
   private executionContexts = new Map<string, {
     workflowId: string;
     executionId: string;
     startTime: Date;
-    workflowTimestamp: string; // 工作流级别的时间戳
+    workflowTimestamp: string;
   }>();
 
   constructor(
@@ -45,419 +44,223 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     protected readonly workflowService: WorkflowService,
     protected readonly furnaceService: FurnaceService,
     protected readonly mfcService: MfcService,
-    protected readonly eventBus: SimpleEventBus,
-    protected readonly executionNotificationService: ExecutionNotificationService,
+    protected readonly eventBus: EventBus,
     private readonly db: DbService,
     private readonly consoleManager: ConsoleDisplayManager,
     private readonly filesService: FilesService,
   ) {
-    // 监听设备事件，发送节点和工作流通知
     this.setupDeviceEventListeners();
   }
 
   async onModuleInit() {
-    // 事件驱动架构：发送模块初始化事件
+    this.initDbTables();
+    
+    // 发送初始化事件
     this.eventBus.emit('module.initialized', {
       moduleName: 'execution',
       version: this.version,
       timestamp: new Date()
     });
-    this.loadHookRulesFromFile();
   }
 
-  private loadHookRulesFromFile() {
-    try {
-      const path = require('path');
-      const fs = require('fs');
-      const candidates: string[] = [];
-      if (process.env.HOOKS_JSON_PATH && process.env.HOOKS_JSON_PATH.trim()) {
-        const p = process.env.HOOKS_JSON_PATH;
-        candidates.push(path.isAbsolute(p) ? p : path.join(process.cwd(), p));
-      }
-      // repository-root/data/hooks/hooks.json relative to dist file
-      candidates.push(path.resolve(__dirname, '../../../data/hooks/hooks.json'));
-      // cwd fallback
-      candidates.push(path.join(process.cwd(), 'data', 'hooks', 'hooks.json'));
+  /**
+   * 初始化 SQLite 表结构
+   */
+  private initDbTables() {
+    // 1. 执行历史表
+    this.db.prepare(`
+      CREATE TABLE IF NOT EXISTS executions (
+        id TEXT PRIMARY KEY,
+        workflow_id TEXT,
+        status TEXT, -- running, success, failed, cancelled
+        start_time TEXT,
+        end_time TEXT,
+        duration INTEGER,
+        error TEXT,
+        logs_json TEXT
+      )
+    `).run();
 
-      for (const hp of candidates) {
-        if (fs.existsSync(hp)) {
-          const raw = fs.readFileSync(hp, 'utf-8');
-          const parsed = JSON.parse(raw);
-          const arr = Array.isArray(parsed) ? parsed : [parsed];
-          this.hookRules = arr.filter((r: any) => !!r && r.enabled !== false);
-          break;
-        }
-      }
-    } catch {
-      this.hookRules = [];
-    }
+    // 2. Hook 规则表 (替代 hooks.json)
+    this.db.prepare(`
+      CREATE TABLE IF NOT EXISTS hooks (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        enabled INTEGER DEFAULT 1,
+        rule_json TEXT -- 存储完整的 HookRule JSON
+      )
+    `).run();
   }
 
-  private setupDeviceEventListeners(): void {
-    // 监听测量完成事件，发送节点完成通知
-    this.eventBus.on('measurement.completed').subscribe((event) => {
-      this.consoleManager.log('ExecutionService', 'enableLog', '收到设备measurement.completed事件，发送节点完成通知', {
-        measurementType: event.data.measurementType
-      });
+  /**
+   * 获取所有执行历史 (供 Controller 调用)
+   */
+  getAllExecutions(): ExecutionStatus[] {
+    const rows = this.db.prepare(`
+      SELECT id, workflow_id, status, start_time, end_time, error 
+      FROM executions 
+      ORDER BY start_time DESC 
+      LIMIT 50
+    `).all() as any[];
 
-      const nodeId = event.data.context?.nodeId || this.getCurrentNodeId();
-      const executionId = event.data.context?.executionId || this.getCurrentExecutionId();
-      const workflowId = this.getCurrentWorkflowId(executionId); // 关键修复！
-
-      // 发送节点完成通知
-      this.eventBus.emit('node.completed', {
-        nodeId,
-        executionId,
-        workflowId, // 添加workflowId
-        nodeType: event.data.measurementType,
-        result: event.data.result,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
-
-      // 发送工作流节点完成通知
-      this.eventBus.emit('workflow.node.completed', {
-        nodeId,
-        executionId,
-        workflowId, // 添加workflowId
-        result: event.data.result,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
-
-      this.consoleManager.log('ExecutionService', 'enableLog', '发送 workflow.node.completed 事件', {
-        nodeId,
-        executionId,
-        result: event.data.result
-      });
-    });
-
-    // 监听测量失败事件，发送节点失败通知
-    this.eventBus.on('measurement.failed').subscribe((event) => {
-      this.consoleManager.log('ExecutionService', 'enableError', '收到设备measurement.failed事件，发送节点失败通知', {
-        measurementType: event.data.measurementType,
-        error: event.data.error
-      });
-
-      const nodeId = event.data.context?.nodeId || this.getCurrentNodeId();
-      const executionId = event.data.context?.executionId || this.getCurrentExecutionId();
-      const workflowId = this.getCurrentWorkflowId(executionId); // 关键修复！
-
-      this.eventBus.emit('node.failed', {
-        nodeId,
-        executionId,
-        workflowId, // 添加workflowId
-        error: event.data.error,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
-
-      this.eventBus.emit('workflow.node.failed', {
-        nodeId,
-        executionId,
-        workflowId, // 添加workflowId
-        error: event.data.error,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
-
-      this.consoleManager.log('ExecutionService', 'enableError', '发送 workflow.node.failed 事件', {
-        nodeId,
-        executionId,
-        error: event.data.error
-      });
-    });
-
-    // 监听设备启动成功事件，发送节点完成通知
-    this.eventBus.on('device.started').subscribe((event) => {
-      this.consoleManager.log('ExecutionService', 'enableLog', '收到设备启动成功事件，发送节点完成通知', {
-        deviceType: event.data.context?.source || 'zahner-service'
-      });
-
-      const nodeId = this.getCurrentNodeId();
-      const executionId = this.getCurrentExecutionId();
-      const workflowId = this.getCurrentWorkflowId(executionId);
-
-      if (nodeId) {
-        this.eventBus.emit('node.completed', {
-          nodeId,
-          executionId,
-          workflowId,
-          nodeType: 'startup',
-          result: {
-            status: 'success',
-            message: '设备服务启动成功'
-          },
-          timestamp: new Date(),
-          context: { source: 'execution-service', deviceType: 'zahner-service' }
-        });
-
-        this.eventBus.emit('workflow.node.completed', {
-          nodeId,
-          executionId,
-          workflowId,
-          result: {
-            status: 'success',
-            message: '设备服务启动成功'
-          },
-          timestamp: new Date(),
-          context: { source: 'execution-service', deviceType: 'zahner-service' }
-        });
-
-        this.consoleManager.log('ExecutionService', 'enableLog', '发送 workflow.node.completed 事件（设备启动成功）', {
-          nodeId,
-          executionId,
-          result: '设备服务启动成功'
-        });
-      }
-    });
-
-    // 监听设备关闭成功事件，发送节点完成通知
-    this.eventBus.on('device.stopped').subscribe((event) => {
-      this.consoleManager.log('ExecutionService', 'enableLog', '收到设备关闭成功事件，发送节点完成通知', {
-        deviceType: event.data.context?.source || 'zahner-service'
-      });
-
-      const nodeId = this.getCurrentNodeId();
-      const executionId = this.getCurrentExecutionId();
-      const workflowId = this.getCurrentWorkflowId(executionId);
-
-      if (nodeId) {
-        this.eventBus.emit('node.completed', {
-          nodeId,
-          executionId,
-          workflowId,
-          nodeType: 'shutdown',
-          result: {
-            status: 'success',
-            message: '设备服务关闭成功'
-          },
-          timestamp: new Date(),
-          context: { source: 'execution-service', deviceType: 'zahner-service' }
-        });
-
-        this.eventBus.emit('workflow.node.completed', {
-          nodeId,
-          executionId,
-          workflowId,
-          result: {
-            status: 'success',
-            message: '设备服务关闭成功'
-          },
-          timestamp: new Date(),
-          context: { source: 'execution-service', deviceType: 'zahner-service' }
-        });
-
-        this.consoleManager.log('ExecutionService', 'enableLog', '发送 workflow.node.completed 事件（设备关闭成功）', {
-          nodeId,
-          executionId,
-          result: '设备服务关闭成功'
-        });
-      }
-    });
-
-    // 监听设备错误事件，发送节点失败通知
-    this.eventBus.on('device.error').subscribe((event) => {
-      this.consoleManager.log('ExecutionService', 'enableError', '收到设备错误事件，发送节点失败通知', {
-        deviceType: event.data.deviceType,
-        error: event.data.error
-      });
-
-      const nodeId = this.getCurrentNodeId();
-      const executionId = this.getCurrentExecutionId();
-      const workflowId = this.getCurrentWorkflowId(executionId);
-
-      if (nodeId) {
-        this.eventBus.emit('node.failed', {
-          nodeId,
-          executionId,
-          workflowId,
-          error: `设备错误: ${event.data.error}`,
-          timestamp: new Date(),
-          context: { source: 'execution-service', deviceType: event.data.deviceType }
-        });
-
-        this.eventBus.emit('workflow.node.failed', {
-          nodeId,
-          executionId,
-          workflowId,
-          error: `设备错误: ${event.data.error}`,
-          timestamp: new Date(),
-          context: { source: 'execution-service', deviceType: event.data.deviceType }
-        });
-
-        this.consoleManager.log('ExecutionService', 'enableError', '发送 workflow.node.failed 事件（设备错误触发）', {
-          nodeId,
-          executionId,
-          error: event.data.error
-        });
-      }
-    });
+    return rows.map(row => ({
+      executionId: row.id,
+      workflowId: row.workflow_id,
+      status: row.status,
+      startTime: new Date(row.start_time),
+      endTime: row.end_time ? new Date(row.end_time) : undefined,
+      error: row.error
+    })) as any;
   }
 
-  
+  /**
+   * 获取 Hook 规则
+   */
+  getLoadedHookRules(): HookRule[] {
+    const rows = this.db.prepare(`SELECT rule_json FROM hooks WHERE enabled = 1`).all() as { rule_json: string }[];
+    return rows.map(r => JSON.parse(r.rule_json));
+  }
+
+  // ======================================================================
+  // 核心执行逻辑
+  // ======================================================================
+
   async executeWorkflow(workflowId: string): Promise<ExecutionResult> {
-    const executionId = this.generateExecutionId();
-    this.currentExecutionId = executionId; // 设置当前执行ID
-    const startTime = Date.now();
+    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    this.currentExecutionId = executionId;
+    const startTime = new Date();
+    const workflowTimestamp = this.generateTimestamp();
 
-    // 保存执行上下文 - 包含工作流级别的时间戳
-    const workflowTimestamp = this.generateWorkflowTimestamp();
-    this.executionContexts.set(executionId, {
-      workflowId,
-      executionId,
-      startTime: new Date(),
-      workflowTimestamp
-    });
+    // 1. 记录上下文
+    this.executionContexts.set(executionId, { workflowId, executionId, startTime, workflowTimestamp });
+    this.consoleManager.log('ExecutionService', 'enableLog', `工作流开始执行 ID: ${executionId}`);
 
-    this.consoleManager.log('ExecutionService', 'enableLog', `工作流开始执行 - 时间戳: ${workflowTimestamp}`);
+    // 2. 持久化状态：Running
+    this.db.prepare(`
+      INSERT INTO executions (id, workflow_id, status, start_time)
+      VALUES (?, ?, 'running', ?)
+    `).run(executionId, workflowId, startTime.toISOString());
 
-    // 发送执行开始通知
-    this.executionNotificationService.sendExecutionStartNotification(executionId, workflowId);
-
-    // 事件驱动架构：发送工作流开始事件（状态由StateEventHandler管理）
-    this.eventBus.emit('workflow.started', {
-      executionId,
-      workflowId,
-      timestamp: new Date(),
-      context: { source: 'execution-service' }
-    });
+    // 3. 发送通知
+    this.emitWorkflowEvent('started', executionId, workflowId);
 
     try {
       // 获取工作流定义
       const workflow = await this.workflowService.getWorkflow(workflowId);
-      if (!workflow) {
-        throw new Error(`Workflow ${workflowId} not found`);
-      }
+      if (!workflow) throw new Error(`Workflow ${workflowId} not found`);
 
-      this.consoleManager.log('ExecutionService', 'enableLog', `获取到工作流定义: ${workflowId}`, {
-        nodesCount: workflow.definition.nodes?.length || 0,
-        hasNodes: !!(workflow.definition.nodes && workflow.definition.nodes.length > 0)
-      });
-
+      // 执行节点
       const completedNodes = await this.executeNodesV2(executionId, workflow);
-      const duration = Date.now() - startTime;
+      const endTime = new Date();
+      const duration = endTime.getTime() - startTime.getTime();
 
-      // 发送执行完成通知
-      this.executionNotificationService.sendExecutionCompleteNotification(executionId, true, duration, workflowId);
-
-      // 事件驱动架构：发送工作流完成事件
-      this.eventBus.emit('workflow.completed', {
-        executionId,
-        workflowId,
-        success: true,
-        duration,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
+      // 4. 持久化状态：Success
+      this.updateExecutionStatus(executionId, 'success', endTime, duration);
+      this.emitWorkflowEvent('completed', executionId, workflowId, { success: true, duration });
 
       return {
         executionId,
         status: 'success',
-        startTime: new Date(startTime),
-        endTime: new Date(),
+        startTime,
+        endTime,
         results: completedNodes,
       };
-    } catch (error) {
-      const duration = Date.now() - startTime;
 
-      // 发送执行失败通知
-      this.executionNotificationService.sendExecutionCompleteNotification(executionId, false, duration, workflowId);
+    } catch (error: any) {
+      const endTime = new Date();
+      const duration = endTime.getTime() - startTime.getTime();
+      const errorMsg = error.message || String(error);
 
-      // 事件驱动架构：发送工作流失败事件
-      this.eventBus.emit('workflow.failed', {
-        executionId,
-        workflowId,
-        error: error instanceof Error ? error.message : String(error),
-        duration,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
+      // 4. 持久化状态：Failed
+      this.updateExecutionStatus(executionId, 'failed', endTime, duration, errorMsg);
+      this.emitWorkflowEvent('failed', executionId, workflowId, { error: errorMsg, duration });
 
       return {
         executionId,
         status: 'failed',
-        startTime: new Date(startTime),
-        endTime: new Date(),
-        error: error instanceof Error ? error.message : String(error),
-        results: [], // 错误情况下没有完成的节点
+        startTime,
+        endTime,
+        error: errorMsg,
+        results: [],
       };
     } finally {
-      // 执行结束后清理上下文
       this.executionContexts.delete(executionId);
+      if (this.currentExecutionId === executionId) this.currentExecutionId = null;
     }
   }
 
-  // 新版执行：指令队列 + 循环栈 + Hook（after_node）
+  private updateExecutionStatus(id: string, status: string, endTime: Date, duration: number, error?: string) {
+    this.db.prepare(`
+      UPDATE executions 
+      SET status = ?, end_time = ?, duration = ?, error = ?
+      WHERE id = ?
+    `).run(status, endTime.toISOString(), duration, error || null, id);
+  }
+
+  // ----------------------------------------------------------------------
+  // 节点执行引擎 (Loop & Hooks 支持)
+  // ----------------------------------------------------------------------
+  
   private async executeNodesV2(executionId: string, workflowDefinition: any): Promise<string[]> {
     const original = workflowDefinition.definition?.nodes || [];
     const queue: any[] = original.map((n: any) => ({ ...n }));
     const completedNodes: string[] = [];
-    this.consoleManager.log('ExecutionService', 'enableLog', `执行工作流节点 - 初始节点数: ${queue.length}`);
-
-    // 构建 loop 边界（startIp -> endIp）
+    
+    // Loop 栈管理
     const bounds = this.buildLoopBoundaries(queue);
-    type LoopFrame = { loopNodeId: string; depth: number; startIp: number; endIp: number; iteration: number; total: number };
-    const frames: LoopFrame[] = [];
-    const insertedMarks = new Set<string>();
+    const frames: Array<{ loopNodeId: string; depth: number; startIp: number; endIp: number; iteration: number; total: number }> = [];
+    const insertedMarks = new Set<string>(); // 防止 Hook 重复插入
 
     let ip = 0;
     while (ip < queue.length) {
       const node = queue[ip];
       this.currentNodeId = node.id;
 
-      // 进入 loop_start：若不在栈顶则压栈
+      // Loop Start 处理
       if (node.type === 'loop_start') {
         const { loop_count } = this.getLoopParams(node);
         const endIp = bounds.get(ip);
         if (endIp != null) {
           const top = frames[frames.length - 1];
+          // 如果是新进入循环，或者上一层循环刚结束进入下一轮
           if (!top || top.startIp !== ip) {
-            frames.push({ loopNodeId: node.id, depth: frames.length + 1, startIp: ip, endIp, iteration: 1, total: Math.max(1, Number(loop_count) || 1) });
+            frames.push({ 
+              loopNodeId: node.id, 
+              depth: frames.length + 1, 
+              startIp: ip, 
+              endIp, 
+              iteration: 1, 
+              total: Math.max(1, Number(loop_count) || 1) 
+            });
           }
         }
       }
 
-      // 节点开始事件
-      this.consoleManager.log('ExecutionService', 'enableLog', `开始执行节点: #${ip + 1}/${queue.length} ${node.id} (type=${node.type})`);
-      this.eventBus.emit('node.started', {
-        nodeId: node.id,
-        executionId,
-        workflowId: this.getCurrentWorkflowId(executionId),
-        nodeType: node.type,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
+      // 节点执行前通知
+      this.emitNodeEvent('started', executionId, node);
 
-      // 执行节点
+      // 执行具体业务
       await this.executeNode(executionId, node);
       completedNodes.push(node.id);
 
-      // after_node Hook：仅对非 hook 来源节点
+      // Hook 检查: After Node
       if ((node as any).origin !== 'hook') {
         await this.evaluateHooks('after_node', executionId, queue, ip, frames, insertedMarks);
       }
 
-      this.consoleManager.log('ExecutionService', 'enableLog', `完成执行节点: ${node.id}`);
-      this.eventBus.emit('node.completed', {
-        nodeId: node.id,
-        executionId,
-        workflowId: this.getCurrentWorkflowId(executionId),
-        nodeType: node.type,
-        result: true,
-        timestamp: new Date(),
-        context: { source: 'execution-service' }
-      });
+      // 节点执行后通知
+      this.emitNodeEvent('completed', executionId, node, { result: true });
 
-      // 循环尾部处理
+      // Loop End 处理
       if (node.type === 'loop_end') {
         const top = frames[frames.length - 1];
         if (top && top.endIp === ip) {
           if (top.iteration < top.total) {
             top.iteration += 1;
-            ip = top.startIp; // 回到 loop_start（循环体首个节点将是 startIp+1）
+            ip = top.startIp; // 跳转回 Start
+            // 注意：ip 会在下面 += 1，所以实际下一条是 startIp + 1，即循环体第一条
           } else {
-            frames.pop();
+            frames.pop(); // 循环结束，出栈
           }
         }
       }
@@ -465,529 +268,267 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       ip += 1;
     }
 
-    this.consoleManager.log('ExecutionService', 'enableLog', `工作流节点执行完成 - 完成节点数 ${completedNodes.length}/${queue.length}`);
     return completedNodes;
   }
 
-  // 读取循环参数（兼容 data.parameters 与 config）
-  // 不再返回loop_id，基于遍历顺序自动配对
-  private getLoopParams(node: any): { loop_count?: number } {
-    const p = node?.data?.parameters || node?.config || {};
-    return {
-      loop_count: typeof p.loop_count === 'number' ? p.loop_count : (p.loop_count ? Number(p.loop_count) : undefined)
-    };
-  }
-
-  // 扫描并配对 loop_start / loop_end，返回 startIp->endIp 映射
-  // 基于遍历顺序自动配对，不再依赖loop_id
-  private buildLoopBoundaries(nodes: any[]): Map<number, number> {
-    const map = new Map<number, number>();
-    const stack: number[] = [];
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i];
-      if (n?.type === 'loop_start') {
-        stack.push(i);
-      } else if (n?.type === 'loop_end') {
-        if (stack.length > 0) {
-          const start = stack.pop()!;
-          map.set(start, i);
-        }
-      }
-    }
-    return map;
-  }
+  // ----------------------------------------------------------------------
+  // Hooks 逻辑
+  // ----------------------------------------------------------------------
 
   private async evaluateHooks(
     trigger: 'after_node' | 'before_node',
     executionId: string,
     queue: any[],
     ip: number,
-    frames: Array<{ loopNodeId: string; depth: number; startIp: number; endIp: number; iteration: number; total: number }>,
+    frames: any[],
     marks: Set<string>,
   ): Promise<void> {
-    if (!this.hookRules || this.hookRules.length === 0) return;
+    const rules = this.getLoadedHookRules(); // 从 DB 获取规则
+    if (rules.length === 0) return;
+
     const cur = queue[ip];
     const workflowId = this.getCurrentWorkflowId(executionId);
-    for (const rule of this.hookRules) {
-      if (!rule?.enabled) continue;
+
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
       if (rule.trigger?.type !== trigger) continue;
+
+      // 检查 Loop 绑定
       const frame = frames.find(f => f.loopNodeId === rule.loopBinding?.loopNodeId);
       if (!frame) continue;
+
+      // 检查节点选择器
       const sel = rule.trigger.nodeSelector || {};
       if (sel.id && sel.id !== cur.id) continue;
       if (sel.type && sel.type !== cur.type) continue;
+
+      // 检查循环周期
       const every = Math.max(1, Number(rule.cycle?.every) || 1);
       const offset = Number(rule.cycle?.offset) || 0;
       if (((frame.iteration - offset) % every) !== 0) continue;
-      const key = `${executionId}|${frame.loopNodeId}|${frame.iteration}|${rule.id}|${rule.action?.tag || ''}`;
-      if (marks.has(key)) {
-        const sup = { ruleId: rule.id, workflowId, targetNodeId: cur.id, loopContext: { loopNodeId: frame.loopNodeId, depth: frame.depth, iteration: frame.iteration }, reason: 'duplicate' };
-        this.db.emit('hook_suppressed', sup);
-        this.eventBus.emit('hook.insert.suppressed', sup);
-        continue;
-      }
-      const planned = { ruleId: rule.id, workflowId, targetNodeId: cur.id, loopContext: { loopNodeId: frame.loopNodeId, depth: frame.depth, iteration: frame.iteration } };
-      this.db.emit('hook_debug', { stage: 'before_insert', ...planned });
-      this.db.emit('hook_insert_planned', planned);
-      this.eventBus.emit('hook.insert.planned', planned);
+
+      // 防止重复插入
+      const key = `${executionId}|${frame.loopNodeId}|${frame.iteration}|${rule.id}`;
+      if (marks.has(key)) continue;
+
+      // 插入新节点
       const tmpNode = this.materializeNode(rule.action?.nodeTemplate);
       (tmpNode as any).origin = 'hook';
-      (tmpNode as any).meta = { tag: rule.action?.tag, fromRule: rule.id };
+      (tmpNode as any).meta = { fromRule: rule.id };
+
       if (rule.action?.placement === 'before') {
         queue.splice(ip, 0, tmpNode);
       } else {
         queue.splice(ip + 1, 0, tmpNode);
       }
+
       marks.add(key);
-      const applied = { ruleId: rule.id, workflowId, targetNodeId: cur.id, insertedNodeId: tmpNode.id, loopContext: { loopNodeId: frame.loopNodeId, depth: frame.depth, iteration: frame.iteration } };
-      this.db.emit('hook_insert_applied', applied);
-      this.eventBus.emit('hook.insert.applied', applied);
+      this.logger.log(`[Hook] Inserted node ${tmpNode.id} via rule ${rule.name}`);
+      
+      // 通知前端
+      this.eventBus.emit('hook.insert.applied', {
+        ruleId: rule.id, workflowId, targetNodeId: cur.id, insertedNodeId: tmpNode.id
+      });
     }
   }
 
-  private materializeNode(tpl: { type: string; params: Record<string, any> } | undefined): any {
-    const { type, params } = tpl || { type: 'eis_potentiostatic', params: {} } as any;
-    const id = `node_tmp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const data: any = { parameters: params };
-    if (type === 'delay' && params && typeof (params as any).duration !== 'undefined') {
-      data.duration = (params as any).duration;
-    }
-    return { id, type, name: `hook:${type}`, data };
+  private materializeNode(tpl: any): any {
+    const { type, params } = tpl || { type: 'delay', params: { duration: 1 } };
+    const id = `hook_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+    return { id, type, name: `Hook: ${type}`, data: { parameters: params } };
   }
+
+  // ----------------------------------------------------------------------
+  // 节点分发 (Dispatcher)
+  // ----------------------------------------------------------------------
 
   private async executeNode(executionId: string, node: any): Promise<void> {
-    const nodeId = node.id;
-    const nodeType = node.type;
-
-    // 根据节点类型执行不同的逻辑
-    switch (nodeType) {
-      // 设备控制节点
-      case 'startup':
-        await this.executeStartup(executionId, node);
-        break;
-      case 'shutdown':
-        await this.executeShutdown(executionId, node);
-        break;
-      case 'change_temperature':
-        await this.executeChangeTemperature(executionId, node);
-        break;
-      case 'change_gas_flow':
-        await this.executeChangeGasFlow(executionId, node);
-        break;
-
-      // 基础测量节点 - 所有都使用zahner-measurement逻辑，但传递不同的测量类型
-      case 'eis_potentiostatic':
-      case 'eis_galvanostatic':
-      case 'ocp_measurement':
-      case 'chronoamperometry':
-      case 'chronopotentiometry':
-      case 'voltage_ramp':
-      case 'current_ramp':
-      case 'lsv_measurement':
-        await this.executeMeasurement(executionId, node, nodeType);
-        break;
-      case 'measurement':
-        await this.executeMeasurement(executionId, node);
-        break;
-
-      // 流程控制节点
-      case 'wait_delay':
-      case 'delay':
-        await this.executeDelay(executionId, node);
-        break;
-      case 'loop_start':
-        await this.executeLoopStart(executionId, node);
-        break;
-      case 'loop_end':
-        await this.executeLoopEnd(executionId, node);
-        break;
-
-      // 兼容旧版本
-      case 'zahner-measurement':
-        await this.executeZahnerMeasurement(executionId, node);
-        break;
-
-      default:
-        this.consoleManager.log('ExecutionService', 'enableWarn', `Unknown node type: ${nodeType}`);
+    const type = node.type;
+    
+    // 设备控制
+    if (type === 'startup') await this.zahnerService.startup(node.data?.parameters);
+    else if (type === 'shutdown') await this.zahnerService.shutdown();
+    else if (type === 'change_temperature') await this.executeChangeTemperature(executionId, node);
+    else if (type === 'change_gas_flow') await this.executeChangeGasFlow(executionId, node);
+    
+    // 测量
+    else if (this.isMeasurementNodeType(type) || type === 'measurement') {
+      await this.executeMeasurement(executionId, node, type === 'measurement' ? node.data?.measurement_type : type);
+    }
+    
+    // 流程控制
+    else if (type === 'delay' || type === 'wait_delay') await this.executeDelay(node);
+    else if (type === 'loop_start' || type === 'loop_end') { /* 逻辑在 executeNodesV2 处理 */ }
+    
+    else {
+      this.logger.warn(`Unknown node type: ${type}, skipping.`);
     }
   }
 
-  private async executeZahnerMeasurement(executionId: string, node: any): Promise<void> {
-    const measurement = node.data;
-    const measurementType = measurement.measurement_type || 'impedance';
-    const parameters = measurement;
+  // ----------------------------------------------------------------------
+  // 具体业务方法
+  // ----------------------------------------------------------------------
 
-    // 使用设备服务执行测量（事件发送由 ZahnerZenniumService 处理）
-    const result = await this.zahnerService.performMeasurement(measurementType, parameters, node.id, executionId);
+  private async executeMeasurement(executionId: string, node: any, type: string): Promise<void> {
+    let params = node.data?.parameters || {};
+    
+    // 路径计算
+    const workflowId = this.getCurrentWorkflowId(executionId);
+    const workflow = await this.workflowService.getWorkflow(workflowId);
+    const config = workflow ? this.filesService.getProjectConfig(workflow.ownerName, workflow.definition.name, workflow.individualName) : null;
+    const timestamp = this.getWorkflowTimestamp(executionId);
 
-    if (result.status !== 'success') {
-      throw new Error(`Measurement failed: ${result.error}`);
-    }
-  }
-
-  private async executeStartup(executionId: string, node: any): Promise<void> {
-    const parameters = node.data?.parameters || {};
-
-    // 使用设备服务执行启动操作（事件发送由 ZahnerZenniumService 处理）
-    const result = await this.zahnerService.startup(parameters);
-
-    if (result.status !== 'success') {
-      throw new Error(`Startup failed: ${result.error}`);
-    }
-  }
-
-  private async executeShutdown(executionId: string, node: any): Promise<void> {
-    // 使用设备服务执行关闭操作（事件发送由 ZahnerZenniumService 处理）
-    const result = await this.zahnerService.shutdown();
-
-    if (result.status !== 'success') {
-      throw new Error(`Shutdown failed: ${result.error}`);
-    }
-  }
-
-  private async executeMeasurement(executionId: string, node: any, measurementType?: string): Promise<void> {
-    let parameters = node.data?.parameters || {};
-
-    // 动态构建 output_path
-    try {
-      const workflowId = this.getCurrentWorkflowId(executionId);
-      const workflow = await this.workflowService.getWorkflow(workflowId);
-
-      if (workflow) {
-        // 获取项目配置
-        const projectConfig = this.filesService.getProjectConfig(
-          workflow.ownerName,
-          workflow.definition.name,
-          workflow.individualName
-        );
-
-        // 使用FilesService构建路径 - 传递工作流级别的时间戳
-        const workflowTimestamp = this.getWorkflowTimestamp(executionId);
-        const outputPath = this.filesService.buildOutputPath({
-          base_path: projectConfig?.base_path,
-          project_name: workflow.definition.name,
-          individual_name: workflow.individualName,
-          test_type: projectConfig?.test_type,
-          measurement_type: measurementType,
-          workflow_id: workflowId, // 使用工作流ID
-          workflow_name: workflow.definition?.name,
-          useDefaultStructure: !workflow?.ownerName || !workflow?.individualName || !projectConfig?.test_type,
-          workflow_timestamp: workflowTimestamp // 使用工作流级别的时间戳
-        });
-
-        this.consoleManager.log('ExecutionService', 'enableLog', `使用工作流时间戳 ${workflowTimestamp} 构建路径: ${outputPath}`);
-
-        // 添加 output_path 到参数中
-        parameters = {
-          ...parameters,
-          output_path: outputPath
-        };
-
-        this.consoleManager.log('ExecutionService', 'enableLog', `动态生成 output_path: ${outputPath}`);
-      }
-    } catch (error) {
-      this.consoleManager.log('ExecutionService', 'enableWarn', `获取文件路径配置失败: ${error.message}`);
-    }
-
-    // 如果仍然没有 output_path，使用默认值（包含test_type）
-    if (!parameters.output_path) {
-      const workflowTimestamp = this.getWorkflowTimestamp(executionId);
-      const outputPath = this.filesService.buildOutputPath({
-        measurement_type: measurementType,
-        workflow_id: 'unknown_workflow',
-        workflow_timestamp: workflowTimestamp // 使用工作流级别的时间戳
-      });
-
-      parameters.output_path = outputPath;
-      this.consoleManager.log('ExecutionService', 'enableWarn', `使用默认输出路径: ${parameters.output_path}`);
-    }
-
-    // 映射节点类型到设备服务的方法（事件发送由 ZahnerZenniumService 处理）
-    let result;
-    switch (measurementType) {
-      case 'eis_potentiostatic':
-        result = await this.zahnerService.performMeasurement('eis_potentiostatic', parameters, node.id, executionId);
-        break;
-      case 'eis_galvanostatic':
-        result = await this.zahnerService.performMeasurement('eis_galvanostatic', parameters, node.id, executionId);
-        break;
-      case 'ocp_measurement':
-        result = await this.zahnerService.performMeasurement('ocp', parameters, node.id, executionId);
-        break;
-      case 'chronoamperometry':
-        result = await this.zahnerService.performMeasurement('ca', parameters, node.id, executionId);
-        break;
-      case 'chronopotentiometry':
-        result = await this.zahnerService.performMeasurement('cp', parameters, node.id, executionId);
-        break;
-      case 'voltage_ramp':
-      case 'lsv_measurement':
-        result = await this.zahnerService.performMeasurement('lsv', parameters, node.id, executionId);
-        break;
-      case 'current_ramp':
-        result = await this.zahnerService.performMeasurement('current_ramp', parameters, node.id, executionId);
-        break;
-      default:
-        throw new Error(`Unsupported measurement type: ${measurementType}`);
-    }
-
-    if (result.status !== 'success') {
-      throw new Error(`Measurement failed: ${result.error}`);
-    }
-  }
-
-  private async executeDelay(executionId: string, node: any): Promise<void> {
-    // 从正确的路径获取duration参数（单位：秒），然后转换为毫秒
-    const delaySeconds = node.data?.parameters?.duration || 1.0;
-    const delayMs = Math.round(delaySeconds * 1000); // 将秒转换为毫秒
-    this.consoleManager.log('ExecutionService', 'enableLog', `Executing delay node ${node.id} for ${delaySeconds}s (${delayMs}ms)`);
-
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-    this.consoleManager.log('ExecutionService', 'enableLog', `Delay completed for node ${node.id}`);
-  }
-
-  private async executeLoopStart(executionId: string, node: any): Promise<void> {
-    const parameters = node.data?.parameters || {};
-    this.consoleManager.log('ExecutionService', 'enableLog', `Loop start: node=${node.id}, count=${parameters.loop_count}`);
-    // 循环逻辑在工作流层面处理，这里只记录日志
-  }
-
-  private async executeLoopEnd(executionId: string, node: any): Promise<void> {
-    const parameters = node.data?.parameters || {};
-    this.consoleManager.log('ExecutionService', 'enableLog', `Loop end: node=${node.id}`);
-    // 循环逻辑在工作流层面处理，这里只记录日志
-  }
-
-  private async executeChangeTemperature(executionId: string, node: any): Promise<void> {
-    const parameters = node.data?.parameters || {};
-
-    this.consoleManager.log('ExecutionService', 'enableLog', `执行change_temperature节点: ${node.id}`, {
-      target_temperature: parameters.target_temperature,
-      rate: parameters.rate
+    const outputPath = this.filesService.buildOutputPath({
+      base_path: config?.base_path,
+      project_name: workflow?.definition.name,
+      individual_name: workflow?.individualName,
+      test_type: config?.test_type,
+      measurement_type: type,
+      workflow_id: workflowId,
+      workflow_timestamp: timestamp
     });
 
-    try {
-      // 参数转换：前端传递的是用户可理解的值，需要转换为设备单位
-      const convertedParams = {
-        target_temperature: Math.round(parameters.target_temperature * 10), // 转换为×10
-        rate: Math.round(parameters.rate * 10), // 转换为×10
-        tolerance: 5, // 0.5°C × 10
-        stabilization_time: 30 // 30秒
-      };
-
-      // 调用FurnaceService的autoTemperatureControl方法
-      const result = await this.furnaceService.autoTemperatureControl(
-        convertedParams,
-        node.id,
-        executionId
-      );
-
-      if (!result.success) {
-        throw new Error(`自动温度控制失败: ${result.error}`);
-      }
-
-      // 更新节点参数，保存执行结果
-      if (node.data) {
-        node.data.parameters = {
-          ...parameters,
-          ...result.updated_parameters
-        };
-      }
-
-      this.consoleManager.log('ExecutionService', 'enableLog', `change_temperature节点执行成功: ${node.id}`, {
-        current_temperature: result.updated_parameters.current_temperature / 10,
-        target_temperature: result.updated_parameters.target_temperature / 10,
-        calculated_duration: result.updated_parameters.calculated_duration
-      });
-
-    } catch (error: any) {
-      this.consoleManager.log('ExecutionService', 'enableError', `change_temperature节点执行失败: ${node.id}`, {
-        error: error.message
-      });
-
-      // 根据Todo.md要求：执行失败仅添加一条log提示，不重试
-      this.consoleManager.log('ExecutionService', 'enableLog', `change_temperature节点失败，继续执行后续节点: ${error.message}`);
-    }
+    params = { ...params, output_path: outputPath };
+    
+    // 调用 Zahner 服务
+    // 注意：这里假设 ZahnerService 已经内部处理了不同类型的 mapping
+    const res = await this.zahnerService.performMeasurement(type, params, node.id, executionId);
+    if (res.status !== 'success') throw new Error(res.error || 'Measurement failed');
   }
 
-  private async executeChangeGasFlow(executionId: string, node: any): Promise<void> {
-    const parameters = node.data?.parameters || {};
+  private async executeChangeTemperature(executionId: string, node: any) {
+    const p = node.data?.parameters || {};
+    // 转换单位 0.1度
+    const params = {
+      target_temperature: Math.round(p.target_temperature * 10),
+      rate: Math.round(p.rate * 10),
+      tolerance: 5,
+      stabilization_time: 30
+    };
+    const res = await this.furnaceService.autoTemperatureControl(params, node.id, executionId);
+    if (!res.success) throw new Error(res.error);
+    // 更新运行时参数以便记录
+    if (node.data) node.data.parameters = { ...p, ...res.updated_parameters };
+  }
 
-    this.consoleManager.log('ExecutionService', 'enableLog', `执行change_gas_flow节点: ${node.id}`, {
-      device_selection: parameters.device_selection,
-      target_flow_rate: parameters.target_flow_rate
+  private async executeChangeGasFlow(executionId: string, node: any) {
+    const p = node.data?.parameters || {};
+    if (!p.device_selection) throw new Error('Missing device_selection');
+    const [addrStr, gas] = p.device_selection.split(':');
+    
+    const params = {
+      device_address: parseInt(addrStr, 10),
+      gas_type: gas,
+      target_flow_rate: p.target_flow_rate,
+      stabilization_time: 10
+    };
+    
+    const res = await this.mfcService.setFlowRateControl(params, node.id, executionId);
+    if (!res.success) throw new Error(res.error);
+  }
+
+  private async executeDelay(node: any) {
+    const sec = node.data?.parameters?.duration || 1;
+    this.logger.log(`Delaying for ${sec}s...`);
+    await new Promise(r => setTimeout(r, sec * 1000));
+  }
+
+  // ----------------------------------------------------------------------
+  // 辅助方法
+  // ----------------------------------------------------------------------
+
+  private setupDeviceEventListeners() {
+    // 这里保留监听逻辑，用于处理来自硬件的异步事件
+    // 代码保持原样，但注意不要使用 this.db.emit
+    this.eventBus.on('measurement.completed').subscribe(event => {
+       // 转发为 node.completed
+       const { nodeId, executionId } = event.data.context || {};
+       if(nodeId && executionId) {
+         this.emitNodeEvent('completed', executionId, { id: nodeId, type: event.data.measurementType }, { result: event.data.result });
+       }
     });
+    
+    this.eventBus.on('measurement.failed').subscribe(event => {
+        // 转发为 node.failed
+        const { nodeId, executionId } = event.data.context || {};
+        if(nodeId && executionId) {
+             this.emitNodeEvent('failed', executionId, { id: nodeId }, { error: event.data.error });
+        }
+    });
+  }
 
-    try {
-      // 从device_selection解析设备地址和气体类型
-      if (!parameters.device_selection) {
-        throw new Error('device_selection参数不能为空');
-      }
+  private emitWorkflowEvent(type: 'started' | 'completed' | 'failed', executionId: string, workflowId: string, extra?: any) {
+    this.eventBus.emit(`workflow.${type}`, {
+      executionId, workflowId, timestamp: new Date(), ...extra, context: { source: 'execution-service' }
+    });
+  }
 
-      const [deviceAddressStr, gasType] = parameters.device_selection.split(':');
-      if (!deviceAddressStr || !gasType) {
-        throw new Error('device_selection格式错误，应为"地址:气体类型"格式');
-      }
+  private emitNodeEvent(type: 'started' | 'completed' | 'failed', executionId: string, node: any, extra?: any) {
+    this.eventBus.emit(`node.${type}`, {
+      nodeId: node.id, executionId, workflowId: this.getCurrentWorkflowId(executionId), nodeType: node.type,
+      timestamp: new Date(), ...extra, context: { source: 'execution-service' }
+    });
+  }
 
-      const device_address = parseInt(deviceAddressStr, 10);
-      if (isNaN(device_address)) {
-        throw new Error(`设备地址解析失败: ${deviceAddressStr}`);
-      }
+  private getCurrentWorkflowId(execId: string): string { return this.executionContexts.get(execId)?.workflowId || 'unknown'; }
+  private getWorkflowTimestamp(execId: string): string { return this.executionContexts.get(execId)?.workflowTimestamp || this.generateTimestamp(); }
+  private generateTimestamp(): string { return new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); }
+  
+  private getLoopParams(node: any) {
+    const p = node?.data?.parameters || node?.config || {};
+    return { loop_count: Number(p.loop_count) || 1 };
+  }
 
-      // 构造MFC服务调用参数
-      const convertedParams = {
-        device_address: device_address,
-        gas_type: gasType,
-        target_flow_rate: parameters.target_flow_rate,
-        current_flow_rate: parameters.current_flow_rate,
-        stabilization_time: 10 // 固定10秒稳定时间
+  private buildLoopBoundaries(nodes: any[]): Map<number, number> {
+    const map = new Map<number, number>();
+    const stack: number[] = [];
+    nodes.forEach((n, i) => {
+      if (n.type === 'loop_start') stack.push(i);
+      else if (n.type === 'loop_end' && stack.length) map.set(stack.pop()!, i);
+    });
+    return map;
+  }
+
+  private isMeasurementNodeType(t: string): boolean {
+    return ['eis_potentiostatic', 'eis_galvanostatic', 'ocp_measurement', 'chronoamperometry', 'chronopotentiometry', 'voltage_ramp', 'current_ramp', 'lsv_measurement'].includes(t);
+  }
+
+  // 占位符方法，实际逻辑由 EventBus 触发
+  async pauseExecution(id: string) { this.eventBus.emit('execution.paused', { executionId: id, timestamp: new Date() }); }
+  async resumeExecution(id: string) { this.eventBus.emit('execution.resumed', { executionId: id, timestamp: new Date() }); }
+  async cancelExecution(id: string) { this.eventBus.emit('execution.cancelled', { executionId: id, timestamp: new Date() }); }
+  async getExecutionStatus(id: string): Promise<ExecutionStatus> {
+    // 1. 修改 SQL，多查 workflow_id 和 start_time
+    const row = this.db.prepare(`
+      SELECT id, workflow_id, status, error, start_time, end_time
+      FROM executions
+      WHERE id = ?
+    `).get(id) as any;
+
+    if (!row) {
+      // 2. 没找到时，必须返回符合 ExecutionStatus 接口的默认对象
+      return {
+        executionId: id,
+        workflowId: 'unknown', // 补全必填项
+        status: 'unknown' as any,
+        startTime: new Date(), // 补全必填项
+        currentNode: undefined,
+        completedNodes: []
       };
-
-      // 调用MfcService的setFlowRateControl方法
-      const result = await this.mfcService.setFlowRateControl(
-        convertedParams,
-        node.id,
-        executionId
-      );
-
-      if (!result.success) {
-        throw new Error(`MFC流量控制失败: ${result.error}`);
-      }
-
-      // 更新节点参数，保存解析后的设备信息和执行结果
-      if (node.data) {
-        node.data.parameters = {
-          ...parameters,
-          device_address: device_address,
-          gas_type: gasType,
-          ...result.updated_parameters
-        };
-      }
-
-      this.consoleManager.log('ExecutionService', 'enableLog', `change_gas_flow节点执行成功: ${node.id}`, {
-        device_address: device_address,
-        gas_type: gasType,
-        target_flow_rate: result.updated_parameters.target_flow_rate,
-        current_flow_rate: result.updated_parameters.current_flow_rate,
-        final_flow_rate: result.updated_parameters.final_flow_rate
-      });
-
-    } catch (error: any) {
-      this.consoleManager.log('ExecutionService', 'enableError', `change_gas_flow节点执行失败: ${node.id}`, {
-        error: error.message
-      });
-
-      // 失败时仅记录日志，不重试
-      this.consoleManager.log('ExecutionService', 'enableLog', `change_gas_flow节点失败，继续执行后续节点: ${error.message}`);
     }
-  }
 
-  private isMeasurementNodeType(nodeType: string): boolean {
-    const measurementTypes = [
-      'eis_potentiostatic',
-      'eis_galvanostatic',
-      'ocp_measurement',
-      'chronoamperometry',
-      'chronopotentiometry',
-      'voltage_ramp',
-      'current_ramp',
-      'lsv_measurement',
-      'zahner-measurement'
-    ];
-    return measurementTypes.includes(nodeType);
-  }
-
-  private getCurrentNodeId(): string {
-    return this.currentNodeId || 'unknown';
-  }
-
-  private getCurrentWorkflowId(executionId: string): string {
-    const context = this.executionContexts.get(executionId);
-    return context?.workflowId || 'unknown';
-  }
-
-  private getCurrentExecutionId(): string {
-    return this.currentExecutionId || 'unknown';
-  }
-
-  private generateExecutionId(): string {
-    return `exec_${++this.executionCounter}_${Date.now()}`;
-  }
-
-  /**
-   * 生成工作流级别的时间戳 (YYMMDD_HHmm格式)
-   */
-  private generateWorkflowTimestamp(): string {
-    const now = new Date();
-    return now.toISOString()
-      .slice(2, 16) // YYMMDD_HHmm 格式
-      .replace(/[-:]/g, '')
-      .replace('T', '_');
-  }
-
-  /**
-   * 获取工作流时间戳
-   */
-  private getWorkflowTimestamp(executionId: string): string {
-    const context = this.executionContexts.get(executionId);
-    return context?.workflowTimestamp || this.generateWorkflowTimestamp();
-  }
-
-  getStatus(): ModuleStatus {
+    // 3. 正常返回时，映射数据库字段
     return {
-      state: 'running',
-      health: 'healthy',
-      lastCheck: new Date(),
-      error: undefined
+      executionId: row.id,
+      workflowId: row.workflow_id,
+      status: row.status,
+      error: row.error,
+      startTime: new Date(row.start_time),
+      endTime: row.end_time ? new Date(row.end_time) : undefined,
+      // 如果需要 currentNode 和 completedNodes，需要从 context 或 logs_json 里解析
+      // 暂时留空以满足接口
+      completedNodes: []
     };
   }
-
-  // 实现接口要求的控制方法（通过事件总线实现）
-  async pauseExecution(executionId: string): Promise<void> {
-    // 事件驱动架构：发送执行暂停事件
-    this.eventBus.emit('execution.paused', {
-      executionId,
-      timestamp: new Date(),
-      context: { source: 'execution-service' }
-    });
-  }
-
-  async resumeExecution(executionId: string): Promise<void> {
-    // 事件驱动架构：发送执行恢复事件
-    this.eventBus.emit('execution.resumed', {
-      executionId,
-      timestamp: new Date(),
-      context: { source: 'execution-service' }
-    });
-  }
-
-  async cancelExecution(executionId: string): Promise<void> {
-    // 事件驱动架构：发送执行取消事件
-    this.eventBus.emit('execution.cancelled', {
-      executionId,
-      timestamp: new Date(),
-      context: { source: 'execution-service' }
-    });
-  }
-
-  async getExecutionStatus(executionId: string): Promise<any> {
-    // 事件驱动架构：发送状态查询事件
-    this.eventBus.emit('execution.status.query', {
-      executionId,
-      timestamp: new Date(),
-      context: { source: 'execution-service' }
-    });
-
-    // 返回基本状态信息（详细状态由 StateEventHandler 管理）
-    return {
-      executionId,
-      status: 'unknown',
-      message: '状态查询已发送到事件总线，详细状态由 StateEventHandler 管理'
-    };
-  }
-
-  // 调试：查看已加载的 Hook 规则
-  getLoadedHookRules(): any[] {
-    return Array.isArray(this.hookRules) ? this.hookRules : [];
-  }
+  getStatus(): ModuleStatus { return { state: 'running', health: 'healthy', lastCheck: new Date() }; }
 }

@@ -1,9 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ExecutionService } from './execution.service';
 import { ExecutionController } from './execution.controller';
-import { HooksController } from './hooks.controller';
-import { ExecutionNotificationService } from './execution-notification.service';
-import { ZahnerDeviceService } from '../../devices/zahner-device.service';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { ZahnerZenniumModule } from '../zahner-zennium/zahner-zennium.module';
 import { FurnaceModule } from '../furnace/furnace.module';
@@ -17,7 +14,7 @@ import { FilesModule } from '../files/files.module';
 @Module({
   imports: [
     WorkflowModule,
-    ZahnerZenniumModule,
+    ZahnerZenniumModule, // ✅ 这里已经导出了 ZahnerZenniumService，这就够了
     FurnaceModule,
     MfcModule,
     FilesModule,
@@ -26,16 +23,14 @@ import { FilesModule } from '../files/files.module';
     HttpModule,
     DbModule,
   ],
-  controllers: [ExecutionController, HooksController],
+  controllers: [ExecutionController],
   providers: [
     ExecutionService,
-    ExecutionNotificationService,
-    ZahnerDeviceService,
+    // ❌ 删除: ZahnerDeviceService
   ],
   exports: [
     ExecutionService,
-    ExecutionNotificationService,
-    ZahnerDeviceService,
+    // ❌ 删除: ZahnerDeviceService
   ],
 })
 export class ExecutionModule {}

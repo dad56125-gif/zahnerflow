@@ -5,19 +5,10 @@ import { MfcDataService } from './mfc-data.service';
 import { MfcErrorHandlerService } from './services/mfc-error-handler.service';
 import { MfcGateway } from './mfcGateway';
 import { MfcDeviceService } from './mfcDevice.service';
+import { DbModule } from '../../db/db.module'; // 引入地基
 
-/**
- * MFC模块
- *
- * 提供质量流量控制器(MFC)的完整功能支持：
- * - 设备连接和控制
- * - 实时数据采集和推送
- * - 历史数据管理
- * - 错误处理和监控
- * - WebSocket实时通信
- */
 @Module({
-  imports: [],
+  imports: [DbModule], // 确保注入
   controllers: [MfcController],
   providers: [
     MfcService,
@@ -34,4 +25,3 @@ import { MfcDeviceService } from './mfcDevice.service';
   ],
 })
 export class MfcModule {}
-

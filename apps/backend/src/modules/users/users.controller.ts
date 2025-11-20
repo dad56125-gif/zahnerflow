@@ -1,6 +1,19 @@
 import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+// 👇 引入校验装饰器
+import { IsString, IsNotEmpty, IsOptional, IsEmail } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  user: string;
+
+  @IsString()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+}
+
 
 @Controller('api/users')
 export class UsersController {
@@ -8,7 +21,8 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(new ValidationPipe({ transform: true }))
+  // 这里直接用上面的 CreateUserDto
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async createUser(@Body() createUserDto: CreateUserDto) {
     try {
       await this.usersService.createUser(createUserDto);
@@ -16,10 +30,10 @@ export class UsersController {
         success: true,
         message: `User ${createUserDto.user} created successfully`
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
-        message: (error as Error).message
+        message: error.message || 'Failed to create user'
       };
     }
   }

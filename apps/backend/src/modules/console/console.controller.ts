@@ -3,6 +3,7 @@ import { ConsoleDisplayManager } from '../../common/console-display-manager.serv
 
 @Controller('api/console')
 export class ConsoleController {
+  // 这里注入的将是 CommonModule 里的那个单例
   constructor(private readonly consoleDisplayManager: ConsoleDisplayManager) {}
 
   @Get('config')

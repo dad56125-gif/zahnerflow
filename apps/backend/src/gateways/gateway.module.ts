@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { GatewaysModule } from '../modules/shared/gateways.module';
-import { FurnaceModule } from '../modules/furnace/furnace.module';
+import { WorkflowGateway } from './workflow.gateway';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
-    GatewaysModule,
-    FurnaceModule,
+    CommonModule,
   ],
+  providers: [WorkflowGateway],
+  exports: [WorkflowGateway],
 })
 export class GatewayModule {}

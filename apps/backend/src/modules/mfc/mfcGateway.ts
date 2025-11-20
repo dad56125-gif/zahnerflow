@@ -128,10 +128,11 @@ export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   }
 
   handleConnection(client: Socket) {
-    this.logger.log('MfcGateway', 'enableLog', `MFC client connected: ${client.id}`);
+    const clientId = client.id || 'unknown';
+    this.logger.log('MfcGateway', 'enableLog', `MFC client connected: ${clientId}`);
 
     const clientInfo: MfcClient = {
-      id: client.id,
+      id: clientId,
       socket: client,
       connectedAt: new Date(),
       lastActivity: new Date(),
@@ -148,7 +149,8 @@ export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log('MfcGateway', 'enableLog', `MFC client disconnected: ${client.id}`);
+    const clientId = client.id || 'unknown';
+    this.logger.log('MfcGateway', 'enableLog', `MFC client disconnected: ${clientId}`);
 
     const clientInfo = this.clients.get(client.id);
     if (clientInfo?.isSubscribedToMfc) {

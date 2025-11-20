@@ -1,9 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { IWorkflowModule, Workflow, WorkflowDefinition, ValidationResult } from '../../interfaces/module-interfaces';
 import { WorkflowStorageService } from './workflow-storage.service';
-import { DbService } from '../../db/db.service';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class WorkflowService implements IWorkflowModule, OnModuleInit {
@@ -11,20 +8,26 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
   readonly version = '1.0.0';
   readonly dependencies = [];
 
+  // 保持内存缓存，为了极致的读取性能
   private workflows = new Map<string, Workflow>();
 
   constructor(
     private readonly workflowStorage: WorkflowStorageService,
-    private readonly db: DbService,
+    // 注意：这里不再需要注入 DbService，实现了彻底解耦
   ) {}
 
   async onModuleInit(): Promise<void> {
+    // ✅ 关键修复：强制先初始化表结构
+    this.workflowStorage.ensureTables();
+
+    // ✅ 然后再读取数据
     await this.loadWorkflowsFromStorage();
   }
 
   private async loadWorkflowsFromStorage(): Promise<void> {
     try {
       this.workflows = await this.workflowStorage.loadAllWorkflows();
+      console.log(`[WorkflowService] Loaded ${this.workflows.size} workflows from SQLite.`);
     } catch (error) {
       console.error('Failed to load workflows from storage:', error);
       this.workflows = new Map();
@@ -44,10 +47,7 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     const updatedNodes = definition.nodes.map(node => {
       const newId = node.id.startsWith('temp_node_') ? this.generateNodeId() : node.id;
       nodeIdMap.set(node.id, newId);
-      return {
-        ...node,
-        id: newId
-      };
+      return { ...node, id: newId };
     });
 
     // 更新边的连接关系
@@ -59,7 +59,7 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
     const updatedDefinition = {
       ...definition,
-      id, // 更新工作流ID
+      id, 
       nodes: updatedNodes,
       edges: updatedEdges
     };
@@ -76,16 +76,18 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       updatedAt: new Date(),
     };
 
+    // 1. 更新内存
     this.workflows.set(id, workflow);
+    // 2. 持久化到 SQLite
     await this.workflowStorage.saveWorkflow(workflow);
-    await this.db.upsertWorkflow(workflow as any);
+    
     return workflow;
   }
 
   async updateWorkflow(id: string, updates: Partial<WorkflowDefinition>): Promise<Workflow> {
     const current = await this.getWorkflow(id);
 
-    // 更新工作流基本属性
+    // 更新属性逻辑保持不变...
     if (typeof updates.name === 'string') {
       current.name = updates.name;
       current.definition.name = updates.name;
@@ -103,7 +105,6 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       current.definition.individualName = updates.individualName;
     }
 
-    // 如果更新包含节点或边，进行完整验证
     if (updates.nodes || updates.edges) {
       const updatedDefinition: WorkflowDefinition = {
         ...current.definition,
@@ -124,29 +125,34 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
     this.workflows.set(id, current);
     await this.workflowStorage.updateWorkflow(id, current);
-    await this.db.upsertWorkflow(current as any);
     return current;
   }
 
   async deleteWorkflow(id: string): Promise<void> {
+    // 先查是否存在
     const exists = this.workflows.has(id) || (await this.workflowStorage.getWorkflow(id));
     if (!exists) throw new Error(`Workflow ${id} not found`);
+    
     this.workflows.delete(id);
     await this.workflowStorage.deleteWorkflow(id);
   }
 
   async getWorkflow(id: string): Promise<Workflow> {
+    // 优先查内存
     const inMem = this.workflows.get(id);
     if (inMem) return inMem;
+    
+    // 内存没有查数据库
     const fromStore = await this.workflowStorage.getWorkflow(id);
     if (!fromStore) throw new Error(`Workflow ${id} not found`);
+    
+    // 补回内存
     this.workflows.set(id, fromStore);
     return fromStore;
   }
 
   async listWorkflows(): Promise<Workflow[]> {
     if (this.workflows.size === 0) await this.loadWorkflowsFromStorage();
-    // 按创建时间降序排列（最新的在前面），确保分页能获取到最新记录
     return Array.from(this.workflows.values())
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
@@ -164,7 +170,6 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       version: 1,
     };
 
-    // 重新分配节点ID，保持边关系一致
     const idMap = new Map<string, string>();
     cloned.nodes.forEach((n: any) => {
       const nid = this.generateNodeId();
@@ -179,12 +184,11 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     return this.createWorkflow(cloned);
   }
 
+  // 验证逻辑保持完全不变
   validateWorkflow(definition: WorkflowDefinition): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // 工作流只依靠ID，name字段不是必需的
-    // if (!definition.name?.trim()) errors.push('Workflow name is required');
     if (!definition.description?.trim()) warnings.push('Workflow description is recommended');
 
     if (!Array.isArray(definition.nodes) || definition.nodes.length === 0) {
@@ -256,66 +260,26 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     return nodes.map(n => n.id).filter(id => !visited.has(id));
   }
 
+  // 【重构点】生成 Workflow ID：改为调用 storage 的原子计数器
   private generateWorkflowId(): string {
-    const counterPath = path.join(process.cwd(), 'data', 'counters');
-
-    // 确保计数器目录存在
-    if (!fs.existsSync(counterPath)) {
-      fs.mkdirSync(counterPath, { recursive: true });
-    }
-
-    const workflowCounterFile = path.join(counterPath, 'workflow-counter.txt');
-
     try {
-      // 读取当前计数器值
-      let currentCount = 1;
-      if (fs.existsSync(workflowCounterFile)) {
-        const content = fs.readFileSync(workflowCounterFile, 'utf8').trim();
-        currentCount = parseInt(content, 10) || 1;
-      }
-
-      // 生成8位数字的工作流ID
-      const workflowId = `workflow_${String(currentCount).padStart(8, '0')}`;
-
-      // 保存下一个计数器值
-      fs.writeFileSync(workflowCounterFile, String(currentCount + 1), 'utf8');
-
-      return workflowId;
+      // 直接从 DB 获取下一个数字，如 101
+      const currentCount = this.workflowStorage.getNextCounter('workflow');
+      // 格式化为 workflow_00000101
+      return `workflow_${String(currentCount).padStart(8, '0')}`;
     } catch (error) {
-      // 如果文件操作失败，回退到时间戳方案
-      console.warn('Failed to generate workflow ID with counter, falling back to timestamp:', error);
+      console.warn('Failed to generate workflow ID with DB counter, falling back to timestamp:', error);
       return `workflow_${Date.now()}`;
     }
   }
 
+  // 【重构点】生成 Node ID：改为调用 storage 的原子计数器
   private generateNodeId(): string {
-    const counterPath = path.join(process.cwd(), 'data', 'counters');
-
-    // 确保计数器目录存在
-    if (!fs.existsSync(counterPath)) {
-      fs.mkdirSync(counterPath, { recursive: true });
-    }
-
-    const nodeCounterFile = path.join(counterPath, 'node-counter.txt');
-
     try {
-      // 读取当前计数器值
-      let currentCount = 1;
-      if (fs.existsSync(nodeCounterFile)) {
-        const content = fs.readFileSync(nodeCounterFile, 'utf8').trim();
-        currentCount = parseInt(content, 10) || 1;
-      }
-
-      // 生成8位数字的节点ID
-      const nodeId = `node_${String(currentCount).padStart(8, '0')}`;
-
-      // 保存下一个计数器值
-      fs.writeFileSync(nodeCounterFile, String(currentCount + 1), 'utf8');
-
-      return nodeId;
+      const currentCount = this.workflowStorage.getNextCounter('node');
+      return `node_${String(currentCount).padStart(8, '0')}`;
     } catch (error) {
-      // 如果文件操作失败，回退到时间戳方案
-      console.warn('Failed to generate node ID with counter, falling back to timestamp:', error);
+      console.warn('Failed to generate node ID with DB counter, falling back to timestamp:', error);
       return `node_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     }
   }
@@ -333,8 +297,6 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     wf.updatedAt = new Date();
     this.workflows.set(id, wf);
     await this.workflowStorage.updateWorkflow(id, wf);
-    // 同步数据库索引：展平写入 node / node_param
-    await this.db.upsertWorkflow(wf as any);
     return wf;
   }
 

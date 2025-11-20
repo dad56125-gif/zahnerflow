@@ -12,6 +12,17 @@ export class ExecutionController {
     return this.executionService.executeWorkflow(body.workflowId);
   }
 
+  @Get()
+  async getAllExecutions(): Promise<ExecutionStatus[]> {
+    return this.executionService.getAllExecutions();
+  }
+
+  @Get('hooks/rules')
+  @HttpCode(HttpStatus.OK)
+  getHookRules() {
+    return { items: this.executionService.getLoadedHookRules() };
+  }
+
   @Get(':id')
   async getExecution(@Param('id') executionId: string): Promise<ExecutionStatus> {
     return this.executionService.getExecutionStatus(executionId);
@@ -19,37 +30,22 @@ export class ExecutionController {
 
   @Put(':id/pause')
   @HttpCode(HttpStatus.OK)
-  async pauseExecution(@Param('id') executionId: string): Promise<{ message: string }> {
+  async pauseExecution(@Param('id') executionId: string) {
     await this.executionService.pauseExecution(executionId);
-    return { message: 'Execution paused successfully' };
+    return { message: 'Execution paused' };
   }
 
   @Put(':id/resume')
   @HttpCode(HttpStatus.OK)
-  async resumeExecution(@Param('id') executionId: string): Promise<{ message: string }> {
+  async resumeExecution(@Param('id') executionId: string) {
     await this.executionService.resumeExecution(executionId);
-    return { message: 'Execution resumed successfully' };
+    return { message: 'Execution resumed' };
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async cancelExecution(@Param('id') executionId: string): Promise<{ message: string }> {
+  async cancelExecution(@Param('id') executionId: string) {
     await this.executionService.cancelExecution(executionId);
-    return { message: 'Execution cancelled successfully' };
+    return { message: 'Execution cancelled' };
   }
-
-  @Get()
-  async getAllExecutions(): Promise<ExecutionStatus[]> {
-    // TODO: 从数据库获取所有执行状态
-    return [];
-  }
-
-  @Get('_hooks')
-  @HttpCode(HttpStatus.OK)
-  getHookRules() {
-    return { items: this.executionService.getLoadedHookRules() };
-  }
-
 }
-
-

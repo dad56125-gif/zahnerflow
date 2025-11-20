@@ -56,23 +56,24 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   handleConnection(client: Socket) {
-    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client connected: ${client.id}`);
+    const clientId = client.id || 'unknown';
+    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client connected: ${clientId}`);
 
     // 记录连接信息
     const clientInfo: ConnectedClient = {
-      id: client.id,
+      id: clientId,
       socket: client,
       workflowIds: new Set(),
       connectedAt: new Date(),
       lastActivity: new Date(),
     };
 
-    this.connectedClients.set(client.id, clientInfo);
+    this.connectedClients.set(clientId, clientInfo);
 
     // 发送欢迎消息
     client.emit('connected', {
       message: 'Welcome to ZahnerFlow WebSocket Gateway',
-      clientId: client.id,
+      clientId: clientId,
       serverTime: new Date(),
       connectedClients: this.connectedClients.size,
     });
@@ -82,7 +83,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
     // 广播客户端连接事件
     this.broadcast('clientConnected', {
-      clientId: client.id,
+      clientId: clientId,
       totalClients: this.connectedClients.size,
     });
 
@@ -90,22 +91,23 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   handleDisconnect(client: Socket) {
-    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client disconnected: ${client.id}`);
+    const clientId = client.id || 'unknown';
+    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client disconnected: ${clientId}`);
 
     // 清理客户端信息
-    const clientInfo = this.connectedClients.get(client.id);
+    const clientInfo = this.connectedClients.get(clientId);
     if (clientInfo) {
       // 移除所有工作流订阅
       clientInfo.workflowIds.forEach(workflowId => {
         client.leave(`workflow:${workflowId}`);
       });
 
-      this.connectedClients.delete(client.id);
+      this.connectedClients.delete(clientId);
     }
 
     // 广播客户端断开事件
     this.broadcast('clientDisconnected', {
-      clientId: client.id,
+      clientId: clientId,
       totalClients: this.connectedClients.size,
     });
 
@@ -115,16 +117,17 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   @SubscribeMessage('joinWorkflow')
   handleJoinWorkflow(@MessageBody() data: { workflowId: string }, @ConnectedSocket() client: Socket) {
     const { workflowId } = data;
-    
+    const clientId = client.id || 'unknown';
+
     // 更新客户端信息
-    const clientInfo = this.connectedClients.get(client.id);
+    const clientInfo = this.connectedClients.get(clientId);
     if (clientInfo) {
       clientInfo.workflowIds.add(workflowId);
       clientInfo.lastActivity = new Date();
     }
     
     client.join(`workflow:${workflowId}`);
-    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client ${client.id} joined workflow ${workflowId}`);
+    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client ${clientId} joined workflow ${workflowId}`);
     
     client.emit('joinedWorkflow', {
       workflowId,
@@ -134,7 +137,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     
     // 发送客户端加入工作流事件
     this.sendToWorkflow(workflowId, 'clientJoinedWorkflow', {
-      clientId: client.id,
+      clientId: clientId,
       workflowId,
     });
   }
@@ -142,16 +145,17 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   @SubscribeMessage('leaveWorkflow')
   handleLeaveWorkflow(@MessageBody() data: { workflowId: string }, @ConnectedSocket() client: Socket) {
     const { workflowId } = data;
-    
+    const clientId = client.id || 'unknown';
+
     // 更新客户端信息
-    const clientInfo = this.connectedClients.get(client.id);
+    const clientInfo = this.connectedClients.get(clientId);
     if (clientInfo) {
       clientInfo.workflowIds.delete(workflowId);
       clientInfo.lastActivity = new Date();
     }
     
     client.leave(`workflow:${workflowId}`);
-    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client ${client.id} left workflow ${workflowId}`);
+    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client ${clientId} left workflow ${workflowId}`);
     
     client.emit('leftWorkflow', {
       workflowId,
@@ -161,7 +165,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     
     // 发送客户端离开工作流事件
     this.sendToWorkflow(workflowId, 'clientLeftWorkflow', {
-      clientId: client.id,
+      clientId: clientId,
       workflowId,
     });
   }
@@ -426,7 +430,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       totalClients: this.connectedClients.size,
       activeWorkflows: this.getActiveWorkflowCount(),
       clientDetails: Array.from(this.connectedClients.values()).map(client => ({
-        id: client.id,
+        id: clientId,
         connectedAt: client.connectedAt,
         lastActivity: client.lastActivity,
         workflowCount: client.workflowIds.size,

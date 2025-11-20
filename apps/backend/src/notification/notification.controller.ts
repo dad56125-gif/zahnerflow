@@ -1,6 +1,5 @@
 ﻿import { Controller, Post, Body, Get } from '@nestjs/common';
 import { NotificationService } from './notification.service';
-import { WorkflowGateway } from '../gateways/workflow.gateway';
 import { UserNotificationLevel } from '@zahnerflow/types';
 
 interface NotificationDto {
@@ -14,53 +13,50 @@ interface NotificationDto {
 
 @Controller('api/notifications')
 export class NotificationController {
-  constructor(
-    private readonly notificationService: NotificationService,
-    private readonly workflowGateway: WorkflowGateway
-  ) {}
+  constructor(private readonly notificationService: NotificationService) {}
 
   @Post()
   async receiveNotification(@Body() notification: NotificationDto) {
-    console.log('收到外部通知:', notification);
-
-    // 使用通知服务处理通知
+    // 将 HTTP 请求转换为内部系统通知
     this.notificationService.notify(
       notification.message,
       UserNotificationLevel.SYSTEM,
-      `Received external notification: ${notification.title}`
+      `Received external notification: ${notification.title}`,
+      'external-api'
     );
 
-    return { success: true, message: '通知已处理' };
+    return { success: true, message: 'Notification processed' };
   }
 
   @Post('postman')
   async receiveFromPostman(@Body() notification: NotificationDto) {
-    console.log('邮递员投递通知:', notification);
-
-    // 解析 source 字段，格式应为 文件:函数
+    // 解析 source 字段 (e.g. "script.py:main")
     let sourceFile = 'postman';
-    let sourceFunction = 'deliverNotification';
-
+    
     if (notification.source && notification.source.includes(':')) {
-      [sourceFile, sourceFunction] = notification.source.split(':');
+      sourceFile = notification.source.split(':')[0];
     } else if (notification.source) {
       sourceFile = notification.source;
     }
 
-    // 走外部通知通道
-    this.notificationService.notifyExternal(
+    // 使用服务发送通知
+    this.notificationService.notify(
       notification.message,
       UserNotificationLevel.SYSTEM,
-      notification.title || `Notification from ${sourceFile}:${sourceFunction}`,
-      sourceFile,
-      sourceFunction
+      notification.title || `From ${sourceFile}`,
+      sourceFile
     );
 
-    return { success: true, message: '邮递员已投递' };
+    return { success: true, message: 'Postman notification delivered' };
   }
 
   @Get('stats')
   getNotificationStats() {
-    return this.notificationService.getCacheStats();
+    // 这里的缓存统计已经在 Service 里简化了，如果没有实现 getCacheStats 可以返回空对象
+    // 或者如果 NotificationService 保留了 getCacheStats 方法则调用
+    if ('getCacheStats' in this.notificationService) {
+        return (this.notificationService as any).getCacheStats();
+    }
+    return { status: 'active' };
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, forwardRef, Inject } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DbService } from '../../db/db.service';
 import * as path from 'path';
 
@@ -11,14 +11,6 @@ export interface RegisterFilePayload {
   filename: string;
 }
 
-export interface RegisterFileResult {
-  id: string;
-  dir_path: string;
-  project_name: string;
-  individual_name: string;
-  test_type: string;
-}
-
 export interface BuildOutputPathOptions {
   base_path?: string;
   project_name?: string;
@@ -28,23 +20,38 @@ export interface BuildOutputPathOptions {
   workflow_id?: string;
   workflow_name?: string;
   useDefaultStructure?: boolean;
-  workflow_timestamp?: string; // 工作流级别的时间戳
+  workflow_timestamp?: string;
 }
 
 @Injectable()
-export class FilesService {
-  constructor(
-    @Inject(forwardRef(() => DbService))
-    private readonly dbService: DbService
-  ) {}
+export class FilesService implements OnModuleInit {
+  constructor(private readonly db: DbService) {}
 
-  async registerFile(payload: RegisterFilePayload): Promise<RegisterFileResult> {
+  onModuleInit() {
+    // 初始化 files 表，存储文件元数据
+    // 整合了原有的 data_file_paths 和 data_file 概念
+    this.db.prepare(`
+      CREATE TABLE IF NOT EXISTS files (
+        id TEXT PRIMARY KEY,
+        user TEXT,
+        project_name TEXT,
+        individual_name TEXT,
+        test_type TEXT,
+        base_path TEXT,
+        dir_path TEXT,
+        filename TEXT,
+        created_at TEXT
+      )
+    `).run();
+  }
+
+  /**
+   * 注册文件元数据 (替代旧的 db.createDataFilePath)
+   */
+  async registerFile(payload: RegisterFilePayload) {
     const basePath = payload.base_path || 'C:\\data\\archive';
-
-    // Normalize Windows path
     const normalizedBasePath = basePath.replace(/\//g, '\\');
 
-    // Create directory structure: basePath/projectName/individualName/testType/
     const dirPath = path.join(
       normalizedBasePath,
       payload.project_name,
@@ -52,44 +59,65 @@ export class FilesService {
       payload.test_type
     );
 
-    const record = await this.dbService.createDataFilePath({
-      user: payload.user,
-      project_name: payload.project_name,
-      individual_name: payload.individual_name,
-      test_type: payload.test_type,
-      base_path: normalizedBasePath
-    });
+    const id = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
+
+    // 写入 SQLite
+    this.db.prepare(`
+      INSERT INTO files (id, user, project_name, individual_name, test_type, base_path, dir_path, filename, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, 
+      payload.user, 
+      payload.project_name, 
+      payload.individual_name, 
+      payload.test_type, 
+      normalizedBasePath, 
+      dirPath,
+      payload.filename || 'placeholder',
+      now
+    );
 
     return {
-      id: record.id,
-      dir_path: record.dir_path,
+      id,
+      dir_path: dirPath,
       project_name: payload.project_name,
       individual_name: payload.individual_name,
       test_type: payload.test_type
     };
   }
 
+  /**
+   * 获取用户的所有项目列表
+   */
   getProjects(user: string): string[] {
-    return this.dbService.getProjects(user);
+    const rows = this.db.prepare(`
+      SELECT DISTINCT project_name 
+      FROM files 
+      WHERE user = ?
+    `).all(user) as { project_name: string }[];
+
+    return rows.map(r => r.project_name);
   }
 
+  /**
+   * 获取特定项目的配置
+   */
   getProjectConfig(user: string, project_name: string, individual_name: string) {
-    const paths = this.dbService.getDataFilePaths(user)
-      .filter(p => p.project_name === project_name && p.individual_name === individual_name);
+    const row = this.db.prepare(`
+      SELECT base_path, project_name, individual_name, test_type 
+      FROM files 
+      WHERE user = ? AND project_name = ? AND individual_name = ?
+      LIMIT 1
+    `).get(user, project_name, individual_name) as any;
 
-    if (paths.length === 0) {
-      return null;
-    }
-
-    const firstPath = paths[0];
-    return {
-      base_path: firstPath.base_path,
-      project_name: firstPath.project_name,
-      individual_name: firstPath.individual_name,
-      test_type: firstPath.test_type
-    };
+    return row || null;
   }
 
+  /**
+   * 获取工作流文件列表
+   * ⚠️ 关键修改：不再读 JSON 文件，而是查 workflows 表
+   */
   async getWorkflowFiles(user: string, project?: string): Promise<Array<{
     id: string;
     name: string;
@@ -97,87 +125,51 @@ export class FilesService {
     filepath: string;
     project_name: string;
     created_at: string;
-    file_size?: number;
     node_count?: number;
     connection_count?: number;
   }>> {
-    // 导入文件系统模块
-    const fs = require('fs').promises;
-    const path = require('path');
+    // 从数据库查 workflows
+    const rows = this.db.prepare(`SELECT id, json_data, updated_at FROM workflows`).all() as any[];
 
-    try {
-      // 读取工作流JSON文件
-      const workflowsPath = path.join(process.cwd(), 'data', 'workflows', 'workflows.json');
+    const workflowFiles = [];
+    
+    // 获取用户的项目列表，作为默认项目
+    const projects = this.getProjects(user);
+    const defaultProject = projects.length > 0 ? projects[0] : '默认项目';
 
+    for (const row of rows) {
       try {
-        const workflowsData = JSON.parse(await fs.readFile(workflowsPath, 'utf8'));
-        const workflowArray = workflowsData.workflows || [];
+        const wf = JSON.parse(row.json_data);
+        
+        // 如果需要按项目过滤 (假设 workflow 对象里有 ownerName 或其他字段可以关联项目，暂时用默认)
+        // 这里为了兼容旧逻辑，project_name 逻辑比较模糊，先保留
+        const wfProject = project || defaultProject;
 
-        const workflowFiles: Array<{
-          id: string;
-          name: string;
-          filename: string;
-          filepath: string;
-          project_name: string;
-          created_at: string;
-          file_size?: number;
-          node_count?: number;
-          connection_count?: number;
-        }> = [];
+        const nodeCount = Array.isArray(wf.definition?.nodes) ? wf.definition.nodes.length : 0;
+        const connCount = Array.isArray(wf.definition?.edges) ? wf.definition.edges.length : 0;
 
-        // 处理工作流数组
-        for (const [workflowKey, workflowData] of workflowArray) {
-          if (workflowData && typeof workflowData === 'object') {
-            const workflow = workflowData as any;
-
-            // 计算节点和连接数
-            let node_count = 0;
-            let connection_count = 0;
-
-            if (workflow.definition && workflow.definition.nodes) {
-              node_count = Array.isArray(workflow.definition.nodes) ? workflow.definition.nodes.length : 0;
-            }
-
-            if (workflow.definition && workflow.definition.edges) {
-              connection_count = Array.isArray(workflow.definition.edges) ? workflow.definition.edges.length : 0;
-            }
-
-            // 从项目列表中获取项目名，如果没有则使用默认值
-            const projects = this.getProjects(user);
-            const project_name = project || (projects.length > 0 ? projects[0] : '默认项目');
-
-            workflowFiles.push({
-              id: workflow.id || workflowKey,
-              name: workflow.name || '未命名工作流',
-              filename: `${workflow.id || workflowKey}.json`,
-              filepath: workflowsPath,
-              project_name,
-              created_at: workflow.createdAt || workflow.updated_at || new Date().toISOString(),
-              node_count,
-              connection_count
-            });
-          }
-        }
-
-        // 按创建时间排序，最新的在前
-        workflowFiles.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-        return workflowFiles;
-
-      } catch (readError) {
-        console.warn('无法读取工作流文件，返回空列表:', readError);
-        return [];
+        workflowFiles.push({
+          id: wf.id,
+          name: wf.name || '未命名工作流',
+          filename: `${wf.id}.json`, // 虚拟文件名
+          filepath: 'SQLite DB',      // 虚拟路径
+          project_name: wfProject,
+          created_at: wf.createdAt || row.updated_at,
+          node_count: nodeCount,
+          connection_count: connCount
+        });
+      } catch (e) {
+        console.warn(`Skipping invalid workflow json for id ${row.id}`);
       }
-
-    } catch (error) {
-      console.error('Error getting workflow files:', error);
-      return [];
     }
+
+    // 排序
+    return workflowFiles.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
-  /**
-   * 从measurementType推断test_type
-   */
+  // ... 下面的 buildOutputPath 和 getTestTypeFromMeasurement 方法完全保留原样 ...
+  // (请直接复制你原文件里 buildOutputPath 及其之后的所有代码，不需要改动)
+
   getTestTypeFromMeasurement(measurementType: string): string {
     const testTypeMap: Record<string, string> = {
       'eis_potentiostatic': 'eis',
@@ -189,19 +181,9 @@ export class FilesService {
       'current_ramp': 'cv',
       'lsv_measurement': 'lsv'
     };
-
     return testTypeMap[measurementType] || 'general';
   }
 
-  /**
-   * 构建输出路径
-   *
-   * 规则：
-   * 1. test_type必须存在作为最后一级目录
-   * 2. base_path默认为 C:\data\archive
-   * 3. 完整信息：base_path/project_name/individual_name/test_type
-   * 4. 默认结构：base_path/workflow_id/YYMMDD_HHmm/test_type
-   */
   buildOutputPath(options: BuildOutputPathOptions): string {
     const {
       base_path = 'C:\\data\\archive',
@@ -215,7 +197,6 @@ export class FilesService {
       workflow_timestamp
     } = options;
 
-    // 确定test_type
     let finalTestType: string;
     if (test_type) {
       finalTestType = test_type;
@@ -225,35 +206,15 @@ export class FilesService {
       finalTestType = 'general';
     }
 
-    // 判断是否使用默认结构
     if (!useDefaultStructure && project_name && individual_name && test_type) {
-      // 完整信息路径
-      return path.join(
-        base_path,
-        project_name,
-        individual_name,
-        finalTestType
-      );
+      return path.join(base_path, project_name, individual_name, finalTestType);
     } else {
-      // 默认路径结构 - 使用工作流级别的时间戳
       const timestamp = workflow_timestamp || (() => {
-        // 如果没有提供时间戳，生成新的（向后兼容）
         const now = new Date();
-        return now.toISOString()
-          .slice(2, 16) // YYMMDD_HHmm 格式
-          .replace(/[-:]/g, '')
-          .replace('T', '_');
+        return now.toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_');
       })();
-
-      // 优先使用workflow_id，如果没有则使用workflow_name
       const workflowIdForPath = workflow_id || workflow_name || 'unknown_workflow';
-
-      return path.join(
-        base_path,
-        workflowIdForPath,
-        timestamp,
-        finalTestType
-      );
+      return path.join(base_path, workflowIdForPath, timestamp, finalTestType);
     }
   }
 }

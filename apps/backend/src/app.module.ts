@@ -12,7 +12,6 @@ import { AppController } from './app.controller';
 import { MfcModule } from './modules/mfc/mfc.module';
 import { FurnaceModule } from './modules/furnace/furnace.module';
 import { UsersModule } from './modules/users/users.module';
-import { MeasurementModule } from './modules/measurement/measurement.module';
 
 /**
  * 应用主模块
@@ -32,7 +31,6 @@ import { MeasurementModule } from './modules/measurement/measurement.module';
     MfcModule,
     FurnaceModule,
     UsersModule,
-    MeasurementModule,
   ],
   controllers: [AppController],
 })

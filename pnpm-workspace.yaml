@@ -8,3 +8,6 @@ ignoredBuiltDependencies:
   - electron
   - electron-winstaller
   - esbuild
+
+onlyBuiltDependencies:
+  - better-sqlite3

@@ -1,362 +1,236 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { DeviceStatus, CalibrationResult, ModuleStatus } from '../../interfaces/module-interfaces';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { SimpleEventBus } from '../../notification/simple-event-bus.service';
-import { ZahnerDeviceService } from '../../devices/zahner-device.service';
+import { DeviceStatus, CalibrationResult, ModuleStatus } from '../../interfaces/module-interfaces';
+import { EventBus } from '../../notification/event-bus.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { MeasurementType } from '@zahnerflow/types';
 
 @Injectable()
 export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   readonly name = 'zahner-zennium';
-  readonly version = '2.4.0';
+  readonly version = '2.5.0';
   readonly dependencies = ['HttpModule'];
 
+  private readonly logger = new Logger(ZahnerZenniumService.name);
   private readonly moduleName = 'ZahnerZenniumService';
-  private deviceConnected: boolean = false;
+
+  // 状态管理 (原 BaseDeviceService 的功能)
+  private connected = false;
+  private busy = false;
+  private lastActivity = new Date();
+  private error?: string;
+
+  // 配置
+  private readonly timeoutMs = 900000; // 15分钟
+  private readonly endpoint: string;
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly eventBus: SimpleEventBus,
-    private readonly zahnerDeviceService: ZahnerDeviceService,
-    private readonly consoleDisplayManager: ConsoleDisplayManager,
-  ) {}
+    private readonly eventBus: EventBus,
+    private readonly consoleManager: ConsoleDisplayManager,
+  ) {
+    this.endpoint = process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000';
+  }
 
   async onModuleInit() {
-    try {
-      // 仅检查 FastAPI 服务是否可用，不连接设备
-      await this.zahnerDeviceService.healthCheck();
-    } catch (error) {
-      console.warn(`FastAPI 服务检查失败: ${error.message}`);
-    }
+    // 启动时仅做健康检查，不自动连接
+    await this.healthCheck().catch(e =>
+      this.log('enableWarn', `FastAPI 服务检查失败: ${e.message}`)
+    );
   }
 
   async onModuleDestroy() {
-    if (this.deviceConnected) {
-      try {
-        await this.zahnerDeviceService.disconnect();
-        if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-          this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner设备断开连接');
-        }
-      } catch (error) {
-        if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-          this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备断开连接失败: ${error.message}`);
-        }
-      }
+    if (this.connected) {
+      await this.disconnect().catch(() => {});
     }
   }
 
-  // 获取设备状态
-  async getDeviceStatus(): Promise<DeviceStatus> {
-    if (!this.deviceConnected) {
-      return {
-        connected: false,
-        busy: false,
-        lastActivity: new Date(),
-        capabilities: ['eis_measurement', 'potentiostatic', 'galvanostatic'],
-        error: '设备未连接'
-      };
+  // ---------- 状态管理辅助方法 ----------
+
+  private updateStatus(connected: boolean, busy?: boolean, error?: string) {
+    const oldConnected = this.connected;
+    const oldBusy = this.busy;
+
+    this.connected = connected;
+    if (busy !== undefined) this.busy = busy;
+    if (error !== undefined) this.error = error;
+    this.lastActivity = new Date();
+
+    // 只在状态真正发生变化时才记录日志
+    if (oldConnected !== connected || oldBusy !== this.busy) {
+      this.logger.log(`设备状态变化 ${this.name} ${oldConnected}->${connected}, ${oldBusy}->${this.busy}`);
     }
 
-    await this.zahnerDeviceService.healthCheck();
-    const deviceStatus = this.zahnerDeviceService.getStatus();
-
-    return {
-      connected: deviceStatus.connected,
-      busy: deviceStatus.busy,
-      lastActivity: deviceStatus.lastActivity,
-      capabilities: ['eis_measurement', 'potentiostatic', 'galvanostatic'],
-      error: deviceStatus.error
-    };
+    // 发送状态变更事件
+    this.eventBus.emit('device.status.changed', {
+      deviceType: this.name,
+      oldStatus: { connected: oldConnected, busy: oldBusy },
+      newStatus: { connected: this.connected, busy: this.busy },
+      timestamp: new Date(),
+    });
   }
 
-  // 连接设备（兼容接口）
-  async connect(endpoint?: string): Promise<void> {
-    // 如果已有活跃连接，先断开
-    if (this.deviceConnected) {
-      await this.zahnerDeviceService.disconnect();
+  private log(level: 'enableLog' | 'enableError' | 'enableWarn', msg: string) {
+    if (this.consoleManager.shouldDisplayLog(this.moduleName, level)) {
+      this.consoleManager.log(this.moduleName, level, msg);
     }
+  }
+
+  // ---------- 核心功能 ----------
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      const res = await firstValueFrom(
+        this.httpService.get(`${this.endpoint}/health`, { timeout: 5000 })
+      );
+      return res?.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
+  async connect(host?: string): Promise<void> {
+    this.log('enableLog', '正在连接 Zahner 设备...');
 
     try {
-      // 实际连接设备
-      await this.zahnerDeviceService.connect(endpoint);
-      this.deviceConnected = true;
+      // 1. 检查 FastAPI
+      if (!(await this.healthCheck())) throw new Error('FastAPI 服务不可用');
 
-      // 发送设备连接事件
-      this.eventBus.emit('device.connected', {
-        deviceType: 'zahner-zennium',
-        endpoint: endpoint || process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000',
-        timestamp: new Date(),
-        context: { source: 'zahner-service' }
-      });
+      // 2. 连接硬件
+      const res = await firstValueFrom(
+        this.httpService.post(`${this.endpoint}/connect`,
+          { host: host || 'localhost' },
+          { timeout: 30000 }
+        )
+      );
 
-      return;
-    } catch (error) {
-      this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备连接失败: ${error.message}`);
-
-      // 发送设备连接失败事件
+      if (res?.data?.status === 'success') {
+        this.updateStatus(true, false);
+        this.log('enableLog', '设备连接成功');
+        this.eventBus.emit('device.connected', {
+          deviceType: 'zahner-zennium',
+          endpoint: this.endpoint,
+          timestamp: new Date(),
+          context: { source: 'zahner-service' }
+        });
+      } else {
+        throw new Error(res?.data?.error || '未知错误');
+      }
+    } catch (error: any) {
+      this.updateStatus(false, false, error.message);
+      this.log('enableError', `连接失败: ${error.message}`);
       this.eventBus.emit('device.error', {
         deviceType: 'zahner-zennium',
         error: error.message,
-        endpoint: endpoint || process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000',
+        endpoint: this.endpoint,
         timestamp: new Date(),
         context: { source: 'zahner-service' }
       });
-
       throw error;
     }
   }
 
-  // 断开设备（兼容接口）
   async disconnect(): Promise<void> {
-    if (!this.deviceConnected) {
-      return;
-    }
+    if (!this.connected) return;
 
     try {
-      await this.zahnerDeviceService.disconnect();
-
-      // 发送设备断开事件
+      // HTTP 无状态，主要更新本地状态
+      this.updateStatus(false, false);
+      this.log('enableLog', '设备已断开');
       this.eventBus.emit('device.disconnected', {
         deviceType: 'zahner-zennium',
-        endpoint: process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000',
         timestamp: new Date(),
         context: { source: 'zahner-service' }
       });
-
-      this.deviceConnected = false;
-      return;
-    } catch (error) {
-      this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备断开失败: ${error.message}`);
-      throw error;
+    } catch (error: any) {
+      this.log('enableError', `断开失败: ${error.message}`);
     }
   }
 
-
-  // 启动设备服务 - 连接到FastAPI设备
-  async startup(parameters: Record<string, any> = {}): Promise<any> {
-    try {
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableLog', '正在启动 Zahner 设备服务...');
-      }
-
-      const targetEndpoint = parameters.host || process.env.ZAHNER_FASTAPI_URL || 'http://localhost:8000';
-
-      // 使用connect方法进行连接，将host参数传递下去
-      await this.connect(targetEndpoint);
-
-      // 发送启动事件
-      this.eventBus.emit('device.started', {
-        parameters,
-        timestamp: new Date(),
-        context: { source: 'zahner-service' }
-      });
-
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner 设备服务启动成功');
-      }
-
-      return {
-        status: 'success',
-        message: '设备服务启动成功'
-      };
-    } catch (error) {
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备服务启动失败: ${error.message}`);
-      }
-
-      return {
-        status: 'error',
-        error: error.message
-      };
-    }
-  }
-
-  // 关闭设备服务 - 断开FastAPI设备连接
-  async shutdown(): Promise<any> {
-    try {
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableLog', '正在关闭 Zahner 设备服务...');
-      }
-
-      if (this.deviceConnected) {
-        await this.zahnerDeviceService.disconnect();
-        this.deviceConnected = false;
-      }
-
-      // 发送关闭事件
-      this.eventBus.emit('device.stopped', {
-        timestamp: new Date(),
-        context: { source: 'zahner-service' }
-      });
-
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableLog')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableLog', 'Zahner 设备服务关闭成功');
-      }
-
-      return {
-        status: 'success',
-        message: '设备服务关闭成功'
-      };
-    } catch (error) {
-      if (this.consoleDisplayManager.shouldDisplayLog(this.moduleName, 'enableError')) {
-        this.consoleDisplayManager.log(this.moduleName, 'enableError', `设备服务关闭失败: ${error.message}`);
-      }
-
-      return {
-        status: 'error',
-        error: error.message
-      };
-    }
-  }
-
-  // 执行测量（纯设备操作，无通知）
+  // 执行测量
   async performMeasurement(measurementType: string, parameters: Record<string, any>, nodeId?: string, executionId?: string): Promise<any> {
-    if (!this.deviceConnected) {
-      throw new Error('设备未连接');
-    }
+    if (!this.connected) throw new Error('设备未连接');
 
-    // 发送测量开始事件
+    this.updateStatus(true, true); // Set Busy
     this.eventBus.emit('measurement.started', {
-      measurementType,
-      parameters,
-      nodeId,
-      executionId,
-      timestamp: new Date(),
-      context: { source: 'zahner-service' }
+      measurementType, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
     });
 
     try {
-      // 调用设备服务执行测量
-      const result = await this.zahnerDeviceService.executeMeasurement(
-        measurementType,
-        parameters
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.endpoint}/measure`, {
+          measurement_type: measurementType,
+          parameters,
+        }, { timeout: this.timeoutMs })
       );
 
-      // 发送测量完成事件
+      const result = response?.data;
+
       this.eventBus.emit('measurement.completed', {
-        measurementType,
-        result,
-        parameters,
-        nodeId,
-        executionId,
-        timestamp: new Date(),
-        context: { source: 'zahner-service' }
+        measurementType, result, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
       });
 
       return result;
-    } catch (error) {
-      // 发送测量失败事件
+    } catch (error: any) {
       this.eventBus.emit('measurement.failed', {
-        measurementType,
-        error: error.message,
-        parameters,
-        nodeId,
-        executionId,
-        timestamp: new Date(),
-        context: { source: 'zahner-service' }
+        measurementType, error: error.message, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
       });
-
       throw error;
+    } finally {
+      this.updateStatus(true, false); // Clear Busy
     }
   }
 
+  // ---------- 辅助接口 ----------
 
-  // 根据测量类型获取对应的API端点
-  private getMeasurementEndpoint(measurementType: MeasurementType): string {
-    const endpointMap = {
-      [MeasurementType.EIS_POTENTIOSTATIC]: '/measure/eis/potentiostatic',
-      [MeasurementType.EIS_GALVANOSTATIC]: '/measure/eis/galvanostatic',
-      [MeasurementType.OCP]: '/measure/ocp',
-      [MeasurementType.CHRONOAMPEROMETRY]: '/measure/chronoamperometry',
-      [MeasurementType.CHRONOPOTENTIOMETRY]: '/measure/chronopotentiometry',
-      [MeasurementType.VOLTAGE_RAMP]: '/measure/voltage/ramp',
-      [MeasurementType.CURRENT_RAMP]: '/measure/current/ramp',
-      [MeasurementType.LSV]: '/measure/lsv'
-    };
-
-    return endpointMap[measurementType] || '/measure';
-  }
-
-  
-  async calibrate(): Promise<CalibrationResult> {
-    const result = await this.performMeasurement('calibration', {}, 'calibration-node', 'calibration-execution');
+  async getDeviceStatus(): Promise<DeviceStatus> {
+    // 实时检查一次健康状况
+    if (this.connected) {
+        const healthy = await this.healthCheck();
+        if (!healthy) this.updateStatus(false, false, '连接丢失');
+    }
 
     return {
+      connected: this.connected,
+      busy: this.busy,
+      lastActivity: this.lastActivity,
+      capabilities: Object.values(MeasurementType),
+      error: this.error
+    };
+  }
+
+  async calibrate(): Promise<CalibrationResult> {
+    const result = await this.performMeasurement('calibration', {}, 'cal-node', 'cal-exec');
+    return {
       success: result.status === 'success',
-      timestamp: new Date(result.timestamp),
+      timestamp: new Date(),
       parameters: result.data || {}
     };
   }
 
-  // 获取设备选项
   async getDeviceOptions(): Promise<any> {
-    if (!this.deviceConnected) {
-      throw new Error('设备未连接');
-    }
-
     try {
-      return await this.zahnerDeviceService.getDeviceOptions();
-    } catch (error) {
-      this.consoleDisplayManager.log(this.moduleName, 'enableWarn', `获取设备选项失败: ${error.message}`);
+      const res = await firstValueFrom(this.httpService.get(`${this.endpoint}/options`));
+      return res.data;
+    } catch {
       return {
-        potentiostat_modes: ['POTMODE_POTENTIOSTATIC', 'POTMODE_GALVANOSTATIC', 'POTMODE_PSEUDOGALVANOSTATIC'],
-        scan_directions: ['START_TO_MAX', 'START_TO_MIN'],
-        scan_strategies: ['SINGLE_SINE', 'MULTI_SINE'],
+        potentiostat_modes: ['POTMODE_POTENTIOSTATIC'], // Fallback
         supported_measurements: Object.values(MeasurementType)
       };
     }
   }
 
-  // 检查连接状态
-  async checkConnection(): Promise<boolean> {
-    if (!this.deviceConnected) {
-      return false;
-    }
-
-    try {
-      return await this.zahnerDeviceService.healthCheck();
-    } catch (error) {
-      this.consoleDisplayManager.log(this.moduleName, 'enableError', `连接检查失败: ${error.message}`);
-      return false;
-    }
-  }
-
-  // 健康检查方法
-  async health(): Promise<any> {
-    try {
-      const deviceStatus = await this.getDeviceStatus();
-      return {
-        status: 'success',
-        device: 'zahner-zennium',
-        connected: deviceStatus.connected,
-        timestamp: new Date().toISOString(),
-        health: deviceStatus.connected ? 'healthy' : 'unhealthy'
-      };
-    } catch (error) {
-      return {
-        status: 'error',
-        device: 'zahner-zennium',
-        connected: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-        health: 'unhealthy'
-      };
-    }
-  }
-
-  // 获取模块状态（兼容接口）
+  // 兼容旧接口
+  async health() { return this.getDeviceStatus(); }
+  async startup(p: any) { return this.connect(p?.host).then(() => ({ status: 'success' })); }
+  async shutdown() { return this.disconnect().then(() => ({ status: 'success' })); }
+  async checkConnection() { return this.connected; }
   async getModuleStatus(): Promise<ModuleStatus> {
-    const deviceStatus = await this.getDeviceStatus();
-
-    return {
-      state: deviceStatus.connected ? 'running' : 'stopped',
-      health: deviceStatus.connected ? 'healthy' : 'unhealthy',
-      lastCheck: new Date(),
-      error: deviceStatus.connected ? undefined : '设备未连接'
-    };
+      return {
+          state: this.connected ? 'running' : 'stopped',
+          health: this.connected ? 'healthy' : 'unhealthy',
+          lastCheck: new Date()
+      };
   }
-
-
 }
