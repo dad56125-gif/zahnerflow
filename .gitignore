@@ -108,6 +108,9 @@ docs/api/
 **/data/
 apps/backend/data/
 
+# 测试数据目录例外（保持目录结构）
+!data/test/.gitkeep
+
 # Windows特定文件
 desktop.ini
 $RECYCLE.BIN/
@@ -131,3 +134,10 @@ $RECYCLE.BIN/
 *.jsonl
 
 .claude/
+
+# Claude Code 配置文件
+CLAUDE.md
+
+# Windows 生成的 nul 文件
+nul
+**/nul
