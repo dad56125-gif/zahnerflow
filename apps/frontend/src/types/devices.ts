@@ -164,40 +164,6 @@ export type DeviceOperationStatus =
   | 'stopped'
   | 'error';
 
-// WebSocket消息类型
-export interface WebSocketMessage {
-  type: string;
-  data: any;
-  timestamp?: string;
-}
-
-// 日志条目类型
-export interface LogEntry {
-  id: string;
-  timestamp: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'comm_rx' | 'comm_tx';
-  message: string;
-  details?: any;
-}
-
-// 操作日志类型
-export interface OperationLog {
-  id: string;
-  timestamp: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  message: string;
-  icon?: string;
-}
-
-// 通信日志类型
-export interface CommLog {
-  id: string;
-  timestamp: string;
-  direction: 'tx' | 'rx';
-  data: string;
-  bytes?: number[];
-}
-
 // UI状态类型
 export interface LoadingState {
   [key: string]: boolean;

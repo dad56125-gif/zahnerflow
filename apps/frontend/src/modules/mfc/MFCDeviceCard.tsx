@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { MfcDevice, DeviceCardProps } from '../types/devices';
+import { MfcDevice, DeviceCardProps } from './mfcTypes';
 
 interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   device: MfcDevice;

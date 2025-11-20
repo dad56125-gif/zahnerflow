@@ -11,10 +11,9 @@ import { setupAutoGlassEffect } from './utils/glassEffect';
 import { stateLinkageManager } from './managers/state-linkage.manager';
 import { useCanvasStore } from './services/stores/canvasStore';
 import { useWorkflowStore } from './services/stores';
-import { DeviceModal } from './components/DeviceModal';
-import { MFCModal } from './components/MFCModal';
+import { MFCModal } from './modules/mfc';
 import { workflowService } from './services/workflowService';
-import { useFurnace } from './services/hooks/useFurnace';
+import { useFurnace, DeviceModal } from './modules/furnace';
 import { UserProvider } from './contexts/UserContext';
 import type { LoopInfo } from './components/features/loop';
 

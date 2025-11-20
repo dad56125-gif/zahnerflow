@@ -5,8 +5,8 @@
  */
 
 // 导出设备API类
-export { FurnaceApi } from './furnaceApi';
-export { MfcApi } from './mfcApi';
+export { FurnaceApi } from '../../modules/furnace/furnaceApi';
+export { MfcApi } from '../../modules/mfc/mfcApi';
 
 // 导出ZAHNER通信API
 export { default as zahnerApi } from './zahnerApi';

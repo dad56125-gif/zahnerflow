@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { MfcState, MfcControls } from '../../../services/hooks/useMfc';
+import type { MfcState, MfcControls } from './useMfc';
 
 interface MFCConnectionPanelProps {
   mfcState: MfcState;

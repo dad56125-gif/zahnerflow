@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FurnaceState, FurnaceControls } from '../../../services/hooks/useFurnace';
+import type { FurnaceState, FurnaceControls } from './useFurnace';
 
 interface PresetManagerProps {
   furnaceState: FurnaceState;

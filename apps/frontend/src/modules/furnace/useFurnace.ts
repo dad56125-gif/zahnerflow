@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { FurnaceApi } from '../api/furnaceApi';
-import { furnaceWebSocketService, FurnaceStatusUpdate } from '../furnace-websocket.service';
-import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, FurnaceConnectRequest, HistoryQueryParams, SegmentProgress, LogEntry } from '../../types/devices';
+import { FurnaceApi } from './furnaceApi';
+import { furnaceWebSocketService, FurnaceStatusUpdate } from './furnaceWebSocket.service';
+import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, FurnaceConnectRequest, HistoryQueryParams, SegmentProgress, LogEntry, ApplyPresetResult } from './furnaceTypes';
+import { DeviceError } from './furnaceTypes';
 
 export interface FurnaceState {
   device_status: FurnaceStatus | null;

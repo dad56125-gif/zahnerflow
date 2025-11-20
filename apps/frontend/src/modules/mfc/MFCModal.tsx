@@ -6,11 +6,11 @@
  */
 
 import React, { useRef, useEffect } from 'react';
-import { useMfc } from '../services/hooks/useMfc';
-import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
+import { useMfc } from './useMfc';
+import { useOnClickOutside } from '../../services/hooks/useOnClickOutside';
 import { MFCDeviceCard } from './MFCDeviceCard';
-import { MFCConnectionPanel } from './features/mfc/MFCConnectionPanel';
-import { mfcWebSocketService } from '../services/mfc-websocket.service';
+import { MFCConnectionPanel } from './MFCConnectionPanel';
+import { mfcWebSocketService } from './mfcWebSocket.service';
 
 interface MFCModalProps {
   on_close: () => void;

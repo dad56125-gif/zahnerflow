@@ -4,15 +4,8 @@
  * 封装所有与质量流量控制器设备相关的API调用
  */
 
-import {
-  MfcDeviceInfo,
-  MfcStatus,
-  MfcSample,
-  MfcSetpointRequest,
-  MfcScanRequest,
-  HistoryQueryParams,
-  DeviceError,
-} from '../../types/devices';
+import { MfcDeviceInfo, MfcStatus, MfcSample, MfcSetpointRequest, MfcScanRequest } from './mfcTypes';
+import { HistoryQueryParams, DeviceError } from '../../types/devices';
 
 // API 基础URL
 const API_BASE = '/api/devices/mfc';

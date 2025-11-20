@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { ECharts, EChartsOption } from 'echarts';
-import type { FurnaceSample } from '../types/devices';
+import type { FurnaceSample } from './furnaceTypes';
 
 interface TemperatureChartProps {
   data: FurnaceSample[];

@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import type { FurnaceState, FurnaceControls } from '../services/hooks/useFurnace';
-import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
-import { StatusPanel } from './features/furnace/StatusPanel';
-import { ProgramEditor } from './features/furnace/ProgramEditor';
-import { PresetManager } from './features/furnace/PresetManager';
-import { ConnectionPanel } from './features/furnace/ConnectionPanel';
+import type { FurnaceState, FurnaceControls } from './useFurnace';
+import { useOnClickOutside } from '../../services/hooks/useOnClickOutside';
+import { StatusPanel } from './StatusPanel';
+import { ProgramEditor } from './ProgramEditor';
+import { PresetManager } from './PresetManager';
+import { ConnectionPanel } from './ConnectionPanel';
 
 
 interface DeviceModalProps {

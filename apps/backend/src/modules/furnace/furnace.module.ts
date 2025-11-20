@@ -15,7 +15,14 @@ import { GatewaysModule } from '../shared/gateways.module';
     FurnaceDataService,
     FurnaceErrorHandlerService,
     FurnaceDeviceService,
+    FurnaceGateway,
   ],
-  exports: [FurnaceService, FurnaceDataService, FurnaceErrorHandlerService, FurnaceDeviceService],
+  exports: [
+    FurnaceService,
+    FurnaceDataService,
+    FurnaceErrorHandlerService,
+    FurnaceDeviceService,
+    FurnaceGateway,
+  ],
 })
 export class FurnaceModule {}

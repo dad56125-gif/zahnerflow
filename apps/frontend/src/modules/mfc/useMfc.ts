@@ -5,18 +5,18 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { MfcApi } from '../api/mfcApi'; // 确保路径正确
-import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate } from '../mfc-websocket.service';
+import { MfcApi } from './mfcApi';
+import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate } from './mfcWebSocket.service';
 import {
   MfcDeviceInfo,
   MfcStatus,
   MfcDevice,
   MfcSample,
   MfcScanRequest,
-  HistoryQueryParams,
-  DeviceError,
-  DeviceConnectionStatus,
-} from '../../types/devices';
+  MfcConfig,
+  DEFAULT_MFC_CONFIG,
+} from './mfcTypes';
+import { HistoryQueryParams, DeviceError, DeviceConnectionStatus } from '../../types/devices';
 
 export interface MfcState {
   devices: MfcDevice[];

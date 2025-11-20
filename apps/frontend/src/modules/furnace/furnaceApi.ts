@@ -1,4 +1,5 @@
-import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, ApplyPresetResult, FurnaceSample, HistoryQueryParams, FurnaceConnectRequest, FurnaceOperationResponse } from '../../types/devices';
+import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, ApplyPresetResult, FurnaceSample, HistoryQueryParams, FurnaceConnectRequest, FurnaceOperationResponse } from './furnaceTypes';
+import { DeviceError } from '../../types/devices';
 
 const API_BASE = '/api/devices/furnace';
 // ... apiRequest helper ...

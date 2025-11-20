@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
 import { useCanvasStore, useWorkflowParameterStore } from '../services/stores';
-import { useMfc } from '../services/hooks/useMfc';
-import { MfcDeviceInfo } from '../types/devices';
+import { useMfc } from '../modules/mfc';
+import { MfcDeviceInfo } from '../modules/mfc/mfcTypes';
 
 interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;
