@@ -21,9 +21,9 @@
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.7",
     "@nestjs/testing": "^11.1.6",
-    "@types/node": "^24.3.1",
-    "ts-node": "^10.9.2",
+    "@types/node": "^20.17.19",
     "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
     "@types/socket.io": "^3.0.2",
     "@zahnerflow/types": "workspace:*",
     "axios": "^1.12.2",
+    "better-sqlite3": "^12.4.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "express": "^5.1.0",
