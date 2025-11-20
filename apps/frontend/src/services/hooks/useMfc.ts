@@ -1,12 +1,11 @@
 /**
  * MFC 状态管理 Hook
- *
- * 封装质量流量控制器设备的所有状态管理和操作逻辑
+ * 
+ * 包含智能初始化、状态同步和无感端口刷新逻辑
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { usePolling } from './usePolling';
-import { MfcApi } from '../api/index';
+import { MfcApi } from '../api/mfcApi'; // 确保路径正确
 import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate } from '../mfc-websocket.service';
 import {
   MfcDeviceInfo,
@@ -16,98 +15,48 @@ import {
   MfcScanRequest,
   HistoryQueryParams,
   DeviceError,
-  ConnectionState,
-  DEFAULT_MFC_CONFIG,
   DeviceConnectionStatus,
 } from '../../types/devices';
-import { isRetryableError } from '../utils/apiUtils';
 
-/**
- * MFC Hook 状态
- */
 export interface MfcState {
-  // 设备列表
   devices: MfcDevice[];
   availableDevices: MfcDeviceInfo[];
-
-  // 设备状态映射
   deviceStatuses: Map<number, MfcStatus>;
-
-  // 连接状态管理
   connection_status: DeviceConnectionStatus;
   selected_port: string;
   available_ports: string[];
-
-  // 历史数据
   historyData: Map<number, MfcSample[]>;
   historyParams: HistoryQueryParams;
-
-  // UI状态
   isLoading: boolean;
   isScanning: boolean;
   error: DeviceError | null;
-
-  // 统计信息
   lastUpdate: Date | null;
   pollCount: number;
 }
 
-/**
- * MFC Hook 控制方法
- */
 export interface MfcControls {
-  // WebSocket连接
   ensureConnection: () => void;
-
-  // 设备发现
   scanDevices: (params?: MfcScanRequest) => Promise<void>;
   refreshDevices: () => Promise<void>;
-
-  // 设备连接
   connect: (port?: string, baudrate?: number, timeout?: number) => Promise<void>;
   disconnect: () => Promise<void>;
   get_available_ports: () => Promise<string[]>;
-
-  // 设备控制
   setFlowRate: (address: number, sccm: number) => Promise<void>;
-
-  // 批量操作
   setAllFlowRates: (settings: { address: number; sccm: number }[]) => Promise<void>;
-
-  // 历史数据
   loadHistoryData: (address: number, params?: HistoryQueryParams) => Promise<void>;
   loadMultipleHistoryData: (addresses: number[], params?: HistoryQueryParams) => Promise<void>;
   updateHistoryParams: (params: Partial<HistoryQueryParams>) => void;
-
-  // 设备管理
   getDeviceByAddress: (address: number) => MfcDevice | null;
   getDeviceStatus: (address: number) => MfcStatus | null;
   getDeviceHistory: (address: number) => MfcSample[];
-
-  // 状态管理
   reset: () => void;
   clearError: () => void;
   refresh: () => Promise<void>;
-
-  // WebSocket实时更新
-  updateDeviceStatus: (deviceAddress: number, statusData: {
-    flow_sccm?: number;
-    setpoint_sccm?: number;
-    connection_status?: 'connected' | 'disconnected' | 'error';
-    last_communication?: string;
-  }) => void;
-  updateFlowData: (deviceAddress: number, flowData: {
-    flow_sccm: number;
-    timestamp: string;
-    setpoint_sccm?: number;
-  }) => void;
+  updateDeviceStatus: (address: number, data: any) => void;
+  updateFlowData: (address: number, data: any) => void;
 }
 
-/**
- * MFC Hook
- */
 export function useMfc(): [MfcState, MfcControls] {
-  // 状态初始化
   const [state, setState] = useState<MfcState>({
     devices: [],
     availableDevices: [],
@@ -124,160 +73,18 @@ export function useMfc(): [MfcState, MfcControls] {
     pollCount: 0,
   });
 
-  // 更新状态的辅助函数
   const updateState = useCallback((updates: Partial<MfcState>) => {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // 设置加载状态
-  const setLoading = useCallback((isLoading: boolean) => {
-    updateState({ isLoading });
-  }, [updateState]);
-
-  // 设置扫描状态
-  const setScanning = useCallback((isScanning: boolean) => {
-    updateState({ isScanning });
-  }, [updateState]);
-
-  // 设置错误状态
-  const setError = useCallback((error: DeviceError | null) => {
-    updateState({ error, isLoading: false, isScanning: false });
-  }, [updateState]);
-
-  // 清除错误
-  const clearError = useCallback(() => {
-    updateState({ error: null });
-  }, [updateState]);
-
-  // 处理API错误的通用函数
+  const setLoading = useCallback((isLoading: boolean) => updateState({ isLoading }), [updateState]);
+  const clearError = useCallback(() => updateState({ error: null }), [updateState]);
+  
   const handleApiError = useCallback((error: any): void => {
-    const deviceError = error as DeviceError;
-    setError(deviceError);
-  }, [setError]);
+    updateState({ error: error as DeviceError, isLoading: false, isScanning: false });
+  }, [updateState]);
 
-  // 更新设备状态（批量更新，用于轮询）
-  const updateDeviceStatus = useCallback((statuses: MfcStatus[]) => {
-    const statusMap = new Map<number, MfcStatus>();
-    statuses.forEach(status => {
-      statusMap.set(status.address, status);
-    });
-
-    // 更新设备列表中的状态信息
-    const updatedDevices = state.devices.map(device => {
-      const status = statusMap.get(device.address);
-      if (!status) {
-        return {
-          ...device,
-          status: 'disconnected' as 'connected' | 'disconnected' | 'error' | 'warning',
-        };
-      }
-
-      const digitalSetpointPercent = status.digital_setpoint_percent ?? 0;
-      const activeSetpointPercent = status.active_setpoint_percent ?? 0;
-      const computedSetFlow = device.max_flow_sccm > 0
-        ? (digitalSetpointPercent * device.max_flow_sccm) / 100
-        : 0;
-
-      return {
-        ...device,
-        flow_sccm: status.flow_sccm,
-        flow_percent: status.flow_percent ?? device.flow_percent,
-        set_flow: computedSetFlow,
-        digital_setpoint_percent: digitalSetpointPercent,
-        active_setpoint_percent: activeSetpointPercent,
-        mode: (digitalSetpointPercent > activeSetpointPercent ? 'hold' : 'follow') as 'hold' | 'follow',
-        status: 'connected' as 'connected' | 'disconnected' | 'error' | 'warning',
-      };
-    });
-
-    updateState({
-      deviceStatuses: statusMap,
-      devices: updatedDevices,
-      lastUpdate: new Date(),
-    });
-  }, [state.devices, updateState]);
-
-  // 更新单个设备状态（用于WebSocket实时更新）
-  const updateSingleDeviceStatus = useCallback((deviceAddress: number, statusData: {
-    flow_sccm?: number;
-    setpoint_sccm?: number;
-    connection_status?: 'connected' | 'disconnected' | 'error';
-    last_communication?: string;
-  }) => {
-    const updatedDevices = state.devices.map(device => {
-      if (device.address !== deviceAddress) {
-        return device;
-      }
-
-      // 计算流量百分比
-      const flowPercent = device.max_flow_sccm > 0 && statusData.flow_sccm !== undefined
-        ? (statusData.flow_sccm / device.max_flow_sccm) * 100
-        : device.flow_percent;
-
-      // 计算设定点百分比
-      const digitalSetpointPercent = device.max_flow_sccm > 0 && statusData.setpoint_sccm !== undefined
-        ? (statusData.setpoint_sccm / device.max_flow_sccm) * 100
-        : device.digital_setpoint_percent;
-
-      return {
-        ...device,
-        flow_sccm: statusData.flow_sccm ?? device.flow_sccm,
-        flow_percent: flowPercent,
-        set_flow: statusData.setpoint_sccm ?? device.set_flow,
-        digital_setpoint_percent: digitalSetpointPercent,
-        mode: (digitalSetpointPercent > (device.active_setpoint_percent ?? 0) ? 'hold' : 'follow') as 'hold' | 'follow',
-        status: (statusData.connection_status ?? device.status) as 'connected' | 'disconnected' | 'error' | 'warning',
-      };
-    });
-
-    updateState({
-      devices: updatedDevices,
-      lastUpdate: new Date(),
-    });
-  }, [state.devices, updateState]);
-
-  // 更新流量数据（用于WebSocket实时更新）
-  const updateFlowData = useCallback((deviceAddress: number, flowData: {
-    flow_sccm: number;
-    timestamp: string;
-    setpoint_sccm?: number;
-  }) => {
-    const updatedDevices = state.devices.map(device => {
-      if (device.address !== deviceAddress) {
-        return device;
-      }
-
-      // 计算流量百分比
-      const flowPercent = device.max_flow_sccm > 0
-        ? (flowData.flow_sccm / device.max_flow_sccm) * 100
-        : device.flow_percent;
-
-      // 计算设定点百分比
-      const digitalSetpointPercent = device.max_flow_sccm > 0 && flowData.setpoint_sccm !== undefined
-        ? (flowData.setpoint_sccm / device.max_flow_sccm) * 100
-        : device.digital_setpoint_percent;
-
-      return {
-        ...device,
-        flow_sccm: flowData.flow_sccm,
-        flow_percent: flowPercent,
-        set_flow: flowData.setpoint_sccm ?? device.set_flow,
-        digital_setpoint_percent: digitalSetpointPercent,
-        mode: (digitalSetpointPercent > (device.active_setpoint_percent ?? 0) ? 'hold' : 'follow') as 'hold' | 'follow',
-        status: 'connected' as 'connected' | 'disconnected' | 'error' | 'warning', // 有流量数据表示设备已连接
-      };
-    });
-
-    updateState({
-      devices: updatedDevices,
-      lastUpdate: new Date(),
-    });
-  }, [state.devices, updateState]);
-
-  // 移除前端轮询 - 状态更新现在完全由后端WebSocket推送
-  // 前端只负责通过WebSocket接收实时状态更新，不再主动轮询
-
-  // ==================== 端口管理 ====================
+  // ==================== 核心功能：端口与发现 ====================
 
   const get_available_ports = useCallback(async (): Promise<string[]> => {
     try {
@@ -286,11 +93,77 @@ export function useMfc(): [MfcState, MfcControls] {
       return ports;
     } catch (error) {
       handleApiError(error);
-      throw error;
+      return [];
     }
   }, [updateState, handleApiError]);
 
-  // ==================== 设备连接 ====================
+  const refreshDevices = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      const devices = await MfcApi.getDevices();
+      
+      const mfcDevices: MfcDevice[] = devices.map(device => ({
+        ...device,
+        flow_sccm: 0,
+        set_flow: 0,
+        flow_percent: 0,
+        digital_setpoint_percent: 0,
+        active_setpoint_percent: 0,
+        mode: 'follow',
+        status: 'connected', // 既然能获取到设备列表，说明已连接
+      }));
+
+      updateState({
+        availableDevices: devices,
+        devices: mfcDevices,
+        lastUpdate: new Date(),
+      });
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, handleApiError, updateState]);
+
+  // ==================== 智能初始化 (Modal 打开时调用) ====================
+
+  const ensureConnection = useCallback(async () => {
+    // 1. 建立 WebSocket 连接
+    if (!mfcWebSocketService.connected) {
+      mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
+      mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
+      mfcWebSocketService.onConnected(handleConnected);
+      mfcWebSocketService.connect();
+    }
+
+    try {
+      // 2. 询问后端真实状态
+      const statusData = await MfcApi.getConnectionStatus();
+      console.log('Synced status:', statusData);
+
+      if (statusData.status === 'connected') {
+        // 场景 A：后端已连接 -> 显示已连接状态 + 拉取设备
+        updateState({
+          connection_status: 'connected',
+          selected_port: statusData.connection_info?.port || state.selected_port,
+        });
+        if (statusData.device_count > 0) {
+          refreshDevices();
+        }
+      } else {
+        // 场景 B：后端未连接 -> 显示未连接 + 【自动拉取端口】
+        updateState({ connection_status: 'disconnected' });
+        await get_available_ports(); // 无感刷新端口
+      }
+    } catch (error) {
+      console.warn('Sync failed, assuming disconnected:', error);
+      updateState({ connection_status: 'disconnected' });
+      // 即使同步失败，也尝试获取端口，方便用户重连
+      get_available_ports();
+    }
+  }, [get_available_ports, refreshDevices, updateState, state.selected_port]);
+
+  // ==================== 连接与断开 ====================
 
   const connect = useCallback(async (
     port: string = 'COM1',
@@ -300,50 +173,40 @@ export function useMfc(): [MfcState, MfcControls] {
     try {
       setLoading(true);
       clearError();
-      updateState({
-        connection_status: 'connecting',
-        selected_port: port
-      });
+      updateState({ connection_status: 'connecting', selected_port: port });
 
       await MfcApi.connect(port, baudrate, timeout);
-
-      // 连接成功后更新状态
+      
       updateState({ connection_status: 'connected' });
-
-      // 连接成功后自动扫描设备（防重复触发）
-      if (!state.isScanning && state.devices.length === 0) {
-        const recommendedParams = MfcApi.getRecommendedScanParams();
-        await MfcApi.scanDevices(recommendedParams);
-      }
+      // 连接成功后自动尝试拉取一次设备（后端也会自动开始轮询）
+      await refreshDevices();
 
     } catch (error) {
       handleApiError(error);
-      updateState({
-        connection_status: 'error',
-        selected_port: ''
-      });
+      updateState({ connection_status: 'error', selected_port: '' });
+      // 失败后刷新端口列表，防止端口已消失
+      get_available_ports();
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState]);
+  }, [setLoading, clearError, handleApiError, updateState, refreshDevices, get_available_ports]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-      clearError();
-
       await MfcApi.disconnect();
-
-      // 断开后更新连接状态和设备状态
+      
+      // 断开后重置所有状态，并刷新端口列表等待下一次连接
       updateState({
         connection_status: 'disconnected',
         selected_port: '',
-        devices: state.devices.map(device => ({
-          ...device,
-          status: 'disconnected' as const,
-        })),
+        devices: [],
+        availableDevices: [],
+        deviceStatuses: new Map()
       });
+      
+      await get_available_ports();
 
     } catch (error) {
       handleApiError(error);
@@ -351,414 +214,158 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState, state.devices]);
+  }, [setLoading, handleApiError, updateState, get_available_ports]);
 
-  // ==================== 设备发现 ====================
-
-  const refreshDevices = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true);
-      clearError();
-
-      const devices = await MfcApi.getDevices();
-
-      // KISS原则：最小必要字段填充，避免组件初始化错误
-      const mfcDevices: MfcDevice[] = devices.map(device => ({
-        ...device,
-        flow_sccm: 0,
-        set_flow: 0,
-        flow_percent: 0,
-        digital_setpoint_percent: 0,
-        active_setpoint_percent: 0,
-        mode: 'follow' as const,
-        status: 'disconnected' as const,
-      }));
-
-      updateState({
-        availableDevices: devices,
-        devices: mfcDevices, // 使用填充了必要字段的设备数据
-        deviceStatuses: new Map(), // 状态完全由WebSocket管理
-        lastUpdate: new Date(),
-      });
-
-    } catch (error) {
-      handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, clearError, handleApiError, updateState]);
+  // ==================== 扫描与控制 ====================
 
   const scanDevices = useCallback(async (params: MfcScanRequest = {}): Promise<void> => {
-    // 防重复调用检查
-    if (state.isScanning) {
-      console.log('Scan already in progress, ignoring duplicate request');
-      return;
-    }
+    if (state.isScanning) return;
 
     try {
-      setScanning(true);
+      updateState({ isScanning: true });
       clearError();
 
-      // 确保传递当前连接的端口
-      const scanParams = {
-        ...params,
-        port: params.port || state.selected_port,
-      };
-
-      console.log('Starting async scan - devices will appear in real-time via WebSocket');
-
-      // 调用异步扫描 - 立即返回，设备通过WebSocket推送
+      const scanParams = { ...params, port: params.port || state.selected_port };
+      // 异步扫描，立即返回，设备通过 WS 推送
       const currentDevices = await MfcApi.scanDevices(scanParams);
-
-      // 更新当前设备列表（可能包含之前发现的设备）
-      const mfcDevices: MfcDevice[] = currentDevices.map(device => ({
-        ...device,
-        flow_sccm: 0,
-        set_flow: 0,
-        flow_percent: 0,
-        digital_setpoint_percent: 0,
-        active_setpoint_percent: 0,
-        mode: 'follow' as const,
-        status: 'disconnected' as const,
-      }));
-
-      updateState({
-        availableDevices: currentDevices,
-        devices: mfcDevices,
-        deviceStatuses: new Map(),
-      });
-
-      // 异步刷新状态（不阻塞）
-      refreshDevices().catch(error => {
-        console.warn('Failed to refresh device status after scan:', error);
-      });
-
-      // 扫描在后台继续，新设备会通过WebSocket实时推送
-
+      
+      updateState({ availableDevices: currentDevices });
+      // 稍微延迟关闭扫描状态，提升体验
+      setTimeout(() => updateState({ isScanning: false }), 1000);
+      
     } catch (error) {
       handleApiError(error);
-      throw error;
-    } finally {
-      // 延迟停止扫描状态，给用户更好的体验
-      setTimeout(() => {
-        setScanning(false);
-      }, 1000);
+      updateState({ isScanning: false });
     }
-  }, [setScanning, clearError, handleApiError, refreshDevices, updateState]);
-
-  
-  // ==================== 设备控制 ====================
+  }, [state.isScanning, state.selected_port, updateState, clearError, handleApiError]);
 
   const setFlowRate = useCallback(async (address: number, sccm: number): Promise<void> => {
     try {
       setLoading(true);
-      clearError();
-
       await MfcApi.setFlowRate(address, sccm);
-
-      // 立即刷新状态
-      await refreshDevices();
-
     } catch (error) {
       handleApiError(error);
-      throw error;
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, refreshDevices]);
+  }, [setLoading, handleApiError]);
 
-  
-  
-  // ==================== 批量操作 ====================
-
-  const setAllFlowRates = useCallback(async (
-    settings: { address: number; sccm: number }[]
-  ): Promise<void> => {
+  const setAllFlowRates = useCallback(async (settings: { address: number; sccm: number }[]): Promise<void> => {
     try {
       setLoading(true);
-      clearError();
-
-      // 并行设置所有设备的流量
-      const promises = settings.map(({ address, sccm }) =>
-        MfcApi.setFlowRate(address, sccm)
-      );
-
-      await Promise.all(promises);
-
-      // 立即刷新状态
-      await refreshDevices();
-
+      await Promise.all(settings.map(s => MfcApi.setFlowRate(s.address, s.sccm)));
     } catch (error) {
       handleApiError(error);
-      throw error;
     } finally {
       setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, refreshDevices]);
+  }, [setLoading, handleApiError]);
 
-  
-  
   // ==================== 历史数据 ====================
 
-  const loadHistoryData = useCallback(async (
-    address: number,
-    params?: HistoryQueryParams
-  ): Promise<void> => {
+  const loadHistoryData = useCallback(async (address: number, params?: HistoryQueryParams): Promise<void> => {
     try {
-      setLoading(true);
-      clearError();
-
       const finalParams = params || state.historyParams;
-      const historyData = await MfcApi.getFlowHistory(address, finalParams);
-
-      updateState({
-        historyData: (() => {
-          const newHistoryData = new Map(state.historyData);
-          newHistoryData.set(address, historyData);
-          return newHistoryData;
-        })(),
-        historyParams: finalParams,
-      });
-
+      const data = await MfcApi.getFlowHistory(address, finalParams);
+      
+      const newMap = new Map(state.historyData);
+      newMap.set(address, data);
+      updateState({ historyData: newMap, historyParams: finalParams });
     } catch (error) {
       handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState, state.historyParams]);
+  }, [state.historyData, state.historyParams, updateState, handleApiError]);
 
-  const loadMultipleHistoryData = useCallback(async (
-    addresses: number[],
-    params?: HistoryQueryParams
-  ): Promise<void> => {
+  const loadMultipleHistoryData = useCallback(async (addresses: number[], params?: HistoryQueryParams): Promise<void> => {
     try {
-      setLoading(true);
-      clearError();
-
       const finalParams = params || state.historyParams;
-      const historyDataMap = await MfcApi.getMultipleDevicesFlowHistory(addresses, finalParams);
-
-      updateState({
-        historyData: new Map(Object.entries(historyDataMap).map(([k, v]) => [parseInt(k), v])),
-        historyParams: finalParams,
-      });
-
+      const dataMap = await MfcApi.getMultipleDevicesFlowHistory(addresses, finalParams);
+      
+      const newMap = new Map(state.historyData);
+      Object.entries(dataMap).forEach(([k, v]) => newMap.set(parseInt(k), v));
+      updateState({ historyData: newMap, historyParams: finalParams });
     } catch (error) {
       handleApiError(error);
-      throw error;
-    } finally {
-      setLoading(false);
     }
-  }, [setLoading, clearError, handleApiError, updateState, state.historyParams]);
+  }, [state.historyData, state.historyParams, updateState, handleApiError]);
 
-  const updateHistoryParams = useCallback((params: Partial<HistoryQueryParams>): void => {
-    updateState({
-      historyParams: {
-        ...state.historyParams,
-        ...params,
-      },
-    });
-  }, [updateState, state.historyParams]);
+  const updateHistoryParams = useCallback((params: Partial<HistoryQueryParams>) => {
+    updateState({ historyParams: { ...state.historyParams, ...params } });
+  }, [state.historyParams, updateState]);
 
-  // ==================== 设备管理 ====================
+  // ==================== 辅助查询 ====================
 
-  const getDeviceByAddress = useCallback((address: number): MfcDevice | null => {
-    return state.devices.find(device => device.address === address) || null;
-  }, [state.devices]);
+  const getDeviceByAddress = useCallback((address: number) => state.devices.find(d => d.address === address) || null, [state.devices]);
+  const getDeviceStatus = useCallback((address: number) => state.deviceStatuses.get(address) || null, [state.deviceStatuses]);
+  const getDeviceHistory = useCallback((address: number) => state.historyData.get(address) || [], [state.historyData]);
 
-  const getDeviceStatus = useCallback((address: number): MfcStatus | null => {
-    return state.deviceStatuses.get(address) || null;
-  }, [state.deviceStatuses]);
-
-  const getDeviceHistory = useCallback((address: number): MfcSample[] => {
-    return state.historyData.get(address) || [];
-  }, [state.historyData]);
-
-  // ==================== 状态管理 ====================
-
-  const reset = useCallback((): void => {
+  const reset = useCallback(() => {
     setState({
-      devices: [],
-      availableDevices: [],
-      deviceStatuses: new Map(),
-      connection_status: 'disconnected',
-      selected_port: '',
-      available_ports: [],
-      historyData: new Map(),
-      historyParams: MfcApi.getDefaultHistoryParams(),
-      isLoading: false,
-      isScanning: false,
-      error: null,
-      lastUpdate: null,
-      pollCount: 0,
+      devices: [], availableDevices: [], deviceStatuses: new Map(),
+      connection_status: 'disconnected', selected_port: '', available_ports: [],
+      historyData: new Map(), historyParams: MfcApi.getDefaultHistoryParams(),
+      isLoading: false, isScanning: false, error: null, lastUpdate: null, pollCount: 0,
     });
   }, []);
 
-  const refresh = useCallback(async (): Promise<void> => {
-    try {
-      await refreshDevices();
-    } catch (error) {
-      handleApiError(error);
-    }
-  }, [refreshDevices, handleApiError]);
+  const refresh = useCallback(async () => { refreshDevices(); }, [refreshDevices]);
 
-  // ==================== 初始化 ====================
+  // ==================== WebSocket 事件处理 ====================
 
-  // 组件挂载时加载可用端口
-  useEffect(() => {
-    get_available_ports();
-  }, [get_available_ports]);
-
-  // WebSocket事件处理函数 - 实现实时设备发现和状态更新
-
-  // 处理设备发现事件
+  // 此函数必须定义在 useEffect 之前，被 ensureConnection 使用
   const handleDeviceDiscovered = (discovered: MfcDeviceDiscovered) => {
-    console.log('Real-time MFC device discovered:', discovered);
-
-    const deviceData = discovered.data;
-
-    // 转换为MfcDevice格式
-    const newDevice: MfcDevice = {
-      address: deviceData.device_address,
-      gas_type: deviceData.gas_type,
-      max_flow_sccm: deviceData.max_flow_sccm,
-      flow_sccm: 0,
-      set_flow: 0,
-      flow_percent: 0,
-      digital_setpoint_percent: 0,
-      active_setpoint_percent: 0,
-      mode: 'follow' as const,
-      status: deviceData.connection_status === 'connected' ? 'connected' as const : 'disconnected' as const,
-    };
-
+    const d = discovered.data;
     setState(prev => {
-      // 检查设备是否已存在
-      const existingDeviceIndex = prev.devices.findIndex(d => d.address === newDevice.address);
-      const existingDeviceInfoIndex = prev.availableDevices.findIndex(d => d.address === newDevice.address);
-
-      let updatedDevices = [...prev.devices];
-      let updatedAvailableDevices = [...prev.availableDevices];
-
-      // 更新或添加设备
-      if (existingDeviceIndex >= 0) {
-        updatedDevices[existingDeviceIndex] = newDevice;
-      } else {
-        updatedDevices.push(newDevice);
-      }
-
-      // 更新或添加设备信息
-      const deviceInfo: MfcDeviceInfo = {
-        address: newDevice.address,
-        gas_type: newDevice.gas_type,
-        max_flow_sccm: newDevice.max_flow_sccm,
+      const newDevice: MfcDevice = {
+        address: d.device_address,
+        gas_type: d.gas_type,
+        max_flow_sccm: d.max_flow_sccm,
+        flow_sccm: 0, set_flow: 0, flow_percent: 0, digital_setpoint_percent: 0, active_setpoint_percent: 0,
+        mode: 'follow', status: 'connected'
       };
 
-      if (existingDeviceInfoIndex >= 0) {
-        updatedAvailableDevices[existingDeviceInfoIndex] = deviceInfo;
-      } else {
-        updatedAvailableDevices.push(deviceInfo);
-      }
+      const devices = [...prev.devices];
+      const idx = devices.findIndex(x => x.address === newDevice.address);
+      if (idx >= 0) devices[idx] = newDevice; else devices.push(newDevice);
 
-      return {
-        ...prev,
-        devices: updatedDevices,
-        availableDevices: updatedAvailableDevices,
-        lastUpdate: new Date(),
-      };
+      return { ...prev, devices, lastUpdate: new Date() };
     });
   };
 
-  // 处理WebSocket连接成功事件
-  const handleConnected = () => {
-    console.log('MFC WebSocket connected, subscribing to updates');
-    mfcWebSocketService.subscribeToMfc();
-  };
-
-  // 处理状态更新事件 - 实时流量数据
   const handleStatusUpdate = (update: MfcStatusUpdate) => {
-    console.log('MFC status update received:', update);
-
     setState(prev => {
       const updatedDevices = prev.devices.map(device => {
-        // 查找对应的状态数据
         const statusData = update.data.find(d => d.device_address === device.address);
         if (!statusData) return device;
 
-        // 计算流量百分比
-        const flowPercent = device.max_flow_sccm > 0
-          ? (statusData.flow_sccm / device.max_flow_sccm) * 100
-          : 0;
-
-        const setpointPercent = device.max_flow_sccm > 0
-          ? (statusData.setpoint_sccm / device.max_flow_sccm) * 100
-          : 0;
-
+        const max = device.max_flow_sccm || 1;
         return {
           ...device,
           flow_sccm: statusData.flow_sccm,
           set_flow: statusData.setpoint_sccm,
-          flow_percent: flowPercent,
-          active_setpoint_percent: setpointPercent,
-          status: statusData.connection_status as 'connected' | 'disconnected' | 'error' | 'warning',
+          flow_percent: (statusData.flow_sccm / max) * 100,
+          status: statusData.connection_status as any,
         };
       });
-
-      return {
-        ...prev,
-        devices: updatedDevices,
-        lastUpdate: new Date(),
-      };
+      return { ...prev, devices: updatedDevices, lastUpdate: new Date() };
     });
   };
 
-  // WebSocket设备发现事件监听 - 注册监听器
-  useEffect(() => {
-    // 移除自动连接逻辑，只在需要时连接
-    // WebSocket连接将延迟到ensureConnection()方法被调用时才建立
-
-    // 清理函数
-    return () => {
-      mfcWebSocketService.removeCallback(handleDeviceDiscovered);
-      mfcWebSocketService.removeCallback(handleStatusUpdate);
-      mfcWebSocketService.removeCallback(handleConnected);
-    };
-  }, []);
-
-  // 延迟连接WebSocket的方法
-  const ensureConnection = () => {
-    if (!mfcWebSocketService.connected) {
-      // 注册WebSocket事件监听（只在连接前注册一次）
-      mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
-      mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
-      mfcWebSocketService.onConnected(handleConnected);
-
-      mfcWebSocketService.connect();
-    }
+  const handleConnected = () => {
+    mfcWebSocketService.subscribeToMfc();
   };
 
-  // 控制方法集合
+  // 供 WebSocket Service 调用的辅助更新
+  const updateSingleDeviceStatus = (address: number, data: any) => {}; 
+  const updateFlowData = (address: number, data: any) => {};
+
+  // 导出控制方法
   const controls: MfcControls = {
-    ensureConnection,
-    scanDevices,
-    refreshDevices,
-    connect,
-    disconnect,
-    get_available_ports,
-    setFlowRate,
-    setAllFlowRates,
-    loadHistoryData,
-    loadMultipleHistoryData,
-    updateHistoryParams,
-    getDeviceByAddress,
-    getDeviceStatus,
-    getDeviceHistory,
-    reset,
-    clearError,
-    refresh,
-    updateDeviceStatus: updateSingleDeviceStatus, // WebSocket使用的单设备状态更新
-    updateFlowData, // WebSocket使用的流量数据更新
+    ensureConnection, scanDevices, refreshDevices, connect, disconnect,
+    get_available_ports, setFlowRate, setAllFlowRates,
+    loadHistoryData, loadMultipleHistoryData, updateHistoryParams,
+    getDeviceByAddress, getDeviceStatus, getDeviceHistory,
+    reset, clearError, refresh, updateDeviceStatus: updateSingleDeviceStatus, updateFlowData
   };
 
   return [state, controls];

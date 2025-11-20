@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Body, Query, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Body, Query, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 import struct
 import serial
 import serial.tools.list_ports
@@ -13,9 +13,8 @@ import logging
 from enum import Enum
 
 # 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("mfc_device")
 
 class ErrorCategory(Enum):
     DEVICE = "DEVICE"
@@ -24,1088 +23,372 @@ class ErrorCategory(Enum):
     SYSTEM = "SYSTEM"
 
 class MfcError(Exception):
-    """MFC设备专用错误类"""
     def __init__(self, message: str, category: ErrorCategory, retryable: bool = True, context: Optional[Dict] = None):
         super().__init__(message)
         self.category = category
         self.retryable = retryable
         self.context = context or {}
-        self.timestamp = datetime.now()
 
-app = FastAPI(title="MFC FastAPI (Enhanced with Real-time Scanning)")
+app = FastAPI(title="MFC Device Driver (Serial)")
 
-
-
-
-class ScanRequest(BaseModel):
-    address: int
+# ==================== 响应封装 ====================
 
 class MfcResponse:
-    """MFC响应包装器类 - 统一数据解析和响应格式"""
+    @staticmethod
+    def create_success_response(data: dict, operation_code: Optional[int] = None, operation_value: Optional[int] = None) -> dict:
+        response = { "ok": True, "timestamp": datetime.now().isoformat(), **data }
+        if operation_code is not None:
+            response["operation"] = {"code": operation_code, "value": operation_value, "success": True}
+        return response
 
     @staticmethod
-    def create_success_response(data: dict, operation_code: Optional[int] = None,
-                              operation_value: Optional[int] = None) -> dict:
-        """创建成功响应
-
-        Args:
-            data: 响应数据
-            operation_code: 操作代码
-            operation_value: 操作值
-
-        Returns:
-            dict: 统一格式的成功响应
-        """
-        base_response = {
-            "ok": True,
-            "timestamp": datetime.now().isoformat(),
-            **data
-        }
-
-        if operation_code is not None and operation_value is not None:
-            base_response["operation"] = {
-                "code": operation_code,
-                "value": operation_value,
-                "success": True
-            }
-
-        return base_response
-
-    @staticmethod
-    def create_error_response(error_message: str, error_category: str = "SYSTEM",
-                            retryable: bool = False, context: Optional[Dict] = None) -> dict:
-        """创建错误响应
-
-        Args:
-            error_message: 错误信息
-            error_category: 错误分类
-            retryable: 是否可重试
-            context: 错误上下文
-
-        Returns:
-            dict: 统一格式的错误响应
-        """
+    def create_error_response(message: str, category: str = "SYSTEM", retryable: bool = False) -> dict:
         return {
-            "ok": False,
-            "error_message": error_message,
-            "error_category": error_category,
-            "retryable": retryable,
-            "timestamp": datetime.now().isoformat(),
-            "context": context or {}
+            "ok": False, "error_message": message, "error_category": category,
+            "retryable": retryable, "timestamp": datetime.now().isoformat()
         }
 
+# ==================== 数据模型 ====================
 
 class ConnectRequest(BaseModel):
     port: str
     baudrate: int = 19200
     timeout: float = 1.0
 
+class ScanRequest(BaseModel):
+    address: int
+
+class SetpointRequest(BaseModel):
+    address: int
+    sccm: float
 
 class DeviceInfo(BaseModel):
     device_address: int
     gas_type: str
     max_flow_sccm: int
 
+# ==================== 异常处理 ====================
 
 @app.exception_handler(MfcError)
-async def mfc_exception_handler(request: Request, exc: MfcError):
-    """
-    捕获所有自定义的MfcError异常，并返回标准化的错误响应
-    """
-    error_message = str(exc)
-    logger.error(f"MfcError caught: {error_message} | Category: {exc.category.value} | Context: {exc.context}")
-
-    # 使用MfcResponse工具生成响应
-    error_response = MfcResponse.create_error_response(
-        error_message,
-        exc.category.value,
-        exc.retryable,
-        exc.context
-    )
-
-    # 根据错误类型决定HTTP状态码
-    status_code = 503 if exc.category == ErrorCategory.DEVICE else 400
-
+async def mfc_error_handler(request: Request, exc: MfcError):
+    logger.warning(f"MFC Error: {exc}")
     return JSONResponse(
-        status_code=status_code,
-        content=error_response
+        status_code=503 if exc.category == ErrorCategory.DEVICE else 400,
+        content=MfcResponse.create_error_response(str(exc), exc.category.value, exc.retryable)
     )
-
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
-    """
-    捕获所有未处理的通用异常，防止服务器返回500错误
-    """
-    logger.critical(f"Unhandled exception for request {request.url}: {exc}", exc_info=True)
-
-    error_response = MfcResponse.create_error_response(
-        "An unexpected internal server error occurred.",
-        "SYSTEM",
-        False
-    )
-
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"System Error: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content=error_response
+        content=MfcResponse.create_error_response(f"Internal Error: {str(exc)}", "SYSTEM", False)
     )
 
+# ==================== 核心逻辑类 ====================
 
 class MfcCommLogManager:
-    """MFC通信日志管理器，包含错误分类和统计"""
     def __init__(self, max_size: int = 500):
-        self._logs = []
+        self._logs: List[Dict] = []
         self._max_size = max_size
         self._lock = threading.Lock()
-        self._error_counts = {}
-        self._last_error_time = None
 
-    def add_log(self, direction: str, data_hex: str, timestamp=None, connection_id: Optional[str] = None, error: Optional[Exception] = None):
-        """添加通信日志到缓冲区"""
-        if timestamp is None:
-            timestamp = datetime.now()
-
-        log_entry = {
-            'timestamp': timestamp.strftime('%H:%M:%S.%f')[:-3],
-            'direction': direction,
-            'data': data_hex.upper(),
-            'connection_id': connection_id,
-            'error': str(error) if error else None,
-            'error_category': error.category.value if isinstance(error, MfcError) else None
+    def add_log(self, direction: str, data: str, connection_id: Optional[str] = None, error: Optional[Exception] = None):
+        entry = {
+            'timestamp': datetime.now().strftime('%H:%M:%S.%f')[:-3],
+            'direction': direction, 'data': data,
+            'connection_id': connection_id, 'error': str(error) if error else None
         }
-
         with self._lock:
-            self._logs.append(log_entry)
-            if len(self._logs) > self._max_size:
-                self._logs.pop(0)
+            self._logs.append(entry)
+            if len(self._logs) > self._max_size: self._logs.pop(0)
 
-            # 错误统计
-            if error:
-                self._last_error_time = timestamp
-                category = error.category.value if isinstance(error, MfcError) else "UNKNOWN"
-                self._error_counts[category] = self._error_counts.get(category, 0) + 1
+    def get_logs(self) -> List[Dict]:
+        with self._lock: return list(reversed(self._logs))
 
-    def get_error_stats(self):
-        """获取错误统计信息"""
-        recent_errors = [log for log in self._logs if log['error'] and
-                         (datetime.now() - datetime.strptime(log['timestamp'], '%H:%M:%S.%f')).seconds < 300]
-
-        return {
-            "total_errors": len([log for log in self._logs if log['error']]),
-            "recent_errors_5min": len(recent_errors),
-            "error_categories": dict(self._error_counts),
-            "last_error_time": self._last_error_time.strftime('%H:%M:%S.%f')[:-3] if self._last_error_time else None
-        }
-
-    def get_logs(self, connection_id: Optional[str] = None) -> List[Dict]:
-        """获取日志"""
-        with self._lock:
-            if connection_id:
-                return [log for log in self._logs if log.get('connection_id') == connection_id]
-            return self._logs.copy()
-
-    def clear_logs(self, connection_id: Optional[str] = None):
-        """清空日志"""
-        with self._lock:
-            if connection_id:
-                self._logs = [log for log in self._logs if log.get('connection_id') != connection_id]
-            else:
-                self._logs.clear()
-            self._error_counts.clear()
-            self._last_error_time = None
-
+    def clear(self):
+        with self._lock: self._logs.clear()
 
 class MfcSession:
-    def __init__(self, comm_log: Optional[MfcCommLogManager] = None, connection_id: Optional[str] = None):
+    def __init__(self, comm_log: MfcCommLogManager, connection_id: str):
         self.ser: Optional[serial.Serial] = None
-        self.devices: Dict[int, DeviceInfo] = {}
-        self.comm_log = comm_log or MfcCommLogManager()
+        self.devices: Dict[int, DeviceInfo] = {} 
+        self.comm_log = comm_log
         self.connection_id = connection_id
-        self.lock = threading.Lock()  # 串口互斥锁，确保原子性操作
+        self.lock = threading.Lock()
 
-    def ports(self):
-        return [p.device for p in serial.tools.list_ports.comports()]
-
-    def connect(self, port: str, baudrate: int = 19200, timeout: float = 1.0):
-        """连接MFC设备
-
-        Args:
-            port: 串口号
-            baudrate: 波特率
-            timeout: 超时时间
-
-        Returns:
-            bool: 连接成功返回True
-
-        Raises:
-            MfcError: 连接失败时抛出异常
-        """
+    def connect(self, port: str, baudrate: int, timeout: float):
         try:
-            self.ser = serial.Serial(
-                port=port,
-                baudrate=baudrate,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                timeout=timeout,
-            )
-
-            if self.ser.is_open:
-                logger.info(f"成功连接到MFC设备 {port}")
-                self.comm_log.add_log('CONNECT', f'Connected to {port}', connection_id=self.connection_id)
-                return True
-            else:
-                error = MfcError(f"串口打开失败 {port}", ErrorCategory.DEVICE, retryable=True)
-                self.comm_log.add_log('ERROR', 'CONNECTION_FAILED', connection_id=self.connection_id, error=error)
-                raise error
-
-        except serial.SerialException as e:
-            self.ser = None
-            error = MfcError(f"串口连接失败 {port}: {str(e)}", ErrorCategory.DEVICE, retryable=True)
-            self.comm_log.add_log('ERROR', 'SERIAL_ERROR', connection_id=self.connection_id, error=error)
-            raise error
+            self.ser = serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+            self.comm_log.add_log('CONNECT', f'Connected to {port}', self.connection_id)
         except Exception as e:
-            self.ser = None
-            error = MfcError(f"设备连接失败 {port}: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-            self.comm_log.add_log('ERROR', 'CONNECT_ERROR', connection_id=self.connection_id, error=error)
-            raise error
+            raise MfcError(f"Connect failed: {e}", ErrorCategory.DEVICE)
 
     def disconnect(self):
-        """断开MFC设备连接"""
         if self.ser and self.ser.is_open:
-            try:
-                self.ser.close()
-                logger.info("MFC设备已断开连接")
-                self.comm_log.add_log('DISCONNECT', 'Disconnected', connection_id=self.connection_id)
-            except Exception as e:
-                error = MfcError(f"断开连接时发生错误: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-                self.comm_log.add_log('ERROR', 'DISCONNECT_ERROR', connection_id=self.connection_id, error=error)
-            finally:
-                self.ser = None
+            self.ser.close()
+            self.comm_log.add_log('DISCONNECT', 'Disconnected', self.connection_id)
+        self.ser = None
 
     def _checksum(self, data: bytes) -> int:
         return sum(data) & 0xFF
 
-    def _read_cmd(self, address: int, class_byte: int, instance: int, attribute: int) -> bytes:
-        cmd = bytes([address, 0x02, 0x80, 0x03, class_byte, instance, attribute, 0x00])
-        return cmd + bytes([self._checksum(cmd)])
-
-    def _write_cmd(self, address: int, class_byte: int, instance: int, attribute: int, data: bytes) -> bytes:
-        if len(data) == 1:
-            cmd = bytes([address, 0x02, 0x81, 0x04, class_byte, instance, attribute]) + data + bytes([0x00])
-        elif len(data) == 2:
-            cmd = bytes([address, 0x02, 0x81, 0x05, class_byte, instance, attribute]) + data + bytes([0x00])
-        else:
-            cmd = bytes([address, 0x02, 0x81, len(data) + 6, class_byte, instance, attribute]) + data + bytes([0x00])
-        return cmd + bytes([self._checksum(cmd)])
-
-    def _send(self, cmd: bytes):
-        """发送命令到MFC设备并等待响应（严格一发一收：收到完整响应/超时才返回）
-
-        Args:
-            cmd: 要发送的命令字节
-
-        Returns:
-            bytes: 接收到的响应数据，失败时抛出异常
-
-        Raises:
-            MfcError: 设备通信错误时抛出异常
-        """
-        with self.lock:  # 串口互斥，避免多线程同时读写
+    def _send(self, cmd: bytes) -> bytes:
+        with self.lock:
+            if not self.ser or not self.ser.is_open:
+                raise MfcError("Device not connected", ErrorCategory.DEVICE)
+            
             try:
-                if not self.ser or not self.ser.is_open:
-                    error = MfcError(f"设备未连接", ErrorCategory.DEVICE, retryable=True)
-                    self.comm_log.add_log('ERROR', 'DEVICE_NOT_CONNECTED', connection_id=self.connection_id, error=error)
-                    raise error
-
-                # 清空输入缓冲，避免上一次残留数据干扰
                 self.ser.reset_input_buffer()
-
-                # 发送
-                bytes_written = self.ser.write(cmd)
-                self.ser.flush()
-
-                # 记录发送的16进制数据
-                self.comm_log.add_log('TX', cmd.hex(), connection_id=self.connection_id)
+                self.ser.write(cmd)
+                self.comm_log.add_log('TX', cmd.hex().upper(), self.connection_id)
 
                 response = bytearray()
-                start_time = time.time()
-                max_wait = 0.1  # 最多等0.1秒，按用户要求
-
-                # 第一步：读取基本响应头（至少6字节才能获取长度信息）
-                while time.time() - start_time < max_wait and len(response) < 6:
-                    waiting = self.ser.in_waiting
-                    if waiting > 0:
-                        chunk = self.ser.read(waiting)
-                        if chunk:
-                            response.extend(chunk)
+                start = time.time()
+                
+                # 循环读取直到收到完整包或超时 (0.2s)
+                while time.time() - start < 0.2: 
+                    if self.ser.in_waiting:
+                        response.extend(self.ser.read(self.ser.in_waiting))
+                        # 基础长度检查: Header(8) + Data + Checksum(1)
+                        # 第4字节(Index 3)通常是数据长度，但这取决于具体协议变种
+                        # 这里使用保守策略：只要收到数据且静默了一小段时间就认为结束
+                        if len(response) > 8: 
+                             break
                     else:
-                        time.sleep(0.01)  # 轻量轮询
-
-                # 如果连6字节头都没收到，返回超时
-                if len(response) < 6:
-                    n = self.ser.in_waiting
-                    if n > 0:
-                        partial_response = self.ser.read(n)
-                        response.extend(partial_response)
-                        self.comm_log.add_log('RX', response.hex(), connection_id=self.connection_id)
-
-                    timeout_error = MfcError(
-                        f"通信超时, 命令: {cmd.hex()}, 等待{max_wait}秒只收到{len(response)}字节",
-                        ErrorCategory.TIMEOUT,
-                        retryable=True
-                    )
-                    self.comm_log.add_log('ERROR', 'COMMUNICATION_TIMEOUT', connection_id=self.connection_id, error=timeout_error)
-                    raise timeout_error
-
-                # 第二步：根据第5字节的Data Length计算完整响应长度
-                data_length = response[4] if len(response) > 4 else 0
-                # 根据协议文档：6字节头 + data_length字节数据内容
-                # data_length包含从Class开始到校验和结束的所有数据
-                total_length = 6 + data_length
-                logger.info(f"Data Length field: {data_length}, calculating total length: {total_length}")
-
-                logger.info(f"Response header: {response[:6].hex()}, data_length={data_length}, total_length={total_length}")
-
-                # 第三步：读取剩余字节直到完整响应
-                while time.time() - start_time < max_wait and len(response) < total_length:
-                    waiting = self.ser.in_waiting
-                    if waiting > 0:
-                        chunk = self.ser.read(waiting)
-                        if chunk:
-                            response.extend(chunk)
-                    else:
-                        time.sleep(0.01)  # 轻量轮询
-
-                # 记录接收的完整16进制数据
-                self.comm_log.add_log('RX', response.hex(), connection_id=self.connection_id)
-                logger.info(f"Received {len(response)} bytes, expected {total_length}")
-
-                # 返回完整响应
-                return bytes(response)
-
-            except serial.SerialTimeoutException as e:
-                error = MfcError(f"串口超时: {str(e)}", ErrorCategory.TIMEOUT, retryable=True)
-                self.comm_log.add_log('ERROR', 'SERIAL_TIMEOUT', connection_id=self.connection_id, error=error)
-                raise error
-            except serial.SerialException as e:
-                error = MfcError(f"串口通信错误: {str(e)}", ErrorCategory.DEVICE, retryable=True)
-                self.comm_log.add_log('ERROR', 'SERIAL_ERROR', connection_id=self.connection_id, error=error)
-                raise error
+                        time.sleep(0.005)
+                
+                if len(response) > 0:
+                    self.comm_log.add_log('RX', response.hex().upper(), self.connection_id)
+                    return bytes(response)
+                else:
+                    raise MfcError("Timeout: No response", ErrorCategory.TIMEOUT)
             except MfcError:
-                # 重新抛出已知的MfcError
                 raise
             except Exception as e:
-                error = MfcError(f"未知通信错误: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-                self.comm_log.add_log('ERROR', 'UNKNOWN_ERROR', connection_id=self.connection_id, error=error)
-                raise error
+                raise MfcError(f"Serial IO Error: {e}", ErrorCategory.DEVICE)
 
-    def _parse_uint16_from_resp(self, resp: bytes) -> Optional[int]:
-        if not resp or len(resp) < 10:
-            return None
+    def _parse_val(self, resp: bytes, idx: int) -> Optional[int]:
+        if not resp or len(resp) < idx + 2: return None
         try:
-            return struct.unpack('<H', resp[8:10])[0]
-        except Exception:
+            return struct.unpack('<H', resp[idx:idx+2])[0]
+        except:
             return None
 
-    def _parse_uint8_from_resp(self, resp: bytes) -> Optional[int]:
-        if not resp or len(resp) < 9:
-            return None
-        return resp[8]
-
-    def _parse_text32_from_resp(self, resp: bytes) -> Optional[str]:
-        """解析TEXT32格式的响应数据
-
-        Args:
-            resp: 响应字节数据
-
-        Returns:
-            Optional[str]: 解析出的字符串，失败时返回None
-        """
-        if not resp or len(resp) < 9:
-            return None
-
+    def _parse_string(self, resp: bytes, start_idx: int = 8) -> str:
+        """解析字符串，去除可能的空字节"""
+        if not resp or len(resp) <= start_idx: return "Unknown"
         try:
-            # 根据通讯协议，TEXT32数据在第9字节开始（索引8）
-            # 找到结束符0x00的位置
-            text_start = 8
-            text_end = resp.find(0x00, text_start)
+            # 截取有效载荷部分
+            payload = resp[start_idx:-1] # 去掉最后的 Checksum
+            # 查找 0x00 结束符
+            end = payload.find(b'\x00')
+            if end != -1:
+                payload = payload[:end]
+            return payload.decode('ascii', errors='ignore').strip()
+        except:
+            return "Unknown"
 
-            if text_end == -1:
-                # 如果没有找到结束符，取到响应末尾
-                text_end = len(resp)
+    def _ufrac_to_pct(self, val: int) -> float:
+        return ((val - 0x4000) / (0xC000 - 0x4000)) * 100.0
 
-            # 提取文本数据并解码
-            text_bytes = resp[text_start:text_end]
-            return text_bytes.decode('ascii', errors='ignore').strip()
+    def _pct_to_ufrac(self, pct: float) -> int:
+        pct = max(0, min(100, pct))
+        return int(pct * (0xC000 - 0x4000) / 100 + 0x4000)
 
-        except Exception:
-            return None
-
-    
-    def ufrac16_to_percent(self, value: int) -> float:
-        return ((value - 0x4000) / (0xC000 - 0x4000)) * 100.0
-
-    def percent_to_ufrac16(self, percent: float) -> int:
-        if percent < 0: percent = 0
-        if percent > 100: percent = 100
-        return int(percent * (0xC000 - 0x4000) / 100 + 0x4000)
+    # --- 具体命令 ---
 
     def read_status(self, address: int) -> dict:
-        """读取MFC设备状态
+        info = self.devices.get(address)
+        max_flow = info.max_flow_sccm if info else 0
 
-        Args:
-            address: 设备地址
-
-        Returns:
-            dict: 包含设备状态信息的字典
-
-        Raises:
-            MfcError: 读取失败时抛出异常
-        """
+        # 1. Flow (Class 0x68, Inst 0x01, Attr 0xB9)
+        cmd_flow = bytes([address, 0x02, 0x80, 0x03, 0x68, 0x01, 0xB9, 0x00])
+        cmd_flow += bytes([self._checksum(cmd_flow)])
+        
+        flow_pct = 0.0
         try:
-            info = self.devices.get(address)
-            if not info:
-                raise MfcError(f"设备地址 {address} 未找到", ErrorCategory.DEVICE, retryable=False)
-
-            # Flow percent from 0x68/0x01/0xB9 (UFRAC16)
-            flow_percent = 0.0
-            try:
-                resp_flow = self._send(self._read_cmd(address, 0x68, 0x01, 0xB9))
-                raw_flow = self._parse_uint16_from_resp(resp_flow)
-                if raw_flow is not None:
-                    flow_percent = self.ufrac16_to_percent(raw_flow)
-            except Exception as e:
-                raise MfcError(f"读取流量百分比失败: {str(e)}", ErrorCategory.PROTOCOL, retryable=True)
-
-            # Digital setpoint percent
-            digital_sp_percent = 0.0
-            try:
-                resp_dsp = self._send(self._read_cmd(address, 0x69, 0x01, 0xA4))
-                raw_dsp = self._parse_uint16_from_resp(resp_dsp)
-                if raw_dsp is not None:
-                    digital_sp_percent = self.ufrac16_to_percent(raw_dsp)
-            except Exception as e:
-                raise MfcError(f"读取数字设定点失败: {str(e)}", ErrorCategory.PROTOCOL, retryable=True)
-
-            # Active setpoint percent
-            active_sp_percent = 0.0
-            try:
-                resp_asp = self._send(self._read_cmd(address, 0x69, 0x01, 0xA5))
-                raw_asp = self._parse_uint16_from_resp(resp_asp)
-                if raw_asp is not None:
-                    active_sp_percent = self.ufrac16_to_percent(raw_asp)
-            except Exception as e:
-                raise MfcError(f"读取活动设定点失败: {str(e)}", ErrorCategory.PROTOCOL, retryable=True)
-
-            # Calculate flow_sccm
-            flow_sccm = 0.0
-            if info and info.max_flow_sccm:
-                flow_sccm = flow_percent * info.max_flow_sccm / 100.0
-
-            # Calculate setpoint_sccm
-            setpoint_sccm = 0.0
-            if info and info.max_flow_sccm:
-                setpoint_sccm = active_sp_percent * info.max_flow_sccm / 100.0
-
-            # 构建响应数据
-            status_data = {
-                "device_address": address,
-                "flow_percent": flow_percent,
-                "flow_sccm": flow_sccm,
-                "digital_setpoint_percent": digital_sp_percent,
-                "active_setpoint_percent": active_sp_percent,
-                "setpoint_sccm": setpoint_sccm,
-                "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected",
-                "last_communication": datetime.now().isoformat()
-            }
-
-            return MfcResponse.create_success_response(status_data)
-
+            resp_flow = self._send(cmd_flow)
+            val_flow = self._parse_val(resp_flow, 8) # Data starts at index 8
+            if val_flow is not None:
+                flow_pct = self._ufrac_to_pct(val_flow)
         except MfcError:
-            raise
-        except Exception as e:
-            raise MfcError(f"读取状态异常 (地址: {address}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+            pass 
 
-    def read_gas_name(self, address: int) -> dict:
-        """读取MFC设备气体名称
-
-        Args:
-            address: 设备地址
-
-        Returns:
-            dict: 包含气体名称信息的字典
-
-        Raises:
-            MfcError: 读取失败时抛出异常
-        """
+        # 2. Setpoint (Digital) (Class 0x69, Inst 0x01, Attr 0xA4)
+        cmd_sp = bytes([address, 0x02, 0x80, 0x03, 0x69, 0x01, 0xA4, 0x00])
+        cmd_sp += bytes([self._checksum(cmd_sp)])
+        
+        sp_pct = 0.0
         try:
-            # 根据通讯协议1：Target Gas Name 读指令 (Class=0x66, Instance=0x01, Attribute=0x01)
-            cmd = self._read_cmd(address, 0x66, 0x01, 0x01)
+            resp_sp = self._send(cmd_sp)
+            val_sp = self._parse_val(resp_sp, 8)
+            if val_sp is not None:
+                sp_pct = self._ufrac_to_pct(val_sp)
+        except MfcError:
+            pass
+
+        return {
+            "device_address": address,
+            "flow_percent": round(flow_pct, 2),
+            "flow_sccm": round(flow_pct * max_flow / 100.0, 2),
+            "setpoint_sccm": round(sp_pct * max_flow / 100.0, 2),
+            "connection_status": "connected",
+            "last_communication": datetime.now().isoformat()
+        }
+
+    def read_gas_name(self, address: int) -> str:
+        """发送指令读取真实气体名称"""
+        # Cmd: Class 0x66, Inst 0x01, Attr 0x01 (Target Gas Name)
+        cmd = bytes([address, 0x02, 0x80, 0x03, 0x66, 0x01, 0x01, 0x00])
+        cmd += bytes([self._checksum(cmd)])
+        try:
             resp = self._send(cmd)
+            # 返回解析后的字符串
+            name = self._parse_string(resp, 8)
+            return name if name else "Unknown"
+        except:
+            return "Unknown"
 
-            # 解析TEXT32格式的气体名称
-            gas_name = self._parse_text32_from_resp(resp)
+    def set_setpoint(self, address: int, sccm: float) -> dict:
+        info = self.devices.get(address)
+        if not info: 
+            raise MfcError(f"Device {address} not scanned (unknown max flow)", ErrorCategory.DEVICE)
+        
+        pct = (sccm / info.max_flow_sccm) * 100.0
+        val = self._pct_to_ufrac(pct)
+        
+        data = bytes([val & 0xFF, (val >> 8) & 0xFF])
+        cmd = bytes([address, 0x02, 0x81, 0x05, 0x69, 0x01, 0xA4]) + data + bytes([0x00])
+        cmd += bytes([self._checksum(cmd)])
+        
+        self._send(cmd)
+        return {"sccm": sccm, "percent": round(pct, 2)}
 
-            if gas_name is None:
-                gas_name = "Unknown"
-
-            # 构建响应数据
-            result_data = {
-                "device_address": address,
-                "gas_name": gas_name.strip(),  # 移除可能的空白字符
-                "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected"
-            }
-
-            return MfcResponse.create_success_response(
-                result_data,
-                operation_code=0x01,
-                operation_value=address
-            )
-
-        except MfcError:
-            raise
-        except Exception as e:
-            raise MfcError(f"读取气体名称异常 (地址: {address}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
-    def read_active_setpoint(self, address: int) -> dict:
-        """读取MFC设备当前设定值
-
-        Args:
-            address: 设备地址
-
-        Returns:
-            dict: 包含当前设定值信息的字典
-
-        Raises:
-            MfcError: 读取失败时抛出异常
-        """
+    def scan_address(self, address: int) -> Optional[DeviceInfo]:
         try:
-            # 获取设备信息用于计算sccm值
-            info = self.devices.get(address)
-
-            # 根据通讯协议1：Read Active Setpoint 读指令 (Class=0x69, Instance=0x01, Attribute=0xA5)
-            cmd = self._read_cmd(address, 0x69, 0x01, 0xA5)
-            resp = self._send(cmd)
-
-            # 解析UFRAC16格式的当前设定值
-            raw_value = self._parse_uint16_from_resp(resp)
-
-            if raw_value is None:
-                raise MfcError(f"解析当前设定值失败", ErrorCategory.PROTOCOL, retryable=True)
-
-            # 转换为百分比
-            active_percent = self.ufrac16_to_percent(raw_value)
-
-            # 计算sccm值
-            active_sccm = 0.0
-            if info and info.max_flow_sccm:
-                active_sccm = active_percent * info.max_flow_sccm / 100.0
-
-            # 构建响应数据
-            result_data = {
-                "device_address": address,
-                "active_setpoint_percent": active_percent,
-                "active_setpoint_sccm": active_sccm,
-                "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected"
-            }
-
-            return MfcResponse.create_success_response(
-                result_data,
-                operation_code=0xA5,
-                operation_value=int(raw_value)
-            )
-
-        except MfcError:
-            raise
-        except Exception as e:
-            raise MfcError(f"读取当前设定值异常 (地址: {address}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
-    def write_setpoint_sccm(self, address: int, sccm: float) -> dict:
-        """写入MFC设备流量设定点
-
-        Args:
-            address: 设备地址
-            sccm: 流量设定值 (sccm)
-
-        Returns:
-            dict: 包含操作结果的字典
-
-        Raises:
-            MfcError: 写入失败时抛出异常
-        """
-        try:
-            info = self.devices.get(address)
-            if not info or not info.max_flow_sccm:
-                # Cannot convert; accept and return error
-                raise MfcError(f"设备地址 {address} 未找到或最大流量未设置", ErrorCategory.DEVICE, retryable=False)
-
-            percent = (sccm / info.max_flow_sccm) * 100.0
-            value = self.percent_to_ufrac16(percent)
-            cmd = self._write_cmd(address, 0x69, 0x01, 0xA4, bytes([value & 0xFF, (value >> 8) & 0xFF]))
-
-            # 发送命令
+            # 1. 尝试读流量，验证设备是否存在
+            cmd = bytes([address, 0x02, 0x80, 0x03, 0x68, 0x01, 0xB9, 0x00])
+            cmd += bytes([self._checksum(cmd)])
             self._send(cmd)
 
-            # 构建响应数据
-            result_data = {
-                "device_address": address,
-                "sccm": sccm,
-                "percent": percent,
-                "connection_status": "connected" if self.ser and self.ser.is_open else "disconnected"
-            }
-
-            return MfcResponse.create_success_response(
-                result_data,
-                operation_code=0xA4,
-                operation_value=int(value)
-            )
-
-        except MfcError:
-            raise
-        except Exception as e:
-            raise MfcError(f"写入设定点异常 (地址: {address}, sccm: {sccm}): {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
-
-class MfcDeviceManager:
-    """MFC设备管理器 - 单连接模式，移除过度设计的复杂性"""
-
-    def __init__(self):
-        self._controller: Optional[MfcSession] = None
-        self._connection_id: Optional[str] = None
-        self._lock = threading.Lock()
-        self.comm_log = MfcCommLogManager()
-
-    def connect(self, port: str, baudrate: int = 19200, timeout: float = 1.0) -> str:
-        """连接MFC设备（单连接模式）
-
-        Args:
-            port: 串口号
-            baudrate: 波特率
-            timeout: 超时时间
-
-        Returns:
-            connection_id: 连接ID
-
-        Raises:
-            MfcError: 连接失败时抛出异常
-        """
-        with self._lock:
-            # 如果已有连接，先断开
-            if self._controller:
-                try:
-                    self._controller.disconnect()
-                except Exception:
-                    pass
-                self.comm_log.clear_logs(self._connection_id)
-
-            # 生成新的连接ID
-            self._connection_id = str(uuid.uuid4())
-
-            # 创建新控制器实例
-            self._controller = MfcSession(
-                comm_log=self.comm_log,
-                connection_id=self._connection_id
-            )
-
-            # 尝试连接
+            # 2. 尝试读取满量程 (Class 0x66, Inst 0x01, Attr 0x03)
+            max_flow = 200 # 默认 fallback
             try:
-                self._controller.connect(port, baudrate, timeout)
-                logger.info(f"成功连接到MFC设备: {port}")
-                return self._connection_id
-            except Exception as e:
-                self._controller = None
-                self._connection_id = None
-                mfc_error = MfcError(
-                    f"连接失败 {port}: {str(e)}",
-                    ErrorCategory.DEVICE,
-                    retryable=True
-                )
-                self.comm_log.add_log('ERROR', 'CONNECTION_FAILED', connection_id=self._connection_id, error=mfc_error)
-                raise mfc_error
-
-    def disconnect(self) -> bool:
-        """断开MFC设备连接
-
-        Returns:
-            是否成功断开
-        """
-        with self._lock:
-            if not self._controller:
-                return False
-
-            try:
-                self._controller.disconnect()
-                self.comm_log.clear_logs(self._connection_id)
-                logger.info("MFC设备已断开连接")
-                return True
-            except Exception as e:
-                logger.error(f"断开连接时发生错误: {str(e)}")
-                return False
-            finally:
-                self._controller = None
-                self._connection_id = None
-
-    def get_connection_id(self) -> Optional[str]:
-        """获取当前连接ID
-
-        Returns:
-            连接ID，如果没有连接返回None
-        """
-        return self._connection_id
-
-    def get_connection_info(self) -> Optional[Dict]:
-        """获取连接信息
-
-        Returns:
-            连接信息字典，如果没有连接返回None
-        """
-        with self._lock:
-            if not self._controller:
-                return None
-
-            return {
-                'connection_id': self._connection_id,
-                'connected': self._controller.ser is not None and self._controller.ser.is_open if self._controller.ser else False
-            }
-
-    def get_controller(self) -> Optional[MfcSession]:
-        """获取控制器实例
-
-        Returns:
-            控制器实例，如果没有连接返回None
-        """
-        with self._lock:
-            if not self._controller:
-                return None
-
-            # 简单的连接健康检查
-            if not self._is_connection_healthy():
-                try:
-                    # 尝试重新连接
-                    # 注意：这里需要保存连接参数，简化实现暂不支持自动重连
-                    self.comm_log.add_log('RECONNECT', f"Reconnected {self._connection_id}", connection_id=self._connection_id)
-                except Exception as e:
-                    self.comm_log.add_log('ERROR', f"Reconnect failed: {str(e)}", connection_id=self._connection_id)
-                    return None
-
-            return self._controller
-
-    def _is_connection_healthy(self) -> bool:
-        """检查连接是否健康
-
-        Returns:
-            连接是否健康
-        """
-        if not self._controller:
-            return False
-
-        try:
-            return (self._controller.ser is not None and
-                   self._controller.ser.is_open)
-        except Exception:
-            return False
-
-
-# 全局设备管理器实例
-device_manager = MfcDeviceManager()
-
-
-def get_active_controller() -> MfcSession:
-    """
-    FastAPI依赖项：获取活动的控制器
-    如果获取失败，抛出MfcError异常
-
-    Returns:
-        MfcSession: 可用的控制器实例
-
-    Raises:
-        MfcError: 当没有活动连接时
-    """
-    controller = device_manager.get_controller()
-    if not controller:
-        raise MfcError(
-            "No active connection to the MFC device. Please connect first.",
-            ErrorCategory.DEVICE,
-            retryable=False
-        )
-    return controller
-
-
-def get_optional_controller() -> Optional[MfcSession]:
-    """
-    FastAPI依赖项：获取可选的控制器
-    如果获取失败，返回None而不是抛出异常
-
-    Returns:
-        Optional[MfcSession]: 可用的控制器实例，或None
-    """
-    return device_manager.get_controller()
-
-
-# 保留原有session实例以兼容现有代码（将被逐步淘汰）
-session = MfcSession()
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.get("/ports")
-def ports():
-    return session.ports()
-
-
-@app.post("/connect")
-def connect(request: ConnectRequest):
-    """连接MFC设备"""
-    try:
-        connection_id = device_manager.connect(
-            port=request.port,
-            baudrate=request.baudrate,
-            timeout=request.timeout
-        )
-        logger.info(f"MFC设备连接成功: {connection_id} ({request.port})")
-
-        return MfcResponse.create_success_response({
-            "connection_id": connection_id,
-            "connected": True,
-            "port": request.port
-        })
-    except MfcError:
-        raise
-    except Exception as e:
-        raise MfcError(f"连接失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
-
-@app.post("/disconnect")
-def disconnect():
-    """断开MFC设备连接"""
-    try:
-        success = device_manager.disconnect()
-        if success:
-            logger.info("MFC设备已断开连接")
-
-        return MfcResponse.create_success_response({
-            "success": success,
-            "disconnected_count": 1 if success else 0
-        })
-    except Exception as e:
-        raise MfcError(f"断开连接失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
-
-@app.post("/scan")
-def scan(controller: Optional[MfcSession] = Depends(get_optional_controller),
-         scan_request: ScanRequest = Body(...)):
-    """扫描单个MFC设备地址"""
-    address = scan_request.address
-    logger.info(f"FastAPI /scan endpoint called: address={address}, controller={controller is not None}")
-
-    try:
-        if not controller:
-            logger.error("No controller available for scanning")
-            raise MfcError("需要先连接设备才能进行扫描", ErrorCategory.DEVICE, retryable=False)
-
-        logger.info(f"Scanning single address {address}...")
-
-        try:
-            # 首先尝试读取流量数据验证设备存在
-            cmd = controller._read_cmd(address, 0x68, 0x01, 0xB9)
-            logger.info(f"TX: {cmd.hex()} (read flow data for address {address})")
-            resp = controller._send(cmd)
-            logger.info(f"RX: {resp.hex() if resp else 'null'} (length: {len(resp) if resp else 0})")
-
-            if not resp or len(resp) < 8:
-                # 设备不存在
-                logger.info(f"Address {address}: No device response")
-                return MfcResponse.create_success_response({
-                    "device": None,
-                    "found": False
-                })
-
-            # 解析流量值
-            raw_flow_bytes = resp[8:10] if len(resp) >= 10 else b'\x00\x00'
-            raw_flow = struct.unpack('<H', raw_flow_bytes)[0]
-            flow_percent = controller.ufrac16_to_percent(raw_flow)
-
-            # 设备存在，继续读取详细信息
-            gas = "UNKNOWN"
-            fs_sccm = 1000  # 默认值
-
-            # 读取气体名称
-            try:
-                cmd2 = controller._read_cmd(address, 0x66, 0x01, 0x01)
-                resp2 = controller._send(cmd2)
-                gas = controller._parse_text32_from_resp(resp2) or "UNKNOWN"
-            except Exception:
-                gas = "UNKNOWN"
-
-            # 读取满量程
-            try:
-                cmd3 = controller._read_cmd(address, 0x66, 0x01, 0x03)
-                resp3 = controller._send(cmd3)
-                val = controller._parse_uint16_from_resp(resp3)
-                if val is not None:
-                    fs_sccm = val
-            except Exception:
+                cmd_fs = bytes([address, 0x02, 0x80, 0x03, 0x66, 0x01, 0x03, 0x00])
+                cmd_fs += bytes([self._checksum(cmd_fs)])
+                resp_fs = self._send(cmd_fs)
+                val_fs = self._parse_val(resp_fs, 8) 
+                if val_fs is not None: max_flow = val_fs
+            except:
                 pass
 
-            # 创建设备信息
-            device_info = DeviceInfo(
-                device_address=address,
-                gas_type=gas,
-                max_flow_sccm=int(fs_sccm)
-            )
+            # 3. 尝试读取气体名称
+            gas_name = self.read_gas_name(address)
 
-            controller.devices[address] = device_info
+            # 更新内存缓存
+            info = DeviceInfo(device_address=address, gas_type=gas_name, max_flow_sccm=max_flow)
+            self.devices[address] = info
+            return info
+        except MfcError:
+            return None
 
-            logger.info(f"Found MFC device at address {address}: gas_type={device_info.gas_type}, max_flow={device_info.max_flow_sccm} SCCM, flow={flow_percent:.2f}%")
+class MfcDeviceManager:
+    def __init__(self):
+        self.session: Optional[MfcSession] = None
+        self.comm_log = MfcCommLogManager()
+        self.conn_id: Optional[str] = None
 
-            return MfcResponse.create_success_response({
-                "device": device_info.model_dump(),
-                "found": True,
-                "flow_percent": flow_percent
-            })
+    def ensure_session(self) -> MfcSession:
+        if not self.session:
+            raise MfcError("Not connected", ErrorCategory.DEVICE)
+        return self.session
 
-        except MfcError as e:
-            if e.category == ErrorCategory.TIMEOUT:
-                logger.info(f"Address {address} timeout - no device")
-                return MfcResponse.create_success_response({
-                    "device": None,
-                    "found": False
-                })
-            else:
-                raise e
+    def connect(self, req: ConnectRequest):
+        if self.session: self.session.disconnect()
+        self.conn_id = str(uuid.uuid4())
+        self.session = MfcSession(self.comm_log, self.conn_id)
+        self.session.connect(req.port, req.baudrate, req.timeout)
+        return self.conn_id
 
-    except MfcError:
-        raise
-    except Exception as e:
-        raise MfcError(f"扫描失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+    def disconnect(self):
+        if self.session:
+            self.session.disconnect()
+            self.session = None
+        self.conn_id = None
 
+manager = MfcDeviceManager()
 
+# ==================== FastAPI 依赖 ====================
 
+def get_controller() -> MfcSession:
+    return manager.ensure_session()
+
+# ==================== 路由定义 ====================
+
+@app.get("/health")
+def health(): return {"status": "ok"}
+
+@app.get("/ports")
+def ports(): return [p.device for p in serial.tools.list_ports.comports()]
+
+@app.post("/connect")
+def connect_device(req: ConnectRequest):
+    cid = manager.connect(req)
+    return MfcResponse.create_success_response({"connection_id": cid, "connected": True})
+
+@app.post("/disconnect")
+def disconnect_device():
+    manager.disconnect()
+    return MfcResponse.create_success_response({"success": True})
+
+@app.post("/scan")
+def scan(req: ScanRequest, controller: MfcSession = Depends(get_controller)):
+    device = controller.scan_address(req.address)
+    return MfcResponse.create_success_response({
+        "found": device is not None,
+        "device": device.model_dump() if device else None
+    })
 
 @app.get("/status")
-def get_status(address: Optional[int] = Query(None),
-               controller: MfcSession = Depends(get_active_controller)):
-    """获取MFC设备状态"""
-    try:
-        if address is None:
-            # 获取所有设备状态
-            all_status = []
-            for device_address in list(controller.devices.keys()):
-                try:
-                    status = controller.read_status(device_address)
-                    all_status.append(status)
-                except MfcError as e:
-                    # 单个设备失败不影响其他设备
-                    error_response = MfcResponse.create_error_response(
-                        str(e), e.category.value, e.retryable
-                    )
-                    error_response["device_address"] = device_address
-                    all_status.append(error_response)
-
-            return MfcResponse.create_success_response({
-                "devices": all_status,
-                "count": len(all_status)
-            })
-        else:
-            # 获取指定设备状态
-            status = controller.read_status(address)
-            return status
-    except MfcError:
-        raise
-    except Exception as e:
-        raise MfcError(f"获取状态失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
+def status(address: int = Query(...), controller: MfcSession = Depends(get_controller)):
+    data = controller.read_status(address)
+    return MfcResponse.create_success_response(data)
 
 @app.post("/setpoint")
-def set_setpoint(address: int = Body(...), sccm: float = Body(...),
-                controller: MfcSession = Depends(get_active_controller)):
-    """设置MFC流量设定点"""
-    try:
-        result = controller.write_setpoint_sccm(address, sccm)
-        return result
-    except MfcError:
-        raise
-    except Exception as e:
-        raise MfcError(f"设置流量失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
+def setpoint(req: SetpointRequest, controller: MfcSession = Depends(get_controller)):
+    data = controller.set_setpoint(req.address, req.sccm)
+    return MfcResponse.create_success_response(data)
 
-
-# 新增API端点
 @app.get("/comm-log")
-def get_comm_log():
-    """获取通信日志"""
-    try:
-        connection_id = device_manager.get_connection_id()
-        logs = device_manager.comm_log.get_logs(connection_id)
-        error_stats = device_manager.comm_log.get_error_stats()
-
-        return MfcResponse.create_success_response({
-            "logs": logs,
-            "total": len(logs),
-            "connection_id": connection_id,
-            "error_stats": error_stats
-        })
-    except Exception as e:
-        raise MfcError(f"获取通信日志失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
+def get_logs():
+    return MfcResponse.create_success_response({"logs": manager.comm_log.get_logs()})
 
 @app.delete("/comm-log")
-def clear_comm_log():
-    """清空通信日志"""
-    try:
-        connection_id = device_manager.get_connection_id()
-        device_manager.comm_log.clear_logs(connection_id)
-
-        return MfcResponse.create_success_response({
-            "message": "通信日志已清空",
-            "connection_id": connection_id
-        })
-    except Exception as e:
-        raise MfcError(f"清空通信日志失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
+def clear_logs():
+    manager.comm_log.clear()
+    return MfcResponse.create_success_response({"success": True})
 
 @app.get("/connection/info")
-def get_connection_info():
-    """获取连接信息"""
-    try:
-        connection_info = device_manager.get_connection_info()
-
-        return MfcResponse.create_success_response({
-            "connection_info": connection_info,
-            "has_connection": connection_info is not None
-        })
-    except Exception as e:
-        raise MfcError(f"获取连接信息失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
+def conn_info():
+    return MfcResponse.create_success_response({
+        "connected": manager.session is not None and manager.session.ser is not None,
+        "connection_id": manager.conn_id
+    })
 
 @app.get("/gas-name")
-def get_gas_name(address: int = Query(..., description="设备地址"),
-                  controller: MfcSession = Depends(get_active_controller)):
-    """获取MFC设备气体名称"""
-    try:
-        result = controller.read_gas_name(address)
-        return result
-    except MfcError:
-        raise
-    except Exception as e:
-        raise MfcError(f"获取气体名称失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
+def gas_name(address: int = Query(...), controller: MfcSession = Depends(get_controller)):
+    name = controller.read_gas_name(address)
+    return MfcResponse.create_success_response({"gas_name": name, "device_address": address})
 
 @app.get("/active-setpoint")
-def get_active_setpoint(address: int = Query(..., description="设备地址"),
-                        controller: MfcSession = Depends(get_active_controller)):
-    """获取MFC设备当前设定值"""
-    try:
-        result = controller.read_active_setpoint(address)
-        return result
-    except MfcError:
-        raise
-    except Exception as e:
-        raise MfcError(f"获取当前设定值失败: {str(e)}", ErrorCategory.SYSTEM, retryable=False)
-
+def active_sp(address: int = Query(...), controller: MfcSession = Depends(get_controller)):
+    status = controller.read_status(address)
+    return MfcResponse.create_success_response({
+        "active_setpoint_sccm": status["setpoint_sccm"],
+        "active_setpoint_percent": 0,
+        "device_address": address
+    })
 
 if __name__ == "__main__":
     import uvicorn

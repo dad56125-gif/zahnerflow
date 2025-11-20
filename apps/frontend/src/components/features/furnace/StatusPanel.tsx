@@ -53,7 +53,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         <div className="status-row-program">
           <div className="status-item">
             <label className="status-label">程序状态:</label>
-            <span className={`status-value program-status ${furnaceState.operation_status}`}>
+            <span className={`status-value program-status ${furnaceState.device_status?.status || ''}`}>
               {furnaceState.device_status ? furnaceState.device_status.status : '断开'}
             </span>
           </div>
@@ -103,7 +103,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.operation_status === 'running'
+            furnaceState.device_status?.status === 'running'
           }
         >
           运行
@@ -116,8 +116,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.operation_status === 'paused' ||
-            furnaceState.operation_status === 'stopped'
+            furnaceState.device_status?.status === 'paused' ||
+            furnaceState.device_status?.status === 'stopped'
           }
         >
           保温
@@ -130,7 +130,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.operation_status === 'stopped'
+            furnaceState.device_status?.status === 'stopped'
           }
         >
           停止
@@ -142,20 +142,20 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           onClick={async () => {
             const input = document.getElementById('monitoringSegmentInput') as HTMLInputElement;
             const segment = parseInt(input.value);
-            if (segment >= 1 && segment <= 30) {
+            if (segment >= 1 && segment <= 27) {
               try {
                 await furnaceControls.set_segment(segment);
               } catch (error) {
                 alert(`设置程序段失败: ${error instanceof Error ? error.message : '未知错误'}`);
               }
             } else {
-              alert('程序段号必须在1-30之间');
+              alert('程序段号必须在1-27之间（避免与温度节点地址冲突）');
             }
           }}
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.operation_status === 'stopped'
+            furnaceState.device_status?.status === 'stopped'
           }
         >
           更改程序段
@@ -163,8 +163,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         <input
           type="number"
           min="1"
-          max="30"
-          placeholder="1-30"
+          max="27"
+          placeholder="1-27"
           className="monitoring-segment-input"
           id="monitoringSegmentInput"
           disabled={

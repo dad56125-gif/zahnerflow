@@ -8,155 +8,82 @@ interface ProgramEditorProps {
 }
 
 export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furnaceControls }) => {
-  // 程序段输入状态 - 使用受控组件
-  const [segmentInputs, setSegmentInputs] = useState<{ [key: string]: string }>({});
+  const [inputs, setInputs] = useState<{ [key: string]: string }>({});
 
-  // 当segments数据更新时，同步更新输入框的值
   useEffect(() => {
-    if (furnaceState.segments && furnaceState.segments.length > 0) {
-      const newInputs: { [key: string]: string } = {};
-      furnaceState.segments.forEach(segment => {
-        newInputs[`temp_${segment.id}`] = segment.temperature.toString();
-        newInputs[`time_${segment.id}`] = segment.time.toString();
+    if (furnaceState.segments?.length) {
+      const newInputs: any = {};
+      furnaceState.segments.forEach(s => {
+        newInputs[`temp_${s.id}`] = s.temperature;
+        newInputs[`time_${s.id}`] = s.time;
       });
-      setSegmentInputs(prev => ({ ...prev, ...newInputs }));
+      setInputs(prev => ({ ...prev, ...newInputs }));
     }
   }, [furnaceState.segments]);
 
+  const handleWrite = () => {
+    const segments: ProgramSegment[] = [];
+    for (let i = 1; i <= 27; i++) {
+      const t = parseFloat(inputs[`temp_${i}`] || '0');
+      const time = parseInt(inputs[`time_${i}`] || '0');
+      if (t > 0 || time > 0) { // 简单的过滤
+        segments.push({ id: i, temperature: t, time: time });
+      }
+    }
+    furnaceControls.write_segments(segments);
+  };
+
+  const isConnected = furnaceState.connection_status === 'connected';
+
   return (
     <div className="program-tab">
-      {/* 程序段控制按钮 */}
       <div className="program-controls">
         <button
-          className={`btn btn-primary ${furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'read' ? 'btn-progress' : ''}`}
+          className="btn btn-primary"
           onClick={furnaceControls.load_segments}
-          disabled={furnaceState.connection_status !== 'connected' || furnaceState.loading}
+          disabled={!isConnected || furnaceState.loading}
         >
-          {furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'read' ? (
-            <>
-              <div className="btn-progress-bar">
-                <div
-                  className="btn-progress-fill"
-                  style={{ left: `${furnaceState.segment_progress.progress}%` }}
-                />
-              </div>
-              <div className="btn-progress-content">
-                <div className="btn-text">读取程序段</div>
-                <div className="btn-progress-text">
-                  {Math.round(furnaceState.segment_progress.progress)}%
-                </div>
-              </div>
-            </>
-          ) : (
-            '读取程序段'
-          )}
+          {furnaceState.loading ? '读取中...' : '读取程序段'}
         </button>
         <button
-          className={`btn btn-success ${furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'write' ? 'btn-progress' : ''}`}
-          onClick={() => {
-            // 从受控组件状态中收集数据
-            const segments: ProgramSegment[] = [];
-
-            for (let i = 1; i <= 27; i++) {  // 限制程序段1-27，避免与温度节点地址冲突(28,29)
-              const temperature = parseFloat(segmentInputs[`temp_${i}`] || '0') || 0;
-              const time = parseInt(segmentInputs[`time_${i}`] || '0') || 0;
-
-              segments.push({
-                id: i,
-                temperature,
-                time
-              });
-            }
-
-            furnaceControls.write_segments(segments.filter(s => s.temperature > 0 || s.time > 0));
-          }}
-          disabled={furnaceState.connection_status !== 'connected' || furnaceState.loading}
+          className="btn btn-success"
+          onClick={handleWrite}
+          disabled={!isConnected || furnaceState.loading}
         >
-          {furnaceState.segment_progress?.active && furnaceState.segment_progress?.type === 'write' ? (
-            <>
-              <div className="btn-progress-bar">
-                <div
-                  className="btn-progress-fill"
-                  style={{ left: `${furnaceState.segment_progress.progress}%` }}
-                />
-              </div>
-              <div className="btn-progress-content">
-                <div className="btn-text">写入程序段</div>
-                <div className="btn-progress-text">
-                  {Math.round(furnaceState.segment_progress.progress)}%
-                </div>
-              </div>
-            </>
-          ) : (
-            '写入程序段'
-          )}
+          {furnaceState.loading ? '写入中...' : '写入程序段'}
         </button>
       </div>
 
-      {/* 程序段网格 */}
       <div className="segments-grid">
-        <div className="segments-column">
-          {Array.from({ length: 15 }, (_, i) => {
-            const segId = i + 1;
-            const segment = Array.isArray(furnaceState.segments) ? furnaceState.segments.find(s => s.id === segId) : null;
-            return (
-              <div key={segId} className="segment-row">
-                <label className="segment-label">C{segId.toString().padStart(2, '0')}</label>
-                <input
-                  type="number"
-                  className="segment-input temp-input"
-                  value={segmentInputs[`temp_${segId}`] || (segment?.temperature?.toString() || '0')}
-                  step="0.1"
-                  disabled={furnaceState.connection_status !== 'connected'}
-                  onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
-                />
-                <span className="unit-hint">℃</span>
-                <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
-                <input
-                  type="number"
-                  className="segment-input time-input"
-                  value={segmentInputs[`time_${segId}`] || (segment?.time?.toString() || '0')}
-                  disabled={furnaceState.connection_status !== 'connected'}
-                  onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`time_${segId}`]: e.target.value }))}
-                  placeholder="分钟"
-                  title="保温时长单位：分钟"
-                />
-                <span className="unit-hint">min</span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="segments-column">
-          {Array.from({ length: 15 }, (_, i) => {
-            const segId = i + 16;
-            const segment = Array.isArray(furnaceState.segments) ? furnaceState.segments.find(s => s.id === segId) : null;
-            return (
-              <div key={segId} className="segment-row">
-                <label className="segment-label">C{segId.toString().padStart(2, '0')}</label>
-                <input
-                  type="number"
-                  className="segment-input temp-input"
-                  value={segmentInputs[`temp_${segId}`] || (segment?.temperature?.toString() || '0')}
-                  step="0.1"
-                  disabled={furnaceState.connection_status !== 'connected'}
-                  onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`temp_${segId}`]: e.target.value }))}
-                />
-                <span className="unit-hint">℃</span>
-                <label className="segment-label">t{segId.toString().padStart(2, '0')}</label>
-                <input
-                  type="number"
-                  className="segment-input time-input"
-                  value={segmentInputs[`time_${segId}`] || (segment?.time?.toString() || '0')}
-                  disabled={furnaceState.connection_status !== 'connected'}
-                  onChange={(e) => setSegmentInputs(prev => ({ ...prev, [`time_${segId}`]: e.target.value }))}
-                  placeholder="分钟"
-                  title="保温时长单位：分钟"
-                />
-                <span className="unit-hint">min</span>
-              </div>
-            );
-          })}
-        </div>
+        {[0, 15].map(offset => (
+          <div className="segments-column" key={offset}>
+            {Array.from({ length: 15 }, (_, i) => {
+              const id = i + 1 + offset;
+              if (id > 30) return null;
+              const seg = furnaceState.segments.find(s => s.id === id);
+              return (
+                <div key={id} className="segment-row">
+                  <label>C{id.toString().padStart(2, '0')}</label>
+                  <input
+                    type="number"
+                    value={inputs[`temp_${id}`] ?? (seg?.temperature ?? 0)}
+                    onChange={e => setInputs(p => ({ ...p, [`temp_${id}`]: e.target.value }))}
+                    disabled={!isConnected}
+                  />
+                  <span>℃</span>
+                  <label>t{id.toString().padStart(2, '0')}</label>
+                  <input
+                    type="number"
+                    value={inputs[`time_${id}`] ?? (seg?.time ?? 0)}
+                    onChange={e => setInputs(p => ({ ...p, [`time_${id}`]: e.target.value }))}
+                    disabled={!isConnected}
+                  />
+                  <span>min</span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

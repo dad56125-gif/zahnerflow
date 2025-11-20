@@ -355,3 +355,16 @@ export const DEFAULT_MFC_CONFIG: MfcConfig = {
   retry_attempts: 3,
   retry_delay: 1000,
 };
+
+export interface SegmentProgress {
+  active: boolean;
+  type: 'read' | 'write';
+  progress: number;
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  type: 'success' | 'info' | 'warning' | 'error';
+  message: string;
+}

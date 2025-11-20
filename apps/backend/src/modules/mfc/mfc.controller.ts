@@ -8,15 +8,10 @@ import {
   HttpCode,
   Param,
   HttpStatus,
-  Inject,
-  forwardRef
 } from '@nestjs/common';
 import { MfcService } from './mfc.service';
 import { MfcDataService } from './mfc-data.service';
 import { MfcErrorHandlerService } from './services/mfc-error-handler.service';
-
-// 导入连接状态枚举 - 从MfcService导出
-import { ConnectionState, PollingStatus } from './mfc.service';
 
 @Controller('/api/devices/mfc')
 export class MfcController {
@@ -26,24 +21,22 @@ export class MfcController {
     private readonly errorHandler: MfcErrorHandlerService,
   ) {}
 
-  // ==================== 设备控制接口 ====================
+  // ==================== 核心控制接口 ====================
 
   /**
    * 连接MFC设备
    */
   @Post('connect')
-  async connect(@Body() body: any) {
+  async connect(@Body() body: { port: string; baudrate?: number; timeout?: number; connection_id?: string }) {
     return this.errorHandler.handleDeviceConnection(
       async () => {
-        const result = await this.mfcService.passthrough('connect', body);
-        // 数据管理由MfcDataService自动处理
-        return result;
+        return await this.mfcService.connect({
+          port: body.port,
+          baudrate: body.baudrate,
+          timeout: body.timeout
+        });
       },
-      {
-        operation: 'connect',
-        port: body?.port,
-        connection_id: body?.connection_id
-      }
+      { operation: 'connect', port: body?.port }
     );
   }
 
@@ -54,175 +47,122 @@ export class MfcController {
   async disconnect() {
     return this.errorHandler.handleDeviceConnection(
       async () => {
-        try {
-          return await this.mfcService.passthrough('disconnect');
-        } finally {
-          // 数据管理由MfcDataService自动处理
-        }
+        return await this.mfcService.disconnect();
       },
-      {
-        operation: 'disconnect'
-      }
+      { operation: 'disconnect' }
     );
   }
 
   /**
-   * 扫描MFC设备地址 - 支持实时设备发现
+   * 扫描设备 (普通模式，已包含实时推送)
    */
   @Post('scan')
-  async scan(@Body() body?: any) {
+  async scan(@Body() body?: { start?: number; end?: number }) {
     return this.errorHandler.handleDeviceScan(
       async () => {
         return this.mfcService.scan(body?.start, body?.end);
       },
-      {
-        operation: 'scan',
-        start: body?.start,
-        end: body?.end
-      }
+      { operation: 'scan', start: body?.start, end: body?.end }
     );
   }
 
   /**
-   * 启动实时扫描会话 - 单地址发现即推送
-   */
-  @Post('scan-realtime-start')
-  async startRealtimeScan(@Body() body?: any) {
-    return this.errorHandler.handleDeviceScan(
-      async () => {
-        return this.mfcService.startRealtimeScan(body?.start, body?.end);
-      },
-      {
-        operation: 'realtime-scan-start',
-        start: body?.start,
-        end: body?.end
-      }
-    );
-  }
-
-  /**
-   * 获取实时扫描状态
-   */
-  @Get('scan-realtime-status/:sessionId')
-  async getRealtimeScanStatus(@Param('sessionId') sessionId: string) {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.getRealtimeScanStatus(sessionId);
-      },
-      {
-        operation: 'realtime-scan-status',
-        sessionId
-      }
-    );
-  }
-
-  /**
-   * 获取设备发现事件
-   */
-  @Get('scan-realtime-events')
-  async getDeviceDiscoveryEvents() {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.getDeviceDiscoveryEvents();
-      },
-      {
-        operation: 'scan-realtime-events'
-      }
-    );
-  }
-
-  /**
-   * 取消实时扫描
-   */
-  @Post('scan-realtime-cancel/:sessionId')
-  async cancelRealtimeScan(@Param('sessionId') sessionId: string) {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.cancelRealtimeScan(sessionId);
-      },
-      {
-        operation: 'realtime-scan-cancel',
-        sessionId
-      }
-    );
-  }
-
-  /**
-   * 获取MFC设备状态
+   * 获取/更新设备状态
    */
   @Get('status')
   async status(@Query('address') address?: string) {
     return this.errorHandler.handleDeviceOperation(
       async () => {
-        // 数据管理由MfcDataService自动处理
-        // API 层增加忙碌检查：当设备正在执行长耗时操作时，直接给出忙碌响应，避免产生冲突
         if (this.mfcService.is_device_busy()) {
-          return {
-            busy: true,
-            message: 'device is busy with operation'
-          };
+          return { busy: true, message: 'device is busy' };
         }
-        return this.mfcService.passthrough('status', { address });
+        return this.mfcService.status(address ? parseInt(address) : undefined);
       },
-      {
-        operation: 'status',
-        address: address ? parseInt(address) : undefined
-      }
+      { operation: 'status', address: address ? parseInt(address) : undefined }
     );
   }
 
   /**
-   * 设置MFC流量设定点
+   * 设置流量
    */
   @Post('setpoint')
   async setpoint(@Body() body: { address: number; sccm: number }) {
     return this.errorHandler.handleFlowControl(
       async () => {
-        return this.mfcService.passthrough('setpoint', body);
+        return this.mfcService.setpoint(body.address, body.sccm);
       },
-      {
-        operation: 'setpoint',
-        address: body.address,
-        sccm: body.sccm
-      }
+      { operation: 'setpoint', address: body.address, sccm: body.sccm }
     );
   }
 
-  /**
-   * 健康检查
-   */
+  // ==================== 辅助信息接口 ====================
+
   @Get('health')
   async health() {
     return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.passthrough('health');
-      },
-      {
-        operation: 'health'
-      }
+      async () => { return this.mfcService.health(); },
+      { operation: 'health' }
     );
   }
 
-  /**
-   * 获取可用串口列表
-   */
   @Get('ports')
   async ports() {
     return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.passthrough('ports');
-      },
-      {
-        operation: 'ports'
-      }
+      async () => { return this.mfcService.get_available_ports(); },
+      { operation: 'ports' }
     );
   }
 
-  // ==================== 数据查询接口 ====================
+  @Get('connection/info')
+  async getConnectionInfo() {
+    return this.mfcService.get_connection_info();
+  }
 
-  /**
-   * 查询历史流量数据
-   */
+  @Get('connection/status')
+  async getConnectionStatus() {
+    return this.mfcService.getConnectionStatus();
+  }
+
+  @Get('devices')
+  async getDevices() {
+    return this.mfcService.getDevices();
+  }
+
+  @Get('gas-name')
+  async getGasName(@Query('address') address: number) {
+    return this.errorHandler.handleDeviceOperation(
+      async () => { return this.mfcService.read_gas_name(address); },
+      { operation: 'read_gas_name', device_address: address }
+    );
+  }
+
+  @Get('active-setpoint')
+  async getActiveSetpoint(@Query('address') address: number) {
+    return this.errorHandler.handleDeviceOperation(
+      async () => { return this.mfcService.read_active_setpoint(address); },
+      { operation: 'read_active_setpoint', device_address: address }
+    );
+  }
+
+  // ==================== 日志与数据接口 ====================
+
+  @Get('comm-log')
+  async getCommLog() {
+    return this.errorHandler.handleDeviceOperation(
+      async () => { return this.mfcService.get_communication_log(); },
+      { operation: 'comm-log' }
+    );
+  }
+
+  @Delete('comm-log')
+  @HttpCode(HttpStatus.OK)
+  async clearCommLog() {
+    return this.errorHandler.handleDeviceOperation(
+      async () => { return this.mfcService.clear_communication_log(); },
+      { operation: 'clear-comm-log' }
+    );
+  }
+
   @Get('logs/flow')
   async getFlowLogs(
     @Query('address') address?: string,
@@ -240,147 +180,28 @@ export class MfcController {
     });
   }
 
-  /**
-   * 获取通信日志
-   */
-  @Get('comm-log')
-  async getCommLog() {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.passthrough('comm-log');
-      },
-      {
-        operation: 'comm-log'
-      }
-    );
-  }
+  // ==================== 错误处理接口 (保留) ====================
 
-  /**
-   * 获取连接信息
-   */
-  @Get('connection/info')
-  async getConnectionInfo() {
-    return this.mfcService.getConnectionStatus();
-  }
-
-  /**
-   * 获取已发现的设备列表
-   */
-  @Get('devices')
-  async getDevices() {
-    const devices = this.mfcService.getDevices();
-    return devices; // 直接返回设备数组，兼容前端.map()调用
-  }
-
-  /**
-   * 获取连接状态
-   */
-  @Get('connection/status')
-  async getConnectionStatus() {
-    return this.mfcService.getConnectionStatus();
-  }
-
-  /**
-   * 清空通信日志
-   */
-  @Delete('comm-log')
-  @HttpCode(HttpStatus.OK)
-  async clearCommLog() {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        return this.mfcService.passthrough('clear-comm-log');
-      },
-      {
-        operation: 'clear-comm-log'
-      }
-    );
-  }
-
-  // ==================== 错误处理接口 ====================
-
-  /**
-   * 获取错误统计信息
-   */
   @Get('error/stats')
-  async getErrorStats() {
-    return this.errorHandler.getErrorStats();
-  }
+  async getErrorStats() { return this.errorHandler.getErrorStats(); }
 
-  /**
-   * 重置指定熔断器
-   */
   @Post('error/circuit-breaker/:name/reset')
   async resetCircuitBreaker(@Param('name') name: string) {
     return this.errorHandler.resetCircuitBreaker(name);
   }
 
-  /**
-   * 重置所有熔断器
-   */
   @Post('error/circuit-breakers/reset')
-  async resetAllCircuitBreakers() {
-    return this.errorHandler.resetAllCircuitBreakers();
-  }
+  async resetAllCircuitBreakers() { return this.errorHandler.resetAllCircuitBreakers(); }
 
-  /**
-   * 获取最近的错误记录
-   */
   @Get('error/recent')
-  async getRecentErrors() {
-    return this.errorHandler.getRecentErrors();
-  }
+  async getRecentErrors() { return this.errorHandler.getRecentErrors(); }
 
-  /**
-   * 导出错误数据
-   */
   @Get('error/export')
-  async exportErrors() {
-    return this.errorHandler.exportErrorData();
-  }
+  async exportErrors() { return this.errorHandler.exportErrorData(); }
 
-  /**
-   * 清理错误日志
-   */
   @Post('error/clear')
   async clearErrors() {
     this.errorHandler.clearErrorLogs();
-    return {
-      success: true,
-      message: 'Error logs cleared successfully'
-    };
-  }
-
-  /**
-   * 获取MFC设备气体名称
-   */
-  @Get('gas-name')
-  async getGasName(@Query('address') address: number) {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        const result = await this.mfcService.passthrough('read_gas_name', { address });
-        return result;
-      },
-      {
-        operation: 'read_gas_name',
-        device_address: address
-      }
-    );
-  }
-
-  /**
-   * 获取MFC设备当前设定值
-   */
-  @Get('active-setpoint')
-  async getActiveSetpoint(@Query('address') address: number) {
-    return this.errorHandler.handleDeviceOperation(
-      async () => {
-        const result = await this.mfcService.passthrough('read_active_setpoint', { address });
-        return result;
-      },
-      {
-        operation: 'read_active_setpoint',
-        device_address: address
-      }
-    );
+    return { success: true };
   }
 }
