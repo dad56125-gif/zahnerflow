@@ -3,8 +3,8 @@ import { MfcController } from './mfc.controller';
 import { MfcService } from './mfc.service';
 import { MfcDataService } from './mfc-data.service';
 import { MfcErrorHandlerService } from './services/mfc-error-handler.service';
-import { MfcGateway } from '../../gateways/mfc.gateway';
-import { MfcDeviceService } from '../../devices/mfc-device.service';
+import { MfcGateway } from './mfcGateway';
+import { MfcDeviceService } from './mfcDevice.service';
 
 /**
  * MFC模块

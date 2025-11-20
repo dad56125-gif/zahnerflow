@@ -40,6 +40,9 @@ export class FurnaceDeviceService {
     const { data } = await this.http.post('/program/segments', segments, { timeout: this.extendedTimeout });
     return data;
   }
-  
-  // 移除 getCommLog 等旧方法
+
+  async setParameter(code: number, value: number): Promise<any> {
+    const { data } = await this.http.post('/parameter/write', { code, value });
+    return data;
+  }
 }

@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef, HttpException, HttpStatus } from '@nestjs/common';
-import { FurnaceDeviceService } from '../../devices/furnace-device.service';
+import { FurnaceDeviceService } from './furnaceDevice.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
 import { FurnaceDataService } from './furnace-data.service';
-import { FurnaceGateway } from '../../gateways/furnace.gateway';
+import { FurnaceGateway } from './furnaceGateway';
 import type { ProgramSegment } from '@zahnerflow/types';
 
 @Injectable()
@@ -192,4 +192,64 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   async get_history_data(params: any) { return this.dataService.getHistoryData(params); }
   async subscribe_to_furnace_updates(id: string) {}
   async unsubscribe_from_furnace_updates(id: string) {}
+
+  // ==================== 自动温度控制 ====================
+
+  async autoTemperatureControl(
+    params: {
+      target_temperature: number;
+      rate: number;
+      current_temperature?: number;
+      calculated_duration?: number;
+      tolerance?: number;
+      stabilization_time?: number;
+    },
+    nodeId?: string,
+    executionId?: string
+  ): Promise<{
+    success: boolean;
+    updated_parameters: any;
+    error?: string;
+  }> {
+    try {
+      if (!this.isConnected) throw new Error('设备未连接');
+
+      const status = await this.device.status();
+      const currentTemp = Math.round(status.pv * 10);
+      const targetTemp = params.target_temperature;
+      const ratePerMin = params.rate / 10;
+      const tempDiff = Math.abs(targetTemp - currentTemp) / 10;
+      const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
+
+      await this.device.setParameter(0x50, currentTemp);
+      await this.device.setParameter(0x51, calculatedDuration);
+      await this.device.setParameter(0x52, targetTemp);
+      await this.device.setParameter(0x53, 5001);
+      await this.device.setSegment(28);
+
+      if (status.status !== 'running') {
+        await this.run();
+      }
+
+      const waitMs = (calculatedDuration * 60 * 1000) + (params.stabilization_time || 30 * 1000);
+      await new Promise(r => setTimeout(r, waitMs));
+
+      return {
+        success: true,
+        updated_parameters: {
+          ...params,
+          current_temperature: currentTemp,
+          calculated_duration: calculatedDuration,
+          tolerance: 5,
+          stabilization_time: params.stabilization_time || 30
+        }
+      };
+    } catch (e: any) {
+      return {
+        success: false,
+        updated_parameters: params,
+        error: e.message
+      };
+    }
+  }
 }

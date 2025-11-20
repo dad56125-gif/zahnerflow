@@ -9,8 +9,8 @@ import {
 } from '@nestjs/websockets';
 import { Injectable, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { ConsoleDisplayManager } from '../common/console-display-manager.service';
-import { MfcService } from '../modules/mfc/mfc.service';
+import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
+import { MfcService } from './mfc.service';
 
 /**
  * MFC客户端信息

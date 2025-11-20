@@ -1,9 +1,9 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { MfcDeviceService } from '../../devices/mfc-device.service';
+import { MfcDeviceService } from './mfcDevice.service';
 import { MfcDataService, FlowHistoryQuery } from './mfc-data.service';
 import { MfcErrorHandlerService } from './services/mfc-error-handler.service';
 import { ErrorCategory } from '../../shared/utils/error-handler.util';
-import { MfcGateway } from '../../gateways/mfc.gateway';
+import { MfcGateway } from './mfcGateway';
 import type { MfcDeviceInfo, MfcSample } from '@zahnerflow/types';
 
 // ==================== 接口定义 ====================
