@@ -258,16 +258,16 @@ const ZahnerFlowApp: React.FC = () => {
             )}
           </div>
         )}
-      </div>
 
-      /* 固定在视窗底部的状态栏（不在 app-root 网格内） */
-      <StatusBar
-        zoomLevel={zoomLevel}
-        isRunning={isRunning}
-        isNotificationPanelOpen={isNotificationPanelOpen}
-        setIsNotificationPanelOpen={setIsNotificationPanelOpen}
-        detectedLoops={detectedLoops}
-      />
+        {/* 集成到grid系统的状态栏 */}
+        <StatusBar
+          zoomLevel={zoomLevel}
+          isRunning={isRunning}
+          isNotificationPanelOpen={isNotificationPanelOpen}
+          setIsNotificationPanelOpen={setIsNotificationPanelOpen}
+          detectedLoops={detectedLoops}
+        />
+      </div>
       </UserProvider>
     </>
   );

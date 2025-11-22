@@ -44,10 +44,11 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       return (
         <div className="property-panel glass" ref={ref}>
           <div className="property-panel-header">
-            <h2 className="property-panel-title">属性面板</h2>
+            <h2 className="property-panel-title">
+              <span className="property-panel-text">属性</span>
+            </h2>
           </div>
           <div className="empty-state">
-            <div className="empty-icon">🖱️</div>
             <div className="empty-text">未选择节点</div>
             <div className="empty-subtitle">请在画布中选择一个节点以查看其属性</div>
           </div>
@@ -812,8 +813,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
     return (
       <div className="property-panel glass" ref={ref}>
         <div className="property-panel-header">
-          <h2 className="property-panel-title">属性面板</h2>
-          <div className="property-panel-subtitle">{node.name}</div>
+          <h2 className="property-panel-title">
+            <span className="property-panel-text">属性</span>
+            <span className="property-panel-subtitle">{node.name}</span>
+          </h2>
         </div>
         <div className="property-tabs">
           <button

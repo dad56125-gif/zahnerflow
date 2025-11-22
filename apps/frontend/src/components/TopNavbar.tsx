@@ -137,7 +137,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
   const handleDeviceClick = (device: 'furnace' | 'mfc') => onDeviceClick?.(device);
 
   return (
-    <div className="top-navbar glass m_space mb_0">
+    <div className="top-navbar glass">
       <div className="flex items-center gap_sm flex-1">
           <div className="flex items-center gap_sm">
             <div className="logo">

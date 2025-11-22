@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NodeCategory, WorkstationType, getNodeConfigByWorkstation, getNodeCategoryName } from '../types/nodes';
 import { useCanvasStore } from '../services/stores/canvasStore';
 
@@ -10,7 +10,6 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstation }) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const addNode = useCanvasStore((state) => state.addNode);
 
   const handleCreateNode = (nodeType: string) => {
@@ -36,11 +35,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
   };
 
   return (
-    <div className="sidebar glass">
-      <div className="sidebar-header">
-        <h2 className="sidebar-title">
-          <span className="sidebar-icon">📦</span>
-          <span className="sidebar-text">节点</span>
+    <div className="node-library glass">
+      <div className="node-library-header">
+        <h2 className="node-library-title">
+          <span className="node-library-icon">📦</span>
+          <span className="node-library-text">节点</span>
           {selectedWorkstation && (
             <span className="workstation-indicator">
               ({selectedWorkstation === 'zahner-zennium' ? 'Zahner Zennium' : 'PP242'})
@@ -49,24 +48,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
         </h2>
       </div>
 
-      <div className="sidebar-content">
-        <div className="search-section">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="搜索节点..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input glass"
-            />
-          </div>
-        </div>
+      <div className="node-library-content">
 
         <div className="node-categories">
           {!selectedWorkstation ? (
             <div className="no-workstation-message">
-              <div className="no-workstation-icon">🔬</div>
               <div className="no-workstation-text">请先选择工作站以查看可用节点</div>
             </div>
           ) : (

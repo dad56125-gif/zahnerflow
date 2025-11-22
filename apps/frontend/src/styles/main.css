@@ -1,4 +1,4 @@
-/* === main.css - CSS架构重构主入口文件 === */
+/* === main.css - CSS架构主入口文件 === */
 /* 新的11文件CSS架构系统 */
 
 /* === 1. 基础系统和颜色 === */
@@ -8,7 +8,7 @@
 @import './_animations.css';
 
 /* === 3. 高级动画效果 === */
-@import './_animations_advanced.css';
+/* 已合并到 _animations.css 中 */
 
 /* === 4. 原子UI组件 === */
 @import './_ui_kit.css';
@@ -34,163 +34,6 @@
 /* === 11. 遗留组件（向后兼容） === */
 @import './_components_legacy.css';
 
-/* === 全局应用布局样式 === */
-/* 应用根容器，提供命名网格线 */
-.app-root {
-  display: grid;
-  grid-template-columns:
-    [L-start] var(--sidebar-w)
-    [L-end content-start] minmax(0, 1fr)
-    [content-end R-start] var(--property-w)
-    [R-end];
-  grid-template-rows:
-    [T-start] var(--navbar-h)
-    [T-end main-start] minmax(0, 1fr)
-    [main-end];
-  block-size: 100dvh;
-  padding-inline: var(--space);
-  padding-block-start: var(--space);
-}
-
-.main-content {
-  position: relative;
-}
-
-/* 覆盖主内容区（不覆盖导航行） */
-.layout-overlay {
-  position: absolute;
-  inset-inline: 0;
-  /* 避让 main-viewport 的上下呼吸边距与固定的 StatusBar */
-  inset-block-start: var(--space);
-  inset-block-end: calc(var(--navbar-h) + (2 * var(--space)));
-  pointer-events: none;
-}
-
-/* 对齐工具类 */
-.align-to-L {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  transform: translateX(0);
-  pointer-events: auto;
-}
-
-.align-to-R {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-end: 0;
-  transform: translateX(0);
-  pointer-events: auto;
-}
-
-.align-to-canvas-top {
-  position: absolute;
-  inset-block-start: 0;   /* 对齐到内容容器顶部 */
-  inset-inline-start: 0;
-  width: 100%;
-  block-size: 100%;
-  pointer-events: auto;
-}
-
-/* 覆盖导航条外边距，避免超出网格行导致的重叠 */
-.top-navbar {
-  margin: 0 !important;
-}
-
-/* 主工作区：位于 TopNavbar 下方，宽度与其一致 */
-.main-viewport {
-  grid-column: L-start / R-end;
-  grid-row: main-start / main-end;
-  display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--property-w);
-  grid-auto-rows: minmax(0, 1fr);
-  gap: var(--space);
-  padding: 0;
-  padding-block-start: var(--space);
-  padding-block-end: calc(var(--navbar-h) + (2 * var(--space)));
-  align-items: stretch;
-  position: relative; /* 浮层定位上下文 */
-  min-height: 0; /* Allow it to shrink correctly within the grid layout */
-  flex-shrink: 0 !important; /* Prevent it from shrinking */
-  overflow: hidden; /* 防止子项溢出影响主行高度计算 */
-}
-
-/* 中部画布列 */
-.canvas-area {
-  grid-column: 2;
-  grid-row: 1;
-  min-block-size: 0; /* 允许内部滚动 */
-  block-size: 100%;
-  position: relative; /* 作为浮动工具栏的定位参考 */
-  overflow: hidden; /* 限制内部内容不溢出 */
-}
-
-/* StatusBar 固定在视口底部（不占 app-root 布局空间） */
-.status-bar {
-  position: fixed;
-  left: var(--space);
-  right: var(--space);
-  bottom: var(--space);
-  margin: 0 !important;
-  padding-inline: 0 !important;
-  block-size: var(--navbar-h);
-  z-index: 1000;
-}
-
-/* === 玻璃态基础类（保持向后兼容） === */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow:
-    0 8px 32px var(--glass-shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  transition: var(--transition);
-  position: relative;
-  overflow: visible;
-  will-change: backdrop-filter;
-  transform: translateZ(0);
-}
-
-/* 玻璃反光涟漪效果 - 鼠标跟随版本 */
-.glass::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 60px;
-  height: 60px;
-  background: radial-gradient(circle,
-    rgba(255, 255, 255, 0.25) 0%,
-    rgba(255, 255, 255, 0.18) 20%,
-    rgba(255, 255, 255, 0.08) 40%,
-    transparent 70%
-  );
-  filter: blur(25px);
-  -webkit-filter: blur(25px);
-  border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  transform: translate(-50%, -50%);
-}
-
-.glass:hover::before {
-  opacity: 1;
-}
-
-.glass:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
 /* === 核心规则提醒 === */
 /*
 CSS架构重构完成：
@@ -204,7 +47,7 @@ CSS架构重构完成：
 架构说明：
 1. _base.css - 基础系统、颜色、变量
 2. _animations.css - 基础动画库
-3. _animations_advanced.css - 高级动画效果
+3. _animations.css - 动画效果（已合并）
 4. _ui_kit.css - 原子UI组件
 5. _layout.css - 网格布局系统
 6. _layout_grid.css - 容器查询系统

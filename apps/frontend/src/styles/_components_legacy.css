@@ -545,3 +545,580 @@
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* === StatusBar 组件样式 === */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 0; /* 左右不留间距，与网格贴边 */
+  padding-block: var(--space-sm);
+  margin: 0; /* 取消外边距，撑满网格列 */
+  border-radius: var(--radius-lg);
+  block-size: var(--navbar-h); /* 高度与 TopNavbar 一致 */
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  gap: var(--space);
+}
+
+.status-left,
+.status-center,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+}
+
+.status-left {
+  padding-left: var(--space); /* 左侧trigger与sidebar内容对齐 */
+}
+
+.status-right {
+  padding-right: var(--space); /* 右侧与property面板对齐 */
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.status-indicator .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-indicator .status-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.status-indicator .status-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.status-ready {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-running {
+  background: #2196F3;
+  box-shadow: 0 0 6px rgba(33, 150, 243, 0.4);
+  animation: pulse 2s infinite;
+}
+
+.status-message {
+  font-weight: 500;
+}
+
+.selected-node-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-sm);
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  text-align: left;
+  min-width: 180px;
+  max-width: 200px;
+}
+
+.selected-node-info .node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.selected-node-info .node-divider {
+  width: 60%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 1px 0 -2px 0;
+}
+
+.selected-node-info .node-id {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.selected-node-info .node-type {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.selected-node-info .node-status {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+}
+
+.selected-node-info .node-id-row {
+  justify-content: flex-start;
+}
+
+.selected-node-info .node-details-row {
+  justify-content: flex-start;
+}
+
+.separator {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.node-id,
+.node-type,
+.node-status {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-label,
+.memory-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.stat-value,
+.memory-value {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.app-name {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.app-version {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.current-time {
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: center;
+}
+
+.notification-trigger {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.notification-trigger:hover {
+  opacity: 0.8;
+}
+
+/* === 工作站选择器组件样式 === */
+.workstation-selector {
+  position: relative;
+  margin-left: auto;
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+/* 设备控制区域 */
+.device-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+/* 设备状态块样式 */
+.device-status-block .device-icon {
+  font-size: 14px;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  height: auto;
+  display: inline;
+}
+
+.device-status-block .device-name {
+  min-width: 60px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.device-status-block .device-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f44336;
+  box-shadow: 0 0 6px rgba(244, 67, 54, 0.4);
+}
+
+.device-status-block .device-status-indicator.connected {
+  background: #4CAF50;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+}
+
+.workstation-dropdown {
+  position: relative;
+}
+
+.workstation-selector-btn .workstation-icon {
+  font-size: 16px;
+}
+
+.workstation-selector-btn .workstation-name {
+  min-width: 120px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.workstation-selector-btn .workstation-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f44336;
+  box-shadow: 0 0 6px rgba(244, 67, 54, 0.4);
+}
+
+.workstation-selector-btn .workstation-status-indicator.connected {
+  background: #4CAF50;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+}
+
+.workstation-selector-btn .dropdown-arrow {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  position: relative;
+  margin-left: 4px;
+  transform-origin: center center;
+  transform: scaleY(1);
+}
+
+.workstation-selector-btn .dropdown-arrow.rotated {
+  transform: scaleY(-1);
+  transform-origin: center center;
+}
+
+/* 工作站下拉菜单 */
+.workstation-dropdown-menu {
+  position: fixed;
+  z-index: 1500;
+  min-width: 280px;
+  max-height: 300px;
+
+  /* 玻璃态效果 */
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  pointer-events: none;
+
+  /* 性能优化 */
+  will-change: opacity, transform, backdrop-filter;
+}
+
+/* 工作站下拉菜单打开状态 */
+.workstation-dropdown-menu.show {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* 工作站下拉菜单关闭状态 */
+.workstation-dropdown-menu.hiding {
+  display: flex;
+  pointer-events: none;
+  animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* 下拉菜单入场动画 */
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 下拉菜单出场动画 */
+@keyframes dropdownOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
+.workstation-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin: 4px;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.workstation-option:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.workstation-option.connected {
+  border-left: 3px solid #4CAF50;
+}
+
+.workstation-option.disconnected {
+  border-left: 3px solid #f44336;
+}
+
+.workstation-option-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.workstation-option-info {
+  flex: 1;
+}
+
+.workstation-option-name {
+  font-weight: 500;
+  color: white;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.workstation-option-type {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.workstation-option-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.workstation-option-status.connected {
+  color: #4CAF50;
+}
+
+.workstation-option-status.disconnected {
+  color: #f44336;
+}
+
+.workstation-option-status .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 4px currentColor;
+}
+
+.workstation-option-status .status-text {
+  font-weight: 500;
+}
+
+/* === 新架构适配：Sidebar → leftbar-area & PropertyPanel → rightbar-area === */
+
+/* 节点库和属性面板容器样式 - 从archive迁移适配新架构 */
+.node-library, .property-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  /* 启用容器查询 */
+  container-type: inline-size;
+}
+
+/* 兼容旧类名 */
+.sidebar {
+  /* 映射到新样式 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+
+/* 节点库和属性面板标题样式 - 使用archive原位置约束 */
+.node-library-header, .property-panel-header {
+  padding: clamp(0.75rem, 1.2vw, 1rem) clamp(1rem, 2vw, 1.25rem) clamp(0.5rem, 0.8vw, 0.75rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: clamp(0.25rem, 0.5vw, 0.5rem);
+  flex-shrink: 0;
+}
+
+.node-library-title, .property-panel-title {
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
+  display: flex;
+  align-items: center;
+  gap: clamp(0.25rem, 1vw, 0.5rem);
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.node-library-icon, .property-panel-icon {
+  font-size: clamp(1rem, 2.5vw, 1.125rem);
+}
+
+.node-library-text, .property-panel-text {
+  flex: 1;
+}
+
+.node-library-subtitle, .property-panel-subtitle {
+  font-size: clamp(0.6875rem, 1.5vw, 0.75rem);
+  color: var(--text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  opacity: 0.8;
+}
+
+
+/* 节点库内容区域 - 替换旧的 sidebar-content，property panel共用 */
+.node-library-content, .property-panel-content {
+  flex: 1;
+  height: 100%;
+  block-size: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  min-block-size: 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none !important;
+  padding: clamp(0.7rem, 0.56rem + 0.42vw, 1.225rem);
+  padding-top: 0;
+  container-type: inline-size;
+}
+
+.node-library-content::-webkit-scrollbar, .property-panel-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* 节点分类标题样式 - 使用archive定义 */
+.category-title {
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  font-weight: 600;
+  margin-bottom: clamp(0.75rem, 2vw, 1rem);
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 节点名称样式 - 使用archive定义 */
+.node-item .node-name {
+  font-weight: 500;
+  font-size: clamp(0.5625rem, 1.5vw, 0.6875rem);
+  line-height: 1.3;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 无工作站提示文字样式 - 与property panel共用 */
+.no-workstation-text, .empty-text {
+  font-size: clamp(0.8125rem, 2vw, 0.875rem);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  line-height: 1.4;
+  margin-top: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* === 新架构适配：Property Panel === */
+/* property-panel内容区域文本样式 - 与node-library共用定义 */
+
+/* 属性标签样式 */
+.property-label {
+  font-size: clamp(0.8125rem, 2vw, 0.875rem);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex: 0 0 40%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 章节标题样式 - 与分类标题共用字体大小 */
+.section-title {
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
+  font-weight: 600;
+  margin-bottom: clamp(0.75rem, 2vw, 1rem);
+  color: white;
+  line-height: 1.2;
+}
+
+/* 空状态副标题样式 */
+.empty-subtitle {
+  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
+  color: var(--text-muted);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  line-height: 1.4;
+}
