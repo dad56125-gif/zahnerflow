@@ -1,0 +1,569 @@
+/* === _animations_advanced.css - 高级动画效果 === */
+
+/* === 玻璃态动画关键帧 === */
+@keyframes glass_glow {
+  0%, 100% {
+    box-shadow:
+      0 8px 32px var(--glass-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 12px 48px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.15),
+      0 0 20px rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes glass_shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes glass_ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+/* === 节点状态动画 === */
+@keyframes running_status_pulse {
+  0%, 100% {
+    opacity: 0.7;
+    box-shadow:
+      0 0 3px rgba(25, 118, 210, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 12px rgba(25, 118, 210, 0.5),
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes failed_status_glow {
+  0%, 100% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 2px 4px rgba(211, 47, 47, 0.2),
+      inset 0 0 8px rgba(211, 47, 47, 0.4),
+      inset 0 -2px 6px rgba(211, 47, 47, 0.6);
+  }
+  50% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 2px 12px rgba(211, 47, 47, 0.6),
+      inset 0 0 24px rgba(211, 47, 47, 0.9),
+      inset 0 -2px 16px rgba(211, 47, 47, 1);
+  }
+}
+
+@keyframes completed_status_success {
+  0% {
+    box-shadow:
+      0 0 3px rgba(46, 125, 50, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(46, 125, 50, 0.6),
+      0 8px 32px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    box-shadow:
+      0 0 3px rgba(46, 125, 50, 0.3),
+      0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes paused_status_warning {
+  0%, 100% {
+    background: linear-gradient(to bottom,
+      rgba(230, 81, 0, 0.02) 0%,
+      rgba(230, 81, 0, 0.20) 100%);
+  }
+  50% {
+    background: linear-gradient(to bottom,
+      rgba(230, 81, 0, 0.08) 0%,
+      rgba(230, 81, 0, 0.35) 100%);
+  }
+}
+
+/* === 设备连接动画 === */
+@keyframes device_connecting {
+  0% {
+    border-color: var(--device-connecting);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    border-color: var(--device-connecting);
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+  100% {
+    border-color: var(--device-connecting);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes device_online_pulse {
+  0%, 100% {
+    border-color: var(--device-online);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    border-color: var(--device-online);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes device_error_blink {
+  0%, 50%, 100% {
+    border-color: var(--device-error);
+    box-shadow: 0 0 4px rgba(220, 38, 38, 0.4);
+  }
+  25%, 75% {
+    border-color: var(--device-error);
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.8);
+  }
+}
+
+/* === 工作流状态动画 === */
+@keyframes workflow_running_flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes workflow_success_celebration {
+  0% {
+    transform: scale(1);
+  }
+  10% {
+    transform: scale(1.05);
+  }
+  20% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* === 数据流动画 === */
+@keyframes data_flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes connection_pulse {
+  0%, 100% {
+    stroke-dashoffset: 0;
+    opacity: 0.6;
+  }
+  50% {
+    stroke-dashoffset: 10;
+    opacity: 1;
+  }
+}
+
+/* === 粒子效果 === */
+@keyframes particle_float {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) translateX(20px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+@keyframes particle_burst {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+/* === 光线扫描效果 === */
+@keyframes scanner_beam {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes radar_sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* === 呼吸效果 === */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes status_breathe {
+  0%, 100% {
+    box-shadow: 0 0 8px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 24px currentColor;
+  }
+}
+
+/* === 进度动画 === */
+@keyframes progress_fill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: var(--progress-width, 100%);
+  }
+}
+
+@keyframes progress_glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
+}
+
+/* === 通知动画 === */
+@keyframes notification_slide_in {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes notification_slide_out {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes notification_attention {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+  }
+  10%, 30% {
+    transform: translateX(-5px) scale(1.02);
+  }
+  20%, 40% {
+    transform: translateX(5px) scale(1.02);
+  }
+}
+
+/* === 模态框动画 === */
+@keyframes modal_backdrop_in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modal_scale_in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes modal_slide_up {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* === 工具提示动画 === */
+@keyframes tooltip_fade {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tooltip_arrow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* === 加载动画 === */
+@keyframes loader_spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loader_dots {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes loader_wave {
+  0%, 60%, 100% {
+    transform: initial;
+  }
+  30% {
+    transform: translateY(-15px);
+  }
+}
+
+/* === 状态指示器动画 === */
+@keyframes status_dot_pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.7;
+  }
+}
+
+@keyframes status_ring_expand {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* === 高级动画工具类 === */
+
+/* === 玻璃态动画类 === */
+.animate_glass_glow { animation: glass_glow 3s ease-in-out infinite; }
+.animate_glass_shimmer {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: glass_shimmer 2s ease-in-out infinite;
+}
+.animate_glass_ripple { animation: glass_ripple 2s ease-in-out infinite; }
+
+/* === 节点状态动画类 === */
+.animate_running_status { animation: running_status_pulse 1.5s ease-in-out infinite; }
+.animate_failed_status { animation: failed_status_glow 2s ease-in-out infinite; }
+.animate_completed_status { animation: completed_status_success 2s ease-in-out; }
+.animate_paused_status { animation: paused_status_warning 2s ease-in-out infinite; }
+
+/* === 设备连接动画类 === */
+.animate_device_connecting { animation: device_connecting 2s ease-in-out infinite; }
+.animate_device_online { animation: device_online_pulse 3s ease-in-out infinite; }
+.animate_device_error { animation: device_error_blink 1s ease-in-out infinite; }
+
+/* === 工作流动画类 === */
+.animate_workflow_running {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(59, 130, 246, 0.1),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: workflow_running_flow 3s linear infinite;
+}
+.animate_workflow_success { animation: workflow_success_celebration 1s ease-in-out; }
+
+/* === 数据流动画类 === */
+.animate_data_flow {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(59, 130, 246, 0.3),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: data_flow 2s linear infinite;
+}
+.animate_connection_pulse { animation: connection_pulse 1.5s ease-in-out infinite; }
+
+/* === 粒子效果类 === */
+.animate_particle_float { animation: particle_float 4s ease-out infinite; }
+.animate_particle_burst { animation: particle_burst 0.8s ease-out forwards; }
+
+/* === 扫描效果类 === */
+.animate_scanner_beam { animation: scanner_beam 2s ease-in-out infinite; }
+.animate_radar_sweep { animation: radar_sweep 4s linear infinite; }
+
+/* === 呼吸效果类 === */
+.animate_breathe { animation: breathe 4s ease-in-out infinite; }
+.animate_status_breathe { animation: status_breathe 2s ease-in-out infinite; }
+
+/* === 进度动画类 === */
+.animate_progress_fill { animation: progress_fill var(--duration-slow) var(--ease-in-out); }
+.animate_progress_glow { animation: progress_glow 2s ease-in-out infinite; }
+
+/* === 通知动画类 === */
+.animate_notification_in { animation: notification_slide_in 0.3s ease-out; }
+.animate_notification_out { animation: notification_slide_out 0.3s ease-in; }
+.animate_notification_attention { animation: notification_attention 0.5s ease-in-out; }
+
+/* === 模态框动画类 === */
+.animate_modal_backdrop { animation: modal_backdrop_in 0.3s ease-out; }
+.animate_modal_scale { animation: modal_scale_in 0.3s var(--ease-bounce); }
+.animate_modal_slide { animation: modal_slide_up 0.4s ease-out; }
+
+/* === 工具提示动画类 === */
+.animate_tooltip { animation: tooltip_fade 0.2s ease-out; }
+.animate_tooltip_arrow { animation: tooltip_arrow 1s ease-in-out infinite; }
+
+/* === 加载动画类 === */
+.animate_loader_spin { animation: loader_spin 1s linear infinite; }
+.animate_loader_dots { animation: loader_dots 1.4s ease-in-out infinite; }
+.animate_loader_wave { animation: loader_wave 1.4s ease-in-out infinite; }
+
+/* === 状态指示器动画类 === */
+.animate_status_pulse { animation: status_dot_pulse 2s ease-in-out infinite; }
+.animate_status_ring { animation: status_ring_expand 1.5s ease-out infinite; }
+
+/* === 交互动画类 === */
+.hover_glass_lift:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.hover_glass_shimmer:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: glass_shimmer 0.6s ease-out forwards;
+}
+
+/* === 响应式高级动画 === */
+@media (max-width: 1280px) {
+  .mobile_advanced_animate {
+    animation-duration: var(--duration-fast) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .respect_advanced_motion {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .respect_advanced_motion::before,
+  .respect_advanced_motion::after {
+    animation: none !important;
+  }
+}

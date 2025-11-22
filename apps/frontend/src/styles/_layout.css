@@ -1,0 +1,471 @@
+/* === _layout.css - 网格布局系统 === */
+
+/* === 应用根布局 === */
+.app-root {
+  display: grid;
+  grid-template-columns:
+    [L-start] var(--sidebar-w)
+    [L-end content-start] minmax(0, 1fr)
+    [content-end R-start] var(--property-w)
+    [R-end];
+  grid-template-rows:
+    [T-start] var(--navbar-h)
+    [T-end main-start] minmax(0, 1fr)
+    [main-end];
+  block-size: 100dvh;
+  padding-inline: var(--space);
+  padding-block-start: var(--space);
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+
+/* === 顶部导航栏 === */
+.top-navbar {
+  grid-column: L-start / R-end;
+  grid-row: T-start / T-end;
+    block-size: var(--navbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+    z-index: var(--z-navbar);
+  padding-inline: var(--space);
+}
+
+/* === 三区域布局系统 === */
+.leftbar-area,
+.canvas-area,
+.right-area {
+  grid-row: main-start / main-end;
+  gap: var(--space);
+  min-width: 0;
+  block-size: 100%;
+  overflow: hidden;
+  padding-block-start: var(--space);
+}
+
+.leftbar-area {
+  grid-column: L-start / L-end;
+}
+
+.canvas-area {
+  grid-column: content-start / content-end;
+}
+
+.right-area {
+  grid-column: R-start / R-end;
+}
+
+/* === 状态栏 === */
+.status-bar {
+  position: fixed;
+  left: var(--space);
+  right: var(--space);
+  bottom: var(--space);
+  margin: 0 !important;
+  padding-inline: 0 !important;
+  block-size: var(--navbar-h);
+  z-index: var(--z-dropdown);
+}
+
+/* === 浮层布局 === */
+.layout-overlay {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: var(--space);
+  inset-block-end: calc(var(--navbar-h) + (2 * var(--space)));
+  pointer-events: none;
+  z-index: var(--z-overlay);
+}
+
+/* === 对齐工具类 === */
+.align-to-L {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.align-to-R {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.align-to-canvas-top {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  block-size: 100%;
+  pointer-events: auto;
+}
+
+/* === 网格系统工具类 === */
+.grid {
+  display: grid;
+}
+
+.grid_cols_1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.grid_cols_2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid_cols_3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid_cols_4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid_cols_5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.grid_cols_6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.grid_cols_12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+
+.grid_rows_1 { grid-template-rows: repeat(1, minmax(0, 1fr)); }
+.grid_rows_2 { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.grid_rows_3 { grid-template-rows: repeat(3, minmax(0, 1fr)); }
+.grid_rows_4 { grid-template-rows: repeat(4, minmax(0, 1fr)); }
+
+.gap_xs { gap: clamp(0.25rem, 0.5vw, 0.5rem); }
+.gap_sm { gap: clamp(0.5rem, 1vw, 0.75rem); }
+.gap_md { gap: var(--space); }
+.gap_lg { gap: clamp(1.5rem, 3vw, 2rem); }
+.gap_xl { gap: clamp(2rem, 4vw, 2.5rem); }
+
+/* === Flexbox 系统工具类 === */
+.flex {
+  display: flex;
+}
+
+.flex_col {
+  flex-direction: column;
+}
+
+.flex_row {
+  flex-direction: row;
+}
+
+.flex_wrap {
+  flex-wrap: wrap;
+}
+
+.flex_nowrap {
+  flex-wrap: nowrap;
+}
+
+.items_start {
+  align-items: flex-start;
+}
+
+.items_center {
+  align-items: center;
+}
+
+.items_end {
+  align-items: flex-end;
+}
+
+.items_stretch {
+  align-items: stretch;
+}
+
+.justify_start {
+  justify-content: flex-start;
+}
+
+.justify_center {
+  justify-content: center;
+}
+
+.justify_end {
+  justify-content: flex-end;
+}
+
+.justify_between {
+  justify-content: space-between;
+}
+
+.justify_around {
+  justify-content: space-around;
+}
+
+.justify_evenly {
+  justify-content: space-evenly;
+}
+
+.flex_1 {
+  flex: 1;
+}
+
+.flex_auto {
+  flex: auto;
+}
+
+.flex_none {
+  flex: none;
+}
+
+/* === 间距系统工具类 === */
+.p_xs { padding: clamp(0.25rem, 0.5vw, 0.5rem); }
+.p_sm { padding: clamp(0.5rem, 1vw, 0.75rem); }
+.p_md { padding: var(--space); }
+.p_lg { padding: clamp(1.5rem, 3vw, 2rem); }
+.p_xl { padding: clamp(2rem, 4vw, 2.5rem); }
+
+.m_xs { margin: clamp(0.25rem, 0.5vw, 0.5rem); }
+.m_sm { margin: clamp(0.5rem, 1vw, 0.75rem); }
+.m_md { margin: var(--space); }
+.m_lg { margin: clamp(1.5rem, 3vw, 2rem); }
+.m_xl { margin: clamp(2rem, 4vw, 2.5rem); }
+
+.m_space { margin: var(--space); }
+
+.mt_xs { margin-top: clamp(0.25rem, 0.5vw, 0.5rem); }
+.mt_sm { margin-top: clamp(0.5rem, 1vw, 0.75rem); }
+.mt_md { margin-top: var(--space); }
+.mt_lg { margin-top: clamp(1.5rem, 3vw, 2rem); }
+.mt_xl { margin-top: clamp(2rem, 4vw, 2.5rem); }
+
+.mb_xs { margin-bottom: clamp(0.25rem, 0.5vw, 0.5rem); }
+.mb_sm { margin-bottom: clamp(0.5rem, 1vw, 0.75rem); }
+.mb_md { margin-bottom: var(--space); }
+.mb_lg { margin-bottom: clamp(1.5rem, 3vw, 2rem); }
+.mb_xl { margin-bottom: clamp(2rem, 4vw, 2.5rem); }
+
+.ml_xs { margin-left: clamp(0.25rem, 0.5vw, 0.5rem); }
+.ml_sm { margin-left: clamp(0.5rem, 1vw, 0.75rem); }
+.ml_md { margin-left: var(--space); }
+.ml_lg { margin-left: clamp(1.5rem, 3vw, 2rem); }
+.ml_xl { margin-left: clamp(2rem, 4vw, 2.5rem); }
+
+.mr_xs { margin-right: clamp(0.25rem, 0.5vw, 0.5rem); }
+.mr_sm { margin-right: clamp(0.5rem, 1vw, 0.75rem); }
+.mr_md { margin-right: var(--space); }
+.mr_lg { margin-right: clamp(1.5rem, 3vw, 2rem); }
+.mr_xl { margin-right: clamp(2rem, 4vw, 2.5rem); }
+
+/* === 宽高系统工具类 === */
+.w_full {
+  width: 100%;
+}
+
+.w_auto {
+  width: auto;
+}
+
+.h_full {
+  height: 100%;
+}
+
+.h_auto {
+  height: auto;
+}
+
+.h_screen {
+  height: 100vh;
+}
+
+.h_toolbar {
+  block-size: var(--toolbar-h);
+}
+
+.h_navbar {
+  block-size: var(--navbar-h);
+}
+
+.min_h_0 {
+  min-height: 0;
+}
+
+.min_h_full {
+  min-height: 100%;
+}
+
+.max_w_none {
+  max-width: none;
+}
+
+.max_w_full {
+  max-width: 100%;
+}
+
+.overflow_hidden {
+  overflow: hidden;
+}
+
+.overflow_visible {
+  overflow: visible;
+}
+
+.overflow_scroll {
+  overflow: scroll;
+}
+
+.overflow_auto {
+  overflow: auto;
+}
+
+.overflow_x_hidden {
+  overflow-x: hidden;
+}
+
+.overflow_y_hidden {
+  overflow-y: hidden;
+}
+
+.overflow_x_scroll {
+  overflow-x: scroll;
+}
+
+.overflow_y_scroll {
+  overflow-y: scroll;
+}
+
+.overflow_x_auto {
+  overflow-x: auto;
+}
+
+.overflow_y_auto {
+  overflow-y: auto;
+}
+
+/* === 定位系统工具类 === */
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.sticky {
+  position: sticky;
+}
+
+.static {
+  position: static;
+}
+
+
+/* === 复合定位容器 === */
+.positioned_container {
+  position: absolute;
+  top: var(--space);
+  left: var(--space);
+  right: var(--space);
+  z-index: var(--z-toolbar);
+}
+
+/* === 显示系统工具类 === */
+.block {
+  display: block;
+}
+
+.inline_block {
+  display: inline-block;
+}
+
+.inline {
+  display: inline;
+}
+
+.hidden {
+  display: none;
+}
+
+.visible {
+  visibility: visible;
+}
+
+.invisible {
+  visibility: hidden;
+}
+
+/* === 响应式网格布局 === */
+@media (max-width: 768px) {
+  .app-root {
+    grid-template-columns:
+      [L-start] minmax(0, 1fr)
+      [L-end content-start R-start] minmax(0, 1fr)
+      [content-end R-end];
+    grid-template-rows:
+      [T-start] var(--navbar-h)
+      [T-end main-start] minmax(0, 1fr)
+      [main-end];
+  }
+
+  
+  .leftbar-area {
+    grid-column: 1;
+    order: 2;
+  }
+
+  .canvas-area {
+    grid-column: 1;
+    order: 1;
+  }
+
+  .right-area {
+    grid-column: 1;
+    order: 3;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1280px) {
+  .app-root {
+    grid-template-columns:
+      [L-start] minmax(14rem, 20vw, 18rem)
+      [L-end content-start] minmax(0, 1fr)
+      [content-end R-start] minmax(14rem, 20vw, 18rem)
+      [R-end];
+  }
+}
+
+@media (min-width: 1281px) {
+  .grid_cols_auto {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .grid_cols_minmax {
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  }
+}
+
+/* === 特殊布局模式 === */
+.layout_compact .app-root {
+  gap: clamp(0.5rem, 1vw, 0.75rem);
+  padding: clamp(0.5rem, 1vw, 0.75rem);
+}
+
+.layout_spacious .app-root {
+  gap: clamp(1.5rem, 3vw, 2rem);
+  padding: clamp(1.5rem, 3vw, 2rem);
+}
+
+
+.layout_property_hidden .app-root {
+  grid-template-columns:
+    [L-start] var(--sidebar-w)
+    [L-end content-start R-start] minmax(0, 1fr)
+    [content-end R-end];
+}
+
+/* === 打印样式 === */
+@media print {
+  .app-root {
+    display: block;
+  }
+
+  .top-navbar,
+  .leftbar-area,
+  .right-area,
+  .status-bar {
+    display: none;
+  }
+
+  .canvas-area {
+    width: 100%;
+    height: auto;
+  }
+}

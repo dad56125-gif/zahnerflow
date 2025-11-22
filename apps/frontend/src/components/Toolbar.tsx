@@ -81,12 +81,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <>
-      <div className="floating-toolbar glass">
+      <div className="positioned_container glass h_toolbar flex items-center justify-between gap_md">
         {/* 左侧：文件操作 */}
-        <div className="toolbar-section">
-          <div className="menu">
+        <div className="flex items-center gap_sm">
+          <div className="flex gap_xs">
             <button
-              className="btn btn-floating-toolbar glass btn-primary"
+              className="btn_base btn_layout btn_style_common btn_mini glass btn-primary"
               onClick={clearCanvas}
               title="新建流程"
             >
@@ -94,21 +94,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <span className="btn-text">新建</span>
             </button>
 
-            <label className="file-input-label">
+            <label className="btn_layout">
               <input
                 type="file"
                 accept=".json"
                 className="file-input"
                 onChange={handleFileOpen}
               />
-              <span className="btn btn-floating-toolbar glass btn-secondary" title="打开文件">
+              <span className="btn_base btn_layout btn_style_common btn_mini glass btn-secondary" title="打开文件">
                 <span className="btn-icon">📂</span>
                 <span className="btn-text">打开</span>
               </span>
             </label>
 
             <button
-              className="btn btn-floating-toolbar glass btn-accent"
+              className="btn_base btn_layout btn_style_common btn_mini glass btn-accent"
               onClick={handleFileSave}
               title="保存文件"
             >
@@ -119,11 +119,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         {/* 中间：文件路径管理 */}
-        <div className="toolbar-section">
-          <div className="menu">
+        <div className="flex items-center gap_sm">
             {onToggleFilePathManager && (
               <button
-                className={`btn btn-floating-toolbar glass ${showFilePathManager ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn_base btn_layout btn_style_common btn_mini glass ${showFilePathManager ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={onToggleFilePathManager}
                 title={showFilePathManager ? "关闭文件路径管理" : "打开文件路径管理"}
               >
@@ -131,14 +130,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 <span className="btn-text">文件路径</span>
               </button>
             )}
-          </div>
         </div>
 
         {/* 右侧：运行和设置 */}
-        <div className="toolbar-section">
-          <div className="run-controls">
+        <div className="flex items-center gap_sm">
             <button
-              className="btn btn-floating-toolbar glass btn-primary"
+              className="btn_base btn_layout btn_style_common btn_mini glass btn-primary"
               onClick={onRunFlow}
               title="运行流程 (F5)"
             >
@@ -147,7 +144,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </button>
 
             <button
-              className="btn btn-floating-toolbar glass btn-secondary"
+              className="btn_base btn_layout btn_style_common btn_mini glass btn-secondary"
               onClick={onStopFlow}
               title="停止运行"
             >
@@ -157,7 +154,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
             {onToggleWorkflowManager && (
               <button
-                className={`btn btn-floating-toolbar glass ${showWorkflowManager ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn_base btn_layout btn_style_common btn_mini glass ${showWorkflowManager ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={onToggleWorkflowManager}
                 title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
               >
@@ -165,8 +162,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 <span className="btn-text">工作流</span>
               </button>
             )}
-
-            </div>
         </div>
       </div>
 

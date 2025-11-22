@@ -202,43 +202,41 @@ const ZahnerFlowApp: React.FC = () => {
             onWorkstationSelect={handleWorkstationSelect}
           />
 
-        <div className="main-viewport">
-          {/* 左侧：侧边栏 */}
+        {/* 主要内容区域：三区域布局 */}
+        <div className="leftbar-area">
           <Sidebar
             activePanel={activePanel}
             onPanelChange={setActivePanel}
             nodeGroups={workstationNodeGroups}
             selectedWorkstation={selectedWorkstation}
           />
-          {/* 中间：画布区域与工具栏 */}
-          {/* 涓棿锛氱敾甯冨尯鍩熶笌宸ュ叿鏍?*/}
-          <div className="canvas-area glass">
-            <Toolbar
-              onRunFlow={handleRunFlow}
-              onStopFlow={handleStopFlow}
-              selectedWorkstation={selectedWorkstation}
-              onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
-              showWorkflowManager={showWorkflowManager}
-              onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
-              showFilePathManager={showFilePathManager}
-              onFilePathSave={handleFilePathSave}
-            />
-            <Canvas
-              zoomLevel={zoomLevel}
-              selectedWorkstation={selectedWorkstation}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onResetZoom={handleResetZoom}
-              showWorkflowManager={showWorkflowManager}
-              onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
-              onLoopDetected={handleLoopDetected}
-            />
-          </div>
+        </div>
 
-          {/* 右侧：属性面板容器 */}
-          <div className="right-panels">
-            <PropertyPanel selectedWorkstation={selectedWorkstation} />
-          </div>
+        <div className="canvas-area glass">
+          <Toolbar
+            onRunFlow={handleRunFlow}
+            onStopFlow={handleStopFlow}
+            selectedWorkstation={selectedWorkstation}
+            onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
+            showWorkflowManager={showWorkflowManager}
+            onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
+            showFilePathManager={showFilePathManager}
+            onFilePathSave={handleFilePathSave}
+          />
+          <Canvas
+            zoomLevel={zoomLevel}
+            selectedWorkstation={selectedWorkstation}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetZoom={handleResetZoom}
+            showWorkflowManager={showWorkflowManager}
+            onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
+            onLoopDetected={handleLoopDetected}
+          />
+        </div>
+
+        <div className="right-area">
+          <PropertyPanel selectedWorkstation={selectedWorkstation} />
         </div>
 
         {/* 娴眰锛氳澶囨ā鎬佹锛屽惛闄勫乏渚т笌鐢诲竷椤堕儴锛堝湪 main-viewport 鍐咃級 */}

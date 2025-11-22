@@ -1,39 +1,41 @@
-/* main.css */
+/* === main.css - CSS架构重构主入口文件 === */
+/* 新的11文件CSS架构系统 */
 
-/* 基础样式聚合 */
-@import './base/_variables.css';
-@import './base/_reset.css';
-@import './base/_typography.css';
-@import './base/_utilities.css';
+/* === 1. 基础系统和颜色 === */
+@import './_base.css';
 
-/* 组件样式聚合 */
-@import './components/_glass.css';
-@import './components/_button.css';
-@import './components/_input.css';
-@import './components/_tabs.css';
-@import './components/_toolbar.css';
-@import './components/_node.css';
-@import './components/_enhanced-node.css';  /* 新增：增强节点样式 */
-@import './components/_overlay.css';
-@import './components/_device-hover.css';
-@import './components/_workstation.css';
-@import './components/_connection.css';
-@import './components/_modal.css';
-@import './components/_canvas.css';
-@import './components/_loop-boundary-new.css';  /* 新循环边界样式（合并后） */
-@import './components/_loop.css';
-@import './components/_workflow.css';
-@import './components/_notification.css';  /* 新增：通知面板样式 */
-@import './components/_temperature-controller.css';  /* 新增：温度控制器样式 */
-@import './components/_mfc.css';  /* 新增：MFC设备样式 */
+/* === 2. 基础动画库 === */
+@import './_animations.css';
 
-/* 布局样式聚合（避免与 _grid.css 冲突，不引入它） */
-@import './layout/_header.css';
-@import './layout/_sidebar.css';
-@import './layout/_panel.css';
-@import './layout/_footer.css';
+/* === 3. 高级动画效果 === */
+@import './_animations_advanced.css';
 
-/* 顶层网格容器，提供命名网格线 */
+/* === 4. 原子UI组件 === */
+@import './_ui_kit.css';
+
+/* === 5. 网格布局系统 === */
+@import './_layout.css';
+
+/* === 6. 容器查询系统 === */
+@import './_layout_grid.css';
+
+/* === 7. 画布和节点系统 === */
+@import './_canvas.css';
+
+/* === 8. MFC设备卡片 === */
+@import './_mfc.css';
+
+/* === 9. 工作流管理 === */
+@import './_workflow.css';
+
+/* === 10. 高级组件 === */
+@import './_components_advanced.css';
+
+/* === 11. 遗留组件（向后兼容） === */
+@import './_components_legacy.css';
+
+/* === 全局应用布局样式 === */
+/* 应用根容器，提供命名网格线 */
 .app-root {
   display: grid;
   grid-template-columns:
@@ -91,7 +93,9 @@
 }
 
 /* 覆盖导航条外边距，避免超出网格行导致的重叠 */
-.top-navbar { margin: 0 !important; }
+.top-navbar {
+  margin: 0 !important;
+}
 
 /* 主工作区：位于 TopNavbar 下方，宽度与其一致 */
 .main-viewport {
@@ -132,3 +136,81 @@
   block-size: var(--navbar-h);
   z-index: 1000;
 }
+
+/* === 玻璃态基础类（保持向后兼容） === */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  transition: var(--transition);
+  position: relative;
+  overflow: visible;
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+}
+
+/* 玻璃反光涟漪效果 - 鼠标跟随版本 */
+.glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.18) 20%,
+    rgba(255, 255, 255, 0.08) 40%,
+    transparent 70%
+  );
+  filter: blur(25px);
+  -webkit-filter: blur(25px);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  transform: translate(-50%, -50%);
+}
+
+.glass:hover::before {
+  opacity: 1;
+}
+
+.glass:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* === 核心规则提醒 === */
+/*
+CSS架构重构完成：
+- 使用 snake_case 命名规范
+- 支持 1280x720, 1440x900, 1920x1080, 2K, 4K 工业控制分辨率
+- 使用CSS变量系统确保响应式缩放
+- 保持100%视觉效果保真度
+- 11文件模块化架构，便于维护
+- 向后兼容遗留组件
+
+架构说明：
+1. _base.css - 基础系统、颜色、变量
+2. _animations.css - 基础动画库
+3. _animations_advanced.css - 高级动画效果
+4. _ui_kit.css - 原子UI组件
+5. _layout.css - 网格布局系统
+6. _layout_grid.css - 容器查询系统
+7. _canvas.css - 画布和节点系统
+8. _mfc.css - MFC设备卡片
+9. _workflow.css - 工作流管理
+10. _components_advanced.css - 高级组件
+11. _components_legacy.css - 遗留组件（向后兼容）
+*/

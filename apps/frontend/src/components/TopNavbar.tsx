@@ -137,54 +137,55 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
   const handleDeviceClick = (device: 'furnace' | 'mfc') => onDeviceClick?.(device);
 
   return (
-    <div className="top-navbar glass">
-      <div className="navbar-section">
-        <div className="navbar-left">
-          <div className="logo">
-            <span className="logo-text">ZahnerFlow</span>
-          </div>
-          <div className="navbar-info">
-            <span className="app-version">v2.0.0</span>
-            <span className="separator">|</span>
-            <span className="app-status">就绪</span>
-          </div>
+    <div className="top-navbar glass m_space mb_0">
+      <div className="flex items-center gap_sm flex-1">
+          <div className="flex items-center gap_sm">
+            <div className="logo">
+              <span className="logo-text">ZahnerFlow</span>
+            </div>
+            <div className="flex items-center gap_sm">
+              <span className="app-version">v2.0.0</span>
+              <span className="separator">|</span>
+              <span className="app-status">就绪</span>
+            </div>
 
-          {/* 用户选择器 - 位于"就绪"状态文字右侧 */}
-          <div className="user-section">
-            <UserSelector
-              currentUser={currentUser}
-              onUserChange={setCurrentUser}
-            />
+            {/* 用户选择器 - 位于"就绪"状态文字右侧 */}
+            <div className="user-section">
+              <UserSelector
+                currentUser={currentUser}
+                onUserChange={setCurrentUser}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="device-controls">
+        <div className="flex items-center gap_sm">
           <div
-            className="device-status-block workstation-button-base glass"
+            className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
             onClick={() => handleDeviceClick('furnace')}
           >
-            <span className="device-icon">🔥</span>
-            <span className="device-name">管式炉</span>
+            <span className="btn-icon">🔥</span>
+            <span className="btn-text">管式炉</span>
             <span className="device-status-indicator disconnected" />
           </div>
 
           <div
-            className="device-status-block workstation-button-base glass"
+            className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
             onClick={() => handleDeviceClick('mfc')}
           >
-            <span className="device-icon">💧</span>
-            <span className="device-name">流量计</span>
+            <span className="btn-icon">💧</span>
+            <span className="btn-text">流量计</span>
             <span className="device-status-indicator disconnected" />
           </div>
 
           <div className="workstation-selector" ref={dropdownContainerRef}>
             <button
               ref={workstationButtonRef}
-              className="workstation-selector-btn workstation-button-base glass"
+              className="btn_base btn_layout btn_style_common btn_medium glass btn-primary"
               onClick={handleToggleDropdown}
             >
-              <span className="workstation-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
-              <span className="workstation-name">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
+              <span className="btn-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
+              <span className="btn-text">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
               <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
               <svg className={`dropdown-arrow ${isWorkstationDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
                 <path
@@ -233,7 +234,6 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
           </Portal>
 
         </div>
-      </div>
     </div>
   );
 };
