@@ -3,6 +3,7 @@ import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
 import { useCanvasStore } from '../services/stores/canvasStore';
 import { NodeListRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
+import { Toolbar } from './Toolbar';
 import {
   LoopDetector,
   LoopContextManager,
@@ -29,6 +30,10 @@ interface CanvasProps {
   showWorkflowManager?: boolean;
   onToggleWorkflowManager?: () => void;
   showFilePathManager?: boolean;
+  onToggleFilePathManager?: () => void;
+  onFilePathSave?: (config: any) => void;
+  onRunFlow?: () => void;
+  onStopFlow?: () => void;
   onLoopDetected?: (loops: LoopInfo[]) => void;
 }
 
@@ -41,6 +46,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   showWorkflowManager = false,
   onToggleWorkflowManager,
   showFilePathManager = false,
+  onToggleFilePathManager,
+  onFilePathSave,
+  onRunFlow,
+  onStopFlow,
   onLoopDetected
 }) => {
   const {
@@ -364,6 +373,20 @@ export const Canvas: React.FC<CanvasProps> = ({
     >
       {/* 网格背景 - 外层框架，不随缩放变化 */}
       <div className="canvas-grid"></div>
+
+      {/* Toolbar - 集成在Canvas层内 */}
+      {onRunFlow && onStopFlow && (
+        <Toolbar
+          onRunFlow={onRunFlow}
+          onStopFlow={onStopFlow}
+          selectedWorkstation={selectedWorkstation}
+          onToggleWorkflowManager={onToggleWorkflowManager}
+          showWorkflowManager={showWorkflowManager}
+          showFilePathManager={showFilePathManager}
+          onToggleFilePathManager={onToggleFilePathManager}
+          onFilePathSave={onFilePathSave}
+        />
+      )}
 
       {/* 缩放控制按钮 - 外层框架，不随缩放变化 */}
       <div className="zoom-controls">

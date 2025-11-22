@@ -12,6 +12,7 @@
     [T-start] var(--navbar-h)
     [T-end main-start] minmax(0, 1fr)
     [main-end];
+  column-gap: var(--space);
   block-size: 100dvh;
   padding-inline: var(--space);
   padding-block-start: var(--space);
@@ -38,19 +39,23 @@
 .canvas-area,
 .right-area {
   grid-row: main-start / main-end;
-  gap: var(--space);
   min-width: 0;
   block-size: 100%;
   overflow: hidden;
-  padding-block-start: var(--space);
+  padding-block: var(--space);
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-area {
+  grid-row: main-start / main-end;
+  grid-column: content-start / content-end;
+  block-size: 100%;
+  overflow: hidden;
 }
 
 .leftbar-area {
   grid-column: L-start / L-end;
-}
-
-.canvas-area {
-  grid-column: content-start / content-end;
 }
 
 .right-area {

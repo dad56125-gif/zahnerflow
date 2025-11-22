@@ -1,6 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { WorkstationType, LoopStartNode, LoopEndNode, getNodeGroupsByWorkstation } from './types/nodes';
-import { Toolbar } from './components/Toolbar';
 import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
 import { PropertyPanel } from './components/PropertyPanel';
@@ -212,27 +211,22 @@ const ZahnerFlowApp: React.FC = () => {
           />
         </div>
 
-        <div className="canvas-area glass">
-          <Toolbar
-            onRunFlow={handleRunFlow}
-            onStopFlow={handleStopFlow}
-            selectedWorkstation={selectedWorkstation}
-            onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
-            showWorkflowManager={showWorkflowManager}
-            onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
-            showFilePathManager={showFilePathManager}
-            onFilePathSave={handleFilePathSave}
-          />
-          <Canvas
-            zoomLevel={zoomLevel}
-            selectedWorkstation={selectedWorkstation}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onResetZoom={handleResetZoom}
-            showWorkflowManager={showWorkflowManager}
-            onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
-            onLoopDetected={handleLoopDetected}
-          />
+        <div className="canvas-area">
+        <Canvas
+          zoomLevel={zoomLevel}
+          selectedWorkstation={selectedWorkstation}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
+          showWorkflowManager={showWorkflowManager}
+          onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
+          showFilePathManager={showFilePathManager}
+          onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
+          onFilePathSave={handleFilePathSave}
+          onRunFlow={handleRunFlow}
+          onStopFlow={handleStopFlow}
+          onLoopDetected={handleLoopDetected}
+        />
         </div>
 
         <div className="right-area">
