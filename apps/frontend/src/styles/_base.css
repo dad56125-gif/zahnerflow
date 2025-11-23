@@ -1,55 +1,110 @@
-/* === _base.css - 基础系统和颜色 === */
+/* === _base.css - 基础系统和颜色 (Refactored: Single Source of Truth) === */
 
 /* === CSS变量系统 === */
 :root {
-  /* === 尺寸基线：16px，支持工业控制分辨率 === */
-  --space: clamp(1rem, 0.8rem + 0.6vw, 1.75rem);
+  /* ==========================================================================
+     1. 原语系统 (Primitives) - 基础标准化变量
+     ========================================================================== */
+
+  /* === 标准化尺寸系统 (Fluid Size System) === */
+  --size-3xs: clamp(0.25rem, 0.5vw, 0.375rem);   /* ~4px - 6px */
+  --size-2xs: clamp(0.5rem, 1vw, 0.75rem);       /* ~8px - 12px */
+  --size-xs: clamp(0.625rem, 1.5vw, 0.6875rem);  /* ~10px - 11px */
+  --size-sm: clamp(0.75rem, 1.5vw, 0.8125rem);   /* ~12px - 13px */
+  --size-md: clamp(0.8125rem, 1.8vw, 0.875rem);  /* ~13px - 14px (正文基准) */
+  --size-lg: clamp(1rem, 2vw, 1.125rem);         /* ~16px - 18px */
+  --size-xl: clamp(1.25rem, 2.5vw, 1.5rem);      /* ~20px - 24px (标准间距) */
+  --size-2xl: clamp(1.875rem, 3vw, 2.25rem);     /* ~30px - 36px */
+  --size-3xl: clamp(2.25rem, 4vw, 2.75rem);      /* ~36px - 44px (大按钮高度) */
+  --size-4xl: clamp(2.5rem, 4vw, 3rem);          /* ~40px - 48px */
+
+  /* === 视觉效果系统 (Effects) === */
+  --effect-xs: 0.5rem;       /* 8px */
+  --effect-sm: 0.75rem;      /* 12px */
+  --effect-md: 1rem;         /* 16px */
+  --effect-lg: 1.25rem;      /* 20px (标准圆角/模糊) */
+  --effect-xl: 1.5rem;       /* 24px */
+  --effect-2xl: 2rem;        /* 32px */
+
+  /* ==========================================================================
+     2. 功能色系统 (Functional Color System)
+     用于表达状态、反馈和交互，全站通用
+     ========================================================================== */
+
+  /* --- 核心状态色 --- */
+  /* Primary (蓝色): 激活、运行中、主操作 */
+  --color-primary: #3b82f6;
+  
+  /* Success (绿色): 在线、完成、成功 */
+  --color-success: #10b981;
+  
+  /* Warning (黄色): 连接中、暂停、警告 */
+  --color-warning: #f59e0b;
+  
+  /* Danger (红色): 离线、错误、失败、危险操作 */
+  --color-danger:  #ef4444;
+  
+  /* Info (青色): 信息提示、帮助 */
+  --color-info:    #06b6d4;
+
+  /* Neutral (灰色): 已停止、未激活、草稿、占位 */
+  --color-neutral: #6b7280;
+
+  /* --- 背景色变体 (Alpha Variants) --- */
+  /* 用于徽章背景、卡片高亮、玻璃态底色 */
+  --color-primary-bg: rgba(59, 130, 246, 0.1);
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-danger-bg:  rgba(239, 68, 68, 0.1);
+  --color-info-bg:    rgba(6, 182, 212, 0.1);
+  --color-neutral-bg: rgba(107, 114, 128, 0.1);
+
+  /* === 文本颜色系统 === */
+  --text-primary: white;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-disabled: rgba(255, 255, 255, 0.3);
+
+  /* ==========================================================================
+     3. 语义映射 (Semantics - Layout & Components Only)
+     注意：不再包含颜色映射，颜色请直接使用功能色变量
+     ========================================================================== */
+
+  /* === 布局与间距基线 === */
+  --space: var(--size-xl);
+  
   --navbar-h: clamp(3rem, 2.5rem + 1vw, 4rem);
   --sidebar-w: clamp(16rem, 20vw, 22rem);
   --property-w: clamp(16rem, 20vw, 22rem);
 
-  /* === 字体与控件 - 响应式缩放 === */
-  --text-body: clamp(0.95rem, 0.9rem + 0.2vw, 1.0625rem);
-  --text-title: clamp(1.25rem, 1rem + 1vw, 2rem);
-  --btn-h: clamp(2.25rem, 2rem + 0.5vw, 2.75rem);
-  --toolbar-h: clamp(2.5rem, 2vw, 3rem); /* 40-48px toolbar高度 */
+  /* === 字体语义 === */
+  --text-body: var(--size-md);
+  --text-title: var(--size-2xl);
+  
+  /* === 形状与效果语义 === */
+  --radius: var(--effect-lg);
+  --radius-sm: var(--effect-sm);
+  --radius-lg: var(--effect-xl);
+  
+  --blur-md: var(--effect-md);
+  --blur-lg: var(--effect-lg);
+  --blur-xl: var(--effect-xl);
 
-  /* === 按钮尺寸系统 === */
-  --btn-medium-gap: clamp(0.5rem, 1.2vw, 0.75rem);
-  --btn-medium-padding-y: clamp(0.5rem, 1.2vw, 0.75rem);
-  --btn-medium-padding-x: clamp(1rem, 2.5vw, 1.5rem);
-  --btn-medium-font: clamp(0.8125rem, 2vw, 0.875rem);
-  --btn-medium-radius: var(--radius);
+  /* === 组件尺寸语义 === */
+  --btn-h: var(--size-3xl);
+  --toolbar-h: var(--size-3xl);
+  --form-padding: var(--size-2xs);
 
-  /* === 小按钮系统 === */
-  --btn-small-h: clamp(1.875rem, 1.5rem + 0.9vw, 2rem);       /* 30px高度 */
-  --btn-small-padding-y: clamp(0.375rem, 0.7vw, 0.5rem);      /* 6-8px垂直padding */
-  --btn-small-padding-x: clamp(0.75rem, 1.5vw, 1rem);         /* 12-16px水平padding */
-  --btn-small-font: clamp(0.6875rem, 1.6vw, 0.75rem);         /* 11-12px字体 */
-  --btn-small-radius: 0.875rem;                               /* 14px圆角 */
-  --btn-small-gap: clamp(0.375rem, 0.7vw, 0.5rem);           /* 6-8px元素间距 */
+  /* === 按钮配置 === */
+  --btn-medium-gap: var(--size-sm);
+  --btn-medium-font: var(--size-md);
+  --btn-medium-radius: var(--effect-lg);
 
-  /* === 迷你按钮系统 === */
-  --btn-mini-h: clamp(1.5rem, 1.2rem + 0.8vw, 1.6rem);        /* 24px高度 */
-  --btn-mini-padding-y: clamp(0.25rem, 0.5vw, 0.375rem);      /* 4-6px垂直padding */
-  --btn-mini-padding-x: clamp(0.5rem, 1vw, 0.75rem);          /* 8-12px水平padding */
-  --btn-mini-font: clamp(0.625rem, 1.5vw, 0.6875rem);         /* 10-11px字体 */
-  --btn-mini-radius: 0.75rem;                                 /* 12px圆角 */
-  --btn-mini-gap: clamp(0.25rem, 0.5vw, 0.375rem);            /* 4-6px元素间距 */
-
-  /* === 圆角/模糊/层级 === */
-  --radius-sm: 0.9375rem;   /* 15px */
-  --radius: 1.25rem;        /* 20px */
-  --radius-md: 1.125rem;    /* 18px */
-  --radius-lg: 1.5625rem;   /* 25px */
-  --radius-xl: 2rem;        /* 32px */
-
-  --blur-sm: 0.5rem;        /* 8px */
-  --blur-md: 1rem;          /* 16px */
-  --blur-lg: 1.5rem;        /* 24px */
-  --blur-xl: 2rem;          /* 32px */
-
-  /* === 层级系统 === */
+  --btn-small-h: var(--size-2xl);
+  --btn-small-font: var(--size-sm);
+  --btn-small-radius: var(--effect-sm);
+  
+  /* === 层级系统 (Z-Index) === */
   --z-base: 1;
   --z-sidebar: 10;
   --z-toolbar: 20;
@@ -69,25 +124,6 @@
   --glass-shadow-hover: rgba(0, 0, 0, 0.3);
   --glass-hover: rgba(255, 255, 255, 0.1);
 
-  /* === 文本颜色系统 === */
-  --text-primary: white;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted: rgba(255, 255, 255, 0.5);
-  --text-disabled: rgba(255, 255, 255, 0.3);
-
-  /* === 状态颜色系统 === */
-  --color-primary: #3b82f6;      /* 蓝色 */
-  --color-success: #10b981;      /* 绿色 */
-  --color-warning: #f59e0b;      /* 黄色 */
-  --color-danger: #ef4444;       /* 红色 */
-  --color-info: #06b6d4;         /* 青色 */
-
-  --color-primary-bg: rgba(59, 130, 246, 0.1);
-  --color-success-bg: rgba(16, 185, 129, 0.1);
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-danger-bg: rgba(239, 68, 68, 0.1);
-  --color-info-bg: rgba(6, 182, 212, 0.1);
-
   /* === 布局边界位置变量 === */
   --sidebar-l: var(--space);
   --sidebar-content-l: 0;
@@ -97,39 +133,18 @@
   --canvas-t: calc(var(--space) + var(--navbar-h) + var(--space));
   --canvas-b: calc(var(--navbar-h) + (2 * var(--space)));
 
-  /* === 设备状态颜色 === */
-  --device-online: #10b981;
-  --device-offline: #ef4444;
-  --device-connecting: #f59e0b;
-  --device-error: #dc2626;
-  --device-warning: #d97706;
-
-  /* === 工作流状态颜色 === */
-  --workflow-running: #3b82f6;
-  --workflow-paused: #f59e0b;
-  --workflow-completed: #10b981;
-  --workflow-error: #ef4444;
-  --workflow-stopped: #6b7280;
-
-  /* === 动画缓动函数 === */
+  /* === 动画系统 === */
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-  /* === 动画持续时间 === */
   --duration-fast: 150ms;
   --duration-normal: 300ms;
   --duration-slow: 500ms;
   --duration-slower: 800ms;
 
-  /* === 通知面板专用变量 === */
-  --notification-panel-width: clamp(320px, 40vw, 500px);
-  --notification-panel-max-height: clamp(400px, 60vh, 600px);
-  --notification-panel-z-index: var(--z-notification);
-
-  /* === 过渡动画 === */
   --transition: all var(--duration-normal) var(--ease-in-out);
   --transition-fast: all var(--duration-fast) var(--ease-in-out);
   --transition-slow: all var(--duration-slow) var(--ease-in-out);
@@ -138,73 +153,54 @@
                      border-color var(--duration-normal) var(--ease-in-out);
   --transition-transform: transform var(--duration-normal) var(--ease-in-out);
   --transition-opacity: opacity var(--duration-normal) var(--ease-in-out);
+
+  /* === 通知面板专用变量 === */
+  --notification-panel-width: clamp(320px, 40vw, 500px);
+  --notification-panel-max-height: clamp(400px, 60vh, 600px);
+  --notification-panel-z-index: var(--z-notification);
 }
 
 /* === 响应式断点系统 === */
-/* 1280x720 - HD */
 @media (max-width: 1280px) {
   :root {
     font-size: 14px;
-    --space: clamp(0.875rem, 0.7rem + 0.5vw, 1.5rem);
+    --space: var(--size-lg);
     --sidebar-w: clamp(14rem, 18vw, 18rem);
     --property-w: clamp(14rem, 18vw, 18rem);
   }
 }
-
-/* 1440x900 - MacBook Pro */
 @media (min-width: 1441px) and (max-width: 1440px) {
-  :root {
-    font-size: 15px;
-  }
+  :root { font-size: 15px; }
 }
-
-/* 1920x1080 - Full HD */
 @media (min-width: 1921px) {
   :root {
     font-size: 17px;
-    --space: clamp(1.125rem, 0.9rem + 0.7vw, 1.875rem);
+    --space: var(--size-xl);
     --sidebar-w: clamp(18rem, 22vw, 24rem);
     --property-w: clamp(18rem, 22vw, 24rem);
   }
 }
-
-/* 2K - 2560x1440 */
 @media (min-width: 2561px) {
   :root {
     font-size: 18px;
-    --space: clamp(1.25rem, 1rem + 0.8vw, 2rem);
+    --space: var(--size-2xl);
     --sidebar-w: clamp(20rem, 24vw, 26rem);
     --property-w: clamp(20rem, 24vw, 26rem);
   }
 }
-
-/* 4K - 3840x2160 */
 @media (min-width: 3841px) {
   :root {
     font-size: 20px;
-    --space: clamp(1.5rem, 1.2rem + 1vw, 2.5rem);
+    --space: var(--size-3xl);
     --sidebar-w: clamp(24rem, 28vw, 32rem);
     --property-w: clamp(24rem, 28vw, 32rem);
-    --radius: 1.5rem;
-    --radius-lg: 2rem;
-    --radius-xl: 2.5rem;
+    --radius: var(--effect-xl);
   }
 }
 
-/* === 基础重置样式 === */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-/* === 全局背景 === */
-html {
-  scroll-behavior: smooth;
-}
-
+/* === 基础重置与排版 === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: var(--text-body);
@@ -218,230 +214,60 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* === 基础排版 === */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--text-primary);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
+h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.2; color: var(--text-primary); text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
+h1 { font-size: var(--size-3xl); padding: var(--size-lg) 0; }
+h2 { font-size: var(--size-2xl); padding: var(--size-md) 0; }
+h3 { font-size: var(--size-lg); padding: var(--size-xs) 0; }
+h4 { font-size: var(--size-md); padding: var(--size-2xs) 0; }
+h5 { font-size: var(--size-md); padding: var(--size-3xs) 0; }
+h6 { font-size: var(--size-sm); padding: 0 0; }
 
-h1 {
-  font-size: clamp(1.25rem, 4vw, 1.5rem);      /* 20px-24px */
-  padding: clamp(0.75rem, 1.5vw, 1rem) 0;      /* 12px-16px 上下padding */
-}
-h2 {
-  font-size: clamp(1rem, 3vw, 1.25rem);        /* 16px-20px */
-  padding: clamp(0.625rem, 1.25vw, 0.875rem) 0; /* 10px-14px 上下padding */
-}
-h3 {
-  font-size: clamp(0.875rem, 2.5vw, 1rem);      /* 14px-16px - 原Leftbar标题大小 */
-  padding: clamp(0.5rem, 1vw, 0.75rem) 0;      /* 8px-12px 上下padding */
-}
-h4 {
-  font-size: clamp(0.75rem, 2vw, 0.875rem);      /* 12px-14px */
-  padding: clamp(0.375rem, 0.75vw, 0.625rem) 0; /* 6px-10px 上下padding */
-}
-h5 {
-  font-size: clamp(0.625rem, 1.5vw, 0.75rem);    /* 10px-12px */
-  padding: clamp(0.25rem, 0.5vw, 0.5rem) 0;     /* 4px-8px 上下padding */
-}
-h6 {
-  font-size: clamp(0.5rem, 1vw, 0.625rem);        /* 8px-10px */
-  padding: clamp(0.125rem, 0.25vw, 0.375rem) 0; /* 2px-6px 上下padding */
-}
+p { margin-bottom: 1em; line-height: 1.6; }
+a { color: var(--color-primary); text-decoration: none; transition: var(--transition-colors); }
+a:hover { color: var(--color-info); text-decoration: underline; }
 
-p {
-  margin-bottom: 1em;
-  line-height: 1.6;
-}
+::selection { background: rgba(59, 130, 246, 0.3); color: white; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: var(--radius); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: var(--radius); transition: var(--transition-colors); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: var(--radius-sm); }
 
-a {
-  color: var(--color-primary);
-  text-decoration: none;
-  transition: var(--transition-colors);
-}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
 
-a:hover {
-  color: var(--color-info);
-  text-decoration: underline;
-}
+/* === 辅助类 === */
+.logo-text { background: linear-gradient(135deg, #fff, #e0e0e0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 700; letter-spacing: -0.02em; }
+.text-gradient { background: linear-gradient(135deg, var(--color-primary), var(--color-info)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 600; }
+.main-content { position: relative; }
 
-/* === 选择样式 === */
-::selection {
-  background: rgba(59, 130, 246, 0.3);
-  color: white;
-}
-
-::-moz-selection {
-  background: rgba(59, 130, 246, 0.3);
-  color: white;
-}
-
-/* === 滚动条样式 === */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius);
-  transition: var(--transition-colors);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* === 焦点样式 === */
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* === 无障碍支持 === */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* === 高对比度模式 === */
-@media (prefers-contrast: high) {
-  :root {
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-shadow: rgba(0, 0, 0, 0.5);
-    --text-secondary: rgba(255, 255, 255, 0.85);
-    --text-muted: rgba(255, 255, 255, 0.7);
-  }
-
-  .glass {
-    border-width: 2px;
-  }
-
-  .node {
-    border-width: 3px;
-  }
-}
-
-/* === 暗色模式偏好 === */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --glass-bg: rgba(0, 0, 0, 0.25);
-    --glass-border: rgba(255, 255, 255, 0.15);
-  }
-}
-
-/* === Logo样式 === */
-.logo-text {
-  background: linear-gradient(135deg, #fff, #e0e0e0);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-/* === 特殊字符处理 === */
-.text-gradient {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-info));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 600;
-}
-
-/* === 基础工具类 === */
-.main-content {
-  position: relative;
-}
-
-/* === 玻璃态基础类 === */
+/* 玻璃态基础 */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  box-shadow:
-    0 8px 32px var(--glass-shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
   transition: var(--transition);
   position: relative;
   overflow: visible;
   will-change: backdrop-filter;
   transform: translateZ(0);
 }
-
-/* 玻璃反光涟漪效果 - 鼠标跟随版本 */
 .glass::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 60px;
-  height: 60px;
-  background: radial-gradient(circle,
-    rgba(255, 255, 255, 0.25) 0%,
-    rgba(255, 255, 255, 0.18) 20%,
-    rgba(255, 255, 255, 0.08) 40%,
-    transparent 70%
-  );
-  filter: blur(25px);
-  -webkit-filter: blur(25px);
-  border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  transform: translate(-50%, -50%);
+  content: ''; position: absolute; top: 0; left: 0; width: 60px; height: 60px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.18) 20%, rgba(255, 255, 255, 0.08) 40%, transparent 70%);
+  filter: blur(25px); -webkit-filter: blur(25px); border-radius: 50%;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s ease; transform: translate(-50%, -50%);
 }
+.glass:hover::before { opacity: 1; }
+.glass:hover { border-color: rgba(255, 255, 255, 0.2); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
 
-.glass:hover::before {
-  opacity: 1;
-}
-
-.glass:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.text-muted {
-  color: var(--text-muted);
-}
-
-.text-secondary {
-  color: var(--text-secondary);
-}
-
-.text-success {
-  color: var(--color-success);
-}
-
-.text-warning {
-  color: var(--color-warning);
-}
-
-.text-danger {
-  color: var(--color-danger);
-}
-
-.text-info {
-  color: var(--color-info);
-}
+/* 文本颜色工具类 */
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
+.text-info { color: var(--color-info); }
+.text-neutral { color: var(--color-neutral); } /* 新增 */

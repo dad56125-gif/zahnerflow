@@ -1,49 +1,94 @@
-/* === _components_advanced.css - 高级组件 === */
+/* === _components_advanced.css - 高级组件 (Refactored) === */
 
-/* === 玻璃态效果增强 === */
-.glass_enhanced {
+/* ==========================================================================
+   1. 内部公共样式提取
+   ========================================================================== */
+
+/* 公共：玻璃态容器基底 */
+.glass_enhanced,
+.modal_content,
+.notification_panel,
+.dropdown_menu,
+.tabs_content,
+.accordion,
+.pagination,
+.breadcrumb {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
-  box-shadow:
-    0 8px 32px var(--glass-shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(var(--effect-xl));
+  -webkit-backdrop-filter: blur(var(--effect-xl));
+  box-shadow: 0 8px var(--effect-2xl) var(--glass-shadow);
   transition: var(--transition);
+}
+
+/* 公共：Flex 居中对齐 */
+.modal,
+.modal_header,
+.notification_panel_header,
+.dropdown_trigger,
+.accordion_trigger,
+.pagination,
+.breadcrumb {
+  display: flex;
+  align-items: center;
+}
+
+/* 公共：头部样式 (Modal & Notification) */
+.modal_header,
+.notification_panel_header {
+  justify-content: space-between;
+  padding: var(--size-xl);
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* 公共：交互元素重置与基础状态 */
+.modal_close,
+.pagination_button,
+.accordion_trigger,
+.tabs_trigger {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   2. 组件具体实现
+   ========================================================================== */
+
+/* === 玻璃态效果增强 (特有逻辑) === */
+.glass_enhanced {
+  border-radius: var(--effect-lg);
   position: relative;
   overflow: visible;
-  will-change: backdrop-filter;
-  transform: translateZ(0);
+  will-change: backdrop-filter, transform;
+  transform: translateZ(0); /* GPU 加速 */
+  box-shadow:
+    0 8px var(--effect-2xl) var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .glass_enhanced::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: clamp(2.5rem, 4vw, 3rem);
-  height: clamp(2.5rem, 4vw, 3rem);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--size-3xl);
+  height: var(--size-3xl);
   background: radial-gradient(circle,
     rgba(255, 255, 255, 0.25) 0%,
     rgba(255, 255, 255, 0.18) 20%,
     rgba(255, 255, 255, 0.08) 40%,
     transparent 70%
   );
-  filter: blur(clamp(1.25rem, 2vw, 1.5rem));
-  -webkit-filter: blur(clamp(1.25rem, 2vw, 1.5rem));
+  filter: blur(var(--effect-xl));
   border-radius: 50%;
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--duration-normal) var(--ease-in-out);
-  transform: translate(-50%, -50%);
-  top: 50%;
-  left: clamp(1.25rem, 2vw, 1.5rem);
-}
-
-.glass_enhanced:hover::before {
-  opacity: 1;
 }
 
 .glass_enhanced:hover {
@@ -54,54 +99,39 @@
     inset 0 -1px 0 rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
+.glass_enhanced:hover::before { opacity: 1; }
+
 
 /* === 模态框组件 === */
 .modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
   z-index: var(--z-modal);
-  display: flex;
-  align-items: center;
   justify-content: center;
   padding: var(--space);
   animation: modal_backdrop_in var(--duration-normal) var(--ease-out);
 }
 
 .modal_content {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border-radius: var(--effect-xl);
   box-shadow:
     0 16px 64px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
   max-width: 90vw;
   max-height: 90vh;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   animation: modal_scale_in var(--duration-normal) var(--ease-bounce);
 }
 
-.modal_header {
-  padding: clamp(1.25rem, 2.5vw, 1.75rem);
-  border-bottom: 1px solid var(--glass-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.modal_title {
-  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+.modal_title,
+.notification_panel_title {
+  font-size: var(--size-xl);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -109,17 +139,11 @@
 }
 
 .modal_close {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
-  cursor: pointer;
-  padding: clamp(0.375rem, 0.8vw, 0.5rem);
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
+  font-size: var(--size-xl);
+  padding: var(--size-2xs);
+  border-radius: var(--effect-sm);
   line-height: 1;
 }
-
 .modal_close:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
@@ -128,17 +152,18 @@
 .modal_body {
   flex: 1;
   overflow-y: auto;
-  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  padding: var(--size-xl);
 }
 
 .modal_footer {
-  padding: clamp(1rem, 2vw, 1.25rem);
+  padding: var(--size-lg);
   border-top: 1px solid var(--glass-border);
   display: flex;
   justify-content: flex-end;
-  gap: clamp(0.75rem, 1.5vw, 1rem);
+  gap: var(--size-lg);
   background: rgba(0, 0, 0, 0.05);
 }
+
 
 /* === 通知面板组件 === */
 .notification_panel {
@@ -147,49 +172,27 @@
   right: var(--property-w);
   width: var(--notification-panel-width);
   max-height: var(--notification-panel-max-height);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-radius: var(--effect-lg);
   z-index: var(--notification-panel-z-index);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   animation: notification_slide_in var(--duration-normal) var(--ease-out);
-}
-
-.notification_panel_header {
-  padding: clamp(1rem, 2vw, 1.25rem);
-  border-bottom: 1px solid var(--glass-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.notification_panel_title {
-  font-size: clamp(1rem, 2vw, 1.125rem);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
+  will-change: opacity, transform;
 }
 
 .notification_panel_body {
   flex: 1;
   overflow-y: auto;
-  padding: clamp(0.75rem, 1.5vw, 1rem);
+  padding: var(--size-lg);
 }
 
 .notification_item {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  padding: clamp(0.75rem, 1.5vw, 1rem);
-  margin-bottom: clamp(0.5rem, 1vw, 0.75rem);
+  border-radius: var(--effect-sm);
+  padding: var(--size-lg);
+  margin-bottom: var(--size-sm);
   transition: var(--transition);
   cursor: pointer;
 }
@@ -205,6 +208,7 @@
   background: var(--color-primary-bg);
 }
 
+
 /* === 工具提示组件 === */
 .tooltip_container {
   position: relative;
@@ -216,21 +220,20 @@
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  padding: clamp(0.5rem, 1vw, 0.625rem) clamp(0.75rem, 1.5vw, 1rem);
+  padding: var(--size-2xs) var(--size-lg);
   background: rgba(0, 0, 0, 0.9);
   color: var(--text-primary);
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
-  border-radius: var(--radius-sm);
+  font-size: var(--size-xs);
+  border-radius: var(--effect-sm);
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
   transition: var(--transition);
   z-index: var(--z-tooltip);
-  margin-bottom: clamp(0.5rem, 1vw, 0.75rem);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin-bottom: var(--size-2xs);
+  box-shadow: 0 4px var(--effect-sm) rgba(0, 0, 0, 0.3);
 }
-
 .tooltip_content::after {
   content: '';
   position: absolute;
@@ -239,13 +242,12 @@
   transform: translateX(-50%);
   border: 6px solid transparent;
   border-top-color: rgba(0, 0, 0, 0.9);
-  pointer-events: none;
 }
-
 .tooltip_container:hover .tooltip_content {
   opacity: 1;
   visibility: visible;
 }
+
 
 /* === 下拉菜单组件 === */
 .dropdown {
@@ -256,16 +258,13 @@
 .dropdown_trigger {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: clamp(0.5rem, 1vw, 0.625rem) clamp(0.75rem, 1.5vw, 1rem);
+  border-radius: var(--effect-lg);
+  padding: var(--size-2xs) var(--size-lg);
   color: var(--text-primary);
   cursor: pointer;
   transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: clamp(0.375rem, 0.8vw, 0.5rem);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
+  gap: var(--size-2xs);
+  backdrop-filter: blur(var(--effect-md));
 }
 
 .dropdown_trigger:hover {
@@ -278,19 +277,13 @@
   top: 100%;
   left: 0;
   min-width: 100%;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-radius: var(--effect-lg);
   z-index: var(--z-dropdown);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-8px);
-  transition: var(--transition);
   overflow: hidden;
-  margin-top: clamp(0.25rem, 0.5vw, 0.375rem);
+  margin-top: var(--size-2xs);
 }
 
 .dropdown.open .dropdown_menu {
@@ -300,25 +293,21 @@
 }
 
 .dropdown_item {
-  padding: clamp(0.5rem, 1vw, 0.625rem) clamp(0.75rem, 1.5vw, 1rem);
+  padding: var(--size-2xs) var(--size-lg);
   color: var(--text-primary);
   cursor: pointer;
   transition: var(--transition);
   border-bottom: 1px solid transparent;
 }
-
 .dropdown_item:hover {
   background: rgba(255, 255, 255, 0.1);
   border-bottom-color: var(--glass-border);
 }
+.dropdown_item:last-child { border-bottom: none; }
 
-.dropdown_item:last-child {
-  border-bottom: none;
-}
 
 /* === 标签页组件 === */
 .tabs {
-  display: flex;
   flex-direction: column;
 }
 
@@ -326,29 +315,22 @@
   display: flex;
   border-bottom: 1px solid var(--glass-border);
   background: rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius) var(--radius) 0 0;
+  border-radius: var(--effect-lg) var(--effect-lg) 0 0;
   overflow-x: auto;
 }
 
 .tabs_trigger {
-  padding: clamp(0.75rem, 1.5vw, 1rem) clamp(1rem, 2vw, 1.25rem);
-  background: transparent;
-  border: none;
+  padding: var(--size-sm) var(--size-xl);
   border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: clamp(0.875rem, 1.8vw, 0.9375rem);
+  font-size: var(--size-md);
   font-weight: 500;
   white-space: nowrap;
   position: relative;
 }
-
 .tabs_trigger:hover {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.05);
 }
-
 .tabs_trigger.active {
   color: var(--text-primary);
   border-bottom-color: var(--color-primary);
@@ -357,167 +339,109 @@
 
 .tabs_content {
   flex: 1;
-  padding: clamp(1.25rem, 2.5vw, 1.75rem);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  padding: var(--size-xl);
   border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-radius: 0 0 var(--effect-lg) var(--effect-lg);
+  backdrop-filter: blur(var(--effect-md));
 }
 
-.tabs_panel {
-  display: none;
-}
-
+.tabs_panel { display: none; }
 .tabs_panel.active {
   display: block;
   animation: fade_in var(--duration-normal) var(--ease-in-out);
 }
 
+
 /* === 折叠面板组件 === */
 .accordion {
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
+  border-radius: var(--effect-lg);
   overflow: hidden;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
+  backdrop-filter: blur(var(--effect-md));
 }
 
-.accordion_item {
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.accordion_item:last-child {
-  border-bottom: none;
-}
+.accordion_item { border-bottom: 1px solid var(--glass-border); }
+.accordion_item:last-child { border-bottom: none; }
 
 .accordion_trigger {
   width: 100%;
-  padding: clamp(0.75rem, 1.5vw, 1rem) clamp(1rem, 2vw, 1.25rem);
-  background: transparent;
-  border: none;
+  padding: var(--size-sm) var(--size-xl);
   color: var(--text-primary);
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: clamp(0.875rem, 1.8vw, 0.9375rem);
+  font-size: var(--size-md);
   font-weight: 500;
   text-align: left;
-  display: flex;
   justify-content: space-between;
-  align-items: center;
 }
-
-.accordion_trigger:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
+.accordion_trigger:hover { background: rgba(255, 255, 255, 0.05); }
 
 .accordion_trigger::after {
   content: '+';
-  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+  font-size: var(--size-xl);
   transition: var(--transition);
 }
-
-.accordion_item.open .accordion_trigger::after {
-  transform: rotate(45deg);
-}
+.accordion_item.open .accordion_trigger::after { transform: rotate(45deg); }
 
 .accordion_content {
-  padding: 0 clamp(1rem, 2vw, 1.25rem);
+  padding: 0 var(--size-xl);
   max-height: 0;
   overflow: hidden;
-  transition: max-height var(--duration-normal) var(--ease-in-out), padding var(--duration-normal) var(--ease-in-out);
+  transition: max-height var(--duration-normal) var(--ease-in-out), 
+              padding var(--duration-normal) var(--ease-in-out);
 }
-
 .accordion_item.open .accordion_content {
-  padding: clamp(0.75rem, 1.5vw, 1rem) clamp(1rem, 2vw, 1.25rem);
+  padding: var(--size-sm) var(--size-xl);
   max-height: clamp(20rem, 40vh, 30rem);
 }
 
-/* === 分页组件 === */
-.pagination {
-  display: flex;
-  align-items: center;
-  gap: clamp(0.5rem, 1vw, 0.75rem);
-  padding: clamp(1rem, 2vw, 1.25rem);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
+
+/* === 分页与面包屑组件 === */
+.pagination,
+.breadcrumb {
+  padding: var(--size-sm);
+  border-radius: var(--effect-lg);
+  backdrop-filter: blur(var(--effect-md));
+  gap: var(--size-sm);
 }
 
+/* Pagination Specifics */
 .pagination_button {
-  padding: clamp(0.5rem, 1vw, 0.625rem) clamp(0.75rem, 1.5vw, 1rem);
+  padding: var(--size-2xs) var(--size-lg);
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--effect-sm);
   color: var(--text-primary);
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
-  min-width: clamp(2rem, 3vw, 2.5rem);
+  font-size: var(--size-xs);
+  min-width: var(--size-2xl);
 }
-
 .pagination_button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--glass-border-hover);
 }
-
-.pagination_button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+.pagination_button:disabled { opacity: 0.5; cursor: not-allowed; }
 .pagination_button.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: white;
 }
-
 .pagination_info {
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
+  font-size: var(--size-xs);
   color: var(--text-secondary);
-  margin: 0 clamp(0.75rem, 1.5vw, 1rem);
+  margin: 0 var(--size-lg);
 }
 
-/* === 面包屑导航组件 === */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: clamp(0.5rem, 1vw, 0.75rem);
-  padding: clamp(0.75rem, 1.5vw, 1rem);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-  flex-wrap: wrap;
-}
-
+/* Breadcrumb Specifics */
+.breadcrumb { flex-wrap: wrap; }
 .breadcrumb_item {
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
+  font-size: var(--size-xs);
   transition: var(--transition);
 }
+.breadcrumb_item:hover { color: var(--text-primary); }
+.breadcrumb_item.active { color: var(--text-primary); font-weight: 500; }
+.breadcrumb_separator { color: var(--text-muted); font-size: var(--size-xs); }
 
-.breadcrumb_item:hover {
-  color: var(--text-primary);
-}
 
-.breadcrumb_item.active {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.breadcrumb_separator {
-  color: var(--text-muted);
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
-}
-
-/* === 加载骨架屏组件 === */
+/* === 加载骨架与拖拽区域 === */
 .skeleton {
   background: linear-gradient(90deg,
     rgba(255, 255, 255, 0.05) 25%,
@@ -526,61 +450,36 @@
   );
   background-size: 200% 100%;
   animation: data_flow 1.5s ease-in-out infinite;
-  border-radius: var(--radius-sm);
+  border-radius: var(--effect-sm);
+  will-change: background-position;
 }
 
-.skeleton_text {
-  height: clamp(1rem, 2vw, 1.25rem);
-  margin-bottom: clamp(0.5rem, 1vw, 0.75rem);
-}
+.skeleton_text { height: var(--size-lg); margin-bottom: var(--size-sm); }
+.skeleton_title { height: var(--size-2xl); width: 60%; margin-bottom: var(--size-lg); }
+.skeleton_avatar { width: var(--size-3xl); height: var(--size-3xl); border-radius: 50%; }
+.skeleton_button { height: var(--size-3xl); width: clamp(6rem, 10vw, 8rem); border-radius: var(--effect-lg); }
 
-.skeleton_title {
-  height: clamp(1.5rem, 3vw, 2rem);
-  width: 60%;
-  margin-bottom: clamp(1rem, 2vw, 1.25rem);
-}
-
-.skeleton_avatar {
-  width: clamp(2.5rem, 4vw, 3rem);
-  height: clamp(2.5rem, 4vw, 3rem);
-  border-radius: 50%;
-}
-
-.skeleton_button {
-  height: clamp(2.25rem, 4vw, 2.75rem);
-  width: clamp(6rem, 10vw, 8rem);
-  border-radius: var(--radius);
-}
-
-/* === 拖拽区域组件 === */
 .dropzone {
   border: 2px dashed var(--glass-border);
-  border-radius: var(--radius);
-  padding: clamp(2rem, 4vw, 3rem);
+  border-radius: var(--effect-lg);
+  padding: var(--size-4xl);
   text-align: center;
   transition: var(--transition);
   background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
 }
-
 .dropzone:hover {
   border-color: var(--glass-border-hover);
   background: rgba(255, 255, 255, 0.05);
 }
-
 .dropzone.active {
   border-color: var(--color-primary);
   background: var(--color-primary-bg);
   transform: scale(1.02);
 }
-
 .dropzone_text {
   color: var(--text-secondary);
-  font-size: clamp(0.875rem, 1.8vw, 0.9375rem);
-  margin-bottom: clamp(0.75rem, 1.5vw, 1rem);
+  font-size: var(--size-md);
+  margin-bottom: var(--size-lg);
 }
-
-.dropzone_hint {
-  color: var(--text-muted);
-  font-size: clamp(0.75rem, 1.5vw, 0.8125rem);
-}
+.dropzone_hint { color: var(--text-muted); font-size: var(--size-xs); }

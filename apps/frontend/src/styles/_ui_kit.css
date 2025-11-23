@@ -1,4 +1,4 @@
-/* === _ui_kit.css - 原子UI组件 === */
+/* === _ui_kit.css - 原子UI组件 (Refactored: Functional Colors & Sizes) === */
 
 /* === 按钮组件 === */
 
@@ -30,35 +30,34 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* 按钮尺寸类 */
+/* 按钮尺寸类 - 直接映射 Base 系统 */
 .btn_medium {
-  gap: var(--btn-medium-gap);
-  padding: var(--btn-medium-padding-y) var(--btn-medium-padding-x);
-  border-radius: var(--btn-medium-radius);
-  font-size: var(--btn-medium-font);
-  min-height: var(--btn-h);
+  gap: var(--size-sm);           /* 原: btn-medium-gap */
+  padding: var(--size-2xs) var(--size-lg); /* 原: medium-padding-y/x */
+  border-radius: var(--effect-lg); /* 原: radius */
+  font-size: var(--size-md);     /* 原: text-md */
+  min-height: var(--size-3xl);   /* 原: btn-lg (约40px) */
 }
 
 .btn_small {
-  gap: var(--btn-small-gap);
-  padding: var(--btn-small-padding-y) var(--btn-small-padding-x);
-  border-radius: var(--btn-small-radius);
-  font-size: var(--btn-small-font);
-  height: var(--btn-small-h);
+  gap: var(--size-xs);
+  padding: var(--size-3xs) var(--size-md);
+  border-radius: var(--effect-sm); /* 约12px */
+  font-size: var(--size-sm);
+  height: var(--size-2xl);         /* 约32px */
   min-width: clamp(3.5rem, 5.5vw, 5rem);
   flex-shrink: 0;
 }
 
 .btn_mini {
-  gap: var(--btn-mini-gap);
-  padding: var(--btn-mini-padding-y) var(--btn-mini-padding-x);
-  border-radius: var(--btn-mini-radius);
-  font-size: var(--btn-mini-font);
-  height: var(--btn-mini-h);
+  gap: var(--size-3xs);
+  padding: var(--size-3xs) var(--size-sm);
+  border-radius: var(--effect-xs); /* 约8px */
+  font-size: var(--size-xs);
+  height: var(--size-xl);          /* 约24px */
   min-width: clamp(3rem, 5vw, 4.5rem);
   flex-shrink: 0;
 }
-
 
 /* 文件输入框隐藏 */
 .file-input {
@@ -76,13 +75,14 @@
   outline-offset: 2px;
 }
 
-/* 按钮变体 */
+/* === 按钮变体 (功能色系统) === */
+
 .btn_primary {
   background: linear-gradient(135deg, var(--color-primary-bg), rgba(59, 130, 246, 0.05));
   border: 1px solid var(--color-primary);
   color: white;
   box-shadow:
-    0 4px 16px rgba(59, 130, 246, 0.2),
+    0 4px var(--effect-md) rgba(59, 130, 246, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -91,7 +91,7 @@
   border-color: var(--color-info);
   transform: translateY(-1px);
   box-shadow:
-    0 8px 24px rgba(59, 130, 246, 0.3),
+    0 8px var(--effect-xl) rgba(59, 130, 246, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
@@ -99,10 +99,10 @@
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
   box-shadow:
-    0 4px 16px var(--glass-shadow),
+    0 4px var(--effect-md) var(--glass-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -111,7 +111,7 @@
   border-color: var(--glass-border-hover);
   transform: translateY(-1px);
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 8px var(--effect-xl) rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
@@ -120,7 +120,7 @@
   border: 1px solid var(--color-success);
   color: white;
   box-shadow:
-    0 4px 16px rgba(16, 185, 129, 0.2),
+    0 4px var(--effect-md) rgba(16, 185, 129, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -128,7 +128,7 @@
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08));
   transform: translateY(-1px);
   box-shadow:
-    0 8px 24px rgba(16, 185, 129, 0.3),
+    0 8px var(--effect-xl) rgba(16, 185, 129, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
@@ -137,7 +137,7 @@
   border: 1px solid var(--color-warning);
   color: white;
   box-shadow:
-    0 4px 16px rgba(245, 158, 11, 0.2),
+    0 4px var(--effect-md) rgba(245, 158, 11, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -145,7 +145,7 @@
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.08));
   transform: translateY(-1px);
   box-shadow:
-    0 8px 24px rgba(245, 158, 11, 0.3),
+    0 8px var(--effect-xl) rgba(245, 158, 11, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
@@ -154,7 +154,7 @@
   border: 1px solid var(--color-danger);
   color: white;
   box-shadow:
-    0 4px 16px rgba(239, 68, 68, 0.2),
+    0 4px var(--effect-md) rgba(239, 68, 68, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -162,10 +162,26 @@
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08));
   transform: translateY(-1px);
   box-shadow:
-    0 8px 24px rgba(239, 68, 68, 0.3),
+    0 8px var(--effect-xl) rgba(239, 68, 68, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
+.btn_neutral {
+  background: linear-gradient(135deg, var(--color-neutral-bg), rgba(107, 114, 128, 0.05));
+  border: 1px solid var(--color-neutral);
+  color: white;
+  box-shadow:
+    0 4px var(--effect-md) rgba(107, 114, 128, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_neutral:hover {
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.15), rgba(107, 114, 128, 0.08));
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px var(--effect-xl) rgba(107, 114, 128, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
 
 /* 按钮状态 */
 .btn_loading {
@@ -176,8 +192,8 @@
 .btn_loading::after {
   content: '';
   position: absolute;
-  width: 1rem;
-  height: 1rem;
+  width: var(--size-lg);
+  height: var(--size-lg);
   border: 2px solid currentColor;
   border-radius: 50%;
   border-top-color: transparent;
@@ -192,16 +208,16 @@
 .select,
 .textarea {
   width: 100%;
-  padding: clamp(0.5rem, 1.2vw, 0.625rem) clamp(0.75rem, 1.8vw, 0.875rem);
+  padding: var(--size-2xs) var(--size-md);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  font-size: clamp(0.8125rem, 2vw, 0.875rem);
+  border-radius: var(--effect-sm);
+  font-size: var(--size-md);
   font-family: inherit;
   line-height: 1.5;
   background: var(--glass-bg);
   color: var(--text-primary);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
   transition: var(--transition);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
@@ -234,31 +250,31 @@
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' opacity='0.7'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right clamp(0.5rem, 1.2vw, 0.75rem) center;
-  background-size: clamp(1rem, 2vw, 1.125rem);
-  padding-right: clamp(2.5rem, 4vw, 3rem);
+  background-position: right var(--size-2xs) center;
+  background-size: var(--size-lg);
+  padding-right: var(--size-4xl);
 }
 
 .select option {
   background: rgba(0, 0, 0, 0.95);
   color: white;
-  padding: clamp(0.5rem, 1.2vw, 0.625rem);
+  padding: var(--size-2xs);
 }
 
 /* 文本域特殊样式 */
 .textarea {
   resize: vertical;
-  min-height: clamp(4rem, 10vw, 5rem);
+  min-height: calc(var(--size-4xl) * 1.5);
   line-height: 1.6;
 }
 
 /* === 标签组件 === */
 .label {
   display: block;
-  font-size: clamp(0.8125rem, 2vw, 0.875rem);
+  font-size: var(--size-md);
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: clamp(0.375rem, 1vw, 0.5rem);
+  margin-bottom: var(--size-3xs);
   line-height: 1.4;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
@@ -272,11 +288,11 @@
 .card {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border-radius: var(--effect-lg);
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
   box-shadow:
-    0 4px 16px var(--glass-shadow),
+    0 4px var(--effect-md) var(--glass-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transition: var(--transition);
   overflow: hidden;
@@ -285,18 +301,18 @@
 .card:hover {
   border-color: var(--glass-border-hover);
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 8px var(--effect-xl) rgba(0, 0, 0, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
 
 .card_header {
-  padding: clamp(1rem, 2.5vw, 1.5rem);
+  padding: var(--size-xl);
   border-bottom: 1px solid var(--glass-border);
 }
 
 .card_title {
-  font-size: clamp(1.125rem, 2.8vw, 1.25rem);
+  font-size: var(--size-xl);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -304,18 +320,18 @@
 }
 
 .card_subtitle {
-  font-size: clamp(0.875rem, 2.2vw, 0.9375rem);
+  font-size: var(--size-md);
   color: var(--text-secondary);
-  margin: clamp(0.25rem, 0.6vw, 0.375rem) 0 0 0;
+  margin: var(--size-3xs) 0 0 0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .card_body {
-  padding: clamp(1rem, 2.5vw, 1.5rem);
+  padding: var(--size-xl);
 }
 
 .card_footer {
-  padding: clamp(1rem, 2.5vw, 1.5rem);
+  padding: var(--size-xl);
   border-top: 1px solid var(--glass-border);
   background: rgba(0, 0, 0, 0.1);
 }
@@ -324,107 +340,66 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: clamp(0.25rem, 0.8vw, 0.375rem) clamp(0.5rem, 1.2vw, 0.625rem);
-  border-radius: var(--radius-sm);
-  font-size: clamp(0.75rem, 1.8vw, 0.8125rem);
+  padding: var(--size-3xs) var(--size-2xs);
+  border-radius: var(--effect-xs);
+  font-size: var(--size-xs);
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
 }
 
-.badge_primary {
-  background: var(--color-primary);
-  color: white;
-}
-
-.badge_secondary {
-  background: var(--glass-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-}
-
-.badge_success {
-  background: var(--color-success);
-  color: white;
-}
-
-.badge_warning {
-  background: var(--color-warning);
-  color: white;
-}
-
-.badge_danger {
-  background: var(--color-danger);
-  color: white;
-}
-
-.badge_info {
-  background: var(--color-info);
-  color: white;
-}
+.badge_primary { background: var(--color-primary); color: white; }
+.badge_secondary { background: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border); }
+.badge_success { background: var(--color-success); color: white; }
+.badge_warning { background: var(--color-warning); color: white; }
+.badge_danger { background: var(--color-danger); color: white; }
+.badge_info { background: var(--color-info); color: white; }
+.badge_neutral { background: var(--color-neutral); color: white; }
 
 /* === 警告框组件 === */
 .alert {
-  padding: clamp(0.75rem, 2vw, 1rem);
-  border-radius: var(--radius);
-  margin-bottom: clamp(1rem, 2.5vw, 1.25rem);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  padding: var(--size-md);
+  border-radius: var(--effect-lg);
+  margin-bottom: var(--size-lg);
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
   display: flex;
   align-items: flex-start;
-  gap: clamp(0.5rem, 1.2vw, 0.75rem);
+  gap: var(--size-2xs);
 }
 
-.alert_info {
-  background: var(--color-info-bg);
-  border: 1px solid var(--color-info);
-  color: var(--text-primary);
-}
-
-.alert_success {
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success);
-  color: var(--text-primary);
-}
-
-.alert_warning {
-  background: var(--color-warning-bg);
-  border: 1px solid var(--color-warning);
-  color: var(--text-primary);
-}
-
-.alert_danger {
-  background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger);
-  color: var(--text-primary);
-}
+.alert_info { background: var(--color-info-bg); border: 1px solid var(--color-info); color: var(--text-primary); }
+.alert_success { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--text-primary); }
+.alert_warning { background: var(--color-warning-bg); border: 1px solid var(--color-warning); color: var(--text-primary); }
+.alert_danger { background: var(--color-danger-bg); border: 1px solid var(--color-danger); color: var(--text-primary); }
+.alert_neutral { background: var(--color-neutral-bg); border: 1px solid var(--color-neutral); color: var(--text-primary); }
 
 .alert_title {
   font-weight: 600;
-  margin-bottom: clamp(0.25rem, 0.6vw, 0.375rem);
+  margin-bottom: var(--size-3xs);
 }
 
 .alert_message {
-  font-size: clamp(0.875rem, 2.2vw, 0.9375rem);
+  font-size: var(--size-md);
   line-height: 1.5;
 }
 
 /* === 进度条组件 === */
 .progress {
   width: 100%;
-  height: clamp(0.5rem, 1.5vw, 0.75rem);
+  height: var(--size-2xs);
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--effect-xs);
   overflow: hidden;
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
+  backdrop-filter: blur(var(--effect-md));
+  -webkit-backdrop-filter: blur(var(--effect-md));
 }
 
 .progress_bar {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary), var(--color-info));
-  border-radius: var(--radius-sm);
+  border-radius: var(--effect-xs);
   transition: width var(--duration-normal) var(--ease-in-out);
   position: relative;
   overflow: hidden;
@@ -433,15 +408,8 @@
 .progress_bar::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   animation: data_flow 2s linear infinite;
 }
 
@@ -449,7 +417,7 @@
 .divider {
   height: 1px;
   background: var(--glass-border);
-  margin: clamp(1rem, 2.5vw, 1.5rem) 0;
+  margin: var(--size-xl) 0;
   border: none;
 }
 
@@ -457,7 +425,7 @@
   width: 1px;
   height: auto;
   background: var(--glass-border);
-  margin: 0 clamp(1rem, 2.5vw, 1.5rem);
+  margin: 0 var(--size-xl);
   border: none;
   align-self: stretch;
 }
@@ -465,8 +433,8 @@
 /* === 加载器组件 === */
 .spinner {
   display: inline-block;
-  width: clamp(1.25rem, 3vw, 1.5rem);
-  height: clamp(1.25rem, 3vw, 1.5rem);
+  width: var(--size-xl);
+  height: var(--size-xl);
   border: 2px solid var(--glass-border);
   border-radius: 50%;
   border-top-color: var(--color-primary);
@@ -474,14 +442,14 @@
 }
 
 .spinner_small {
-  width: clamp(0.875rem, 2vw, 1rem);
-  height: clamp(0.875rem, 2vw, 1rem);
+  width: var(--size-md);
+  height: var(--size-md);
   border-width: 1.5px;
 }
 
 .spinner_large {
-  width: clamp(1.875rem, 4vw, 2.25rem);
-  height: clamp(1.875rem, 4vw, 2.25rem);
+  width: var(--size-2xl);
+  height: var(--size-2xl);
   border-width: 3px;
 }
 
@@ -496,18 +464,18 @@
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  padding: clamp(0.375rem, 1vw, 0.5rem) clamp(0.625rem, 1.5vw, 0.75rem);
+  padding: var(--size-3xs) var(--size-xs);
   background: rgba(0, 0, 0, 0.9);
   color: white;
-  font-size: clamp(0.75rem, 1.8vw, 0.8125rem);
-  border-radius: var(--radius-sm);
+  font-size: var(--size-xs);
+  border-radius: var(--effect-xs);
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
   transition: var(--transition);
   z-index: var(--z-tooltip);
-  margin-bottom: clamp(0.375rem, 1vw, 0.5rem);
+  margin-bottom: var(--size-3xs);
 }
 
 .tooltip::after {
@@ -522,7 +490,7 @@
   opacity: 0;
   visibility: hidden;
   transition: var(--transition);
-  margin-bottom: clamp(0.375rem, 1vw, 0.5rem);
+  margin-bottom: var(--size-3xs);
 }
 
 .tooltip:hover::before,
@@ -535,8 +503,8 @@
 .switch {
   position: relative;
   display: inline-block;
-  width: clamp(2.5rem, 6vw, 3rem);
-  height: clamp(1.25rem, 3vw, 1.5rem);
+  width: var(--size-3xl);
+  height: var(--size-xl);
 }
 
 .switch_input {
@@ -548,25 +516,22 @@
 .switch_slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   transition: var(--transition);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border-radius: var(--effect-lg);
+  backdrop-filter: blur(var(--effect-lg));
+  -webkit-backdrop-filter: blur(var(--effect-lg));
 }
 
 .switch_slider::before {
   content: '';
   position: absolute;
-  height: clamp(0.875rem, 2vw, 1rem);
-  width: clamp(0.875rem, 2vw, 1rem);
-  left: clamp(0.125rem, 0.3vw, 0.1875rem);
-  bottom: clamp(0.125rem, 0.3vw, 0.1875rem);
+  height: var(--size-lg);
+  width: var(--size-lg);
+  left: var(--size-3xs);
+  bottom: var(--size-3xs);
   background: white;
   transition: var(--transition);
   border-radius: 50%;
@@ -579,41 +544,28 @@
 }
 
 .switch_input:checked + .switch_slider::before {
-  transform: translateX(clamp(1.25rem, 3vw, 1.5rem));
+  transform: translateX(var(--size-lg));
 }
 
 /* === 响应式工具类 === */
 @media (max-width: 768px) {
   .btn {
-    padding: clamp(0.5rem, 1.5vw, 0.625rem) clamp(0.875rem, 3vw, 1.125rem);
-    font-size: clamp(0.875rem, 2.5vw, 0.9375rem);
+    padding: var(--size-2xs) var(--size-md);
+    font-size: var(--size-md);
   }
 
   .card_header,
   .card_body,
   .card_footer {
-    padding: clamp(0.875rem, 2.5vw, 1.125rem);
+    padding: var(--size-lg);
   }
 }
 
 /* === 无障碍增强 === */
 @media (prefers-reduced-motion: reduce) {
-  .btn,
-  .input,
-  .select,
-  .textarea,
-  .card,
-  .badge,
-  .progress_bar,
-  .switch_slider {
+  .btn, .input, .select, .textarea, .card, .badge, .progress_bar, .switch_slider {
     transition: none;
   }
-
-  .spinner {
-    animation: none;
-  }
-
-  .progress_bar::after {
-    animation: none;
-  }
+  .spinner { animation: none; }
+  .progress_bar::after { animation: none; }
 }
