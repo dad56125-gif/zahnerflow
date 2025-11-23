@@ -978,6 +978,7 @@
 
 /* 节点库和属性面板容器样式 - 从archive迁移适配新架构 */
 .node-library, .property-panel {
+  /* Property tabs 水平居中 */
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -987,6 +988,12 @@
   container-type: inline-size;
 }
 
+.property-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+}
 /* 兼容旧类名 */
 .sidebar {
   /* 映射到新样式 */
@@ -1001,27 +1008,24 @@
 
 /* 节点库和属性面板标题样式 - 使用archive原位置约束 */
 .node-library-header, .property-panel-header {
-  padding: clamp(0.75rem, 1.2vw, 1rem) clamp(1rem, 2vw, 1.25rem) clamp(0.5rem, 0.8vw, 0.75rem);
+  padding: clamp(0.375rem, 0.6vw, 0.5rem) clamp(1rem, 2vw, 1.25rem) clamp(0.25rem, 0.4vw, 0.375rem);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: clamp(0.25rem, 0.5vw, 0.5rem);
   flex-shrink: 0;
 }
 
-.node-library-title, .property-panel-title {
-  font-size: clamp(0.875rem, 2.5vw, 1rem);
+.bar-header-title {
+  /* 使用全局h3样式，只保留特有布局 */
   display: flex;
   align-items: center;
   gap: clamp(0.25rem, 1vw, 0.5rem);
-  font-weight: 600;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-.node-library-icon, .property-panel-icon {
+.bar-header-icon {
   font-size: clamp(1rem, 2.5vw, 1.125rem);
 }
 
-.node-library-text, .property-panel-text {
+.bar-header-text {
   flex: 1;
 }
 
@@ -1059,10 +1063,7 @@
 
 /* 节点分类标题样式 - 使用archive定义 */
 .category-title {
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  font-weight: 600;
-  margin-bottom: clamp(0.75rem, 2vw, 1rem);
-  color: white;
+  /* 使用全局h4样式，只保留特有属性 */
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

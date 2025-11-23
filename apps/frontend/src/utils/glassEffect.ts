@@ -64,21 +64,13 @@ class GlassEffect {
   private setupElementEffects(element: Element) {
     if (element.querySelector('.glass-main-shine')) return;
 
-    if (element.classList.contains('toolbar') ||
-        element.classList.contains('sidebar') ||
-        element.classList.contains('right-panels') ||
-        element.classList.contains('status-bar') ||
-        element.classList.contains('property-panel') ||
-        element.classList.contains('canvas-area') ||
-        element.classList.contains('canvas-container') ||
-        element.classList.contains('canvas-grid') ||
-        element.classList.contains('canvas-inner') ||
-        element.classList.contains('connections-layer') ||
-        element.classList.contains('floating-toolbar') ||
-        element.classList.contains('top-navbar') ||
-        element.classList.contains('device-controls') ||
-        element.classList.contains('device-hover-container') ||
-        element.classList.contains('device-modal')) {
+    // 白名单机制：只有明确列出的类名才会应用玻璃效果
+    const allowedClasses: string[] = [
+      'btn_base'
+    ];
+
+    const hasAllowedClass = allowedClasses.some(className => element.classList.contains(className));
+    if (!hasAllowedClass) {
       return;
     }
 

@@ -44,9 +44,9 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       return (
         <div className="property-panel glass" ref={ref}>
           <div className="property-panel-header">
-            <h2 className="property-panel-title">
+            <h3 className="bar-header-title">
               <span className="property-panel-text">属性</span>
-            </h2>
+            </h3>
           </div>
           <div className="empty-state">
             <div className="empty-text">未选择节点</div>
@@ -813,36 +813,36 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
     return (
       <div className="property-panel glass" ref={ref}>
         <div className="property-panel-header">
-          <h2 className="property-panel-title">
+          <h3 className="bar-header-title">
             <span className="property-panel-text">属性</span>
             <span className="property-panel-subtitle">{node.name}</span>
-          </h2>
-        </div>
-        <div className="property-tabs">
-          <button
-            className={`btn btn-property-tab glass ${activeTab === 'basic' ? 'btn-primary' : ''}`}
-            onClick={() => setActiveTab('basic')}
-          >
-            <span className="btn-icon">📋</span>
-            <span className="btn-text">基本</span>
-          </button>
-          <button
-            className={`btn btn-property-tab glass ${activeTab === 'parameters' ? 'btn-primary' : ''}`}
-            onClick={() => setActiveTab('parameters')}
-          >
-            <span className="btn-icon">⚙️</span>
-            <span className="btn-text">参数</span>
-          </button>
-          <button
-            className={`btn btn-property-tab glass ${activeTab === 'data' ? 'btn-primary' : ''}`}
-            onClick={() => setActiveTab('data')}
-          >
-            <span className="btn-icon">📊</span>
-            <span className="btn-text">数据</span>
-          </button>
+          </h3>
         </div>
         <div className="property-panel-content">
           <div className="property-content">
+            <div className="property-tabs">
+              <button
+                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'basic' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setActiveTab('basic')}
+              >
+                <span className="btn-icon">📋</span>
+                <span className="btn-text">基本</span>
+              </button>
+              <button
+                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'parameters' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setActiveTab('parameters')}
+              >
+                <span className="btn-icon">⚙️</span>
+                <span className="btn-text">参数</span>
+              </button>
+              <button
+                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'data' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setActiveTab('data')}
+              >
+                <span className="btn-icon">📊</span>
+                <span className="btn-text">数据</span>
+              </button>
+            </div>
             {activeTab === 'basic' && renderBasicProperties()}
             {activeTab === 'parameters' && renderParameters()}
             {activeTab === 'data' && renderDataProperties()}

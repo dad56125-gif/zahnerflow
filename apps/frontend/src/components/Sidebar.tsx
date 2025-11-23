@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
   return (
     <div className="node-library glass">
       <div className="node-library-header">
-        <h2 className="node-library-title">
+        <h3 className="bar-header-title">
           <span className="node-library-icon">📦</span>
           <span className="node-library-text">节点</span>
           {selectedWorkstation && (
@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
               ({selectedWorkstation === 'zahner-zennium' ? 'Zahner Zennium' : 'PP242'})
             </span>
           )}
-        </h2>
+        </h3>
       </div>
 
       <div className="node-library-content">
@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
 
               return (
                 <div key={category} className="node-category">
-                  <h3 className="category-title">{getNodeCategoryName(category as NodeCategory)}</h3>
+                  <h4 className="category-title">{getNodeCategoryName(category as NodeCategory)}</h4>
                   <div className="node-grid">
                     {categoryNodes.map((nodeType) => {
                       const config = getNodeConfig(nodeType);

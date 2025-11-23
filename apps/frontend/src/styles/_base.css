@@ -21,6 +21,14 @@
   --btn-medium-font: clamp(0.8125rem, 2vw, 0.875rem);
   --btn-medium-radius: var(--radius);
 
+  /* === 小按钮系统 === */
+  --btn-small-h: clamp(1.875rem, 1.5rem + 0.9vw, 2rem);       /* 30px高度 */
+  --btn-small-padding-y: clamp(0.375rem, 0.7vw, 0.5rem);      /* 6-8px垂直padding */
+  --btn-small-padding-x: clamp(0.75rem, 1.5vw, 1rem);         /* 12-16px水平padding */
+  --btn-small-font: clamp(0.6875rem, 1.6vw, 0.75rem);         /* 11-12px字体 */
+  --btn-small-radius: 0.875rem;                               /* 14px圆角 */
+  --btn-small-gap: clamp(0.375rem, 0.7vw, 0.5rem);           /* 6-8px元素间距 */
+
   /* === 迷你按钮系统 === */
   --btn-mini-h: clamp(1.5rem, 1.2rem + 0.8vw, 1.6rem);        /* 24px高度 */
   --btn-mini-padding-y: clamp(0.25rem, 0.5vw, 0.375rem);      /* 4-6px垂直padding */
@@ -218,12 +226,30 @@ h1, h2, h3, h4, h5, h6 {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-h1 { font-size: var(--text-title); }
-h2 { font-size: calc(var(--text-title) * 0.875); }
-h3 { font-size: calc(var(--text-title) * 0.75); }
-h4 { font-size: calc(var(--text-title) * 0.625); }
-h5 { font-size: calc(var(--text-title) * 0.5); }
-h6 { font-size: calc(var(--text-title) * 0.375); }
+h1 {
+  font-size: clamp(1.25rem, 4vw, 1.5rem);      /* 20px-24px */
+  padding: clamp(0.75rem, 1.5vw, 1rem) 0;      /* 12px-16px 上下padding */
+}
+h2 {
+  font-size: clamp(1rem, 3vw, 1.25rem);        /* 16px-20px */
+  padding: clamp(0.625rem, 1.25vw, 0.875rem) 0; /* 10px-14px 上下padding */
+}
+h3 {
+  font-size: clamp(0.875rem, 2.5vw, 1rem);      /* 14px-16px - 原Leftbar标题大小 */
+  padding: clamp(0.5rem, 1vw, 0.75rem) 0;      /* 8px-12px 上下padding */
+}
+h4 {
+  font-size: clamp(0.75rem, 2vw, 0.875rem);      /* 12px-14px */
+  padding: clamp(0.375rem, 0.75vw, 0.625rem) 0; /* 6px-10px 上下padding */
+}
+h5 {
+  font-size: clamp(0.625rem, 1.5vw, 0.75rem);    /* 10px-12px */
+  padding: clamp(0.25rem, 0.5vw, 0.5rem) 0;     /* 4px-8px 上下padding */
+}
+h6 {
+  font-size: clamp(0.5rem, 1vw, 0.625rem);        /* 8px-10px */
+  padding: clamp(0.125rem, 0.25vw, 0.375rem) 0; /* 2px-6px 上下padding */
+}
 
 p {
   margin-bottom: 1em;

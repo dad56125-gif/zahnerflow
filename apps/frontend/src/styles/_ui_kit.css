@@ -39,6 +39,16 @@
   min-height: var(--btn-h);
 }
 
+.btn_small {
+  gap: var(--btn-small-gap);
+  padding: var(--btn-small-padding-y) var(--btn-small-padding-x);
+  border-radius: var(--btn-small-radius);
+  font-size: var(--btn-small-font);
+  height: var(--btn-small-h);
+  min-width: clamp(3.5rem, 5.5vw, 5rem);
+  flex-shrink: 0;
+}
+
 .btn_mini {
   gap: var(--btn-mini-gap);
   padding: var(--btn-mini-padding-y) var(--btn-mini-padding-x);

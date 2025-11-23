@@ -366,7 +366,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   return (
     <div
-      className="canvas-container"
+      className="canvas-container glass"
       ref={canvasRef}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleCanvasDrop}
