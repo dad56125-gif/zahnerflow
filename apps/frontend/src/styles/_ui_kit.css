@@ -50,12 +50,12 @@
 }
 
 .btn_mini {
-  gap: var(--size-3xs);
-  padding: var(--size-3xs) var(--size-sm);
-  border-radius: var(--effect-xs); /* 约8px */
+  gap: var(--size-2xs);
+  padding: var(--size-2xs) var(--size-md);
+  border-radius: var(--effect-sm); /* 约12px */
   font-size: var(--size-xs);
-  height: var(--size-xl);          /* 约24px */
-  min-width: clamp(3rem, 5vw, 4.5rem);
+  height: var(--size-xl);          /* ~20px - 24px */
+  min-width: var(--size-5xl);      /* ~48px - 72px */
   flex-shrink: 0;
 }
 

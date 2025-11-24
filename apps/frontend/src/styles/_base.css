@@ -13,10 +13,11 @@
   --size-sm: clamp(0.75rem, 1.5vw, 0.8125rem);   /* ~12px - 13px */
   --size-md: clamp(0.8125rem, 1.8vw, 0.875rem);  /* ~13px - 14px (正文基准) */
   --size-lg: clamp(1rem, 2vw, 1.125rem);         /* ~16px - 18px */
-  --size-xl: clamp(1.25rem, 2.5vw, 1.5rem);      /* ~20px - 24px (标准间距) */
+  --size-xl: clamp(1.5rem, 3vw, 1.75rem);        /* ~24px - 28px (标准间距) */
   --size-2xl: clamp(1.875rem, 3vw, 2.25rem);     /* ~30px - 36px */
   --size-3xl: clamp(2.25rem, 4vw, 2.75rem);      /* ~36px - 44px (大按钮高度) */
   --size-4xl: clamp(2.5rem, 4vw, 3rem);          /* ~40px - 48px */
+  --size-5xl: clamp(3rem, 5vw, 4.5rem);          /* ~48px - 72px */
 
   /* === 视觉效果系统 (Effects) === */
   --effect-xs: 0.5rem;       /* 8px */
