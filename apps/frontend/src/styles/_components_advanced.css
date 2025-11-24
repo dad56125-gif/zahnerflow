@@ -7,7 +7,7 @@
 /* 公共：玻璃态容器基底 */
 .glass_enhanced,
 .modal_content,
-.notification_panel,
+.notification-panel,
 .dropdown_menu,
 .tabs_content,
 .accordion,
@@ -24,7 +24,7 @@
 /* 公共：Flex 居中对齐 */
 .modal,
 .modal_header,
-.notification_panel_header,
+.notification-panel-header,
 .dropdown_trigger,
 .accordion_trigger,
 .pagination,
@@ -35,7 +35,7 @@
 
 /* 公共：头部样式 (Modal & Notification) */
 .modal_header,
-.notification_panel_header {
+.notification-panel-header {
   justify-content: space-between;
   padding: var(--size-xl);
   border-bottom: 1px solid var(--glass-border);
@@ -130,7 +130,7 @@
 }
 
 .modal_title,
-.notification_panel_title {
+.notification-panel-title {
   font-size: var(--size-xl);
   font-weight: 600;
   color: var(--text-primary);
@@ -166,10 +166,10 @@
 
 
 /* === 通知面板组件 === */
-.notification_panel {
+.notification-panel {
   position: fixed;
-  top: var(--navbar-h);
-  right: var(--property-w);
+  bottom: calc(var(--navbar-h) + var(--space));
+  left: var(--sidebar-content-l);
   width: var(--notification-panel-width);
   max-height: var(--notification-panel-max-height);
   border-radius: var(--effect-lg);
@@ -181,13 +181,13 @@
   will-change: opacity, transform;
 }
 
-.notification_panel_body {
+.notification-panel-content {
   flex: 1;
   overflow-y: auto;
   padding: var(--size-lg);
 }
 
-.notification_item {
+.notification-item {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   border-radius: var(--effect-sm);
@@ -197,17 +197,16 @@
   cursor: pointer;
 }
 
-.notification_item:hover {
+.notification-item:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--glass-border-hover);
   transform: translateX(-2px);
 }
 
-.notification_item.unread {
+.notification-item.unread {
   border-left: 3px solid var(--color-primary);
   background: var(--color-primary-bg);
 }
-
 
 /* === 工具提示组件 === */
 .tooltip_container {
