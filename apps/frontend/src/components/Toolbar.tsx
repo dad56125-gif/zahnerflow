@@ -81,7 +81,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <>
-      <div className="positioned_container glass h_toolbar flex items-center justify-between gap_md">
+      <div className="toolbar glass">
         {/* 左侧：文件操作 */}
         <div className="flex items-center gap_sm">
           <div className="flex gap_xs">

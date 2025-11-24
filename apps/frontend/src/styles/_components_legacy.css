@@ -147,9 +147,9 @@
 }
 .sidebar_legacy.open { transform: translateX(0); }
 
-.toolbar_legacy { height: var(--toolbar-h); gap: var(--space); padding: 0 var(--size-lg); border-radius: var(--effect-lg); }
-.toolbar_group { gap: var(--size-2xs); padding-right: var(--space); border-right: 1px solid var(--glass-border); }
-.toolbar_group:last-child { border-right: none; }
+/* === 工具栏组件 === */
+.toolbar { position: absolute; top: 1rem; left: 0.5rem; right: 0.5rem; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--size-md); gap: var(--size-sm); height: var(--toolbar-h); z-index: var(--z-toolbar); }
+
 .topbar_legacy { position: fixed; top: 0; left: 0; right: 0; height: var(--navbar-h); z-index: var(--z-navbar); justify-content: space-between; padding: 0 var(--space); }
 
 .tabs_legacy { border-bottom: 1px solid var(--glass-border); background: rgba(0, 0, 0, 0.05); display: flex; overflow-x: auto; }
