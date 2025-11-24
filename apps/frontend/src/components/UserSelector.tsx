@@ -156,7 +156,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDeleteDialog]);
-
+  
   
   
   const handleCreateUser = async () => {
@@ -203,10 +203,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
   return (
     <div className="user-selector-container" ref={containerRef}>
-      {/* 用户选择器按钮 - 移除glass类以避免transform隔离 */}
+      {/* 用户选择器按钮 - 使用统一按钮系统样式 */}
       <button
         ref={buttonRef}
-        className="user-selector-button"
+        className="btn_base btn_layout btn_style_common btn_medium glass btn-primary"
         onClick={() => {
           if (isOpen) {
             // 如果在打开状态，立即重置箭头状态，开始关闭动画
@@ -218,7 +218,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           }
         }}
       >
-        <span className="user-display">{currentUser || '选择用户'}</span>
+        <span className="btn-icon">👤</span>
+        <span className="btn-text">{currentUser || '选择用户'}</span>
         <svg className={`dropdown-arrow ${isOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
                   <path
                     d="M -8 -3 L 0 5 L 8 -3"
@@ -297,45 +298,45 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         {showCreateDialog && (
           <div className="create-user-dialog portal-dialog" ref={dialogRef}>
             <div className="dialog-content" onMouseDown={(e) => e.stopPropagation()}>
-              <h3>创建新用户</h3>
-              <input
-                type="text" autoComplete="off" spellCheck={false}
-                placeholder="输入用户名"
-                value={newUserName}
-                onChange={(e) => {
-                  setNewUserName(e.target.value);
-                  if (error) setError(''); // 清除之前的错误
-                }}
-                autoFocus
-              />
-              {error && (
-                <div className="error-message" style={{ color: 'red', fontSize: '12px', marginTop: '8px' }}>
-                  {error}
-                </div>
-              )}
-              <div className="dialog-buttons">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowCreateDialog(false);
-                    setNewUserName('');
-                    setError('');
+                <h3>创建新用户</h3>
+                <input
+                  type="text" autoComplete="off" spellCheck={false}
+                  placeholder="输入用户名"
+                  value={newUserName}
+                  onChange={(e) => {
+                    setNewUserName(e.target.value);
+                    if (error) setError(''); // 清除之前的错误
                   }}
-                >
-                  取消
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleCreateUser}
-                  disabled={!newUserName.trim() || !!error}
-                  title={
-                    !newUserName.trim() ? '请输入用户名' :
-                    !!error ? error :
-                    '创建新用户'
-                  }
-                >
-                  确认
-                </button>
+                  autoFocus
+                />
+                {error && (
+                  <div className="error-message" style={{ color: 'red', fontSize: '12px', marginTop: '8px' }}>
+                    {error}
+                  </div>
+                )}
+                <div className="dialog-buttons">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowCreateDialog(false);
+                      setNewUserName('');
+                      setError('');
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleCreateUser}
+                    disabled={!newUserName.trim() || !!error}
+                    title={
+                      !newUserName.trim() ? '请输入用户名' :
+                      !!error ? error :
+                      '创建新用户'
+                    }
+                  >
+                    确认
+                  </button>
               </div>
             </div>
           </div>

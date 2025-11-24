@@ -223,16 +223,44 @@
 .workstation-selector, .device-controls { flex-shrink: 0; margin-left: auto; }
 .device-controls { gap: var(--size-sm); }
 
+/* 工作站选择器箭头样式 - 与用户选择器保持一致的翻转机制 */
+.workstation-selector .dropdown-arrow {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  position: relative;
+  transform-origin: center center;
+  transform: scaleY(1);
+}
+
+/* 箭头翻转状态 - 以箭头尾部（中心点）为轴进行上下翻转 */
+.workstation-selector .dropdown-arrow.rotated {
+  transform: scaleY(-1);
+  transform-origin: center center;
+}
+
 .workstation-dropdown-menu {
   position: fixed;
   z-index: 1500;
   min-width: 280px;
   max-height: 300px;
-  background: rgba(0, 0, 0, 0.4);
+
+  /* 玻璃态效果 - 与用户选择器保持一致 */
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  overflow: hidden;
   display: none;
   flex-direction: column;
   pointer-events: none;
-  transform: translateZ(100px);
+
+  /* 性能优化 */
+  will-change: opacity, transform, backdrop-filter;
 }
 
 .workstation-dropdown-menu.show {
@@ -242,18 +270,76 @@
 }
 
 .workstation-option {
-  gap: var(--size-sm); padding: var(--size-sm) var(--size-lg); margin: var(--size-3xs); border-radius: var(--effect-sm); cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.08);
+  width: 100%;
+  padding: 12px 16px;
+  height: var(--user-option-height);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
   transition: var(--transition);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  cursor: pointer;
   pointer-events: auto;
   position: relative;
 }
+
 .workstation-option:hover {
-  background: rgba(255, 255, 255, 0.15); transform: translateX(2px);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
 }
-.workstation-option.connected { border-left: 3px solid var(--color-success); } /* 原: device-online */
-.workstation-option.disconnected { border-left: 3px solid var(--color-danger); } /* 原: device-offline */
+
+/* 左侧线条状态机制 - 优化适配胶囊状选项 */
+.workstation-dropdown-menu .workstation-option.connected {
+  background: rgba(46, 125, 50, 0.1) !important; /* 绿色背景，与用户选择器选中状态类似 */
+  position: relative;
+  border: none !important; /* 确保移除任何边框 */
+}
+
+/* 使用伪元素创建左侧线条，与圆角容器更好地协调 */
+.workstation-dropdown-menu .workstation-option.connected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0; /* 从顶部到底部的完整线条 */
+  width: 3px; /* 线条宽度 */
+  background: var(--color-success);
+  z-index: 2; /* 确保在最前面 */
+}
+
+.workstation-dropdown-menu .workstation-option.disconnected {
+  position: relative;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 使用伪元素创建左侧线条，与圆角容器更好地协调 */
+.workstation-dropdown-menu .workstation-option.disconnected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0; /* 从顶部到底部的完整线条 */
+  width: 3px; /* 线条宽度 */
+  background: var(--color-danger);
+  z-index: 2;
+}
+
+/* 悬停时的状态显示 */
+.workstation-dropdown-menu .workstation-option.connected:hover,
+.workstation-dropdown-menu .workstation-option.disconnected:hover {
+  background: rgba(255, 255, 255, 0.15) !important; /* 悬停时覆盖默认背景 */
+}
+
+/* 确保选项内容不被伪元素遮挡 */
+.workstation-dropdown-menu .workstation-option > *,
+.workstation-dropdown-menu .workstation-option > div > * {
+  position: relative;
+  z-index: 3; /* 比伪元素z-index: 2更高 */
+}
 
 /* ==========================================================================
    4. 新布局适配器 (Flex Columns)
