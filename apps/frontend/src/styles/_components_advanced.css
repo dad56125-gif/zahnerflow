@@ -179,6 +179,8 @@
   overflow: hidden;
   animation: notification_slide_in var(--duration-normal) var(--ease-out);
   will-change: opacity, transform;
+  /* ✅ 修复：显式开启鼠标事件，防止Portal的pointer-events: none穿透 */
+  pointer-events: auto;
 }
 
 .notification-panel-content {
