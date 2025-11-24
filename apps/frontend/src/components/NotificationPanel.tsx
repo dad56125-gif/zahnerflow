@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Portal } from './common/Portal';
 
 interface Notification {
   id: string;
@@ -74,7 +75,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
   if (!isOpen) return null;
 
   return (
-    <div className="notification-panel overlay_base">
+    <Portal pointerEvents="auto">
+      <div className="notification-panel overlay_base">
       <div className="notification-panel-header">
         <div className="notification-panel-title">
           <span>通知中心</span>
@@ -140,5 +142,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
           )}
       </div>
     </div>
+    </Portal>
   );
 };
