@@ -547,6 +547,25 @@
   transform: translateX(var(--size-lg));
 }
 
+/* === 标题按钮行布局 === */
+.header_action_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-sm);
+}
+
+.header_action_row > :first-child {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.header_action_row > :last-child {
+  flex-shrink: 0;
+  min-width: auto;
+  width: auto;
+}
+
 /* === 响应式工具类 === */
 @media (max-width: 768px) {
   .btn {

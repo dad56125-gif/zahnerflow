@@ -359,6 +359,24 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .section-title { font-size: var(--size-md); font-weight: 600; margin-bottom: var(--space); color: white; }
+
+/* PropertyPanel 标签页样式 */
+.property-tabs {
+  display: flex;
+  gap: var(--size-3xs);
+  padding-top: var(--size-2xs);
+}
+
+.property-tabs .btn_base {
+  flex: 1;
+  justify-content: center;
+}
+
+/* PropertyPanel 特定样式 - 保持原有的上下padding */
+.properties-section .header_action_row {
+  padding: var(--size-2xs) 0;
+}
+
 .empty-text { font-size: var(--size-md); color: var(--text-muted); text-align: center; margin-top: var(--space); }
 
 @keyframes dropdownIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }

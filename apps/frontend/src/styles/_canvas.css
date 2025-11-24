@@ -182,7 +182,6 @@
 /* === 节点图标 === */
 .node-icon {
   font-size: clamp(1.25rem, 3vw, 1.5rem);
-  margin-right: clamp(0.5rem, 1.2vw, 0.75rem);
   opacity: 0.85;
   text-shadow:
     0 1px 2px rgba(0, 0, 0, 0.4),
@@ -241,12 +240,11 @@
   z-index: 20;
 }
 
-/* === 节点面板 === */
-.node-panel {
+/* === 节点网格 === */
+.node-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: clamp(0.5rem, 1.2vw, 0.75rem);
-  padding: clamp(0.75rem, 1.5vw, 1rem);
 }
 
 .node-item {
@@ -276,7 +274,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.node-item-icon {
+.node-icon {
   width: clamp(2rem, 4vw, 2.5rem);
   height: clamp(2rem, 4vw, 2.5rem);
   display: flex;
@@ -289,24 +287,11 @@
   transition: var(--transition);
 }
 
-.node-item:hover .node-item-icon {
+.node-item:hover .node-icon {
   opacity: 1;
   transform: scale(1.1);
 }
 
-.node-item-name {
-  font-size: clamp(0.6875rem, 1.5vw, 0.75rem);
-  font-weight: 500;
-  color: var(--text-primary);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  line-height: 1.2;
-}
-
-.node-item-category {
-  font-size: clamp(0.625rem, 1.2vw, 0.6875rem);
-  color: var(--text-secondary);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
 
 /* === 缩放控制 === */
 .zoom-controls {
@@ -451,45 +436,4 @@
 }
 
 /* === 响应式设计 === */
-@media (max-width: 768px) {
-  .zoom-controls {
-    bottom: clamp(0.75rem, 1.5vw, 1rem);
-    right: clamp(0.75rem, 1.5vw, 1rem);
-  }
-
-  .btn-zoom {
-    width: clamp(2rem, 3.5vw, 2.5rem);
-    height: clamp(2rem, 3.5vw, 2.5rem);
-    font-size: clamp(0.875rem, 1.5vw, 1rem);
-  }
-
-  .node {
-    font-size: clamp(0.6875rem, 1.5vw, 0.75rem);
-    padding: clamp(0.375rem, 1vw, 0.5rem) clamp(0.5rem, 1.2vw, 0.75rem);
-  }
-
-  .node-icon {
-    font-size: clamp(1rem, 2vw, 1.25rem);
-    margin-right: clamp(0.375rem, 1vw, 0.5rem);
-  }
-
-  .node-panel {
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: clamp(0.375rem, 1vw, 0.5rem);
-    padding: clamp(0.5rem, 1.2vw, 0.75rem);
-  }
-
-  .node-item {
-    padding: clamp(0.5rem, 1.2vw, 0.75rem);
-  }
-
-  .node-item-icon {
-    width: clamp(1.5rem, 3vw, 2rem);
-    height: clamp(1.5rem, 3vw, 2rem);
-    font-size: clamp(1rem, 2vw, 1.25rem);
-  }
-
-  .canvas-grid {
-    background-size: clamp(12px, 2.5vw, 16px) clamp(12px, 2.5vw, 16px);
-  }
-}
+/* 移动端响应式已移除 - 使用容器查询替代 */
