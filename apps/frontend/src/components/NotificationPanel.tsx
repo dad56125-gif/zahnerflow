@@ -75,8 +75,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
   if (!isOpen) return null;
 
   return (
-    <Portal pointerEvents="auto">
-      <div className="notification-panel overlay_base">
+    <div className="notification-panel overlay_base">
       <div className="notification-panel-header">
         <div className="notification-panel-title">
           <span>通知中心</span>

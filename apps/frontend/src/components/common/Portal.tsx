@@ -38,10 +38,13 @@ export const Portal: React.FC<PortalProps> = ({
     node.style.width = '100%';
 
     // ✅ 动态设置 pointer-events
-    node.style.pointerEvents = pointerEvents;
+    // 只有当明确设置为'none'时才阻断事件，否则让事件正常穿透到子元素
+    if (pointerEvents === 'none') {
+      node.style.pointerEvents = 'none';
+    }
 
     // 注意：如果是模态框，zIndex 可能需要更高，或者由内部 CSS 控制
-    node.style.zIndex = pointerEvents === 'auto' ? '1000' : '999';
+    node.style.zIndex = pointerEvents === 'auto' ? '1500' : '999';
 
     const target = container || document.body;
     target.appendChild(node);
