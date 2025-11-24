@@ -250,7 +250,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         {(isOpen || isHiding) && (
           <div
             ref={dropdownRef}
-            className={`user-dropdown ${isHiding ? 'hiding' : 'show'}`}
+            className={`user-dropdown overlay_base ${isHiding ? 'hiding' : 'show'}`}
             style={{
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
@@ -296,7 +296,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 新建用户弹窗 */}
       <Portal pointerEvents="auto">
         {showCreateDialog && (
-          <div className="create-user-dialog portal-dialog" ref={dialogRef}>
+          <div className="create-user-dialog portal-dialog overlay_base" ref={dialogRef}>
             <div className="dialog-content">
                 <h3>创建新用户</h3>
                 <input
@@ -346,7 +346,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 删除用户确认弹窗 */}
       <Portal pointerEvents="auto">
         {showDeleteDialog && (
-          <div className="create-user-dialog portal-dialog" ref={deleteDialogRef}>
+          <div className="create-user-dialog portal-dialog overlay_base" ref={deleteDialogRef}>
           <div className="dialog-content">
             <div className="delete-warning-icon">⚠️</div>
             <h3>确认删除用户</h3>

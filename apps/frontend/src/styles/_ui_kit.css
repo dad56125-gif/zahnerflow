@@ -356,6 +356,16 @@
 .badge_info { background: var(--color-info); color: white; }
 .badge_neutral { background: var(--color-neutral); color: white; }
 
+/* === 统一Overlay基础类 === */
+.overlay_base {
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
 /* === 警告框组件 === */
 .alert {
   padding: var(--size-md);

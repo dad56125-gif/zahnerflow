@@ -85,14 +85,7 @@
   min-width: 280px;
   max-height: 300px; /* 合理的最大高度限制 */
 
-  /* 玻璃态效果 - 锁定模糊强度9px，增加透明度到0.1 */
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-
+  /* 背景模糊效果由overlay_base类提供 */
   overflow: hidden;
   display: none; /* 初始完全隐藏，不参与布局 */
   flex-direction: column;
@@ -209,7 +202,7 @@
   user-select: none;
 }
 
-/* 创建用户对话框 - Portal渲染，与下拉栏相同的玻璃态效果 */
+/* 创建用户对话框 - Portal渲染，使用overlay_base统一的玻璃态效果 */
 .create-user-dialog {
   position: fixed;
   top: 50%;
@@ -217,13 +210,7 @@
   transform: translate(-50%, -50%);
   z-index: 1500; /* Portal中的层级，确保在其他内容之上 */
 
-  /* 与下拉栏相同的玻璃态效果 */
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  /* 背景模糊效果由overlay_base类提供 */
   padding: 24px;
 }
 
