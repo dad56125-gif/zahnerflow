@@ -246,7 +246,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </button>
 
       {/* 用户下拉菜单 - 使用Portal渲染到body下，绕过层叠上下文限制 */}
-      <Portal>
+      <Portal pointerEvents="none">
         {(isOpen || isHiding) && (
           <div
             ref={dropdownRef}
@@ -294,10 +294,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </Portal>
 
       {/* 新建用户弹窗 */}
-      <Portal>
+      <Portal pointerEvents="auto">
         {showCreateDialog && (
           <div className="create-user-dialog portal-dialog" ref={dialogRef}>
-            <div className="dialog-content" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="dialog-content">
                 <h3>创建新用户</h3>
                 <input
                   type="text" autoComplete="off" spellCheck={false}
@@ -344,10 +344,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </Portal>
 
       {/* 删除用户确认弹窗 */}
-      <Portal>
+      <Portal pointerEvents="auto">
         {showDeleteDialog && (
           <div className="create-user-dialog portal-dialog" ref={deleteDialogRef}>
-          <div className="dialog-content" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="dialog-content">
             <div className="delete-warning-icon">⚠️</div>
             <h3>确认删除用户</h3>
             <p className="delete-warning-text">
