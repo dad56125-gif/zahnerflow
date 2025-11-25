@@ -166,7 +166,7 @@ export const glassEffect = new GlassEffect();
 
 // 自动初始化
 if (typeof window !== 'undefined') {
-  glassEffect.init();
+  setupAutoGlassEffect();
 }
 
 // 为所有玻璃态元素自动添加反光效果

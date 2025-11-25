@@ -58,7 +58,6 @@
    2. 组件具体实现
    ========================================================================== */
 
-/* === 玻璃态效果增强 (特有逻辑) === */
 .glass_enhanced {
   border-radius: var(--effect-lg);
   position: relative;
@@ -168,8 +167,8 @@
 /* === 通知面板组件 === */
 .notification-panel {
   position: fixed;
-  bottom: calc(var(--navbar-h) + var(--space));
-  left: var(--sidebar-content-l);
+  bottom: calc(var(--navbar-h) + 2 * var(--space));
+  left: var(--sidebar-l);
   width: var(--notification-panel-width);
   max-height: var(--notification-panel-max-height);
   border-radius: var(--effect-lg);

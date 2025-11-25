@@ -189,9 +189,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const handleNodeDragStartEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
-    
+
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('nodeId', node.id);
+
+    // ✅ 添加动态光效
+    glassEffect.setupElementEffects(element as HTMLElement);
+
+    // ✅ 设置透明度
     (event.currentTarget as HTMLElement).style.opacity = '0.5';
   };
 
