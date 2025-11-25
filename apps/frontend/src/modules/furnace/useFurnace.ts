@@ -75,11 +75,12 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     if(state.connection_status !== 'connected') return;
     try {
       update({ loading: true, segment_progress: { active: true, type: 'read', progress: 0 } });
-
-      // 使用批量接口一次性读取所有段
-      const segments = await FurnaceApi.getProgramSegments();
-
-      update({ segments, segment_progress: { active: true, type: 'read', progress: 100 } });
+      const arr: ProgramSegment[] = [];
+      for(let i=1; i<=27; i++) {
+        arr.push(await FurnaceApi.getSegment(i));
+        update({ segment_progress: { active: true, type: 'read', progress: Math.round((i/27)*100) } });
+      }
+      update({ segments: arr });
       add_log('success', 'Read 27 segments');
     } catch(e) { handle_error(e); }
     finally { update({ loading: false, segment_progress: null }); }
@@ -89,14 +90,14 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     if(state.connection_status !== 'connected') return;
     try {
       update({ loading: true, segment_progress: { active: true, type: 'write', progress: 0 } });
-
-      // 使用批量接口一次性写入所有段
-      await FurnaceApi.writeProgramSegments(segs);
-
+      for(let i=0; i<segs.length; i++) {
+        await FurnaceApi.writeSegment(segs[i]);
+        update({ segment_progress: { active: true, type: 'write', progress: Math.round(((i+1)/segs.length)*100) } });
+      }
       // 更新本地缓存
       const newSegs = [...state.segments];
       segs.forEach(s => { const idx = newSegs.findIndex(x=>x.id===s.id); if(idx>=0) newSegs[idx]=s; else newSegs.push(s); });
-      update({ segments: newSegs, segment_progress: { active: true, type: 'write', progress: 100 } });
+      update({ segments: newSegs });
       add_log('success', `Wrote ${segs.length} segments`);
     } catch(e) { handle_error(e); }
     finally { update({ loading: false, segment_progress: null }); }
