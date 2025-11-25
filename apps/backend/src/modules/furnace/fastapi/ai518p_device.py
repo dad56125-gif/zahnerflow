@@ -1,6 +1,6 @@
 ﻿from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 import serial
 import serial.tools.list_ports
 import time
@@ -245,35 +245,6 @@ def get_segment_detail(segment_id: int):
             "timestamp": time.time()
         }
     }
-
-# [后端/脚本专用] 批量接口
-@app.get("/program/segments")
-def get_segments():
-    segments = []
-    for i in range(27):
-        t_resp = driver.read_param(0x1A + i * 2)
-        v_resp = driver.read_param(0x1B + i * 2)
-        segments.append({
-            "id": i + 1,
-            "temperature": t_resp["value"] / 10.0,
-            "time": v_resp["value"]
-        })
-    return segments
-
-@app.post("/program/segments")
-def set_segments(items: List[ProgramSegment]):
-    """批量设置程序段 - 使用write_parameter统一处理温度地址转换"""
-    for item in items:
-        idx = item.id - 1
-        if 0 <= idx < 27:
-            t_code = 0x1A + idx * 2
-            v_code = 0x1B + idx * 2
-
-            # 使用统一的write_parameter API，它会自动处理温度地址×10转换
-            write_parameter(ParameterRequest(code=t_code, value=int(round(item.temperature))))
-            write_parameter(ParameterRequest(code=v_code, value=item.time))
-
-    return {"count": len(items), "status": "written"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -173,15 +173,9 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       return result.segment_data;
   }
 
-  async setProgramSegments(segs: ProgramSegment[]) {
-    // 后端/自动化调用的批量接口
-    return this.executeCommand(() => this.device.setProgramSegments(segs as any), 'set_program');
-  }
-  
   // Passthroughs
   async health() { return this.device.health(); }
   async ports() { return this.device.ports(); }
-  async getProgramSegments() { return this.device.getProgramSegments(); } // 批量读
   async list_presets() { return this.dataService.listPresets(); }
   async create_preset(n: string, s: any[], d?: string) { return this.dataService.createPreset(n, s, d); }
   async get_preset(name: string) { return this.dataService.getPreset(name); }

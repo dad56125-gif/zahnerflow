@@ -19,12 +19,9 @@ export class FurnaceController {
   @Get('ports') ports() { return this.svc.ports(); }
 
   @Post('segment/set') segmentSet(@Body() b: { segment: number }) { return this.svc.setSegment(b.segment); }
-  
+
   // 这里暴露单点读取给前端
   @Get('program/segments/:id') getSegment(@Param('id') id: string) { return this.svc.getSegment(parseInt(id)); }
-  
-  @Get('program/segments') getSegments() { return this.svc.getProgramSegments(); }
-  @Post('program/segments') setSegments(@Body() s: any[]) { return this.svc.setProgramSegments(s); }
 
   // Presets & History
   @Get('presets') list() { return this.data.listPresets(); }

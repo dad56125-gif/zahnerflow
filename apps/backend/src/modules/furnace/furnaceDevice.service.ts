@@ -31,16 +31,6 @@ export class FurnaceDeviceService {
     return data;
   }
 
-  async getProgramSegments(): Promise<any> {
-    const { data } = await this.http.get('/program/segments', { timeout: this.extendedTimeout });
-    return data;
-  }
-
-  async setProgramSegments(segments: any[]): Promise<any> {
-    const { data } = await this.http.post('/program/segments', segments, { timeout: this.extendedTimeout });
-    return data;
-  }
-
   async setParameter(code: number, value: number): Promise<any> {
     const { data } = await this.http.post('/parameter/write', { code, value });
     return data;
