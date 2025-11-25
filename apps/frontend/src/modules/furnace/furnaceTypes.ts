@@ -33,8 +33,8 @@ export interface FurnaceStatus {
   mv?: number;             // 输出功率 (%)
   status?: string;         // 设备状态
   segment?: number;        // 当前程序段
-  segment_time?: number;   // 段内运行时间 (秒)
-  segment_time_set?: number; // 段设定时间 (秒)
+  segment_time?: number;   // 段内运行时间 (分钟)
+  segment_time_set?: number; // 段设定时间 (分钟)
 }
 
 // 后端统一响应格式
@@ -46,8 +46,8 @@ export interface FurnaceOperationResponse {
     mv: number;           // 输出值
     status: number;       // 状态字节
     segment?: number;     // 程序段（可选）
-    segment_time?: number; // 程序段时间（可选）
-    segment_time_set?: number; // 程序段设定时间（可选）
+    segment_time?: number; // 程序段时间（分钟）（可选）
+    segment_time_set?: number; // 程序段设定时间（分钟）（可选）
     timestamp: string;    // 时间戳
     operation: string;    // 操作类型
   };

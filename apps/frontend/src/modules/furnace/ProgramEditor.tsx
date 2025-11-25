@@ -55,35 +55,56 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
       </div>
 
       <div className="segments-grid">
-        {[0, 15].map(offset => (
-          <div className="segments-column" key={offset}>
-            {Array.from({ length: 15 }, (_, i) => {
-              const id = i + 1 + offset;
-              if (id > 30) return null;
-              const seg = furnaceState.segments.find(s => s.id === id);
-              return (
-                <div key={id} className="segment-row">
-                  <label>C{id.toString().padStart(2, '0')}</label>
+        {Array.from({ length: 14 }, (_, rowIndex) => {
+          const id1 = rowIndex * 2 + 1;
+          const id2 = rowIndex * 2 + 2;
+          if (id1 > 27) return null;
+          const seg1 = furnaceState.segments.find(s => s.id === id1);
+          const seg2 = furnaceState.segments.find(s => s.id === id2);
+          return (
+            <div key={rowIndex} className="segment-row">
+              {/* 第一个段 */}
+              <label>C{id1.toString().padStart(2, '0')}</label>
+              <input
+                type="number"
+                value={inputs[`temp_${id1}`] ?? (seg1?.temperature ?? 0)}
+                onChange={e => setInputs(p => ({ ...p, [`temp_${id1}`]: e.target.value }))}
+                disabled={!isConnected}
+              />
+              <span>℃</span>
+              <label>t{id1.toString().padStart(2, '0')}</label>
+              <input
+                type="number"
+                value={inputs[`time_${id1}`] ?? (seg1?.time ?? 0)}
+                onChange={e => setInputs(p => ({ ...p, [`time_${id1}`]: e.target.value }))}
+                disabled={!isConnected}
+              />
+              <span>min</span>
+
+              {/* 第二个段（如果有） */}
+              {id2 <= 27 && (
+                <>
+                  <label style={{ marginLeft: '20px' }}>C{id2.toString().padStart(2, '0')}</label>
                   <input
                     type="number"
-                    value={inputs[`temp_${id}`] ?? (seg?.temperature ?? 0)}
-                    onChange={e => setInputs(p => ({ ...p, [`temp_${id}`]: e.target.value }))}
+                    value={inputs[`temp_${id2}`] ?? (seg2?.temperature ?? 0)}
+                    onChange={e => setInputs(p => ({ ...p, [`temp_${id2}`]: e.target.value }))}
                     disabled={!isConnected}
                   />
                   <span>℃</span>
-                  <label>t{id.toString().padStart(2, '0')}</label>
+                  <label>t{id2.toString().padStart(2, '0')}</label>
                   <input
                     type="number"
-                    value={inputs[`time_${id}`] ?? (seg?.time ?? 0)}
-                    onChange={e => setInputs(p => ({ ...p, [`time_${id}`]: e.target.value }))}
+                    value={inputs[`time_${id2}`] ?? (seg2?.time ?? 0)}
+                    onChange={e => setInputs(p => ({ ...p, [`time_${id2}`]: e.target.value }))}
                     disabled={!isConnected}
                   />
                   <span>min</span>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

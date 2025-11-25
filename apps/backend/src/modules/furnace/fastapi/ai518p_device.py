@@ -170,7 +170,7 @@ def status():
     d_time = driver.read_param(0x56)
 
     seg_total_time = 0
-    if 1 <= current_seg <= 27:
+    if 1 <= current_seg <= 30:
         time_set_code = 0x1B + (current_seg - 1) * 2
         d_set_time = driver.read_param(time_set_code)
         seg_total_time = d_set_time["value"]
@@ -262,16 +262,16 @@ def get_segments():
 
 @app.post("/program/segments")
 def set_segments(items: List[ProgramSegment]):
-    """批量设置程序段 - 不再做×10转换，由write_parameter统一处理"""
+    """批量设置程序段 - 使用write_parameter统一处理温度地址转换"""
     for item in items:
         idx = item.id - 1
         if 0 <= idx < 27:
             t_code = 0x1A + idx * 2
             v_code = 0x1B + idx * 2
 
-            # 直接传递用户格式，温度转换由write_parameter处理
-            driver.write_param(t_code, item.temperature)
-            driver.write_param(v_code, item.time)
+            # 使用统一的write_parameter API，它会自动处理温度地址×10转换
+            write_parameter(ParameterRequest(code=t_code, value=int(round(item.temperature))))
+            write_parameter(ParameterRequest(code=v_code, value=item.time))
 
     return {"count": len(items), "status": "written"}
 

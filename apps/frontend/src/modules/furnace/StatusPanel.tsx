@@ -67,7 +67,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
             <label className="status-label">运行/设定时间:</label>
             <span className="status-value time-value">
               {furnaceState.device_status && furnaceState.device_status.segment_time !== undefined && furnaceState.device_status.segment_time_set !== undefined ?
-                `${(furnaceState.device_status.segment_time / 60).toFixed(1)} / ${(furnaceState.device_status.segment_time_set / 60).toFixed(1)} 分钟`
+                `${furnaceState.device_status.segment_time} / ${furnaceState.device_status.segment_time_set} 分钟`
                 : '-- / -- 分钟'
               }
             </span>
