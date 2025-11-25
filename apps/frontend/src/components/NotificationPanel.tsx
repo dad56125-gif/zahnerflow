@@ -83,7 +83,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
         <div
           className="overlay_base notification-panel"
           onClick={e => e.stopPropagation()}
-          style={{ position: 'absolute', top: '50px', right: '20px' }}
         >
           <div className="notification-panel-header">
             <div className="notification-panel-title">
