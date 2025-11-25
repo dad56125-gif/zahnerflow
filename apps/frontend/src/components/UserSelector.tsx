@@ -26,28 +26,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null);
   const deleteDialogRef = useRef<HTMLDivElement>(null);
 
-  // 手动处理点击外部关闭（替代useOnClickOutside）
-  // 因为下拉菜单在Portal中，无法被containerRef捕获
-  useEffect(() => {
-    if (!isOpen && !isHiding) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-
-      // 如果点击在按钮上，不关闭（按钮会自己处理toggle）
-      if (buttonRef.current?.contains(target)) return;
-
-      // 如果点击在下拉菜单上，不关闭
-      if (dropdownRef.current?.contains(target)) return;
-
-      // 点击在其他地方，开始关闭动画
-      setIsHiding(true);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, isHiding]);
-
+  
   // 处理动画结束事件
   useEffect(() => {
     if (!isHiding) return;
@@ -117,46 +96,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     }
   }, [isOpen]);
 
-  // 手动处理新建用户对话框点击外部关闭
-  useEffect(() => {
-    if (!showCreateDialog) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-
-      // 如果点击在对话框内容区域，不关闭
-      const dialogContent = dialogRef.current?.querySelector('.dialog-content');
-      if (dialogContent?.contains(target)) return;
-
-      // 点击遮罩层，关闭对话框
-      setShowCreateDialog(false);
-      setNewUserName('');
-      setError('');
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showCreateDialog]);
-
-  // 手动处理删除用户对话框点击外部关闭
-  useEffect(() => {
-    if (!showDeleteDialog) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-
-      // 如果点击在对话框内容区域，不关闭
-      const dialogContent = deleteDialogRef.current?.querySelector('.dialog-content');
-      if (dialogContent?.contains(target)) return;
-
-      // 点击遮罩层，关闭对话框
-      cancelDeleteUser();
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showDeleteDialog]);
   
+    
   
   
   const handleCreateUser = async () => {
@@ -246,58 +187,75 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </button>
 
       {/* 用户下拉菜单 - 使用Portal渲染到body下，绕过层叠上下文限制 */}
-      <Portal pointerEvents="none">
-        {(isOpen || isHiding) && (
-          <div
-            ref={dropdownRef}
-            className={`user-dropdown overlay_base ${isHiding ? 'hiding' : 'show'}`}
-            style={{
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              width: `${dropdownPosition.width}px`
-            } as React.CSSProperties}
-          >
-            <div className="user-list">
-              {users.length > 0 ? (
-                users.map(user => (
-                  <div
-                    key={user.user}
-                    className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
+      <Portal
+        isOpen={isOpen || isHiding}
+        onClose={() => setIsHiding(true)}
+        pointerEvents="none"
+      >
+        <div
+          ref={dropdownRef}
+          className={`user-dropdown overlay_base ${isHiding ? 'hiding' : 'show'}`}
+          style={{
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`
+          } as React.CSSProperties}
+        >
+          <div className="user-list">
+            {users.length > 0 ? (
+              users.map(user => (
+                <div
+                  key={user.user}
+                  className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
+                >
+                  <span
+                    className="user-name"
+                    onClick={() => {
+                      onUserChange(user.user);
+                      setIsHiding(true);
+                    }}
                   >
-                    <span
-                      className="user-name"
-                      onClick={() => {
-                        onUserChange(user.user);
-                        setIsHiding(true);
-                      }}
-                    >
-                      {user.user}
-                    </span>
-                    <button
-                      className="delete-user-btn"
-                      onClick={(e) => {
-                        e.stopPropagation(); // 防止触发用户选择
-                        handleDeleteUser(user.user);
-                      }}
-                      title="删除用户"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="empty-users">暂无用户</div>
-              )}
-            </div>
+                    {user.user}
+                  </span>
+                  <button
+                    className="delete-user-btn"
+                    onClick={(e) => {
+                      e.stopPropagation(); // 防止触发用户选择
+                      handleDeleteUser(user.user);
+                    }}
+                    title="删除用户"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="empty-users">暂无用户</div>
+            )}
           </div>
-        )}
+        </div>
       </Portal>
 
       {/* 新建用户弹窗 */}
-      <Portal pointerEvents="auto">
+      <Portal
+        isOpen={showCreateDialog}
+        onClose={() => {
+          setShowCreateDialog(false);
+          setNewUserName('');
+          setError('');
+        }}
+        pointerEvents="none"
+      >
         {showCreateDialog && (
-          <div className="create-user-dialog portal-dialog overlay_base" ref={dialogRef}>
-            <div className="dialog-content">
+          <div className="create-user-dialog overlay_base" onClick={(e) => {
+            // 点击遮罩层（外部）
+            if (e.target === e.currentTarget) {
+              setShowCreateDialog(false);
+              setNewUserName('');
+              setError('');
+            }
+          }}>
+            <div className="dialog-content" onClick={e => e.stopPropagation()}>
                 <h3>创建新用户</h3>
                 <input
                   type="text" autoComplete="off" spellCheck={false}
@@ -344,34 +302,40 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       </Portal>
 
       {/* 删除用户确认弹窗 */}
-      <Portal pointerEvents="auto">
+      <Portal
+        isOpen={showDeleteDialog}
+        onClose={cancelDeleteUser}
+        pointerEvents="none"
+      >
         {showDeleteDialog && (
-          <div className="create-user-dialog portal-dialog overlay_base" ref={deleteDialogRef}>
-          <div className="dialog-content">
-            <div className="delete-warning-icon">⚠️</div>
-            <h3>确认删除用户</h3>
-            <p className="delete-warning-text">
-              确定要删除用户 <strong>"{userToDelete}"</strong> 吗？
-            </p>
-            <p className="delete-warning-subtext">
-              此操作无法撤销，用户相关数据将被永久删除。
-            </p>
-            <div className="dialog-buttons">
-              <button
-                className="btn btn-secondary"
-                onClick={cancelDeleteUser}
-              >
-                取消
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={confirmDeleteUser}
-              >
-                删除用户
-              </button>
+          <div className="create-user-dialog overlay_base" onClick={(e) => {
+            if (e.target === e.currentTarget) cancelDeleteUser();
+          }}>
+            <div className="dialog-content" onClick={e => e.stopPropagation()}>
+              <div className="delete-warning-icon">⚠️</div>
+              <h3>确认删除用户</h3>
+              <p className="delete-warning-text">
+                确定要删除用户 <strong>"{userToDelete}"</strong> 吗？
+              </p>
+              <p className="delete-warning-subtext">
+                此操作无法撤销，用户相关数据将被永久删除。
+              </p>
+              <div className="dialog-buttons">
+                <button
+                  className="btn btn-secondary"
+                  onClick={cancelDeleteUser}
+                >
+                  取消
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={confirmDeleteUser}
+                >
+                  删除用户
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         )}
       </Portal>
     </div>

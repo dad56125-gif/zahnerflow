@@ -1,65 +1,112 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 interface PortalProps {
   children: React.ReactNode;
-  container?: HTMLElement | null;
-  /**
-   * 控制 Portal 容器的点击穿透行为
-   * 'none': 点击穿透（适用于下拉菜单、Tooltip，不阻挡下方内容）- 默认值
-   * 'auto': 阻挡点击（适用于模态框、全屏遮罩）
-   */
+  container?: HTMLElement;
   pointerEvents?: 'none' | 'auto';
+  isOpen?: boolean;
+  onClose?: () => void;
+  id?: string;
 }
 
-/**
- * React Portal组件
- * 将子元素渲染到指定的DOM容器（默认是document.body）
- * 用途：
- * 1. 绕过祖先元素的层叠上下文限制（如transform、filter等）
- * 2. 实现模态框、下拉菜单等需要脱离正常文档流的组件
- * 3. 确保backdrop-filter能看到整个页面的内容
- */
+const nodeCache = new WeakMap<HTMLElement, Map<string, HTMLDivElement>>();
+
 export const Portal: React.FC<PortalProps> = ({
   children,
   container,
-  pointerEvents = 'none' // 保持默认行为，兼容现有的下拉菜单
+  pointerEvents = 'none',
+  isOpen = true,
+  onClose,
+  id = 'portal-root'
 }) => {
-  const mountNode = useRef<HTMLDivElement | null>(null);
+  const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
+
+  const mode = (() => {
+    if (!onClose) return 'none';
+    return React.Children.count(children) === 1 ? 'auto' : 'none';
+  })();
 
   useEffect(() => {
-    const node = document.createElement('div');
-    mountNode.current = node;
-
-    // 基础样式
-    node.style.position = 'absolute';
-    node.style.top = '0';
-    node.style.left = '0';
-    node.style.width = '100%';
-
-    // ✅ 动态设置 pointer-events
-    // 只有当明确设置为'none'时才阻断事件，否则让事件正常穿透到子元素
-    if (pointerEvents === 'none') {
-      node.style.pointerEvents = 'none';
+    if (!isOpen) {
+      setMountNode(null);
+      return;
     }
 
-    // 注意：如果是模态框，zIndex 可能需要更高，或者由内部 CSS 控制
-    node.style.zIndex = pointerEvents === 'auto' ? '1500' : '999';
-
     const target = container || document.body;
-    target.appendChild(node);
+    let containerMap = nodeCache.get(target);
+    
+    if (!containerMap) {
+      containerMap = new Map();
+      nodeCache.set(target, containerMap);
+    }
+
+    const cacheKey = `${pointerEvents}-${mode}`;
+    let node = containerMap.get(cacheKey);
+
+    if (!node) {
+      node = document.createElement('div');
+      node.id = id;
+      Object.assign(node.style, {
+        position: 'absolute', top: '0', left: '0', width: '100%',
+        pointerEvents: pointerEvents,
+        zIndex: pointerEvents === 'auto' ? '1500' : 'auto'
+      });
+      target.appendChild(node);
+      containerMap.set(cacheKey, node);
+    }
+
+    setMountNode(node);
 
     return () => {
-      // 清理：卸载时移除节点
-      if (mountNode.current && target.contains(mountNode.current)) {
-        target.removeChild(mountNode.current);
+      // ✅ 修复：删除 isOpen === false 判断
+      if (node && node.parentElement) {
+        node.parentElement.removeChild(node);
+        containerMap!.delete(cacheKey);
+        if (containerMap!.size === 0) {
+          nodeCache.delete(target);
+        }
       }
     };
-  }, [container, pointerEvents]); // 添加 pointerEvents 到依赖项
+  }, [isOpen, container, pointerEvents, id, mode]);
 
-  if (!mountNode.current) {
-    return null;
-  }
+  // Popover 模式：监听 document
+  useEffect(() => {
+    if (!isOpen || !onClose || mode !== 'none') return;
 
-  return createPortal(children, mountNode.current);
+    const handler = (e: MouseEvent) => {
+      if (mountNode && !mountNode.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen, onClose, mountNode, mode]);
+
+  if (!isOpen || !mountNode) return null;
+
+  const content = mode === 'auto' && onClose ? (
+    <div
+      style={{
+        position: 'fixed', inset: '0',
+        /* background: 'rgba(0,0,0,0.5)', */  // 注释掉全局遮黑效果
+        /* backdropFilter: 'blur(9px)', */        // ✅ 注释掉全局遮罩层模糊效果
+        /* WebkitBackdropFilter: 'blur(9px)', */    // Safari 兼容
+        pointerEvents: 'auto',
+      }}
+      onClick={onClose}
+    >
+      <div style={{ pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
+  ) : children;
+
+  return createPortal(content, mountNode);
 };
+
+// 1. 纯展示：{isOpen && <Portal>...</Portal>}
+// 2. 需关闭：<Portal isOpen={isOpen} onClose={()=>setIsOpen(false)}>
+//    - 弹窗加 pointerEvents="none" 遮罩层触发 onClose
+//    - 内容区加 onClick={e=>e.stopPropagation()} 防误关
+// 3. 标签名保持：<Portal>不变

@@ -28,22 +28,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
   const workstationDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
-  // 手动处理点击外部关闭（替代useOnClickOutside，因为下拉菜单在Portal中）
-  useEffect(() => {
-    if (!isWorkstationDropdownOpen && !isWorkstationHiding) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (workstationButtonRef.current?.contains(target)) return;
-      // 如果点击在工作站下拉菜单上，不关闭
-      if (workstationDropdownRef.current?.contains(target)) return;
-      setIsWorkstationHiding(true);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isWorkstationDropdownOpen, isWorkstationHiding]);
-
+  
   // 处理动画结束事件
   useEffect(() => {
     if (!isWorkstationHiding) return;
@@ -201,36 +186,39 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
           </div>
 
           {/* 工作站下拉菜单 - 使用Portal渲染 */}
-          <Portal>
-            {(isWorkstationDropdownOpen || isWorkstationHiding) && (
-              <div
-                ref={workstationDropdownRef}
-                className={`workstation-dropdown-menu ${isWorkstationHiding ? 'hiding' : 'show'}`}
-                style={{
-                  top: `${workstationPosition.top}px`,
-                  left: `${workstationPosition.left}px`,
-                  width: `${workstationPosition.width}px`
-                } as React.CSSProperties}
-              >
-                {workstations.map((workstation) => (
-                  <div
-                    key={workstation.id}
-                    className={`workstation-option ${workstation.status}`}
-                    onClick={() => handleWorkstationSelect(workstation)}
-                  >
-                    <div className="workstation-option-icon">{workstation.icon}</div>
-                    <div className="workstation-option-info">
-                      <div className="workstation-option-name">{workstation.name}</div>
-                      <div className="workstation-option-type">{workstation.type}</div>
-                    </div>
-                    <div className={`workstation-option-status ${workstation.status}`}>
-                      <span className="status-dot" />
-                      <span className="status-text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
-                    </div>
+          <Portal
+            isOpen={isWorkstationDropdownOpen || isWorkstationHiding} // ✅ 动画期间保持挂载
+            onClose={() => setIsWorkstationHiding(true)} // ✅ 点击外部启动关闭动画
+            pointerEvents="none"
+          >
+            <div
+              ref={workstationDropdownRef}
+              className={`workstation-dropdown-menu ${isWorkstationHiding ? 'hiding' : 'show'}`}
+              style={{
+                top: `${workstationPosition.top}px`,
+                left: `${workstationPosition.left}px`,
+                width: `${workstationPosition.width}px`,
+                pointerEvents: 'auto' // ✅ 确保内部可点击
+              }}
+            >
+              {workstations.map((workstation) => (
+                <div
+                  key={workstation.id}
+                  className={`workstation-option ${workstation.status}`}
+                  onClick={() => handleWorkstationSelect(workstation)}
+                >
+                  <div className="workstation-option-icon">{workstation.icon}</div>
+                  <div className="workstation-option-info">
+                    <div className="workstation-option-name">{workstation.name}</div>
+                    <div className="workstation-option-type">{workstation.type}</div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className={`workstation-option-status ${workstation.status}`}>
+                    <span className="status-dot" />
+                    <span className="status-text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Portal>
 
         </div>

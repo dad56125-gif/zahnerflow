@@ -72,76 +72,85 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <Portal>
-      <div className="notification-panel overlay_base">
-      <div className="notification-panel-header">
-        <div className="notification-panel-title">
-          <span>通知中心</span>
-          {notifications.length > 0 && (
-            <span className="notification-badge">{notifications.length}</span>
-          )}
-        </div>
-        <div className="notification-panel-actions">
-          <button 
-            className="notification-action-btn" 
-            onClick={clearAllNotifications}
-            title="清空所有通知"
-          >
-            🗑️
-          </button>
-          <button 
-            className="notification-action-btn" 
-            onClick={onClose}
-            title="关闭"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-      
-      <div className="notification-panel-content">
-          {notifications.length === 0 ? (
-            <div className="notification-empty">
-              <div className="notification-empty-icon">📭</div>
-              <div className="notification-empty-text">暂无通知</div>
+    <Portal isOpen={isOpen} onClose={onClose} pointerEvents="none">
+      {/* ✅ 遮罩层：覆盖视口 */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+      >
+        {/* ✅ 内容区：阻止冒泡 */}
+        <div
+          className="overlay_base notification-panel"
+          onClick={e => e.stopPropagation()}
+          style={{ position: 'absolute', top: '50px', right: '20px' }}
+        >
+          <div className="notification-panel-header">
+            <div className="notification-panel-title">
+              <span>通知中心</span>
+              {notifications.length > 0 && (
+                <span className="notification-badge">{notifications.length}</span>
+              )}
             </div>
-          ) : (
-            notifications.map((notification) => (
-              <div 
-                key={notification.id}
-                className="notification-item"
+            <div className="notification-panel-actions">
+              <button
+                className="notification-action-btn"
+                onClick={clearAllNotifications}
+                title="清空所有通知"
               >
-                <div className="notification-icon" style={{ color: getNotificationColor(notification.type) }}>
-                  {getNotificationIcon(notification.type)}
+                🗑️
+              </button>
+              <button
+                className="notification-action-btn"
+                onClick={onClose}
+                title="关闭"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <div className="notification-panel-content">
+              {notifications.length === 0 ? (
+                <div className="notification-empty">
+                  <div className="notification-empty-icon">📭</div>
+                  <div className="notification-empty-text">暂无通知</div>
                 </div>
-                <div className="notification-content">
-                  <div className="notification-title">{notification.title}</div>
-                  <div className="notification-message">{notification.message}</div>
-                  <div className="notification-time">
-                    {notification.timestamp.toLocaleTimeString()}
+              ) : (
+                notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="notification-item"
+                  >
+                    <div className="notification-icon" style={{ color: getNotificationColor(notification.type) }}>
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="notification-content">
+                      <div className="notification-title">{notification.title}</div>
+                      <div className="notification-message">{notification.message}</div>
+                      <div className="notification-time">
+                        {notification.timestamp.toLocaleTimeString()}
+                      </div>
+                      <div className="notification-source">
+                        来源: {notification.source}
+                      </div>
+                    </div>
+                    <button
+                      className="notification-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notification.id);
+                      }}
+                      title="删除"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div className="notification-source">
-                    来源: {notification.source}
-                  </div>
-                </div>
-                <button 
-                  className="notification-delete-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteNotification(notification.id);
-                  }}
-                  title="删除"
-                >
-                  ✕
-                </button>
-              </div>
-            ))
-          )}
+                ))
+              )}
+          </div>
+        </div>
       </div>
-    </div>
     </Portal>
   );
 };
