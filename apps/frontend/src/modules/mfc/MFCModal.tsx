@@ -5,9 +5,9 @@
  * 支持WebSocket实时通信和多设备管理
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { Portal } from '../../components/common/Portal';
 import { useMfc } from './useMfc';
-import { useOnClickOutside } from '../../services/hooks/useOnClickOutside';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { MFCConnectionPanel } from './MFCConnectionPanel';
 import { mfcWebSocketService } from './mfcWebSocket.service';
@@ -28,10 +28,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   modal_height
 }) => {
   const [mfcState, mfcControls] = useMfc();
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  // 使用 useOnClickOutside Hook 实现点击外部关闭
-  useOnClickOutside(modalRef, on_close);
 
   // 在MFC模态框打开时才建立WebSocket连接
   useEffect(() => {
@@ -42,29 +38,46 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   void modal_top; void modal_left; void modal_width; void modal_height;
 
   return (
-    <div className="device-modal furnace-modal" ref={modalRef}>
-      <div className="device-modal-content">
-        {/* Modal头部 */}
-        <div className="device-header">
-          <div className="header-title">
-            <h3>质量流量控制器 (MFC)</h3>
-            <div className="connection-status">
-              <span className={`status-indicator ${mfcWebSocketService.connected ? 'connected' : 'disconnected'}`}></span>
-              <span className="status-text">
-                {mfcWebSocketService.connected ? '实时连接' : '离线'}
-              </span>
-              <span className={`connection-state-indicator ${mfcState.connection_status}`}>
-                ({mfcState.connection_status === 'connected' ? '设备已连接' :
-                   mfcState.connection_status === 'connecting' ? '连接中...' :
-                   mfcState.connection_status === 'error' ? '连接错误' : '未连接'})
-              </span>
-            </div>
-          </div>
-
-          <div className="header-controls">
+    <Portal isOpen={true} onClose={on_close} pointerEvents="auto" id="mfc-modal-portal">
+      <div
+        className="modal_content device-modal-content"
+        style={{
+          position: 'fixed',
+          left: `calc(var(--sidebar-l))`,
+          top: `calc(var(--canvas-t))`,
+          width: 'calc(100vw - 2 * var(--space))',
+          height: 'calc(100vh - 2 * var(--canvas-b))',
+          background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: 'var(--effect-xl)',
+          backdropFilter: 'blur(var(--effect-xl))',
+          WebkitBackdropFilter: 'blur(var(--effect-xl))',
+          boxShadow: '0 16px 64px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'modal_scale_in 0.3s var(--ease-bounce)',
+          isolation: 'isolate',
+          pointerEvents: 'auto',
+          zIndex: 2000
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal_header">
+          <h3>质量流量控制器 (MFC)</h3>
+          <div className="connection-status">
+            <span className={`status-indicator ${mfcWebSocketService.connected ? 'connected' : 'disconnected'}`}></span>
+            <span className="status-text">
+              {mfcWebSocketService.connected ? '实时连接' : '离线'}
+            </span>
+            <span className={`connection-state-indicator ${mfcState.connection_status}`}>
+              ({mfcState.connection_status === 'connected' ? '设备已连接' :
+                 mfcState.connection_status === 'connecting' ? '连接中...' :
+                 mfcState.connection_status === 'error' ? '连接错误' : '未连接'})
+            </span>
             {mfcState.connection_status === 'connected' && (
               <button
-                className="btn btn-info"
+                className="btn_base btn_layout btn_style_common btn_medium btn_primary"
                 onClick={() => mfcControls.refresh()}
                 disabled={mfcState.isLoading}
               >
@@ -72,8 +85,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
               </button>
             )}
           </div>
-
-          <button className="close-btn" onClick={on_close}>×</button>
+          <button className="modal_close" onClick={on_close}>×</button>
         </div>
 
         {/* 主要内容区域 */}
@@ -189,7 +201,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 

@@ -128,10 +128,13 @@ class AI518PController:
 
     def write_param(self, code: int, value: int) -> dict:
         """写入并顺便读取最新状态"""
+        # 日志：显示设备最终收到的值
+        print(f"[FURNACE] write_param - code: 0x{code:02X}({code}), value: {value}", flush=True)
+
         addr = self.address + 0x80
         cs = self._checksum(code, value)
         cmd = bytes([addr, addr, 0x43, code, value & 0xFF, (value >> 8) & 0xFF, cs[0], cs[1]])
-        
+
         # 写入指令本身就会返回当前状态帧，我们直接利用它（或者调用 read_param 解析逻辑）
         return self.read_param(code) 
 
@@ -185,8 +188,19 @@ def status():
 
 @app.post("/parameter/write")
 def write_parameter(req: ParameterRequest):
-    # 返回值包含 {pv, sv, mv...}
-    return driver.write_param(req.code, req.value)
+    """写入参数并读取最新状态 - 温度地址自动×10转换"""
+    # 判断是否为可写的温度地址（基于0x1A偏移的偶数地址，i=0-29）
+    is_temperature_addr = (
+        req.code >= 0x1A and req.code <= 0x54 and
+        ((req.code - 0x1A) % 2 == 0)
+    )
+
+    if is_temperature_addr:
+        device_value = int(round(req.value * 10))  # 用户格式×10
+    else:
+        device_value = req.value  # 直接传递
+
+    return driver.write_param(req.code, device_value)
 
 @app.post("/run")
 def run():
@@ -248,13 +262,17 @@ def get_segments():
 
 @app.post("/program/segments")
 def set_segments(items: List[ProgramSegment]):
+    """批量设置程序段 - 不再做×10转换，由write_parameter统一处理"""
     for item in items:
         idx = item.id - 1
         if 0 <= idx < 27:
             t_code = 0x1A + idx * 2
             v_code = 0x1B + idx * 2
-            driver.write_param(t_code, int(round(item.temperature * 10)))
-            driver.write_param(v_code, int(item.time))
+
+            # 直接传递用户格式，温度转换由write_parameter处理
+            driver.write_param(t_code, item.temperature)
+            driver.write_param(v_code, item.time)
+
     return {"count": len(items), "status": "written"}
 
 if __name__ == "__main__":

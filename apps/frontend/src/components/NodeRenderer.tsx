@@ -377,10 +377,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
         )}
       </div>
 
-      {/* 节点端口（占位，后续在端口系统中实现） */}
-      <div className="node-port-placeholder input" />
-      <div className="node-port-placeholder output" />
-
+  
       {/* 选中边框 */}
       {isSelected && (
         <div className="node-selection-border" />

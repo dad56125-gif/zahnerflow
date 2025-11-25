@@ -215,16 +215,19 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       if (!this.isConnected) throw new Error('设备未连接');
 
       const status = await this.device.status();
-      const currentTemp = Math.round(status.pv * 10);
-      const targetTemp = params.target_temperature;
-      const ratePerMin = params.rate / 10;
-      const tempDiff = Math.abs(targetTemp - currentTemp) / 10;
+      const currentTemp = status.pv;  // Python API已转换为用户格式
+      const targetTemp = params.target_temperature;  // 用户输入格式
+      const ratePerMin = params.rate;  // 用户输入格式
+      const tempDiff = Math.abs(targetTemp - currentTemp);  // 直接计算用户格式差值
       const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
 
-      await this.device.setParameter(0x50, currentTemp);
-      await this.device.setParameter(0x51, calculatedDuration);
-      await this.device.setParameter(0x52, targetTemp);
-      await this.device.setParameter(0x53, 5001);
+      // 移除×10转换，统一传递用户格式给Python层处理
+      await this.device.setParameter(0x50, currentTemp);  // 段28温度（起始）
+      await this.device.setParameter(0x51, calculatedDuration);  // 段28时间
+      await this.device.setParameter(0x52, targetTemp);  // 段29温度（目标）
+      await this.device.setParameter(0x53, 5001);  // 段29时间（5001分钟≈83小时）
+      await this.device.setParameter(0x54, targetTemp);  // 段30温度（必须设置，避免5001分钟后降温到未知值）
+      // 注意：段30时间（0x55）不需要设置，默认为0表示程序结束
       await this.device.setSegment(28);
 
       if (status.status !== 'running') {

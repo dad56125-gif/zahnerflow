@@ -435,5 +435,218 @@
   pointer-events: auto;
 }
 
+/* === 循环边界可视化系统 === */
+.loop-boundary-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 带状区域填充 - 使用 Clipper 生成的精确路径 */
+.loop-boundary-fill {
+  fill-opacity: 0.15;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* 边框线 - 真正的边框（stroke） */
+.loop-boundary-border {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* === 层级颜色区分 === */
+.loop-boundary-svg.level-0 .loop-boundary-fill {
+  fill: rgba(255, 152, 0, 0.15);
+}
+
+.loop-boundary-svg.level-0 .loop-boundary-border {
+  stroke: #FF9800;
+}
+
+.loop-boundary-svg.level-1 .loop-boundary-fill {
+  fill: rgba(76, 175, 80, 0.15);
+}
+
+.loop-boundary-svg.level-1 .loop-boundary-border {
+  stroke: #4CAF50;
+}
+
+.loop-boundary-svg.level-2 .loop-boundary-fill {
+  fill: rgba(33, 150, 243, 0.15);
+}
+
+.loop-boundary-svg.level-2 .loop-boundary-border {
+  stroke: #2196F3;
+}
+
+.loop-boundary-svg.level-3 .loop-boundary-fill {
+  fill: rgba(156, 39, 176, 0.15);
+}
+
+.loop-boundary-svg.level-3 .loop-boundary-border {
+  stroke: #9C27B0;
+}
+
+/* === 循环运行时的动画 === */
+.loop-boundary-svg.running .loop-boundary-fill,
+.loop-boundary-svg.running .loop-boundary-border {
+  animation: loop-boundary-running 2s ease-in-out infinite;
+}
+
+/* === 循环暂停时的动画 === */
+.loop-boundary-svg.paused .loop-boundary-fill,
+.loop-boundary-svg.paused .loop-boundary-border {
+  animation: loop-boundary-paused 1.5s ease-in-out infinite;
+}
+
+/* === 循环错误时的样式 === */
+.loop-boundary-svg.error .loop-boundary-fill {
+  fill: rgba(244, 67, 54, 0.2) !important;
+}
+
+.loop-boundary-svg.error .loop-boundary-border {
+  stroke: #F44336 !important;
+  animation: loop-boundary-error 0.5s ease-in-out 3;
+}
+
+/* === 循环完成时的样式 === */
+.loop-boundary-svg.completed .loop-boundary-fill {
+  fill: rgba(76, 175, 80, 0.2) !important;
+}
+
+.loop-boundary-svg.completed .loop-boundary-border {
+  stroke: #4CAF50 !important;
+  animation: loop-boundary-completed 1s ease-in-out 2;
+}
+
+/* === 循环边界动画定义 === */
+@keyframes loop-boundary-running {
+  0%, 100% {
+    opacity: 0.7;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  }
+}
+
+@keyframes loop-boundary-paused {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes loop-boundary-error {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes loop-boundary-completed {
+  0%, 100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 4px 12px rgba(76, 175, 80, 0.4));
+  }
+}
+
+/* === 高亮效果 === */
+.loop-boundary-svg.highlighted .loop-boundary-fill {
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+
+/* === 节点端口占位符（为后续端口系统预留） === */
+.node-port-placeholder {
+  position: absolute;
+  width: clamp(8px, 1.5vw, 12px);
+  height: clamp(8px, 1.5vw, 12px);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transition: var(--transition);
+  pointer-events: none;
+  z-index: 15;
+}
+
+.node:hover .node-port-placeholder {
+  opacity: 1;
+}
+
+/* === 节点选中边框 === */
+.node-selection-border {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid var(--glass-border-hover);
+  border-radius: var(--radius);
+  pointer-events: none;
+  z-index: 25;
+  animation: selection-glow 2s ease-in-out infinite;
+}
+
+/* === 连接开始指示器 === */
+.connection-start-indicator {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: white;
+  padding: clamp(2px, 0.5vw, 4px) clamp(4px, 1vw, 8px);
+  border-radius: var(--radius-sm);
+  font-size: clamp(0.625rem, 1.2vw, 0.75rem);
+  font-weight: 600;
+  z-index: 30;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* === 动画定义 === */
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-3px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-1.5px);
+  }
+}
+
+@keyframes selection-glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 /* === 响应式设计 === */
 /* 移动端响应式已移除 - 使用容器查询替代 */

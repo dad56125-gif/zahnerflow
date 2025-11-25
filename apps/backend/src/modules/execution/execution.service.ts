@@ -398,17 +398,16 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private async executeChangeTemperature(executionId: string, node: any) {
     const p = node.data?.parameters || {};
-    // 转换单位 0.1度
+    // 直接传递业务参数，不进行单位转换
     const params = {
-      target_temperature: Math.round(p.target_temperature * 10),
-      rate: Math.round(p.rate * 10),
+      target_temperature: p.target_temperature,
+      rate: p.rate,
       tolerance: 5,
       stabilization_time: 30
     };
     const res = await this.furnaceService.autoTemperatureControl(params, node.id, executionId);
     if (!res.success) throw new Error(res.error);
-    // 更新运行时参数以便记录
-    if (node.data) node.data.parameters = { ...p, ...res.updated_parameters };
+    // 不更新节点参数，避免状态污染
   }
 
   private async executeChangeGasFlow(executionId: string, node: any) {
