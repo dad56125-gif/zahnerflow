@@ -45,11 +45,17 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
                 <option value="">-- 选择端口 --</option>
                 {ports.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
-              <button onClick={loadPorts} className="btn btn-secondary" disabled={furnaceState.loading}>刷新</button>
-              <button 
-                onClick={handleConnect} 
-                disabled={!selectedPort || furnaceState.loading} 
-                className="btn btn-primary"
+              <button
+                onClick={loadPorts}
+                className="btn_base btn_layout btn_style_common btn_medium btn_secondary"
+                disabled={furnaceState.loading}
+              >
+                刷新
+              </button>
+              <button
+                onClick={handleConnect}
+                disabled={!selectedPort || furnaceState.loading}
+                className="btn_base btn_layout btn_style_common btn_medium btn_primary"
               >
                 {furnaceState.loading ? '连接中...' : '连接'}
               </button>
@@ -59,9 +65,9 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
           <div className="device-connection-panel connected">
             <h4>设备已连接</h4>
             <p>端口: <strong>{selectedPort}</strong></p>
-            <button 
-              onClick={() => furnaceControls.disconnect()} 
-              className="btn btn-danger"
+            <button
+              onClick={() => furnaceControls.disconnect()}
+              className="btn_base btn_layout btn_style_common btn_medium btn_danger"
               disabled={furnaceState.loading}
             >
               断开连接
@@ -77,7 +83,7 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
           <div className="console-controls">
             <button
               onClick={() => furnaceControls.clear_logs()}
-              className="console-btn"
+              className="btn_base btn_layout btn_style_common btn_small btn_secondary"
               title="清空日志"
             >
               清空

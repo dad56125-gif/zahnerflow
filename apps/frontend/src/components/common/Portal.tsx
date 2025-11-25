@@ -48,7 +48,7 @@ export const Portal: React.FC<PortalProps> = ({
       node = document.createElement('div');
       node.id = id;
       Object.assign(node.style, {
-        position: 'absolute', top: '0', left: '0', width: '100%',
+        position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
         pointerEvents: pointerEvents,
         zIndex: pointerEvents === 'auto' ? '1500' : 'auto'
       });

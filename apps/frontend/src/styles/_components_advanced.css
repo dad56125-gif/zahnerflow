@@ -5,7 +5,6 @@
    ========================================================================== */
 
 /* 公共：玻璃态容器基底 */
-.glass_enhanced,
 .modal_content,
 .notification-panel,
 .dropdown_menu,
@@ -58,47 +57,6 @@
    2. 组件具体实现
    ========================================================================== */
 
-.glass_enhanced {
-  border-radius: var(--effect-lg);
-  position: relative;
-  overflow: visible;
-  will-change: backdrop-filter, transform;
-  transform: translateZ(0); /* GPU 加速 */
-  box-shadow:
-    0 8px var(--effect-2xl) var(--glass-shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.glass_enhanced::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: var(--size-3xl);
-  height: var(--size-3xl);
-  background: radial-gradient(circle,
-    rgba(255, 255, 255, 0.25) 0%,
-    rgba(255, 255, 255, 0.18) 20%,
-    rgba(255, 255, 255, 0.08) 40%,
-    transparent 70%
-  );
-  filter: blur(var(--effect-xl));
-  border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-in-out);
-}
-
-.glass_enhanced:hover {
-  border-color: var(--glass-border-hover);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-}
-.glass_enhanced:hover::before { opacity: 1; }
 
 
 /* === 模态框组件 === */
@@ -109,10 +67,13 @@
   backdrop-filter: blur(var(--effect-lg));
   -webkit-backdrop-filter: blur(var(--effect-lg));
   z-index: var(--z-modal);
+  display: flex;
   justify-content: center;
+  align-items: center;
   padding: var(--space);
   animation: modal_backdrop_in var(--duration-normal) var(--ease-out);
 }
+
 
 .modal_content {
   border-radius: var(--effect-xl);
@@ -120,8 +81,7 @@
     0 16px 64px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  max-width: 90vw;
-  max-height: 90vh;
+  /* 移除max-width和max-height限制，让组件自行控制尺寸 */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -393,6 +353,7 @@
 }
 
 
+
 /* === 分页与面包屑组件 === */
 .pagination,
 .breadcrumb {
@@ -440,6 +401,24 @@
 .breadcrumb_item.active { color: var(--text-primary); font-weight: 500; }
 .breadcrumb_separator { color: var(--text-muted); font-size: var(--size-xs); }
 
+
+/* === Furnace Modal 特定布局 === */
+.furnace-modal-layout {
+  display: flex;
+  flex: 1;
+  gap: var(--space);
+  min-height: 0;
+}
+
+.furnace-modal-main {
+  flex: 2;
+  min-width: 0;
+}
+
+.furnace-modal-sidebar {
+  flex: 1;
+  min-width: 0;
+}
 
 /* === 加载骨架与拖拽区域 === */
 .skeleton {

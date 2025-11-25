@@ -26,14 +26,14 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
                 </div>
                 <div className="preset-actions">
                   <button
-                    className="btn btn-sm btn-primary"
+                    className="btn_base btn_layout btn_style_common btn_small btn_primary"
                     onClick={() => furnaceControls.select_preset(preset.name)}
                     disabled={furnaceState.loading}
                   >
                     查看
                   </button>
                   <button
-                    className="btn btn-sm btn-success"
+                    className="btn_base btn_layout btn_style_common btn_small btn_success"
                     onClick={() => furnaceControls.apply_preset(preset.name)}
                     disabled={
                       furnaceState.connection_status !== 'connected' ||
@@ -43,7 +43,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
                     应用
                   </button>
                   <button
-                    className="btn btn-sm btn-secondary"
+                    className="btn_base btn_layout btn_style_common btn_small btn_secondary"
                     onClick={() => {
                       const newName = prompt('请输入新预设名称:', `${preset.name}_copy`);
                       if (newName && newName !== preset.name) {
@@ -55,7 +55,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
                     克隆
                   </button>
                   <button
-                    className="btn btn-sm btn-danger"
+                    className="btn_base btn_layout btn_style_common btn_small btn_danger"
                     onClick={() => {
                       if (confirm(`确定要删除预设 "${preset.name}" 吗?`)) {
                         furnaceControls.delete_preset(preset.name);

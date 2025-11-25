@@ -17,7 +17,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
             错误: {furnaceState.error as string}
           </span>
           <button
-            className="btn btn-sm btn-secondary"
+            className="btn_base btn_layout btn_style_common btn_small btn_secondary"
             onClick={furnaceControls.clear_error}
           >
             关闭
@@ -80,7 +80,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         <div className="chart-header">
           <h4>温度曲线</h4>
           <button
-            className="btn btn-sm btn-secondary"
+            className="btn_base btn_layout btn_style_common btn_small btn_secondary"
             onClick={() => furnaceControls.load_history_data()}
             disabled={furnaceState.loading}
           >
@@ -98,7 +98,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
       {/* 控制按钮 */}
       <div className="control-panel">
         <button
-          className="btn btn-success"
+          className="btn_base btn_layout btn_style_common btn_medium btn_success"
           onClick={furnaceControls.run}
           disabled={
             furnaceState.connection_status !== 'connected' ||
@@ -110,8 +110,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         </button>
 
         <button
-          className="btn btn-warning"
-          style={{ marginLeft: '8px' }}
+          className="btn_base btn_layout btn_style_common btn_medium btn_warning"
+          style={{ marginLeft: 'var(--size-2xs)' }}
           onClick={furnaceControls.pause}
           disabled={
             furnaceState.connection_status !== 'connected' ||
@@ -124,8 +124,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         </button>
 
         <button
-          className="btn btn-danger"
-          style={{ marginLeft: '8px' }}
+          className="btn_base btn_layout btn_style_common btn_medium btn_danger"
+          style={{ marginLeft: 'var(--size-2xs)' }}
           onClick={furnaceControls.stop}
           disabled={
             furnaceState.connection_status !== 'connected' ||
@@ -137,8 +137,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         </button>
 
         <button
-          className="btn btn-secondary"
-          style={{ marginLeft: '8px' }}
+          className="btn_base btn_layout btn_style_common btn_medium btn_secondary"
+          style={{ marginLeft: 'var(--size-2xs)' }}
           onClick={async () => {
             const input = document.getElementById('monitoringSegmentInput') as HTMLInputElement;
             const segment = parseInt(input.value);

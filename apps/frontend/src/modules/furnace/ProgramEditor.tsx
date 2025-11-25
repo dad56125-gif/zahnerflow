@@ -39,14 +39,14 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
     <div className="program-tab">
       <div className="program-controls">
         <button
-          className="btn btn-primary"
+          className="btn_base btn_layout btn_style_common btn_medium btn_primary"
           onClick={furnaceControls.load_segments}
           disabled={!isConnected || furnaceState.loading}
         >
           {furnaceState.loading ? '读取中...' : '读取程序段'}
         </button>
         <button
-          className="btn btn-success"
+          className="btn_base btn_layout btn_style_common btn_medium btn_success"
           onClick={handleWrite}
           disabled={!isConnected || furnaceState.loading}
         >
