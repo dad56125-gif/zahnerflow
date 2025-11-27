@@ -1,0 +1,569 @@
+/* === Furnace温度控制器样式 - 简化版本 === */
+
+/* === 实时监控界面 === */
+.monitoring-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+/* === 状态显示区域 === */
+.status-display {
+  padding: 1rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* === 状态行 === */
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 第一行：PV/SV/MV */
+.status-row-temp {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 第二行：程序状态/程序段/时间 */
+.status-row-program {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+/* === 单个状态项 === */
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+/* === 状态标签 === */
+.status-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: rgba(255, 255, 255, 0.9);
+  min-width: 6rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* === 状态值 === */
+.status-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  min-width: 4rem;
+  text-align: center;
+  flex: 1;
+}
+
+/* === 状态值颜色 - 固定值 === */
+
+/* PV - 实际温度 */
+.pv-value {
+  color: #38bdf8; /* 亮蓝色 */
+}
+
+/* SV - 设定温度 */
+.sv-value {
+  color: #818cf8; /* 淡紫色 */
+}
+
+/* MV - 阀门开度 */
+.mv-value {
+  color: #f472b6; /* 粉红色 */
+}
+
+/* 运行状态 */
+.program-status {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 程序段号 */
+.segment-value {
+  color: #a78bfa; /* 淡紫色 */
+}
+
+/* 时间 */
+.time-value {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* === 图表容器 === */
+.chart-container {
+  flex: 1;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.chart-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* === 错误横幅 === */
+.error-banner {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+/* === 控制面板 === */
+.control-panel {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 运行/保温/停止按钮容器 - 两端对齐 */
+.control-panel > .btn_base:nth-child(1),
+.control-panel > .btn_base:nth-child(2),
+.control-panel > .btn_base:nth-child(3) {
+  flex: 1; /* 占用可用空间 */
+  text-align: center;
+}
+
+/* 三个按钮容器 - 占满宽度 */
+.control-panel > .btn_base:nth-child(1) ~ .btn_base:nth-child(2) ~ .btn_base:nth-child(3) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+/* 五个控制元素容器 - 均匀分布 */
+.control-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* 五个元素均分空间 */
+.control-panel > .btn_base:nth-child(1),
+.control-panel > .btn_base:nth-child(2),
+.control-panel > .btn_base:nth-child(3),
+.control-panel > .btn_base:nth-child(4),
+.control-panel > .monitoring-segment-input {
+  flex: 1;
+  text-align: center;
+}
+
+.control-panel > .btn_base:nth-child(4) {
+  flex: 0;
+  text-align: center;
+  min-width: auto;
+}
+
+.control-panel > .monitoring-segment-input {
+  flex: 1;
+  text-align: center;
+}
+
+/* === 程序段输入框 === */
+.monitoring-segment-input {
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  color: white;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+  transition: var(--transition);
+  width: 80px;
+}
+
+.monitoring-segment-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.monitoring-segment-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.monitoring-segment-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === 按钮进度条样式（简化版）=== */
+.btn-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 基本尺寸和间距 - 不使用响应式 */
+.furnace-modal {
+  /* 固定尺寸，不响应式 */
+  width: 60rem;
+  height: 35rem;
+}
+
+.monitoring-tab {
+  gap: 1rem;
+}
+
+.status-display {
+  padding: 1rem;
+}
+
+.status-row {
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-row-temp {
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.status-row-program {
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.status-item {
+  gap: 0.75rem;
+}
+
+.status-label {
+  font-size: 0.875rem;
+  min-width: 6rem;
+}
+
+.status-value {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  min-width: 4rem;
+}
+
+.chart-container {
+  min-height: 12rem;
+}
+
+.chart-header {
+  padding: 1rem;
+}
+
+.chart-header h4 {
+  font-size: 1rem;
+}
+
+.control-panel {
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.monitoring-segment-input {
+  width: 80px;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* === 按钮禁用状态 === */
+.btn_base:disabled,
+.btn_success:disabled,
+.btn_warning:disabled,
+.btn_danger:disabled,
+.btn_secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 特定颜色的禁用效果 */
+.btn_success:disabled {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.1));
+  border-color: rgba(34, 197, 94, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.btn_warning:disabled {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.3), rgba(251, 146, 60, 0.1));
+  border-color: rgba(251, 146, 60, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.btn_danger:disabled {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.1));
+  border-color: rgba(239, 68, 68, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.btn_secondary:disabled {
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.3), rgba(107, 114, 128, 0.1));
+  border-color: rgba(107, 114, 128, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}/* === 新预设程序段控制栏样式 === */
+.control-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--size-sm);
+  padding: var(--size-2xs);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  margin-bottom: var(--size-xl);
+  box-shadow:
+    0 var(--size-sm) var(--size-3xl) rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* === 预设选择器 === */
+.preset-selector {
+  flex: 2;
+  min-width: clamp(12.5rem, 10vw, 15rem);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--size-2xs);
+  font-size: var(--size-sm);
+  transition: var(--transition);
+}
+
+.preset-selector:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.preset-selector option {
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--text-primary);
+}
+
+/* === 预设名称输入框 === */
+.preset-name-input {
+  flex: 1.5;
+  min-width: clamp(9.5rem, 10vw, 12rem);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--size-2xs);
+  font-size: var(--size-sm);
+  transition: var(--transition);
+}
+
+.preset-name-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.preset-name-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.preset-name-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === 程序段编辑器 === */
+.segments-editor {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--size-3xs);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  box-shadow:
+    0 var(--size-sm) var(--size-3xl) rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* === 程序段网格 === */
+.segments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--size-3xs);
+  padding: 0;
+}
+
+/* === 单个程序段项 === */
+.segment-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  grid-template-areas: "clabel temp-group tlabel time-group";
+  gap: 0;
+  align-items: center;
+  padding: var(--size-3xs);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: var(--transition);
+}
+
+/* 输入框+单位组合容器 */
+.input-group {
+  grid-area: temp-group;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.input-group:last-of-type {
+  grid-area: time-group;
+}
+
+.segment-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 程序段标签 */
+.segment-label {
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  font-family: 'Courier New', monospace;
+  min-width: 2rem;
+}
+
+.segment-label:nth-child(1) { grid-area: clabel; }
+.segment-label:nth-child(3) { grid-area: tlabel; margin-left: var(--size-2xs); }
+
+
+/* 输入框 */
+.segment-input {
+  width: 100%;
+  min-width: 4rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--size-3xs) var(--size-2xs);
+  font-size: var(--size-sm);
+  text-align: center;
+  transition: var(--transition);
+}
+
+.segment-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.segment-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.segment-input.error {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+/* 单位标签 */
+.unit {
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* === 响应式调整 === */
+@media (max-width: 768px) {
+  .control-bar {
+    flex-wrap: wrap;
+    gap: var(--size-2xs);
+  }
+
+  .preset-selector,
+  .preset-name-input {
+    flex: 1;
+    min-width: clamp(7.5rem, 10vw, 10rem);
+  }
+
+  .segments-grid {
+    grid-template-columns: 1fr;
+    gap: var(--size-3xs);
+    padding: 0;
+  }
+
+  .segment-item {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "clabel temp-group"
+      "tlabel time-group";
+    gap: 0;
+    padding: var(--size-2xs);
+  }
+
+  .segment-label:nth-child(1) { grid-area: clabel; align-self: center; }
+  .segment-label:nth-child(3) { grid-area: tlabel; align-self: center; margin-left: var(--size-2xs); }
+}

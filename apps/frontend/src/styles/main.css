@@ -28,7 +28,10 @@
 /* === 9. 工作流管理 === */
 @import './_workflow.css';
 
-/* === 10. 高级组件 === */
+/* === 10. Furnace温度控制器 === */
+@import './_furnace.css';
+
+/* === 11. 高级组件 === */
 @import './_components_advanced.css';
 
 /* === 11. 遗留组件（向后兼容） === */

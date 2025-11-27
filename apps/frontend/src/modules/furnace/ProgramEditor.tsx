@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { FurnaceState, FurnaceControls } from './useFurnace';
 import type { ProgramSegment } from './furnaceTypes';
+import { SegmentValidator } from './segmentValidation';
 
 interface ProgramEditorProps {
   furnaceState: FurnaceState;
@@ -9,38 +10,68 @@ interface ProgramEditorProps {
 
 export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furnaceControls }) => {
   const [inputs, setInputs] = useState<{ [key: string]: string }>({});
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
+  // 初始化输入框
   useEffect(() => {
     if (furnaceState.segments?.length) {
-      const newInputs: any = {};
-      furnaceState.segments.forEach(s => {
-        newInputs[`temp_${s.id}`] = s.temperature;
-        newInputs[`time_${s.id}`] = s.time;
+      const newInputs: { [key: string]: string } = {};
+      furnaceState.segments.forEach(segment => {
+        newInputs[`temp_${segment.id}`] = segment.temperature.toString();
+        newInputs[`time_${segment.id}`] = segment.time.toString();
       });
       setInputs(prev => ({ ...prev, ...newInputs }));
     }
   }, [furnaceState.segments]);
 
-  const handleWrite = () => {
+  const isConnected = furnaceState.connection_status === 'connected';
+
+  const handleInputChange = useCallback((field: string, value: string) => {
+    const newInputs = { ...inputs, [field]: value };
+    setInputs(newInputs);
+
+    // 实时验证
+    const isTemp = field.startsWith('temp_');
+    const result = isTemp
+      ? SegmentValidator.validateTemperature(value)
+      : SegmentValidator.validateTime(value);
+
+    // 验证失败时立即修正
+    if (!result.is_valid) {
+      setInputs(prev => ({ ...prev, [field]: result.value.toString() }));
+    }
+  }, [inputs]);
+
+  const handleRead = useCallback(() => {
+    furnaceControls.load_segments();
+  }, [furnaceControls]);
+
+  const handleWrite = useCallback(() => {
+    if (!SegmentValidator.hasValidData(inputs)) {
+      alert('请输入至少一个程序段的温度或时间数据！');
+      return;
+    }
+
+    if (!confirm('确认写入？')) return;
+
     const segments: ProgramSegment[] = [];
     for (let i = 1; i <= 27; i++) {
-      const t = parseFloat(inputs[`temp_${i}`] || '0');
+      const temp = parseInt(inputs[`temp_${i}`] || '0');
       const time = parseInt(inputs[`time_${i}`] || '0');
-      if (t > 0 || time > 0) { // 简单的过滤
-        segments.push({ id: i, temperature: t, time: time });
+      if (temp > 0 || time > 0 || time === -121) {
+        segments.push({ id: i, temperature: temp, time: time });
       }
     }
     furnaceControls.write_segments(segments);
-  };
-
-  const isConnected = furnaceState.connection_status === 'connected';
+  }, [inputs, furnaceControls]);
 
   return (
-    <div className="program-tab">
-      <div className="program-controls">
+    <div className="presets-tab">
+      {/* 控制栏 */}
+      <div className="control-bar">
         <button
           className="btn_base btn_layout btn_style_common btn_medium btn_primary"
-          onClick={furnaceControls.load_segments}
+          onClick={handleRead}
           disabled={!isConnected || furnaceState.loading}
         >
           {furnaceState.loading ? '读取中...' : '读取程序段'}
@@ -54,57 +85,46 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
         </button>
       </div>
 
-      <div className="segments-grid">
-        {Array.from({ length: 14 }, (_, rowIndex) => {
-          const id1 = rowIndex * 2 + 1;
-          const id2 = rowIndex * 2 + 2;
-          if (id1 > 27) return null;
-          const seg1 = furnaceState.segments.find(s => s.id === id1);
-          const seg2 = furnaceState.segments.find(s => s.id === id2);
-          return (
-            <div key={rowIndex} className="segment-row">
-              {/* 第一个段 */}
-              <label>C{id1.toString().padStart(2, '0')}</label>
-              <input
-                type="number"
-                value={inputs[`temp_${id1}`] ?? (seg1?.temperature ?? 0)}
-                onChange={e => setInputs(p => ({ ...p, [`temp_${id1}`]: e.target.value }))}
-                disabled={!isConnected}
-              />
-              <span>℃</span>
-              <label>t{id1.toString().padStart(2, '0')}</label>
-              <input
-                type="number"
-                value={inputs[`time_${id1}`] ?? (seg1?.time ?? 0)}
-                onChange={e => setInputs(p => ({ ...p, [`time_${id1}`]: e.target.value }))}
-                disabled={!isConnected}
-              />
-              <span>min</span>
+      {/* 程序段编辑器 */}
+      <div className="segments-editor">
+        <div className="segments-grid">
+          {Array.from({ length: 27 }, (_, i) => {
+            const id = i + 1;
+            return (
+              <div key={id} className="segment-item">
+                <div className="segment-label">
+                  C{id.toString().padStart(2, '0')}
+                </div>
+                <div className="input-group">
+                  <input
+                    type="number"
+                    className={`segment-input ${validationErrors[`temp_${id}`] ? 'error' : ''}`}
+                    value={inputs[`temp_${id}`] ?? ''}
+                    onChange={(e) => handleInputChange(`temp_${id}`, e.target.value)}
+                    disabled={!isConnected}
+                    title={validationErrors[`temp_${id}`] || ''}
+                  />
+                  <span className="unit">℃</span>
+                </div>
 
-              {/* 第二个段（如果有） */}
-              {id2 <= 27 && (
-                <>
-                  <label style={{ marginLeft: '20px' }}>C{id2.toString().padStart(2, '0')}</label>
+                <div className="segment-label">
+                  t{id.toString().padStart(2, '0')}
+                </div>
+                <div className="input-group">
                   <input
                     type="number"
-                    value={inputs[`temp_${id2}`] ?? (seg2?.temperature ?? 0)}
-                    onChange={e => setInputs(p => ({ ...p, [`temp_${id2}`]: e.target.value }))}
+                    className={`segment-input ${validationErrors[`time_${id}`] ? 'error' : ''}`}
+                    value={inputs[`time_${id}`] ?? ''}
+                    onChange={(e) => handleInputChange(`time_${id}`, e.target.value)}
                     disabled={!isConnected}
+                    title={validationErrors[`time_${id}`] || ''}
                   />
-                  <span>℃</span>
-                  <label>t{id2.toString().padStart(2, '0')}</label>
-                  <input
-                    type="number"
-                    value={inputs[`time_${id2}`] ?? (seg2?.time ?? 0)}
-                    onChange={e => setInputs(p => ({ ...p, [`time_${id2}`]: e.target.value }))}
-                    disabled={!isConnected}
-                  />
-                  <span>min</span>
-                </>
-              )}
-            </div>
-          );
-        })}
+                  <span className="unit">min</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
