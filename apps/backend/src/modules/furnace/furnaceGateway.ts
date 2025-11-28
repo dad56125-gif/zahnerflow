@@ -20,4 +20,22 @@ export class FurnaceGateway {
   sendFurnaceStatusUpdate(data: any) {
     this.server.to('furnace_room').emit('furnaceStatusUpdate', data);
   }
+
+  send_read_progress(data: { progress: number; current_segment?: number }) {
+    this.server.to('furnace_room').emit('furnace:read_progress', {
+      device: 'furnace',
+      timestamp: new Date().toISOString(),
+      type: 'read_progress',
+      ...data
+    });
+  }
+
+  send_write_progress(data: { progress: number; current_segment?: number }) {
+    this.server.to('furnace_room').emit('furnace:write_progress', {
+      device: 'furnace',
+      timestamp: new Date().toISOString(),
+      type: 'write_progress',
+      ...data
+    });
+  }
 }

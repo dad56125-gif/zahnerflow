@@ -20,8 +20,17 @@ export class FurnaceController {
 
   @Post('segment/set') segmentSet(@Body() b: { segment: number }) { return this.svc.setSegment(b.segment); }
 
-  // 这里暴露单点读取给前端
-  @Get('program/segments/:id') getSegment(@Param('id') id: string) { return this.svc.getSegment(parseInt(id)); }
+  // 批量读取程序段
+  @Get('program/segments')
+  getProgramSegments() {
+    return this.svc.get_program_segments();
+  }
+
+  // 批量写入程序段
+  @Post('program/segments')
+  setProgramSegments(@Body() body: { segments: any[] }) {
+    return this.svc.set_program_segments(body.segments);
+  }
 
   // Presets & History
   @Get('presets') list() { return this.data.listPresets(); }

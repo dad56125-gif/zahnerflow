@@ -43,7 +43,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
   }, [inputs]);
 
   const handleRead = useCallback(() => {
-    furnaceControls.load_segments();
+    furnaceControls.get_segments();
   }, [furnaceControls]);
 
   const handleWrite = useCallback(() => {
@@ -62,7 +62,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
         segments.push({ id: i, temperature: temp, time: time });
       }
     }
-    furnaceControls.write_segments(segments);
+    furnaceControls.set_segments(segments);
   }, [inputs, furnaceControls]);
 
   return (

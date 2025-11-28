@@ -55,6 +55,8 @@ export class FurnaceWebSocketService {
     samplingData: [] as ((data: FurnaceSamplingData) => void)[],
     notification: [] as ((notification: FurnaceNotification) => void)[],
     error: [] as ((error: any) => void)[],
+    readProgress: [] as ((data: any) => void)[],
+    writeProgress: [] as ((data: any) => void)[],
   };
 
   constructor(private serverUrl: string = window.location.origin) {}
@@ -150,6 +152,16 @@ export class FurnaceWebSocketService {
       this.callbacks.error.forEach(callback => callback(error));
     });
 
+    // 读取进度事件
+    this.socket.on('furnace:read_progress', (data: any) => {
+      this.callbacks.readProgress?.forEach(callback => callback(data));
+    });
+
+    // 写入进度事件
+    this.socket.on('furnace:write_progress', (data: any) => {
+      this.callbacks.writeProgress?.forEach(callback => callback(data));
+    });
+
     // 通用错误事件
     this.socket.on('error', (error: any) => {
       console.error('Furnace WebSocket error:', error);
@@ -241,6 +253,14 @@ export class FurnaceWebSocketService {
 
   onError(callback: (error: any) => void): void {
     this.callbacks.error.push(callback);
+  }
+
+  onReadProgress(callback: (data: { progress: number }) => void): void {
+    this.callbacks.readProgress?.push(callback);
+  }
+
+  onWriteProgress(callback: (data: { progress: number }) => void): void {
+    this.callbacks.writeProgress?.push(callback);
   }
 
   /**

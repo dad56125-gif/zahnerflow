@@ -15,6 +15,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
   const [currentPresetName, setCurrentPresetName] = useState('');
   const [selectedPresetName, setSelectedPresetName] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+  const [presetSegments, setPresetSegments] = useState<ProgramSegment[]>([]);
 
   // 初始化输入框为空
   useEffect(() => {
@@ -26,18 +27,18 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     setInputs(emptyInputs);
   }, []);
 
-  // 当segments变化时更新输入框（从预设加载或从设备读取时）
+  // 当presetSegments变化时更新输入框
   useEffect(() => {
-    if (furnaceState.segments?.length) {
+    if (presetSegments?.length) {
       const newInputs: { [key: string]: string } = {};
-      furnaceState.segments.forEach(segment => {
+      presetSegments.forEach(segment => {
         newInputs[`temp_${segment.id}`] = segment.temperature.toString();
         newInputs[`time_${segment.id}`] = segment.time.toString();
       });
       setInputs(prev => ({ ...prev, ...newInputs }));
       setValidationErrors({});
     }
-  }, [furnaceState.segments]);
+  }, [presetSegments]);
 
   // 预设选择处理 - 选中即加载预设数据到输入框，不影响名称输入框
   const handlePresetSelect = useCallback(async (presetName: string) => {
@@ -46,7 +47,8 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
       return;
     }
     setSelectedPresetName(presetName);
-    await furnaceControls.select_preset(presetName);
+    const preset = await furnaceControls.select_preset(presetName);
+    setPresetSegments(preset.segments);
   }, [furnaceControls]);
 
   // 写入处理 - 只有当有有效数据时才执行写入，带安全确认框
@@ -67,7 +69,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
         segments.push({ id: i, temperature: temp, time: time });
       }
     }
-    furnaceControls.write_segments(segments);
+    furnaceControls.set_segments(segments);
   }, [inputs, furnaceControls]);
 
   // 新建处理 - 清空数据和输入框，脱钩下拉菜单
@@ -146,17 +148,18 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     }
   }, [currentPresetName, inputs, furnaceState.presets, furnaceControls]);
 
-  // 读取运行处理 - 从设备读取当前运行数据，脱钩下拉菜单和输入框
+  // 读取运行处理 - 直接从设置程序段复制数据到预设程序段
   const handleLoadRun = useCallback(async () => {
     try {
-      await furnaceControls.load_segments();
+      await furnaceControls.get_segments();
+      setPresetSegments([...furnaceState.segments]);
       setCurrentPresetName('');
       setSelectedPresetName('');
       setValidationErrors({});
     } catch (error) {
       console.error('Failed to load running segments:', error);
     }
-  }, [furnaceControls]);
+  }, [furnaceControls, furnaceState.segments]);
 
   // 输入变化处理 - 支持对象和函数两种形式
   const handleInputsChange = useCallback((

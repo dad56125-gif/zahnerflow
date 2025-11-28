@@ -13,14 +13,10 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 export class FurnaceApi {
   static async getStatus(): Promise<FurnaceStatus> { return apiRequest('/status'); }
   static async setSegment(segment: number): Promise<FurnaceOperationResponse> { return apiRequest('/segment/set', { method: 'POST', body: JSON.stringify({ segment }) }); }
-  
-  // [新增] 单点
-  static async getSegment(id: number): Promise<ProgramSegment> { return apiRequest(`/program/segments/${id}`); }
-  static async writeSegment(s: ProgramSegment): Promise<void> { return apiRequest('/program/segments', { method: 'POST', body: JSON.stringify([s]) }); }
-  
-  static async getProgramSegments(): Promise<ProgramSegment[]> { return apiRequest('/program/segments'); }
-  static async writeProgramSegments(segments: ProgramSegment[]): Promise<void> { return apiRequest('/program/segments', { method: 'POST', body: JSON.stringify(segments) }); }
-  
+
+  static async getSegments(): Promise<ProgramSegment[]> { return apiRequest('/program/segments'); }
+  static async setSegments(segments: ProgramSegment[]): Promise<void> { return apiRequest('/program/segments', { method: 'POST', body: JSON.stringify({ segments }) }); }
+
   static async getPresets(): Promise<FurnacePresetMeta[]> { return apiRequest('/presets'); }
   static async createPreset(p: CreatePresetRequest): Promise<FurnacePreset> { return apiRequest('/presets', { method: 'POST', body: JSON.stringify(p) }); }
   static async getPreset(n: string): Promise<FurnacePreset> { return apiRequest(`/presets/${encodeURIComponent(n)}`); }

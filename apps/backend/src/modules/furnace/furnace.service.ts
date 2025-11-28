@@ -187,6 +187,52 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   async subscribe_to_furnace_updates(id: string) {}
   async unsubscribe_from_furnace_updates(id: string) {}
 
+  // 批量读取程序段（内部循环27次getSegment）
+  async get_program_segments(): Promise<ProgramSegment[]> {
+    const segments: ProgramSegment[] = [];
+
+    for (let i = 1; i <= 27; i++) {
+      const result: any = await this.executeCommand(
+        () => this.device.getSegment(i),
+        `read_segment_${i}`
+      );
+      segments.push(result.segment_data);
+
+      // WebSocket进度推送
+      this.gateway.send_read_progress({
+        progress: Math.round((i / 27) * 100)
+      });
+    }
+
+    return segments;
+  }
+
+  // 批量写入程序段（内部循环54次：27段×2参数）
+  async set_program_segments(segments: ProgramSegment[]): Promise<{ success: boolean }> {
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+
+      // 写入温度
+      await this.executeCommand(
+        () => this.device.setParameter(0x1A + (segment.id - 1) * 2, segment.temperature),
+        `write_temp_segment_${segment.id}`
+      );
+
+      // 写入时间
+      await this.executeCommand(
+        () => this.device.setParameter(0x1B + (segment.id - 1) * 2, segment.time),
+        `write_time_segment_${segment.id}`
+      );
+
+      // WebSocket进度推送
+      this.gateway.send_write_progress({
+        progress: Math.round(((i + 1) / segments.length) * 100)
+      });
+    }
+
+    return { success: true };
+  }
+
   // ==================== 自动温度控制 ====================
 
   async autoTemperatureControl(
