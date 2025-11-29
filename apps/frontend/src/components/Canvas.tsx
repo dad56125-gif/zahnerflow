@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
 import { useCanvasStore } from '../services/stores/canvasStore';
 import { NodeListRenderer } from './NodeRenderer';
