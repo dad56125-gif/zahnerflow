@@ -42,5 +42,40 @@ export class FurnaceController {
   @Post('presets/:name/apply') apply(@Param('name') n: string) { return this.svc.apply_preset(n); }
   
   @Get('logs/temperature') logs(@Query() q: any) { return this.data.queryFurnace(q.from, q.to, q.limit, q.downsample); }
+
+  // ========== 新架构查询接口 ==========
+
+  /**
+   * 查询采样数据（支持新架构的status_code字段）
+   * 用于RecordingTab实时表格
+   */
+  @Get('samples')
+  querySamples(@Query() q: any) {
+    return this.data.queryFurnace(q.from, q.to, q.limit, q.downsample);
+  }
+
+  /**
+   * 查询事件数据（用于状态补全）
+   */
+  @Get('events')
+  queryEvents(@Query() q: any) {
+    // 从furnace_events表查询事件
+    const sql = `SELECT timestamp, status_code, segment, segment_time_set FROM furnace_events
+                 WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp ASC`;
+
+    const fromTs = q.from ? Math.floor(new Date(q.from).getTime() / 1000) : 0;
+    const toTs = q.to ? Math.floor(new Date(q.to).getTime() / 1000) : Math.floor(Date.now() / 1000);
+
+    const rows = this.data['db'].prepare(sql).all(fromTs, toTs);
+
+    // 转换回ISO字符串
+    return rows.map((row: any) => ({
+      timestamp: new Date(row.timestamp * 1000).toISOString(),
+      status_code: row.status_code,
+      segment: row.segment,
+      segment_time_set: row.segment_time_set
+    }));
+  }
+
   @Get('error/stats') stats() { return {}; }
 }

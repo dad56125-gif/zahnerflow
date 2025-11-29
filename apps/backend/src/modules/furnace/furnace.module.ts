@@ -5,6 +5,7 @@ import { FurnaceDataService } from './furnace-data.service';
 import { FurnaceErrorHandlerService } from './services/furnace-error-handler.service';
 import { FurnaceDeviceService } from './furnaceDevice.service';
 import { FurnaceGateway } from './furnaceGateway';
+import { FurnaceMaintenanceService } from './furnace-maintenance.service'; // ✅ 新增
 import { CommonModule } from '../../common/common.module';
 import { DbModule } from '../../db/db.module'; // 导入这个
 
@@ -20,6 +21,7 @@ import { DbModule } from '../../db/db.module'; // 导入这个
     FurnaceErrorHandlerService,
     FurnaceDeviceService,
     FurnaceGateway,
+    FurnaceMaintenanceService, // ✅ 新增：后台维护服务
   ],
   exports: [
     FurnaceService,
@@ -27,6 +29,7 @@ import { DbModule } from '../../db/db.module'; // 导入这个
     FurnaceErrorHandlerService,
     FurnaceDeviceService,
     FurnaceGateway,
+    FurnaceMaintenanceService, // ✅ 新增：供workflow.service使用
   ],
 })
 export class FurnaceModule {}

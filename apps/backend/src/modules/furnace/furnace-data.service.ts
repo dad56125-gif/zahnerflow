@@ -36,6 +36,12 @@ export class FurnaceResponse {
 export class FurnaceDataService implements OnModuleInit {
   private readonly logger = new Logger(FurnaceDataService.name);
 
+  // ========== 批量写入缓冲区（阶段2.3） ==========
+  private sampleBuffer: any[] = [];           // 样本缓冲区
+  private readonly BATCH_SIZE = 10;           // 10条数据批量写入（约20秒）
+  private lastFlushTime = Date.now();         // 上次刷新时间
+  private readonly MAX_BUFFER_TIME = 10000;   // 最长缓冲时间（10秒）
+
   constructor(private readonly db: DbService) {}
 
   onModuleInit() {
@@ -50,17 +56,79 @@ export class FurnaceDataService implements OnModuleInit {
       )
     `).run();
 
-    // 2. 初始化采样表 (核心优化点)
-    // 建立了时间戳索引，查询速度比读文件快 100 倍
+    // 2. 初始化采样表 (符合新架构方案)
+    // 删除旧表（开发环境）或重命名备份（生产环境）
+    this.db.prepare(`DROP TABLE IF EXISTS furnace_samples`).run();
+
+    // 创建新表：furnace_metrics_recent
     this.db.prepare(`
-      CREATE TABLE IF NOT EXISTS furnace_samples (
-        ts TEXT PRIMARY KEY, -- 使用 ISO 字符串作为时间戳主键
+      CREATE TABLE IF NOT EXISTS furnace_metrics_recent (
+        timestamp INTEGER PRIMARY KEY,  -- ✅ INTEGER Unix时间戳
         pv REAL, sv REAL, mv REAL,
-        segment INTEGER, segment_time REAL, segment_time_set REAL
+        status_code INTEGER,            -- ✅ 新增：设备状态码
+        segment INTEGER,
+        segment_time REAL,
+        segment_time_set REAL
       )
     `).run();
-    
-    // 只有当 ts 不是主键时才需要单独建索引，这里 ts 是主键自带索引，所以不需要额外 Create Index
+
+    // 3. 创建事件表（用于历史状态补全）
+    this.db.prepare(`
+      CREATE TABLE IF NOT EXISTS furnace_events (
+        timestamp INTEGER PRIMARY KEY,
+        status_code INTEGER,
+        segment INTEGER,
+        segment_time_set REAL
+      )
+    `).run();
+
+    // 4. 创建归档表（用于长期存储）
+    this.db.prepare(`
+      CREATE TABLE IF NOT EXISTS furnace_metrics_archive (
+        timestamp INTEGER PRIMARY KEY,
+        pv REAL,
+        tier INTEGER DEFAULT 1
+      )
+    `).run();
+
+    // 5. 创建查询视图（统一recent和archive）
+    this.db.prepare(`
+      CREATE VIEW IF NOT EXISTS furnace_history_view AS
+      SELECT timestamp, pv, sv, mv, status_code, 0 as tier
+      FROM furnace_metrics_recent
+      UNION ALL
+      SELECT timestamp, pv, NULL, NULL, NULL, tier
+      FROM furnace_metrics_archive
+    `).run();
+
+    // 6. 创建索引
+    this.db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_furnace_recent_time
+      ON furnace_metrics_recent(timestamp)
+    `).run();
+
+    this.db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_furnace_events_time
+      ON furnace_events(timestamp)
+    `).run();
+  }
+
+  // ========== Timestamp 转换函数（保持前端兼容性） ==========
+
+  /**
+   * 将 ISO 字符串转换为 Unix 时间戳（秒）
+   * 用于数据库存储（INTEGER主键）
+   */
+  private toDbTimestamp(isoString: string): number {
+    return Math.floor(new Date(isoString).getTime() / 1000);
+  }
+
+  /**
+   * 将 Unix 时间戳（秒）转换为 ISO 字符串
+   * 用于返回前端（保持接口兼容）
+   */
+  private fromDbTimestamp(timestamp: number): string {
+    return new Date(timestamp * 1000).toISOString();
   }
 
   // ---------- 预设管理 (Presets) ----------
@@ -154,38 +222,122 @@ export class FurnaceDataService implements OnModuleInit {
 
   // ---------- 采样数据管理 (Samples) ----------
 
-  async addFurnaceSample(d: { device_name: string; timestamp: string; temperature: number; sv: number; mv: number }): Promise<void> {
-    // 直接写入 SQLite，毫秒级完成
-    // 之前复杂的 buffer + file write 逻辑全删了
+  async addFurnaceSample(d: {
+    device_name: string;
+    timestamp: string;
+    temperature: number;
+    sv: number;
+    mv: number;
+    status_code?: number;  // ✅ 新增：设备状态码
+  }): Promise<void> {
+    // ✅ 改造：先缓冲，满足条件再批量写入（减少I/O）
+    this.sampleBuffer.push({
+      timestamp: this.toDbTimestamp(d.timestamp),
+      pv: d.temperature,
+      sv: d.sv,
+      mv: d.mv,
+      status_code: d.status_code || 0
+    });
+
+    // 检查是否需要刷新缓冲区（大小或时间）
+    const now = Date.now();
+    if (
+      this.sampleBuffer.length >= this.BATCH_SIZE ||
+      (now - this.lastFlushTime) >= this.MAX_BUFFER_TIME
+    ) {
+      this.flushBuffer();
+    }
+
+    this.logger.debug(`Buffered sample: ${d.temperature}°C, buffer size: ${this.sampleBuffer.length}`);
+  }
+
+  /**
+   * 批量刷新缓冲区到数据库
+   * 使用事务确保数据一致性
+   */
+  private flushBuffer(): void {
+    if (this.sampleBuffer.length === 0) return;
+
+    try {
+      // ✅ 使用better-sqlite3的事务API（DbService.db 是 Database 实例）
+      // TypeScript无法识别this.db.db，使用any绕过类型检查
+      const db: any = this.db;
+      const insertMany = db.db.transaction((samples: any[]) => {
+        const stmt = this.db.prepare(`
+          INSERT INTO furnace_metrics_recent
+          (timestamp, pv, sv, mv, status_code, segment, segment_time, segment_time_set)
+          VALUES (?, ?, ?, ?, ?, 0, 0, 0)
+        `);
+
+        for (const sample of samples) {
+          stmt.run(
+            sample.timestamp,
+            sample.pv,
+            sample.sv,
+            sample.mv,
+            sample.status_code
+          );
+        }
+      });
+
+      insertMany(this.sampleBuffer);  // ✅ 传入samples数组
+
+      this.logger.debug(`Flushed ${this.sampleBuffer.length} samples to database`);
+
+      // 清空缓冲区
+      this.sampleBuffer = [];
+      this.lastFlushTime = Date.now();
+    } catch (error) {
+      this.logger.error(`Failed to flush buffer: ${error}`);
+      // 出错时不清空缓冲区，下次重试
+    }
+  }
+
+  /**
+   * 记录设备状态变更事件
+   * 用于历史数据的状态补全
+   */
+  async addFurnaceEvent(d: {
+    timestamp: string;
+    status_code: number;
+    segment?: number;
+    segment_time_set?: number;
+  }): Promise<void> {
     this.db.prepare(`
-      INSERT INTO furnace_samples (ts, pv, sv, mv, segment, segment_time, segment_time_set)
-      VALUES (?, ?, ?, ?, 0, 0, 0)
-    `).run(d.timestamp, d.temperature, d.sv, d.mv);
-    
-    this.logger.debug(`Logged sample: ${d.temperature}°C`);
+      INSERT INTO furnace_events
+      (timestamp, status_code, segment, segment_time_set)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      this.toDbTimestamp(d.timestamp),  // ✅ string → INTEGER
+      d.status_code,
+      d.segment || 0,
+      d.segment_time_set || 0
+    );
+
+    this.logger.debug(`Logged event: status=${d.status_code}, segment=${d.segment || 0}`);
   }
 
   /**
    * 查询历史数据
-   * 之前几十行的 queryGeneric 被两行 SQL 取代
+   * 改造：支持timestamp转换（INTEGER ↔ ISO字符串），添加status_code字段
    */
   async queryFurnace(from?: string, to?: string, limit?: number, downsample?: number) {
-    let sql = `SELECT ts, pv, sv, mv FROM furnace_samples`;
+    let sql = `SELECT timestamp, pv, sv, mv, status_code FROM furnace_metrics_recent`;
     const params = [];
 
-    // 1. 时间范围过滤
+    // 1. 时间范围过滤（将ISO字符串转换为Unix时间戳）
     if (from && to) {
-      sql += ` WHERE ts BETWEEN ? AND ?`;
-      params.push(from, to);
+      sql += ` WHERE timestamp BETWEEN ? AND ?`;
+      params.push(this.toDbTimestamp(from), this.toDbTimestamp(to));
     } else if (from) {
-      sql += ` WHERE ts >= ?`;
-      params.push(from);
+      sql += ` WHERE timestamp >= ?`;
+      params.push(this.toDbTimestamp(from));
     } else if (to) {
-      sql += ` WHERE ts <= ?`;
-      params.push(to);
+      sql += ` WHERE timestamp <= ?`;
+      params.push(this.toDbTimestamp(to));
     }
 
-    sql += ` ORDER BY ts ASC`;
+    sql += ` ORDER BY timestamp ASC`;
 
     // 2. Limit
     if (limit && limit > 0) {
@@ -195,11 +347,21 @@ export class FurnaceDataService implements OnModuleInit {
 
     const rows = this.db.prepare(sql).all(...params);
 
-    // 3. 降采样 (依然在内存做，因为 SQL 很难做间隔取样)
+    // 3. 将 timestamp INTEGER 转换回 ISO 字符串（保持前端兼容性）
+    // 同时添加status_code字段
+    const convertedRows = rows.map(row => ({
+      timestamp: this.fromDbTimestamp(row.timestamp),  // ✅ INTEGER → ISO string
+      pv: row.pv,
+      sv: row.sv,
+      mv: row.mv,
+      status_code: row.status_code  // ✅ 新增字段
+    }));
+
+    // 4. 降采样 (依然在内存做，因为 SQL 很难做间隔取样)
     if (downsample && downsample > 1) {
-      return rows.filter((_, i) => i % downsample === 0);
+      return convertedRows.filter((_, i) => i % downsample === 0);
     }
-    return rows;
+    return convertedRows;
   }
 
   // 兼容旧接口

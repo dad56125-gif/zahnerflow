@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { FurnaceState, FurnaceControls } from './useFurnace';
 import type { ProgramSegment } from './furnaceTypes';
+import { FurnaceApi } from './furnaceApi';
 import { ControlBar } from './components/ControlBar';
 import { SegmentEditor } from './components/SegmentEditor';
 import { SegmentValidator } from './segmentValidation';
@@ -47,7 +48,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
       return;
     }
     setSelectedPresetName(presetName);
-    const preset = await furnaceControls.select_preset(presetName);
+    const preset = await FurnaceApi.getPreset(presetName);
     setPresetSegments(preset.segments);
   }, [furnaceControls]);
 

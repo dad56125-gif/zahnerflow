@@ -31,6 +31,52 @@ export class FurnaceApi {
       return raw.map(i => ({ timestamp: i.ts, temperature: i.pv, sv: i.sv, mv: i.mv }));
   }
 
+  // ========== 新架构查询接口（支持status_code） ==========
+
+  /**
+   * 查询采样数据（支持时间范围和降采样）
+   * 用于RecordingTab实时表格
+   */
+  static async queryFurnaceSamples(params: {
+    from?: string;
+    to?: string;
+    limit?: number;
+    downsample?: number;
+  } = {}): Promise<Array<{
+    timestamp: string;
+    pv: number;
+    sv: number;
+    mv: number;
+    status_code: number;
+  }>> {
+    const qs = new URLSearchParams();
+    if (params.from) qs.append('from', params.from);
+    if (params.to) qs.append('to', params.to);
+    if (params.limit) qs.append('limit', params.limit.toString());
+    if (params.downsample) qs.append('downsample', params.downsample.toString());
+
+    return apiRequest(`/samples?${qs.toString()}`);
+  }
+
+  /**
+   * 查询事件数据（用于状态补全）
+   */
+  static async getFurnaceEvents(params: {
+    from?: string;
+    to?: string;
+  } = {}): Promise<Array<{
+    timestamp: string;
+    status_code: number;
+    segment: number;
+    segment_time_set: number;
+  }>> {
+    const qs = new URLSearchParams();
+    if (params.from) qs.append('from', params.from);
+    if (params.to) qs.append('to', params.to);
+
+    return apiRequest(`/events?${qs.toString()}`);
+  }
+
   static async getPorts(): Promise<string[]> { return apiRequest('/ports'); }
   static async connect(r: FurnaceConnectRequest): Promise<void> { return apiRequest('/connect', { method: 'POST', body: JSON.stringify(r) }); }
   static async disconnect(): Promise<void> { return apiRequest('/disconnect', { method: 'POST' }); }

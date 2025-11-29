@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Portal } from '../../components/common/Portal';
 import type { FurnaceState, FurnaceControls } from './useFurnace';
 import { StatusPanel } from './StatusPanel';
 import { ProgramEditor } from './ProgramEditor';
 import { PresetManager } from './PresetManager';
 import { ConnectionPanel } from './ConnectionPanel';
+import { FurnaceApi } from './furnaceApi';
 
 
 interface DeviceModalProps {
@@ -135,26 +136,12 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                 )}
                 {activeTab === 'recording' && (
                   <div className="tabs_panel active">
-                    <div className="card">
-                      <div className="card_header">
-                        <h4 className="card_title">数据记录</h4>
-                      </div>
-                      <div className="card_body">
-                        <div className="text-secondary">数据记录功能待实现...</div>
-                      </div>
-                    </div>
+                    <RecordingTab />
                   </div>
                 )}
                 {activeTab === 'history' && (
                   <div className="tabs_panel active">
-                    <div className="card">
-                      <div className="card_header">
-                        <h4 className="card_title">历史数据</h4>
-                      </div>
-                      <div className="card_body">
-                        <div className="text-secondary">历史数据功能待实现...</div>
-                      </div>
-                    </div>
+                    <HistoryTab />
                   </div>
                 )}
               </div>
@@ -176,4 +163,202 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
       </div>
     </Portal>
   );
-};
+}
+
+// ========== RecordingTab：实时数据表格 ==========
+
+function RecordingTab() {
+  const [samples, setSamples] = useState<Array<{
+    timestamp: string;
+    pv: number;
+    sv: number;
+    mv: number;
+    status_code: number;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 2秒轮询（与后端采样频率同步）
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchSamples = async () => {
+      try {
+        const data = await FurnaceApi.queryFurnaceSamples({ limit: 1000 });
+        if (mounted) {
+          setSamples(data);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch samples:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchSamples();
+    const interval = setInterval(fetchSamples, 2000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const mapStatusCode = (code: number): string => {
+    switch (code) {
+      case 0: return '运行';
+      case 4: return '暂停';
+      case 12: return '停止';
+      default: return '未知';
+    }
+  };
+
+  const formatTime = (timestamp: string): string => {
+    return new Date(timestamp).toLocaleString('zh-CN', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  };
+
+  return (
+    <div className="card">
+      <div className="card_header">
+        <h4 className="card_title">实时数据记录</h4>
+        <div className="text-sm text-secondary">每2秒更新，保留最近1000条（约33分钟）</div>
+      </div>
+      <div className="card_body">
+        {loading ? (<div className="text-secondary">正在加载数据...</div>) :
+         samples.length === 0 ? (<div className="text-secondary">暂无数据</div>) :
+         <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
+           <table className="data-table">
+             <thead><tr>
+               <th>序号</th><th>记录时间</th><th>实际温度</th><th>设定温度</th><th>输出功率</th>
+               <th>设备状态</th><th>程序段</th><th>段内时间</th><th>段设定时间</th>
+             </tr></thead>
+             <tbody>
+               {samples.map((sample, idx) => (
+                 <tr key={sample.timestamp}>
+                   <td>{idx + 1}</td>
+                   <td>{formatTime(sample.timestamp)}</td>
+                   <td>{sample.pv.toFixed(1)}°C</td>
+                   <td>{sample.sv.toFixed(1)}°C</td>
+                   <td>{sample.mv.toFixed(1)}%</td>
+                   <td>{mapStatusCode(sample.status_code)}</td>
+                   <td>-</td><td>-</td><td>-</td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+         </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+// ========== HistoryTab：历史数据表格（带事件补全） ==========
+
+function HistoryTab() {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [samples, setSamples] = useState<Array<{timestamp: string; pv: number; sv: number; mv: number; status_code?: number}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  const mapStatusCode = (code: number): string => {
+    switch (code) {
+      case 0: return '运行';
+      case 4: return '暂停';
+      case 12: return '停止';
+      default: return '未知';
+    }
+  };
+
+  const formatTime = (timestamp: string): string => {
+    return new Date(timestamp).toLocaleString('zh-CN', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  };
+
+  const calculateDays = (from: string, to: string): number => {
+    return (new Date(to).getTime() - new Date(from).getTime()) / (24 * 60 * 60 * 1000);
+  };
+
+  const queryHistory = async () => {
+    if (!startDate || !endDate) { alert('请选择开始和结束日期'); return; }
+    setLoading(true);
+    try {
+      const sampleData = await FurnaceApi.queryFurnaceSamples({ from: startDate, to: endDate, limit: 10000 });
+      const eventData = await FurnaceApi.getFurnaceEvents({ from: startDate, to: endDate });
+      const enriched = enrichWithEvents(sampleData, eventData);
+      setSamples(enriched);
+    } catch (error) {
+      console.error('Failed to query history:', error);
+      alert('查询失败：' + error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enrichWithEvents = (
+    sampleData: Array<{timestamp: string; pv: number; sv: number; mv: number; status_code?: number}>,
+    events: Array<{timestamp: string; status_code: number}>
+  ): Array<{timestamp: string; pv: number; sv: number; mv: number; status_code?: number}> => {
+    const sortedEvents = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return sampleData.map(sample => {
+      const nearestEvent = sortedEvents.filter(e => new Date(e.timestamp).getTime() <= new Date(sample.timestamp).getTime()).reduce((nearest, current) => {
+        if (!nearest) return current;
+        return (new Date(sample.timestamp).getTime() - new Date(current.timestamp).getTime()) <
+               (new Date(sample.timestamp).getTime() - new Date(nearest.timestamp).getTime()) ? current : nearest;
+      }, sortedEvents[0]);
+      return { ...sample, status_code: nearestEvent?.status_code };
+    });
+  };
+
+  const isArchiveRange = startDate && endDate && calculateDays(startDate, endDate) > 30;
+
+  return (
+    <div className="card">
+      <div className="card_header"><h4 className="card_title">历史数据查询</h4></div>
+      <div className="card_body">
+        <div className="form_group"><label className="form_label">开始日期</label>
+          <input type="datetime-local" className="form_control" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </div>
+        <div className="form_group"><label className="form_label">结束日期</label>
+          <input type="datetime-local" className="form_control" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
+        {isArchiveRange && <div className="text-sm text-secondary mb-2">检测到查询范围超过30天，SV/MV/状态数据将被隐藏（Archive优化）</div>}
+        <button className="btn btn_primary" onClick={queryHistory} disabled={loading}>
+          {loading ? '查询中...' : '查询历史数据'}
+        </button>
+      </div>
+
+      {!loading && samples.length > 0 && (
+        <div className="card_body">
+          <div className="mb-2 text-sm text-secondary">共 {samples.length} 条记录{isArchiveRange && '（归档数据，已隐藏SV/MV/状态）'}</div>
+          <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
+            <table className="data-table">
+              <thead><tr>
+                <th>序号</th><th>记录时间</th><th>实际温度</th>
+                {!isArchiveRange && <th>设定温度</th>}
+                {!isArchiveRange && <th>输出功率</th>}
+                {!isArchiveRange && <th>设备状态</th>}
+                <th>程序段</th><th>段内时间</th><th>段设定时间</th>
+              </tr></thead>
+              <tbody>
+                {samples.map((sample, idx) => (
+                  <tr key={sample.timestamp}>
+                    <td>{idx + 1}</td>
+                    <td>{formatTime(sample.timestamp)}</td>
+                    <td>{sample.pv.toFixed(1)}°C</td>
+                    {!isArchiveRange && <td>{sample.sv.toFixed(1)}°C</td>}
+                    {!isArchiveRange && <td>{sample.mv.toFixed(1)}%</td>}
+                    {!isArchiveRange && <td>{mapStatusCode(sample.status_code || 0)}</td>}
+                    <td>-</td><td>-</td><td>-</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

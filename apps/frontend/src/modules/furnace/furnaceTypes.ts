@@ -25,6 +25,7 @@ export interface FurnaceSample {
   temperature: number;
   sv?: number;
   mv?: number;
+  status_code?: number;  // 设备状态码 (0=运行, 4=暂停, 12=停止)
 }
 
 export interface FurnaceStatus {
@@ -32,6 +33,7 @@ export interface FurnaceStatus {
   sv?: number;             // 设定温度 (℃)
   mv?: number;             // 输出功率 (%)
   status?: string;         // 设备状态
+  status_code?: number;    // 设备状态码 (0=运行, 4=暂停, 12=停止)
   segment?: number;        // 当前程序段
   segment_time?: number;   // 段内运行时间 (分钟)
   segment_time_set?: number; // 段设定时间 (分钟)
@@ -45,6 +47,7 @@ export interface FurnaceOperationResponse {
     sv: number;           // 设定温度
     mv: number;           // 输出值
     status: number;       // 状态字节
+    status_code?: number; // 设备状态码 (0=运行, 4=暂停, 12=停止)
     segment?: number;     // 程序段（可选）
     segment_time?: number; // 程序段时间（分钟）（可选）
     segment_time_set?: number; // 程序段设定时间（分钟）（可选）
@@ -78,6 +81,7 @@ export interface SegmentProgress {
   active: boolean;        // 是否正在进行程序段操作
   type: 'read' | 'write'; // 操作类型：读取程序段 | 写入程序段
   progress: number;       // 进度百分比 (0-100)
+  message?: string;       // 进度消息
 }
 
 // API查询参数类型

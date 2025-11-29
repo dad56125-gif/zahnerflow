@@ -13,10 +13,11 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   private isConnected = false;
   private shouldPoll = false;
   private lastStatusJson = '';
+  private lastStatusCode: number | null = null;  // ✅ 新增：缓存上一次状态码，用于状态变更检测
 
   // 节流控制
   private lastUpdateTimestamp = 0;
-  private readonly UPDATE_INTERVAL = 1000; // 1s 周期
+  private readonly UPDATE_INTERVAL = 2000; // 2s 周期（方案要求）
   private pendingStatusData: any = null;
   private throttleTimer: NodeJS.Timeout | null = null;
 
@@ -113,11 +114,29 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       this.lastStatusJson = currentJson;
     }
 
-    // Save History
+    // ✅ 状态变更检测：与上一次状态对比
+    const currentStatusCode = raw.status_code;
+    if (currentStatusCode !== this.lastStatusCode) {
+      // 状态发生变更，记录事件
+      this.dataService.addFurnaceEvent({
+        timestamp: statusUpdate.timestamp,
+        status_code: currentStatusCode,
+        segment: raw.segment,
+        segment_time_set: raw.segment_time_set
+      });
+      this.logger.log(`Status changed: ${this.lastStatusCode} → ${currentStatusCode}`);
+
+      this.lastStatusCode = currentStatusCode;  // 更新缓存
+    }
+
+    // ✅ Save History：采样数据包含状态码
     this.dataService.addFurnaceSample({
       device_name: 'furnace',
       timestamp: statusUpdate.timestamp,
-      temperature: raw.pv, sv: raw.sv, mv: raw.mv
+      temperature: raw.pv,
+      sv: raw.sv,
+      mv: raw.mv,
+      status_code: currentStatusCode  // ✅ 新增：记录当前状态
     });
   }
 
@@ -182,7 +201,9 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   async update_preset(name: string, s: any[]) { return this.dataService.updatePreset(name, s); }
   async delete_preset(name: string) { return this.dataService.deletePreset(name); }
   async clone_preset(name: string, newName: string) { return this.dataService.clonePreset(name, newName); }
-  async apply_preset(name: string) { return this.dataService.applyPreset(name, () => this.getProgramSegments(), (segs) => this.setProgramSegments(segs)); }
+  async apply_preset(name: string): Promise<{ changed: boolean; steps: string[] }> {
+    return this.dataService.applyPreset(name, () => this.get_program_segments(), (segs) => this.set_program_segments(segs));
+  }
   async get_history_data(params: any) { return this.dataService.getHistoryData(params); }
   async subscribe_to_furnace_updates(id: string) {}
   async unsubscribe_from_furnace_updates(id: string) {}
@@ -208,7 +229,7 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   }
 
   // 批量写入程序段（内部循环54次：27段×2参数）
-  async set_program_segments(segments: ProgramSegment[]): Promise<{ success: boolean }> {
+  async set_program_segments(segments: ProgramSegment[]): Promise<void> {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
 
@@ -229,8 +250,6 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
         progress: Math.round(((i + 1) / segments.length) * 100)
       });
     }
-
-    return { success: true };
   }
 
   // ==================== 自动温度控制 ====================

@@ -255,11 +255,11 @@ export class FurnaceWebSocketService {
     this.callbacks.error.push(callback);
   }
 
-  onReadProgress(callback: (data: { progress: number }) => void): void {
+  onReadProgress(callback: (data: { progress: number; message?: string }) => void): void {
     this.callbacks.readProgress?.push(callback);
   }
 
-  onWriteProgress(callback: (data: { progress: number }) => void): void {
+  onWriteProgress(callback: (data: { progress: number; message?: string }) => void): void {
     this.callbacks.writeProgress?.push(callback);
   }
 

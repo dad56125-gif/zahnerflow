@@ -4,6 +4,7 @@ import { WorkflowService } from '../workflow/workflow.service';
 import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
 import { FurnaceService } from '../furnace/furnace.service';
 import { MfcService } from '../mfc/mfc.service';
+import { FurnaceMaintenanceService } from '../furnace/furnace-maintenance.service'; // ✅ 新增：后台维护服务
 import { EventBus } from '../../notification/event-bus.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { DbService } from '../../db/db.service';
@@ -44,6 +45,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     protected readonly workflowService: WorkflowService,
     protected readonly furnaceService: FurnaceService,
     protected readonly mfcService: MfcService,
+    protected readonly furnaceMaintenanceService: FurnaceMaintenanceService, // ✅ 新增：后台维护服务
     protected readonly eventBus: EventBus,
     private readonly db: DbService,
     private readonly consoleManager: ConsoleDisplayManager,
@@ -428,8 +430,28 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private async executeDelay(node: any) {
     const sec = node.data?.parameters?.duration || 1;
-    this.logger.log(`Delaying for ${sec}s...`);
-    await new Promise(r => setTimeout(r, sec * 1000));
+    this.logger.log(`[DelayNode] Starting delay for ${sec}s`);
+
+    // ✅ 启动后台维护（仅在长时间延时时，非阻塞调用）
+    if (sec >= 300) {  // 5分钟以上
+      const maintenanceWindow = sec - 30;  // 预留30秒余量
+      this.logger.log(`[DelayNode] Starting background maintenance, window: ${maintenanceWindow}s`);
+
+      // 关键：不await，让后台维护并行执行
+      this.furnaceMaintenanceService.runSession(maintenanceWindow)
+        .then(result => {
+          this.logger.log(`[DelayNode] Background maintenance completed`);
+        })
+        .catch(error => {
+          this.logger.error(`[DelayNode] Background maintenance failed: ${error}`);
+          // 维护失败不影响主流程
+        });
+    }
+
+    // ✅ 精确执行用户延时（不受维护影响）
+    await new Promise(resolve => setTimeout(resolve, sec * 1000));
+
+    this.logger.log(`[DelayNode] Delay completed after ${sec}s`);
   }
 
   // ----------------------------------------------------------------------
