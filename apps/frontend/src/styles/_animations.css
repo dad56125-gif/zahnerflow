@@ -331,6 +331,29 @@
   }
 }
 
+/* === 下拉菜单动画 === */
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdownOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
 /* === 模态框动画 === */
 @keyframes modal_backdrop_in {
   0% {
@@ -502,6 +525,10 @@
 /* === 进度动画类 === */
 .animate_progress_fill { animation: progress_fill var(--duration-slow) var(--ease-in-out); }
 .animate_progress_glow { animation: progress_glow 2s ease-in-out infinite; }
+
+/* === 下拉菜单动画类 === */
+.animate_dropdown_in { animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards; }
+.animate_dropdown_out { animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards; }
 
 /* === 通知动画类 === */
 .animate_notification_in { animation: notification_slide_in 0.3s ease-out; }

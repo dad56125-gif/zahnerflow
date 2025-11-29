@@ -1,12 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
 import { useCanvasStore, useWorkflowParameterStore } from '../services/stores';
 import { useMfc } from '../modules/mfc';
 import { MfcDeviceInfo } from '../modules/mfc/mfcTypes';
+import Portal from '../components/Portal';
 
 interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;
 }
+
+// 通用dropdown组件
+interface DropdownProps {
+  isOpen: boolean;
+  isHiding: boolean;
+  onClose: () => void;
+  position: { top: number; left: number; width: number };
+  children: React.ReactNode;
+}
+
+const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, position, children }) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || isHiding) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, isHiding, onClose]);
+
+  if (!isOpen && !isHiding) return null;
+
+  return (
+    <Portal>
+      <div
+        ref={dropdownRef}
+        className={`dropdown_base overlay_base ${isHiding ? 'hiding' : 'show'}`}
+        style={{
+          top: `${position.top}px`,
+          left: `${position.left}px`,
+          width: `${position.width}px`,
+          pointerEvents: 'auto'
+        } as React.CSSProperties}
+      >
+        <div className="dropdown_list">
+          {children}
+        </div>
+      </div>
+    </Portal>
+  );
+};
 
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
@@ -18,6 +77,33 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       getWorkflowDefaultParameters
     } = useWorkflowParameterStore();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'data'>('basic');
+
+    // Dropdown状态管理
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [hidingDropdown, setHidingDropdown] = useState<string | null>(null);
+    const [dropdownPositions, setDropdownPositions] = useState<Record<string, { top: number; left: number; width: number }>>({});
+
+    // Dropdown辅助函数
+    const openDropdownMenu = (dropdownId: string, event: React.MouseEvent) => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDropdownPositions(prev => ({
+        ...prev,
+        [dropdownId]: {
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width
+        }
+      }));
+      setOpenDropdown(dropdownId);
+    };
+
+    const closeDropdownMenu = (dropdownId: string) => {
+      setHidingDropdown(dropdownId);
+      setTimeout(() => {
+        setOpenDropdown(null);
+        setHidingDropdown(null);
+      }, 250); // 匹配CSS动画时长
+    };
 
     // 获取真实的MFC设备信息
     const [mfcState] = useMfc();
@@ -427,33 +513,108 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           return renderChangeGasFlowInput(key, defaultValue, currentValue);
         }
 
-        // 处理枚举类型
+        // 处理枚举类型 - 使用UIKit dropdown
         if (key in enumValues) {
+          const dropdownId = `param-${key}`;
+          const currentValue = (node.data.parameters || {})[key] ?? defaultValue;
+          const selectedLabel = getParameterEnumLabel(key, currentValue);
+
           return (
-            <select
-              value={currentValue ?? defaultValue}
-              onChange={(e) => updateParameters({ ...node.data.parameters, [key]: e.target.value })}
-              className="select glass"
-            >
-              {enumValues[key].map((value: string) => (
-                <option key={value} value={value}>
-                  {getParameterEnumLabel(key, value)}
-                </option>
-              ))}
-            </select>
+            <div className="dropdown-wrapper" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="btn_base btn_layout btn_style_common btn_medium btn_secondary glass"
+                onClick={(e) => openDropdownMenu(dropdownId, e)}
+                style={{ width: '100%', justifyContent: 'space-between' }}
+              >
+                <span>{selectedLabel}</span>
+                <svg className={`dropdown-arrow ${openDropdown === dropdownId ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+                  <path
+                    d="M -8 -3 L 0 5 L 8 -3"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.8)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <Dropdown
+                isOpen={openDropdown === dropdownId}
+                isHiding={hidingDropdown === dropdownId}
+                onClose={() => closeDropdownMenu(dropdownId)}
+                position={dropdownPositions[dropdownId] || { top: 0, left: 0, width: 280 }}
+              >
+                {enumValues[key].map((value: string) => (
+                  <div
+                    key={value}
+                    className={`dropdown_option ${currentValue === value ? 'selected' : ''}`}
+                    onClick={() => {
+                      updateParameters({ ...node.data.parameters, [key]: value });
+                      closeDropdownMenu(dropdownId);
+                    }}
+                  >
+                    {getParameterEnumLabel(key, value)}
+                  </div>
+                ))}
+              </Dropdown>
+            </div>
           );
         }
 
         if (typeof defaultValue === 'boolean') {
+          const dropdownId = `bool-${key}`;
+          const currentValue = (node.data.parameters || {})[key] ?? defaultValue;
+          const selectedLabel = currentValue ? '启用' : '禁用';
+
           return (
-            <select
-              value={(currentValue ?? defaultValue) ? 'true' : 'false'}
-              onChange={(e) => updateParameters({ ...node.data.parameters, [key]: e.target.value === 'true' })}
-              className="select glass"
-            >
-              <option value="true">启用</option>
-              <option value="false">禁用</option>
-            </select>
+            <div className="dropdown-wrapper" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="btn_base btn_layout btn_style_common btn_medium btn_secondary glass"
+                onClick={(e) => openDropdownMenu(dropdownId, e)}
+                style={{ width: '100%', justifyContent: 'space-between' }}
+              >
+                <span>{selectedLabel}</span>
+                <svg className={`dropdown-arrow ${openDropdown === dropdownId ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+                  <path
+                    d="M -8 -3 L 0 5 L 8 -3"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.8)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <Dropdown
+                isOpen={openDropdown === dropdownId}
+                isHiding={hidingDropdown === dropdownId}
+                onClose={() => closeDropdownMenu(dropdownId)}
+                position={dropdownPositions[dropdownId] || { top: 0, left: 0, width: 280 }}
+              >
+                <div
+                  className={`dropdown_option ${currentValue === true ? 'selected' : ''}`}
+                  onClick={() => {
+                    updateParameters({ ...node.data.parameters, [key]: true });
+                    closeDropdownMenu(dropdownId);
+                  }}
+                >
+                  启用
+                </div>
+                <div
+                  className={`dropdown_option ${currentValue === false ? 'selected' : ''}`}
+                  onClick={() => {
+                    updateParameters({ ...node.data.parameters, [key]: false });
+                    closeDropdownMenu(dropdownId);
+                  }}
+                >
+                  禁用
+                </div>
+              </Dropdown>
+            </div>
           );
         }
         if (typeof defaultValue === 'number') {
@@ -638,36 +799,67 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
       // change_gas_flow节点的专用输入组件
       const renderChangeGasFlowInput = (key: string, defaultValue: any, currentValue: any) => {
-        // 设备选择下拉组件
+        // 设备选择下拉组件 - 使用UIKit dropdown
         if (key === 'device_selection') {
           const availableDevices = getAvailableMfcDevices();
+          const dropdownId = `mfc-device-selection`;
+          const currentValue = (node.data.parameters || {})[key] ?? defaultValue;
+          const selectedDevice = availableDevices.find((d: { value: string; label: string; maxFlow: number }) => d.value === currentValue);
+          const selectedLabel = selectedDevice?.label || '选择设备';
 
           return (
-            <select
-              value={currentValue ?? defaultValue}
-              onChange={(e) => {
-                const selection = e.target.value;
-                const [address, gasType] = selection.split(':');
+            <div className="dropdown-wrapper" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="btn_base btn_layout btn_style_common btn_medium btn_secondary glass"
+                onClick={(e) => openDropdownMenu(dropdownId, e)}
+                style={{ width: '100%', justifyContent: 'space-between' }}
+                title="选择MFC设备和气体类型"
+              >
+                <span>{selectedLabel}</span>
+                <svg className={`dropdown-arrow ${openDropdown === dropdownId ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+                  <path
+                    d="M -8 -3 L 0 5 L 8 -3"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.8)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
 
-                // 解析设备信息，更新相关参数
-                const selectedDevice = availableDevices.find((d: { value: string; label: string; maxFlow: number }) => d.value === selection);
-                updateParameters({
-                  ...node.data.parameters,
-                  [key]: selection,
-                  device_address: parseInt(address),
-                  gas_type: gasType,
-                  max_flow_sccm: selectedDevice?.maxFlow || 200
-                });
-              }}
-              className="select glass"
-              title="选择MFC设备和气体类型"
-            >
-              {availableDevices.map((device: { value: string; label: string; maxFlow: number }) => (
-                <option key={device.value} value={device.value}>
-                  {device.label}
-                </option>
-              ))}
-            </select>
+              <Dropdown
+                isOpen={openDropdown === dropdownId}
+                isHiding={hidingDropdown === dropdownId}
+                onClose={() => closeDropdownMenu(dropdownId)}
+                position={dropdownPositions[dropdownId] || { top: 0, left: 0, width: 280 }}
+              >
+                {availableDevices.length > 0 ? (
+                  availableDevices.map((device: { value: string; label: string; maxFlow: number }) => (
+                    <div
+                      key={device.value}
+                      className={`dropdown_option ${currentValue === device.value ? 'selected' : ''}`}
+                      onClick={() => {
+                        const [address, gasType] = device.value.split(':');
+                        updateParameters({
+                          ...node.data.parameters,
+                          [key]: device.value,
+                          device_address: parseInt(address),
+                          gas_type: gasType,
+                          max_flow_sccm: device.maxFlow || 200
+                        });
+                        closeDropdownMenu(dropdownId);
+                      }}
+                    >
+                      {device.label}
+                    </div>
+                  ))
+                ) : (
+                  <div className="dropdown_empty">未检测到MFC设备</div>
+                )}
+              </Dropdown>
+            </div>
           );
         }
 

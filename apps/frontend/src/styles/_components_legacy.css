@@ -240,52 +240,7 @@
   transform-origin: center center;
 }
 
-.workstation-dropdown-menu {
-  position: fixed;
-  z-index: 1500;
-  min-width: 280px;
-  max-height: 300px;
-
-  /* 玻璃态效果 - 与用户选择器保持一致 */
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-
-  overflow: hidden;
-  display: none;
-  flex-direction: column;
-  pointer-events: none;
-
-  /* 性能优化 */
-  will-change: opacity, transform, backdrop-filter;
-}
-
-.workstation-dropdown-menu.show {
-  display: flex;
-  pointer-events: auto;
-  animation: dropdownIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.workstation-option {
-  width: 100%;
-  padding: 12px 16px;
-  height: var(--user-option-height);
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  transition: var(--transition);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
-  cursor: pointer;
-  pointer-events: auto;
-  position: relative;
-}
+/* workstation-dropdown-menu 已统一到 _ui_kit.css 中的 .dropdown_base */
 
 .workstation-option:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -379,4 +334,4 @@
 
 .empty-text { font-size: var(--size-md); color: var(--text-muted); text-align: center; margin-top: var(--space); }
 
-@keyframes dropdownIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+/* dropdownIn 动画已统一到 _animations.css */

@@ -71,10 +71,12 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
     if (!workstationButtonRef.current) return;
 
     const buttonRect = workstationButtonRef.current.getBoundingClientRect();
+    const dropdownWidth = 280; // 缩短宽度，与普通下拉菜单一致
+
     setWorkstationPosition({
       top: buttonRect.bottom + 18, // 按钮底部 + 间距（下移18px，比之前多5px）
-      left: buttonRect.right - 280,
-      width: 280
+      left: buttonRect.right - dropdownWidth, // 右对齐：菜单右边与按钮右边对齐
+      width: dropdownWidth
     });
   };
 
@@ -193,7 +195,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
           >
             <div
               ref={workstationDropdownRef}
-              className={`workstation-dropdown-menu ${isWorkstationHiding ? 'hiding' : 'show'}`}
+              className={`dropdown_base dropdown_workstation overlay_base ${isWorkstationHiding ? 'hiding' : 'show'}`}
               style={{
                 top: `${workstationPosition.top}px`,
                 left: `${workstationPosition.left}px`,
@@ -204,17 +206,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
               {workstations.map((workstation) => (
                 <div
                   key={workstation.id}
-                  className={`workstation-option ${workstation.status}`}
+                  className={`dropdown_workstation_option ${workstation.status}`}
                   onClick={() => handleWorkstationSelect(workstation)}
                 >
-                  <div className="workstation-option-icon">{workstation.icon}</div>
-                  <div className="workstation-option-info">
-                    <div className="workstation-option-name">{workstation.name}</div>
-                    <div className="workstation-option-type">{workstation.type}</div>
-                  </div>
-                  <div className={`workstation-option-status ${workstation.status}`}>
-                    <span className="status-dot" />
-                    <span className="status-text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
+                  <div className="dropdown_workstation_content">
+                    <div className="dropdown_workstation_icon">{workstation.icon}</div>
+                    <div className="dropdown_workstation_info">
+                      <div className="dropdown_workstation_name">{workstation.name}</div>
+                      <div className="dropdown_workstation_type">{workstation.type}</div>
+                    </div>
+                    <div className={`dropdown_workstation_status ${workstation.status}`}>
+                      <span className={`status_dot ${workstation.status}`} />
+                      <span className="status_text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
+                    </div>
                   </div>
                 </div>
               ))}

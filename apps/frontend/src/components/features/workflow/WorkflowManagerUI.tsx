@@ -468,8 +468,11 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
       <div className="portal-overlay">
         <div
           ref={panelRef}
-          className={`workflow-manager-ui ${className}`}
-          style={style}
+          className={`workflow-manager-ui glass ${className}`}
+          style={{
+            ...style,
+            background: 'rgba(0, 0, 0, 0.5)' // 覆盖玻璃态背景透明度为0.5
+          }}
         >
           <div className="manager-header">
             <h3>工作流管理</h3>
@@ -507,7 +510,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                   <div className="history-filter">
                     <button
                       ref={projectDropdownButtonRef}
-                      className="project-filter-select"
+                      className="btn btn_secondary btn_small"
                       onClick={() => {
                         if (isProjectDropdownOpen) {
                           setIsProjectDropdownOpen(false);
@@ -517,7 +520,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         }
                       }}
                     >
-                      <span className="user-display">{selectedProject || '所有项目'}</span>
+                      <span className="user-display">{selectedProject || '请选择项目'}</span>
                       <svg className={`dropdown-arrow ${isProjectDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
                         <path
                           d="M -8 -3 L 0 5 L 8 -3"
@@ -533,11 +536,11 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                 </div>
 
                 {historyError && (
-                  <div className="history-error">
-                    {historyError}
+                  <div className="history-error alert alert_danger">
+                    <div className="alert_message">{historyError}</div>
                     <button
                       onClick={loadWorkflowHistory}
-                      className="retry-btn"
+                      className="retry-btn btn btn_warning btn_small"
                       disabled={loadingHistory}
                     >
                       重试
@@ -547,7 +550,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
                 {loadingHistory ? (
                   <div className="history-loading">
-                    <div className="loading-spinner">🔄</div>
+                    <div className="loading-spinner spinner"></div>
                     <div>正在加载历史工作流...</div>
                   </div>
                 ) : workflowHistory.length === 0 ? (
@@ -566,7 +569,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                     {workflowHistory.map((item) => (
                       <div
                         key={item.id}
-                        className="history-item"
+                        className="history-item card"
                         onDoubleClick={() => loadHistoryWorkflow(item)}
                         title="双击加载工作流"
                       >
@@ -636,10 +639,10 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 
                 <div className="templates-grid">
                   {templates.map((template, index) => (
-                    <div key={index} className="template-card">
+                    <div key={index} className="template-card card">
                       <div className="template-header">
                         <h5>{template.metadata?.name}</h5>
-                        <span className="template-badge">收藏</span>
+                        <span className="template-badge badge badge_neutral">收藏</span>
                       </div>
                       <div className="template-description">
                         {template.metadata?.description}
@@ -651,7 +654,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                       <div className="template-actions">
                         <button
                           onClick={() => applyTemplate(template)}
-                          className="btn-apply"
+                          className="btn-apply btn btn_primary btn_small"
                         >
                           应用模板
                         </button>
@@ -670,46 +673,29 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         {(isProjectDropdownOpen || isProjectDropdownHiding) && (
           <div
             ref={projectDropdownRef}
-            className={`user-dropdown ${isProjectDropdownHiding ? 'hiding' : 'show'}`}
+            className={`dropdown_base overlay_base ${isProjectDropdownHiding ? 'hiding' : 'show'}`}
             style={{
               top: `${projectDropdownPosition.top}px`,
               left: `${projectDropdownPosition.left}px`,
               width: `${projectDropdownPosition.width}px`
             } as React.CSSProperties}
           >
-            <div className="user-list">
-              <div
-                className={`user-option ${selectedProject === '' ? 'selected' : ''}`}
-              >
-                <span
-                  className="user-name"
-                  onClick={() => {
-                    setSelectedProject('');
-                    setIsProjectDropdownHiding(true);
-                  }}
-                >
-                  所有项目
-                </span>
-              </div>
-              {projects.length > 0 ? (
+            <div className="dropdown_list">
+                {projects.length > 0 ? (
                 projects.map(project => (
                   <div
                     key={project}
-                    className={`user-option ${project === selectedProject ? 'selected' : ''}`}
+                    className={`dropdown_option ${project === selectedProject ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setIsProjectDropdownHiding(true);
+                    }}
                   >
-                    <span
-                      className="user-name"
-                      onClick={() => {
-                        setSelectedProject(project);
-                        setIsProjectDropdownHiding(true);
-                      }}
-                    >
-                      {project}
-                    </span>
+                    {project}
                   </div>
                 ))
               ) : (
-                <div className="empty-users">暂无项目</div>
+                <div className="dropdown_empty">暂无项目</div>
               )}
             </div>
           </div>

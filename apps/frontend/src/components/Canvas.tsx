@@ -193,9 +193,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('nodeId', node.id);
 
-    // ✅ 添加动态光效
-    glassEffect.setupElementEffects(element as HTMLElement);
-
     // ✅ 设置透明度
     (event.currentTarget as HTMLElement).style.opacity = '0.5';
   };
@@ -479,13 +476,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         />
       </div>
 
-      {/* 工作流管理面板 - 新增 */}
+      {/* 工作流管理面板 - 直接使用Portal，无需额外覆盖层 */}
       {showWorkflowManager && (
-        <div className="workflow-manager-overlay">
-          <div className="workflow-manager-panel">
-            <WorkflowManagerUI onClose={onToggleWorkflowManager} />
-          </div>
-        </div>
+        <WorkflowManagerUI onClose={onToggleWorkflowManager} />
       )}
 
       {/* 文件路径管理器覆盖层 - 新增 */}

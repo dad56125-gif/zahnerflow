@@ -54,87 +54,10 @@
   transform: scale(1.05);
 }
 
-/* 下拉菜单入场动画 */
-@keyframes dropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* 下拉菜单出场动画 */
-@keyframes dropdownOut {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-}
+/* 下拉菜单动画已统一到 _animations.css */
 
 /* 用户下拉菜单 - 模拟工作站下拉菜单样式，使用fixed定位突破容器边界 */
-.user-dropdown {
-  position: fixed;
-  z-index: 1500; /* 调整层级避免冲突 */
-  min-width: 280px;
-  max-height: 300px; /* 合理的最大高度限制 */
-
-  /* 背景模糊效果由overlay_base类提供 */
-  overflow: hidden;
-  display: none; /* 初始完全隐藏，不参与布局 */
-  flex-direction: column;
-  pointer-events: none;
-
-  /* 性能优化 */
-  will-change: opacity, transform, backdrop-filter;
-}
-
-/* 下拉菜单打开状态 - 缓入动画 */
-.user-dropdown.show {
-  display: flex;
-  opacity: 1;
-  pointer-events: auto;
-  animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
-}
-
-/* 下拉菜单关闭状态 - 缓出动画（使用类控制） */
-.user-dropdown.hiding {
-  display: flex;
-  pointer-events: none;
-  animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
-}
-
-/* 用户列表 */
-.user-list {
-  min-height: var(--user-option-height); /* 最小1个用户高度 */
-  max-height: calc(var(--user-option-height) * 5); /* 最大5个用户高度 */
-  overflow-y: auto;
-}
-
-.user-option {
-  width: 100%;
-  padding: 12px 16px;
-  height: var(--user-option-height);
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  transition: var(--transition);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
-}
-
-.user-option:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
+/* user-dropdown 已统一到 _ui_kit.css 中的 .dropdown_base */
 
 .user-name {
   flex: 1;
@@ -172,12 +95,6 @@
   transform: scale(0.95);
 }
 
-.user-option.selected {
-  background: rgba(33, 150, 243, 0.3);
-  border-left: 3px solid #2196f3;
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-}
 
 .user-option.selected .delete-user-btn {
   background: rgba(255, 255, 255, 0.2);

@@ -228,9 +228,10 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
           <div className="form-group">
             <label htmlFor="project_select">项目名</label>
             <div className="project-input-group">
-              <div
+              <button
                 ref={projectSelectRef}
-                className="project-selector-button"
+                type="button"
+                className="btn btn_secondary btn_small"
                 onClick={() => {
                   if (projectDropdownOpen) {
                     setProjectDropdownOpen(false);
@@ -243,7 +244,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                   }
                 }}
               >
-                <span className="project-display">
+                <span className="user-display">
                   {config.project_name || '选择已有项目...'}
                 </span>
                 <svg className={`dropdown-arrow ${projectDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
@@ -256,7 +257,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                     strokeLinejoin="round"
                   />
                 </svg>
-              </div>
+              </button>
               <input
                 type="text"
                 value={config.project_name}
@@ -307,29 +308,29 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
           {(projectDropdownOpen || isProjectHiding) && (
             <div
               ref={projectDropdownRef}
-              className={`user-dropdown ${isProjectHiding ? 'hiding' : 'show'}`}
+              className={`dropdown_base overlay_base ${isProjectHiding ? 'hiding' : 'show'}`}
               style={{
                 top: `${dropdownPosition.top}px`,
                 left: `${dropdownPosition.left}px`,
                 width: `${dropdownPosition.width}px`
               } as React.CSSProperties}
             >
-              <div className="project-list">
+              <div className="dropdown_list">
                 {projects.length > 0 ? (
                   projects.map(project => (
                     <div
                       key={project}
-                      className={`user-option ${project === config.project_name ? 'selected' : ''}`}
+                      className={`dropdown_option ${project === config.project_name ? 'selected' : ''}`}
                       onClick={() => {
                         setConfig({ ...config, project_name: project });
                         setIsProjectHiding(true);
                       }}
                     >
-                      <span className="project-name">{project}</span>
+                      {project}
                     </div>
                   ))
                 ) : (
-                  <div className="empty-users">暂无项目</div>
+                  <div className="dropdown_empty">暂无项目</div>
                 )}
               </div>
             </div>

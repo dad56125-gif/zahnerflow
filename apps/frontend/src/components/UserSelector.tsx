@@ -194,22 +194,21 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       >
         <div
           ref={dropdownRef}
-          className={`user-dropdown overlay_base ${isHiding ? 'hiding' : 'show'}`}
+          className={`dropdown_base overlay_base ${isHiding ? 'hiding' : 'show'}`}
           style={{
             top: `${dropdownPosition.top}px`,
             left: `${dropdownPosition.left}px`,
             width: `${dropdownPosition.width}px`
           } as React.CSSProperties}
         >
-          <div className="user-list">
+          <div className="dropdown_list">
             {users.length > 0 ? (
               users.map(user => (
                 <div
                   key={user.user}
-                  className={`user-option ${user.user === currentUser ? 'selected' : ''}`}
+                  className={`dropdown_option ${user.user === currentUser ? 'selected' : ''}`}
                 >
                   <span
-                    className="user-name"
                     onClick={() => {
                       onUserChange(user.user);
                       setIsHiding(true);
@@ -230,7 +229,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                 </div>
               ))
             ) : (
-              <div className="empty-users">暂无用户</div>
+              <div className="dropdown_empty">暂无用户</div>
             )}
           </div>
         </div>
