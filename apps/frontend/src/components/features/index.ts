@@ -9,7 +9,7 @@ export * from './loop';
 export * from './workflow';
 
 // 炉温控制导出
-export * from './furnace';
+export * from '../../modules/furnace';
 
 // 质量流量控制器导出
-export * from './mfc';
+export * from '../../modules/mfc';

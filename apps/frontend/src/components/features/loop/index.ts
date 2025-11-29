@@ -26,7 +26,7 @@ export type {
 export type { LoopBoundaryProps } from './visualization/LoopBoundary';
 export type { LoopControlPanelProps } from './visualization/LoopControlPanel';
 export type { LoopLevel } from './core/loop_level_calculator';
-export type { LoopSystemConfig, WorkflowData } from './core/loop_system_controller';
+export type { LoopSystemConfig, LoopWorkflowData } from './core/loop_system_controller';
 export type {
   LoopConnection,
   WorkflowChange,

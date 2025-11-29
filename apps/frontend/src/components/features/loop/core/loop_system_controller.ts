@@ -16,7 +16,7 @@ export interface LoopConnection {
   target_id: string;
 }
 
-export interface WorkflowData {
+export interface LoopWorkflowData {
   loops: LoopInfo[];
   nodes: ElectrochemicalNode[];
   connections: LoopConnection[];
@@ -38,7 +38,7 @@ export class LoopSystemController {
   /**
    * 初始化循环系统
    */
-  static initialize(workflow: WorkflowData, config: Partial<LoopSystemConfig> = {}): {
+  static initialize(workflow: LoopWorkflowData, config: Partial<LoopSystemConfig> = {}): {
     success: boolean;
     levels?: LoopLevelCalculator.LoopLevel[];
     error?: string;
@@ -63,7 +63,7 @@ export class LoopSystemController {
 
       // 3. 更新缓存指纹（如果启用）
       if (this.config.enable_cache) {
-        FingerprintCache.force_recalculation(workflow, (data) =>
+        FingerprintCache.force_recalculation(workflow as any, (data) =>
           LoopLevelCalculator.calculate_all_levels(
             data.loops,
             data.nodes as ElectrochemicalNode[],
@@ -113,7 +113,7 @@ export class LoopSystemController {
       if (current_config.enable_cache) {
         // 使用指纹缓存智能判断
         const levels = FingerprintCache.smart_update(
-          change.workflow,
+          change.workflow as any,
           change,
           (data) => LoopLevelCalculator.calculate_all_levels(data.loops, data.nodes as ElectrochemicalNode[], data.connections)
         );

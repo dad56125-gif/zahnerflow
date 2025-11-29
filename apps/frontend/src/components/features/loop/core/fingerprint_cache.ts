@@ -13,7 +13,7 @@ export interface LoopConnection {
   target_id: string;
 }
 
-export interface WorkflowData {
+export interface FingerprintWorkflowData {
   loops: LoopInfo[];
   nodes: Array<{ id: string; type: string }>;
   connections: LoopConnection[];
@@ -40,7 +40,7 @@ export interface WorkflowChange {
   node_id?: string;
   loop_id?: string;
   connection?: LoopConnection;
-  workflow: WorkflowData;
+  workflow: FingerprintWorkflowData;
   is_loop_node?: boolean;
 }
 
@@ -97,9 +97,9 @@ export class FingerprintCache {
    * 仅当结构变化时重新计算
    */
   static smart_update(
-    workflow: WorkflowData,
+    workflow: FingerprintWorkflowData,
     change: WorkflowChange,
-    recalculate_fn: (data: WorkflowData) => LoopLevel[]
+    recalculate_fn: (data: FingerprintWorkflowData) => LoopLevel[]
   ): LoopLevel[] {
     // 1. 根据变更类型快速判断
     if (this.can_skip_recalculation(change)) {
@@ -167,8 +167,8 @@ export class FingerprintCache {
    * 强制重新计算（绕过缓存）
    */
   static force_recalculation(
-    workflow: WorkflowData,
-    recalculate_fn: (data: WorkflowData) => LoopLevel[]
+    workflow: FingerprintWorkflowData,
+    recalculate_fn: (data: FingerprintWorkflowData) => LoopLevel[]
   ): LoopLevel[] {
     console.log('[FingerprintCache] 强制重新计算');
     this.cached_levels = recalculate_fn(workflow);
@@ -210,7 +210,7 @@ export class FingerprintCache {
   /**
    * 更新缓存的工作流数据（调试用）
    */
-  private static update_cached_workflow_data(workflow: WorkflowData): void {
+  private static update_cached_workflow_data(workflow: FingerprintWorkflowData): void {
     this.cached_workflow_data = {
       loop_count: workflow.loops.length,
       node_count: workflow.nodes.length,
@@ -221,7 +221,7 @@ export class FingerprintCache {
   /**
    * 验证指纹与当前工作流是否匹配
    */
-  static verify_fingerprint(workflow: WorkflowData): {
+  static verify_fingerprint(workflow: FingerprintWorkflowData): {
     is_valid: boolean;
     current_fingerprint: string;
     cached_fingerprint: string;
@@ -249,7 +249,7 @@ export class ChangeHandler {
    */
   static handle_node_deletion(
     node_id: string,
-    workflow: WorkflowData,
+    workflow: FingerprintWorkflowData,
     is_loop_node: boolean
   ): WorkflowChange {
     return {
@@ -267,7 +267,7 @@ export class ChangeHandler {
    */
   static handle_connection_change(
     connection: LoopConnection,
-    workflow: WorkflowData
+    workflow: FingerprintWorkflowData
   ): WorkflowChange {
     return {
       type: WorkflowChangeType.CONNECTION_CHANGED,
@@ -281,7 +281,7 @@ export class ChangeHandler {
    */
   static handle_node_movement(
     node_id: string,
-    workflow: WorkflowData,
+    workflow: FingerprintWorkflowData,
     is_loop_node: boolean
   ): WorkflowChange {
     return {
@@ -295,7 +295,7 @@ export class ChangeHandler {
   /**
    * 处理参数变更
    */
-  static handle_parameter_change(workflow: WorkflowData): WorkflowChange {
+  static handle_parameter_change(workflow: FingerprintWorkflowData): WorkflowChange {
     return {
       type: WorkflowChangeType.PARAMETER_CHANGED,
       workflow
