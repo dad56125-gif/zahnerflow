@@ -5,7 +5,7 @@
  * 参数编辑功能完全转移到 PropertyPanel 中
  */
 
-import React from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { ElectrochemicalNode, getNodeConfig } from '../types/nodes';
 
 export interface NodeRendererProps {
@@ -25,7 +25,7 @@ export interface NodeRendererProps {
  * 节点渲染器组件
  * 从配置获取节点的显示信息，统一处理所有节点类型
  */
-export const NodeRenderer: React.FC<NodeRendererProps> = ({
+export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   node,
   index,
   isSelected = false,
@@ -45,79 +45,86 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
   // 节点拖拽交换相关状态
   const [isDragOver, setIsDragOver] = React.useState(false);
 
-  // 节点点击处理
-  const handleClick = (e: React.MouseEvent) => {
+  // 🎯 使用useCallback优化事件处理函数，避免重复创建
+  const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onNodeClick?.(node);
-  };
+  }, [node.id, onNodeClick]);
 
-  // 节点双击处理
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onNodeDoubleClick?.(node);
-  };
+  }, [node.id, onNodeDoubleClick]);
 
-  // 节点右键菜单处理
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onNodeContextMenu?.(node, e);
-  };
+  }, [node.id, onNodeContextMenu]);
 
-  // 节点拖拽开始处理
-  const handleDragStart = (e: React.DragEvent) => {
-    console.log(`开始拖拽节点：${node.name}，当前索引：${index}`);
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`开始拖拽节点：${node.name}，当前索引：${index}`);
+    }
     onNodeDragStart?.(node, e);
     (e.currentTarget as HTMLElement).style.opacity = '0.5';
-  };
+  }, [node.id, index, onNodeDragStart]);
 
-  // 节点拖拽结束处理
-  const handleDragEnd = (e: React.DragEvent) => {
-    console.log('拖拽结束');
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('拖拽结束');
+    }
     onNodeDragEnd?.(node, e);
     (e.currentTarget as HTMLElement).style.opacity = '1';
-  };
+  }, [node.id, onNodeDragEnd]);
 
-  // 节点拖拽悬停处理
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setIsDragOver(true);
-  };
+  }, []);
 
-  // 节点拖拽离开处理
-  const handleDragLeave = () => {
+  const handleDragLeave = useCallback(() => {
     setIsDragOver(false);
-  };
+  }, []);
 
-  // 节点放置处理
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
     (e.currentTarget as HTMLElement).style.opacity = '1';
-  };
+  }, []);
 
-  // 调试日志：检查节点状态
-  console.log(`[NodeRenderer] 渲染节点: ${node.id}, 状态: ${node.status}, 名称: ${node.name}`);
+  // 🎯 使用useMemo优化样式对象和类名，避免重复创建
+  const nodeStyle = useMemo(() => ({
+    position: 'absolute' as const,
+    left: node.position.x,
+    top: node.position.y,
+    width: node.style.width || 140, // 与配置文件保持一致
+    height: node.style.height || 60, // 与配置文件保持一致
+    cursor: 'grab',
+  }), [node.position.x, node.position.y, node.style.width, node.style.height]);
+
+  const nodeClassName = useMemo(() =>
+    `node glass status-${node.status} ${
+      isSelected ? 'selected' : ''
+    } ${
+      isConnecting ? 'connecting' : ''
+    } ${
+      isDragOver ? 'drag-over' : ''
+    }`,
+    [node.status, isSelected, isConnecting, isDragOver]
+  );
+
+  // 🎯 只在调试模式下显示日志
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[NodeRenderer] 渲染节点: ${node.id}, 状态: ${node.status}, 名称: ${node.name}`);
+  }
 
   return (
     <div
-      className={`node glass status-${node.status} ${
-        isSelected ? 'selected' : ''
-      } ${
-        isConnecting ? 'connecting' : ''
-      } ${
-        isDragOver ? 'drag-over' : ''
-      }`}
-      style={{
-        position: 'absolute',
-        left: node.position.x,
-        top: node.position.y,
-        width: node.style.width || 140, // 与配置文件保持一致
-        height: node.style.height || 60, // 与配置文件保持一致
-        cursor: 'grab',
-      }}
+      className={nodeClassName}
+      style={nodeStyle}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
@@ -391,7 +398,20 @@ export const NodeRenderer: React.FC<NodeRendererProps> = ({
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // 🎯 自定义比较函数，精确控制重渲染时机
+  return (
+    prevProps.node.id === nextProps.node.id &&
+    prevProps.node.status === nextProps.node.status &&
+    prevProps.node.position.x === nextProps.node.position.x &&
+    prevProps.node.position.y === nextProps.node.position.y &&
+    prevProps.node.name === nextProps.node.name &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isConnecting === nextProps.isConnecting &&
+    prevProps.connectionStart === nextProps.connectionStart &&
+    JSON.stringify(prevProps.node.data) === JSON.stringify(nextProps.node.data) // 浅比较数据对象
+  );
+});
 
 /**
  * 批量节点渲染器

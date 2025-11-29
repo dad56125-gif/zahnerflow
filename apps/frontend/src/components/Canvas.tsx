@@ -269,6 +269,24 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  // 🎯 优化：使用哈希值避免不必要的重新计算
+  const nodesHash = useMemo(() =>
+    JSON.stringify(nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      position: n.position
+    }))),
+    [nodes.map(n => `${n.id}-${n.type}-${n.position.x}-${n.position.y}`).join(',')]
+  );
+
+  const connectionsHash = useMemo(() =>
+    JSON.stringify(connections.map(c => ({
+      source_id: c.source_id,
+      target_id: c.target_id
+    }))),
+    [connections.map(c => `${c.source_id}-${c.target_id}`).join(',')]
+  );
+
   // 循环检测和管理逻辑
   useEffect(() => {
     // 只有在有节点时才进行循环检测和初始化
@@ -280,12 +298,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // 检测循环
     const detectionResult = LoopDetector.detectLoops(nodes, connections);
-
-    // removed debug logs for lightweight UI
-
     setDetectedLoops(detectionResult.loops);
-
-    // 通知父组件检测到循环
     onLoopDetected?.(detectionResult.loops);
 
     // 初始化循环系统（计算嵌套层级等）
@@ -323,27 +336,32 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
 
     setLoopContexts(newContexts);
-  }, [nodes, connections]);
+  }, [nodesHash, connectionsHash]); // 🎯 使用哈希值而不是原始对象
 
   // 移除了循环控制事件处理函数，只保留循环检测和可视化功能
 
-  // 更新循环上下文状态
-  useEffect(() => {
-    const updateInterval = setInterval(() => {
-      const updatedContexts = new Map<string, LoopExecutionContext>();
+  // 🎯 修复：移除高频定时器，改为事件驱动的状态更新
+  const updateLoopContexts = useCallback(() => {
+    const updatedContexts = new Map<string, LoopExecutionContext>();
 
-      loopContexts.forEach((context, loopId) => {
-        const currentContext = LoopContextManager.getLoopContext(loopId);
-        if (currentContext) {
-          updatedContexts.set(loopId, currentContext);
-        }
-      });
+    detectedLoops.forEach(loop => {
+      const currentContext = LoopContextManager.getLoopContext(loop.id);
+      if (currentContext) {
+        updatedContexts.set(loop.id, currentContext);
+      }
+    });
 
+    // 只在真正有变化时更新状态
+    if (JSON.stringify(Array.from(loopContexts.entries())) !==
+        JSON.stringify(Array.from(updatedContexts.entries()))) {
       setLoopContexts(updatedContexts);
-    }, 500); // 每500ms更新一次
+    }
+  }, [detectedLoops, loopContexts]);
 
-    return () => clearInterval(updateInterval);
-  }, [loopContexts]);
+  // 🎯 在循环检测变化后触发更新，而不是定时更新
+  useEffect(() => {
+    updateLoopContexts();
+  }, [detectedLoops, updateLoopContexts]);
 
   // 获取节点位置信息（用于循环可视化）
   const getNodePosition = (nodeId: string) => {

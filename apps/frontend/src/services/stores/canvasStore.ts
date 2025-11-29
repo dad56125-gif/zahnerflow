@@ -45,6 +45,7 @@ interface CanvasState {
   clearCanvas: () => void;
   recalculateNodePositions: () => void;
   calculateNodeIndex: (position: Position, canvasWidth: number, nodeCount: number) => number;
+  batchUpdateNodes: (nodeUpdates: Array<{ id: string; changes: Partial<ElectrochemicalNode> }>) => void;
 }
 
 export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
@@ -224,12 +225,22 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
 
     selectNode: (node) => set({ selectedNode: node }),
 
-    updateNode: (updatedNode) => set(state => ({
-      nodes: state.nodes.map(node =>
-        node.id === updatedNode.id ? updatedNode : node
-      ),
-      selectedNode: state.selectedNode?.id === updatedNode.id ? updatedNode : state.selectedNode
-    })),
+    updateNode: (updatedNode) => {
+      const { nodes } = get();
+      const existingNode = nodes.find(n => n.id === updatedNode.id);
+
+      // 🎯 深度比较，只在真正变化时更新
+      if (existingNode && JSON.stringify(existingNode) === JSON.stringify(updatedNode)) {
+        return; // 没有实际变化，跳过更新
+      }
+
+      set(state => ({
+        nodes: state.nodes.map(node =>
+          node.id === updatedNode.id ? updatedNode : node
+        ),
+        selectedNode: state.selectedNode?.id === updatedNode.id ? updatedNode : state.selectedNode
+      }));
+    },
 
     setNodes: (nodes) => {
       // 更新节点
@@ -261,6 +272,28 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
         });
         LoopSystemController.handle_workflow_change(change);
       }, 0);
+    },
+
+    // 🎯 批量更新方法，减少状态变化次数
+    batchUpdateNodes: (nodeUpdates: Array<{ id: string; changes: Partial<ElectrochemicalNode> }>) => {
+      const { nodes } = get();
+      let hasChanges = false;
+
+      const newNodes = nodes.map(node => {
+        const update = nodeUpdates.find(u => u.id === node.id);
+        if (update) {
+          const updatedNode = { ...node, ...update.changes };
+          if (JSON.stringify(node) !== JSON.stringify(updatedNode)) {
+            hasChanges = true;
+            return updatedNode;
+          }
+        }
+        return node;
+      });
+
+      if (hasChanges) {
+        set({ nodes: newNodes });
+      }
     },
 
     clearCanvas: () => {
