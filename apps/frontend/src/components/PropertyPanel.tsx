@@ -473,9 +473,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 const value = parseScientificNotation(e.target.value);
                 updateParameters({ ...node.data.parameters, [key]: value });
               }}
-              onWheel={(e) => {
-                // 禁用滚轮改变数值
+              onWheelCapture={(e) => {
+                // 禁用滚轮改变数值 - 使用capture阶段避免被动监听器问题
                 e.preventDefault();
+                e.stopPropagation();
               }}
               className="input glass"
               placeholder={getParameterPlaceholder(key)}
