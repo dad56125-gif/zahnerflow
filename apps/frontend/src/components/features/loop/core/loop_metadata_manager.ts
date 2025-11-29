@@ -38,6 +38,7 @@ export class LoopMetadataManager {
       total_loops: number;
       max_level: number;
       level_distribution: Record<number, number>;
+      variable_distribution: Record<string, number>;
     };
   } {
     console.log(`[LoopMetadataManager] 从 ${levels.length} 个循环层级初始化`);

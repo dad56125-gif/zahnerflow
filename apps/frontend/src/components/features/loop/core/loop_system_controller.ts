@@ -51,7 +51,7 @@ export class LoopSystemController {
       // 1. 计算所有循环的层级
       const levels = LoopLevelCalculator.calculate_all_levels(
         workflow.loops,
-        workflow.nodes,
+        workflow.nodes as ElectrochemicalNode[],
         workflow.connections
       );
 
@@ -66,7 +66,7 @@ export class LoopSystemController {
         FingerprintCache.force_recalculation(workflow, (data) =>
           LoopLevelCalculator.calculate_all_levels(
             data.loops,
-            data.nodes,
+            data.nodes as ElectrochemicalNode[],
             data.connections
           )
         );
@@ -115,7 +115,7 @@ export class LoopSystemController {
         const levels = FingerprintCache.smart_update(
           change.workflow,
           change,
-          (data) => LoopLevelCalculator.calculate_all_levels(data.loops, data.nodes, data.connections)
+          (data) => LoopLevelCalculator.calculate_all_levels(data.loops, data.nodes as ElectrochemicalNode[], data.connections)
         );
 
         // 判断是否是缓存命中
@@ -134,7 +134,7 @@ export class LoopSystemController {
       if (should_recalculate) {
         const levels = LoopLevelCalculator.calculate_all_levels(
           change.workflow.loops,
-          change.workflow.nodes,
+          change.workflow.nodes as ElectrochemicalNode[],
           change.workflow.connections
         );
 

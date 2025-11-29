@@ -172,8 +172,9 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
         // 电位扫描参数
         start_voltage: '起始电位 (V)',
+        start_voltage_reference: '起始电位参考模式',
         end_voltage: '结束电位 (V)',
-        voltage_reference: '电位参考模式',
+        end_voltage_reference: '结束电位参考模式',
 
         // 电流扫描参数
         start_current: '起始电流 (A)',
@@ -265,7 +266,11 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           'SINGLE_SINE': '单正弦波',
           'MULTI_SINE': '多正弦波'
         },
-        voltage_reference: {
+        start_voltage_reference: {
+          'absolute': '绝对电位',
+          'ocv': '开路电位'
+        },
+        end_voltage_reference: {
           'absolute': '绝对电位',
           'ocv': '开路电位'
         },
@@ -403,7 +408,8 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       const enumValues: Record<string, string[]> = {
         eis_scan_direction: ['START_TO_MAX', 'START_TO_MIN'],
         eis_scan_strategy: ['SINGLE_SINE', 'MULTI_SINE'],
-        voltage_reference: ['absolute', 'ocv'],
+        start_voltage_reference: ['absolute', 'ocv'],
+        end_voltage_reference: ['absolute', 'ocv'],
         scanDirection: ['START_TO_MAX', 'MAX_TO_START', 'START_TO_MIN', 'MIN_TO_START'],
         scanStrategy: ['SINGLE_SINE', 'MULTI_SINE', 'NOISE'],
         potentiostatMode: ['POTMODE_POTENTIOSTATIC', 'POTMODE_GALVANOSTATIC'],

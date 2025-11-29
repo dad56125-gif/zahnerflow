@@ -5,7 +5,7 @@
  * 仅在循环结构真正变化时重新计算层级
  */
 
-import { LoopInfo } from './loop_detector';
+import { LoopInfo } from './LoopDetector';
 import { LoopLevel } from './loop_level_calculator';
 
 export interface LoopConnection {

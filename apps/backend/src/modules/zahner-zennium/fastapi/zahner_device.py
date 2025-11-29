@@ -1033,7 +1033,7 @@ def measure_chronopotentiometry(params):
 def measure_voltage_ramp(params):
     """
     电压斜坡测量 - 线性扫描电位，测量电流（线性扫描伏安法 LSV）
-    此版本增加了 voltage_reference 参数，支持绝对电位和相对于OCV的电位设置。
+    此版本支持独立的起始和结束电位参考模式，可以分别设置绝对电位或相对于OCV的电位。
     """
     global device_wrapper
     measured_ocv = None  # 用于记录OCV值
@@ -1053,16 +1053,15 @@ def measure_voltage_ramp(params):
         print("开始执行电压斜坡测量...")
 
         # 获取参数
-        start_voltage_param = params.get("start_voltage", -0.5)   # 起始电位参数 [V]
-        end_voltage_param = params.get("end_voltage", 0.8)       # 结束电位参数 [V]
-        ramp_duration = params.get("measurement_duration", 130.0) # 扫描持续时间 [s]
-        sampling_interval = params.get("sampling_interval", 1.0)  # 采样间隔 [s]
-        min_current = params.get("min_current", -1.0)            # 电流安全下限 [A]
-        max_current = params.get("max_current", 1.0)             # 电流安全上限 [A]
+        start_voltage_param = params.get("start_voltage", -0.5)           # 起始电位参数 [V]
+        start_voltage_reference = params.get("start_voltage_reference", "absolute").lower()  # 起始电位参考模式
+        end_voltage_param = params.get("end_voltage", 0.8)               # 结束电位参数 [V]
+        end_voltage_reference = params.get("end_voltage_reference", "absolute").lower()      # 结束电位参考模式
+        ramp_duration = params.get("measurement_duration", 130.0)       # 扫描持续时间 [s]
+        sampling_interval = params.get("sampling_interval", 1.0)          # 采样间隔 [s]
+        min_current = params.get("min_current", -1.0)                   # 电流安全下限 [A]
+        max_current = params.get("max_current", 1.0)                    # 电流安全上限 [A]
         output_path = params.get("output_path")
-
-        # 新增参数: voltage_reference，默认为 'absolute' 以保证向后兼容
-        voltage_reference = params.get("voltage_reference", "absolute").lower()
 
         if not output_path:
             error_msg = "缺少必需参数: output_path"
@@ -1088,32 +1087,47 @@ def measure_voltage_ramp(params):
         # 设置恒电位模式
         device_wrapper.setPotentiostatMode(PotentiostatMode.POTMODE_POTENTIOSTATIC)
 
-        # 根据 voltage_reference 计算最终的绝对电位
-        print(f"[INFO] 电位参考模式: {voltage_reference.upper()}")
+        # 分别计算起始和结束电位的绝对值
+        print(f"[INFO] 起始电位参考模式: {start_voltage_reference.upper()}")
+        print(f"[INFO] 结束电位参考模式: {end_voltage_reference.upper()}")
 
         final_start_voltage = 0
         final_end_voltage = 0
 
-        if voltage_reference == 'absolute':
+        # 计算起始电位的绝对值
+        if start_voltage_reference == 'absolute':
             final_start_voltage = start_voltage_param
-            final_end_voltage = end_voltage_param
-
-        elif voltage_reference == 'ocv':
-            print("[INFO] 正在测量开路电位 (OCV)...")
-            # 测量OCV的标准方法：关闭恒电位仪，然后读取电位
-            device_wrapper.disablePotentiostat()
-            time.sleep(1)  # 等待稳定
-            measured_ocv = device_wrapper.getPotential()
-            print(f"[SUCCESS] 测得 OCV = {measured_ocv:.4f} V")
-
-            # 计算绝对电位
+            print(f"[INFO] 起始电位采用绝对值: {final_start_voltage:.4f} V")
+        elif start_voltage_reference == 'ocv':
+            if measured_ocv is None:
+                print("[INFO] 正在测量开路电位 (OCV)...")
+                # 测量OCV的标准方法：关闭恒电位仪，然后读取电位
+                device_wrapper.disablePotentiostat()
+                time.sleep(1)  # 等待稳定
+                measured_ocv = device_wrapper.getPotential()
+                print(f"[SUCCESS] 测得 OCV = {measured_ocv:.4f} V")
             final_start_voltage = measured_ocv + start_voltage_param
-            final_end_voltage = measured_ocv + end_voltage_param
             print(f"[INFO] 起始电位相对于OCV ({start_voltage_param:+.3f} V), 绝对起始电位: {final_start_voltage:.4f} V")
-            print(f"[INFO] 结束电位相对于OCV ({end_voltage_param:+.3f} V), 绝对结束电位: {final_end_voltage:.4f} V")
-
         else:
-            raise ValueError(f"无效的 'voltage_reference' 参数: '{voltage_reference}'. "
+            raise ValueError(f"无效的 'start_voltage_reference' 参数: '{start_voltage_reference}'. "
+                           f"有效值为 'absolute' 或 'ocv'。")
+
+        # 计算结束电位的绝对值
+        if end_voltage_reference == 'absolute':
+            final_end_voltage = end_voltage_param
+            print(f"[INFO] 结束电位采用绝对值: {final_end_voltage:.4f} V")
+        elif end_voltage_reference == 'ocv':
+            if measured_ocv is None:
+                print("[INFO] 正在测量开路电位 (OCV)...")
+                # 测量OCV的标准方法：关闭恒电位仪，然后读取电位
+                device_wrapper.disablePotentiostat()
+                time.sleep(1)  # 等待稳定
+                measured_ocv = device_wrapper.getPotential()
+                print(f"[SUCCESS] 测得 OCV = {measured_ocv:.4f} V")
+            final_end_voltage = measured_ocv + end_voltage_param
+            print(f"[INFO] 结束电位相对于OCV ({end_voltage_param:+.3f} V), 绝对结束电位: {final_end_voltage:.4f} V")
+        else:
+            raise ValueError(f"无效的 'end_voltage_reference' 参数: '{end_voltage_reference}'. "
                            f"有效值为 'absolute' 或 'ocv'。")
 
         # 计算扫描速率
@@ -1190,10 +1204,21 @@ def measure_voltage_ramp(params):
         success_msg += f"\n电流范围: {min_current_measured:.6e}A - {max_current_measured:.6e}A"
         success_msg += f"\n数据点数: {len(measurement_data)}"
 
-        if voltage_reference == 'ocv':
-            success_msg += f"\n参考模式: OCV参考 ({measured_ocv:.4f}V)"
+        # 构建参考模式信息
+        reference_info = []
+        if start_voltage_reference == 'ocv':
+            reference_info.append(f"起始: OCV参考")
         else:
-            success_msg += f"\n参考模式: 绝对电位"
+            reference_info.append("起始: 绝对电位")
+
+        if end_voltage_reference == 'ocv':
+            reference_info.append(f"结束: OCV参考")
+        else:
+            reference_info.append("结束: 绝对电位")
+
+        success_msg += f"\n参考模式: {', '.join(reference_info)}"
+        if measured_ocv is not None:
+            success_msg += f" (OCV = {measured_ocv:.4f}V)"
 
         print(f"电压斜坡测量完成 - {success_msg}")
 
@@ -1204,7 +1229,8 @@ def measure_voltage_ramp(params):
                 "message": success_msg,
                 "output_file": output_file,
                 "statistics": {
-                    "voltage_reference_mode": voltage_reference,
+                    "start_voltage_reference": start_voltage_reference,
+                    "end_voltage_reference": end_voltage_reference,
                     "measured_ocv": measured_ocv,
                     "absolute_start_voltage": final_start_voltage,
                     "absolute_end_voltage": final_end_voltage,

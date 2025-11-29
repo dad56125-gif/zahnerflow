@@ -5,7 +5,7 @@
  * 基于连接图和工作流节点顺序进行计算
  */
 
-import { LoopInfo } from './loop_detector';
+import { LoopInfo } from './LoopDetector';
 import { ElectrochemicalNode } from '../../../../types/nodes';
 
 export interface LoopConnection {
@@ -36,6 +36,19 @@ export class LoopLevelCalculator {
     nodes: ElectrochemicalNode[],
     connections: LoopConnection[]
   ): LoopLevel[] {
+    // 确保传入的节点对象包含必需的属性
+    const enhancedNodes: ElectrochemicalNode[] = nodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      name: node.name || `Node-${node.type}`,
+      category: (node.category as any) || 'basic_measurement',
+      position: node.position || { x: 0, y: 0 },
+      data: node.data || { parameters: {}, updatedAt: new Date() } as any,
+      status: (node.status as any) || 'idle',
+      input: node.input || { id: 'input', name: 'Input', dataType: 'flow', description: 'Flow input' } as any,
+      output: node.output || { id: 'output', name: 'Output', dataType: 'flow', description: 'Flow output' } as any,
+      style: node.style || { width: 100, height: 60, background: '#ffffff', borderColor: '#cccccc', borderRadius: '4px', textColor: '#000000' } as any
+    } as ElectrochemicalNode));
     // 创建loop查找表
     const loop_by_start = new Map(loops.map(l => [l.start_node_id, l]));
     const loop_by_end = new Map(loops.map(l => [l.end_node_id, l]));
@@ -46,7 +59,7 @@ export class LoopLevelCalculator {
     console.log('[LoopLevelCalculator] 终极KISS算法开始遍历...');
 
     // 遍历工作流节点
-    nodes.forEach(node => {
+    enhancedNodes.forEach(node => {
       if (node.type === 'loop_start') {
         const loop = loop_by_start.get(node.id);
         if (loop) {
