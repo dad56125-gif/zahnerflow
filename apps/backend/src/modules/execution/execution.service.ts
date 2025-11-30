@@ -372,8 +372,21 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // ----------------------------------------------------------------------
 
   private async executeMeasurement(executionId: string, node: any, type: string): Promise<void> {
-    let params = node.data?.parameters || {};
-    
+    // 优先从 node.config 读取参数（前端传递的最新参数），其次从 node.data.parameters 读取
+    let params = {};
+
+    if (node.config && typeof node.config === 'object') {
+      // 如果有 config 字段，优先使用（这是前端传递的最新参数）
+      params = { ...node.config };
+      this.logger.log(`[ExecutionService] 使用 node.config 中的参数: ${JSON.stringify(Object.keys(params))}`);
+    } else if (node.data?.parameters) {
+      // 回退到 data.parameters
+      params = { ...node.data.parameters };
+      this.logger.log(`[ExecutionService] 使用 node.data.parameters 中的参数: ${JSON.stringify(Object.keys(params))}`);
+    } else {
+      this.logger.warn(`[ExecutionService] 节点 ${node.id} 没有找到参数`);
+    }
+
     // 路径计算
     const workflowId = this.getCurrentWorkflowId(executionId);
     const workflow = await this.workflowService.getWorkflow(workflowId);
