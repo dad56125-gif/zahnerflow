@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DbService } from '../../db/db.service';
 import * as path from 'path';
+import { spawn } from 'child_process';
+import * as os from 'os';
 
 export interface RegisterFilePayload {
   user: string;
@@ -47,32 +49,64 @@ export class FilesService implements OnModuleInit {
 
   /**
    * 注册文件元数据 (替代旧的 db.createDataFilePath)
+   * 支持三种路径构建模式：
+   * 1. 完整配置：base_path\project\individual\test_type
+   * 2. 仅项目：base_path\project\default\timestamp\test_type
+   * 3. 纯工作流：base_path\workflow_timestamp\test_type
    */
   async registerFile(payload: RegisterFilePayload) {
     const basePath = payload.base_path || 'C:\\data\\archive';
     const normalizedBasePath = basePath.replace(/\//g, '\\');
+    const timestamp = new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); // 例如: 241129_1430
 
-    const dirPath = path.join(
-      normalizedBasePath,
-      payload.project_name,
-      payload.individual_name,
-      payload.test_type
-    );
+    let dirPath = '';
+
+    // 模式1: 完整配置 (标准归档模式)
+    if (payload.project_name && payload.individual_name) {
+      dirPath = path.join(
+        normalizedBasePath,
+        payload.project_name,
+        payload.individual_name,
+        payload.test_type
+      );
+    }
+    // 模式2: 只有项目名 (新增的项目默认模式)
+    else if (payload.project_name && !payload.individual_name) {
+      dirPath = path.join(
+        normalizedBasePath,
+        payload.project_name,
+        'default',    // 固定目录名
+        timestamp,     // 时间戳子目录
+        payload.test_type
+      );
+    }
+    // 模式3: 既无项目也无样品 (纯工作流临时模式)
+    else {
+      const workflowFolderName = `workflow_${timestamp}`;
+      dirPath = path.join(
+        normalizedBasePath,
+        workflowFolderName,
+        payload.test_type
+      );
+    }
 
     const id = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
+
+    // 确保 individual_name 为空字符串而不是 undefined/null
+    const individualNameVal = payload.individual_name || '';
 
     // 写入 SQLite
     this.db.prepare(`
       INSERT INTO files (id, user, project_name, individual_name, test_type, base_path, dir_path, filename, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      id, 
-      payload.user, 
-      payload.project_name, 
-      payload.individual_name, 
-      payload.test_type, 
-      normalizedBasePath, 
+      id,
+      payload.user,
+      payload.project_name || '',    // 确保空字符串而不是 undefined
+      individualNameVal,
+      payload.test_type,
+      normalizedBasePath,
       dirPath,
       payload.filename || 'placeholder',
       now
@@ -81,8 +115,8 @@ export class FilesService implements OnModuleInit {
     return {
       id,
       dir_path: dirPath,
-      project_name: payload.project_name,
-      individual_name: payload.individual_name,
+      project_name: payload.project_name || '',
+      individual_name: individualNameVal,
       test_type: payload.test_type
     };
   }
@@ -184,6 +218,83 @@ export class FilesService implements OnModuleInit {
     return testTypeMap[measurementType] || 'general';
   }
 
+  /**
+   * 打开系统原生文件夹选择对话框
+   * 使用 Windows Forms FolderBrowserDialog
+   * 注意：此功能仅当服务器与用户在同一台物理机器上运行时有效
+   */
+  async openSystemFolderDialog(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      // PowerShell 脚本，使用 Windows Forms 的 FolderBrowserDialog
+      const psCommand = `
+        Add-Type -AssemblyName System.Windows.Forms;
+
+        # 创建一个隐藏的父窗口来确保对话框置顶
+        $form = New-Object System.Windows.Forms.Form;
+        $form.WindowState = 'Minimized';
+        $form.ShowInTaskbar = $false;
+        $form.TopMost = $true;
+        $form.Show();
+        $form.Hide();
+
+        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog;
+        $dialog.Description = "请选择 ZahnerFlow 数据存储路径";
+        $dialog.RootFolder = [System.Environment+SpecialFolder]::MyComputer;
+        $result = $dialog.ShowDialog($form);
+
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            Write-Output $dialog.SelectedPath
+        } else {
+            Write-Output "CANCEL"
+        }
+
+        $form.Dispose();
+        $dialog.Dispose();
+      `;
+
+      // 启动 PowerShell
+      const child = spawn('powershell.exe', [
+        '-NoProfile',
+        '-Sta', // 👈 必须加上这一行！单线程单元模式，System.Windows.Forms 需要
+        '-ExecutionPolicy', 'Bypass',
+        '-Command', psCommand
+      ]);
+
+      let output = '';
+
+      // 监听 stdout 和 stderr 输出
+      child.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.on('close', (code) => {
+        const result = output.trim();
+        console.log('PowerShell 输出:', result); // 调试输出
+
+        if (result === 'CANCEL') {
+          // 用户明确取消，传递特殊错误
+          reject(new Error('USER_CANCELLED'));
+        } else if (result === '') {
+          reject(new Error('无输出结果'));
+        } else if (result.includes('ERROR:') || result.includes('Exception')) {
+          reject(new Error(`PowerShell 错误: ${result}`));
+        } else {
+          resolve(result); // 返回路径
+        }
+      });
+
+      child.on('error', (err) => {
+        console.error('打开对话框失败:', err);
+        reject(new Error(`启动 PowerShell 失败: ${err.message}`));
+      });
+    });
+  }
+
+  
   buildOutputPath(options: BuildOutputPathOptions): string {
     const {
       base_path = 'C:\\data\\archive',

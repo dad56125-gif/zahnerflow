@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../services/api';
 import { useUser } from '../contexts/UserContext';
 import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
@@ -33,8 +33,30 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   const [isProjectHiding, setIsProjectHiding] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
-  const projectSelectRef = useRef<HTMLDivElement>(null);
+  const projectSelectRef = useRef<HTMLButtonElement>(null);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 输入验证函数
+  const validateBasePath = (path: string): boolean => {
+    // 文件夹路径必须为纯英文，无数字，无特殊字符
+    const englishAndSpecialChars = /^[a-zA-Z\\/_\\-]*$/;
+    // 允许字母、斜杠、下划线、连字符，但不允许数字和特殊符号
+    const hasNumbers = /[0-9]/.test(path);
+    const hasNoSpecialChars = !/[<>:"|?*]/.test(path);
+    return englishAndSpecialChars.test(path) && hasNoSpecialChars && !hasNumbers;
+  };
+
+  const validateProjectName = (name: string): boolean => {
+    // 项目名必须是英文/数字/下划线，不允许其他字符
+    const validPattern = /^[a-zA-Z0-9_]*$/;
+    return validPattern.test(name);
+  };
+
+  const validateIndividualName = (name: string): boolean => {
+    // 样品编号必须是英文/数字/下划线
+    const validPattern = /^[a-zA-Z0-9_]*$/;
+    return validPattern.test(name);
+  };
 
   // 使用 useOnClickOutside 实现点击外部关闭
   useOnClickOutside(panelRef, onClose);
@@ -145,9 +167,53 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     }
   }, [projectDropdownOpen]);
 
+  // 实时计算预览路径 - 支持三种模式
+  const previewPath = useMemo(() => {
+    const basePath = config.base_path?.trim() || 'C:\\data\\archive';
+    const project = config.project_name?.trim() || '';
+    const individual = config.individual_name?.trim() || '';
+    const testType = '{test_type}'; // 占位符，实际保存时由后端确定
+    const timestamp = new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); // 例如: 241129_1430
+
+    // 模式1: 完整配置 (标准归档模式)
+    if (project && individual) {
+      return `${basePath}\\${project}\\${individual}\\${testType}`;
+    }
+
+    // 模式2: 只有项目名 (项目默认模式)
+    if (project && !individual) {
+      return `${basePath}\\${project}\\default\\${timestamp}\\${testType}`;
+    }
+
+    // 模式3: 纯工作流 (临时模式)
+    if (!project && !individual) {
+      return `${basePath}\\workflow_${timestamp}\\${testType}`;
+    }
+
+    // 部分信息的情况
+    return '请填写完整信息以显示路径';
+  }, [config.base_path, config.project_name, config.individual_name]);
+
   const handleSave = async () => {
-    if (!config.project_name.trim() || !config.individual_name.trim()) {
-      setError('项目名和样品编号不能为空');
+    // 输入验证
+    if (config.base_path && !validateBasePath(config.base_path)) {
+      setError('文件夹路径必须为英文，不能包含数字或特殊字符');
+      return;
+    }
+
+    if (config.project_name && !validateProjectName(config.project_name)) {
+      setError('项目名只能包含英文、数字和下划线');
+      return;
+    }
+
+    if (config.individual_name && !validateIndividualName(config.individual_name)) {
+      setError('样品编号只能包含英文、数字和下划线');
+      return;
+    }
+
+    // 只要求项目名必须填写，样品编号可选
+    if (!config.project_name.trim()) {
+      setError('请至少输入项目名称');
       return;
     }
 
@@ -174,24 +240,33 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     }
   };
 
-  const handleBrowseDirectory = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    (input as any).webkitdirectory = true;
-    input.multiple = true;
+  const handleBrowseDirectory = async () => {
+    // 防止用户重复点击
+    setLoading(true);
+    setError('');
+    try {
+      // 请求后端打开弹窗
+      const response: any = await api.get('/files/browse-system-path');
 
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        const firstFile = files[0] as any;
-        const path = firstFile.webkitRelativePath?.split('/')?.[0] || '';
-        if (path) {
-          setConfig({ ...config, base_path: path });
+      if (response?.success && response.path) {
+        // 拿到后端传回来的真实绝对路径！
+        setConfig({ ...config, base_path: response.path });
+      } else {
+        // 使用清晰的状态码检测
+        if (response?.message === 'USER_CANCELLED') {
+          // 用户取消选择，不显示错误消息
+        } else {
+          // 真正的错误才显示
+          setError(response?.message || '无法打开系统对话框');
         }
       }
-    };
-
-    input.click();
+    } catch (error) {
+      console.error('打开文件夹选择器失败', error);
+      // 网络错误等异常情况才显示错误消息
+      setError('无法连接到服务器，请重试');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -218,9 +293,14 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                 type="button"
                 className="browse-btn"
                 onClick={handleBrowseDirectory}
-                title="浏览文件夹"
+                disabled={loading}
+                title="打开系统文件夹选择器"
+                style={{
+                  cursor: loading ? 'wait' : 'pointer',
+                  opacity: loading ? 0.7 : 1
+                }}
               >
-                📁
+                {loading ? '⏳' : '📁'}
               </button>
             </div>
           </div>
@@ -274,8 +354,15 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
               type="text"
               value={config.individual_name}
               onChange={(e) => setConfig({ ...config, individual_name: e.target.value })}
-              placeholder="输入样品编号"
+              placeholder="输入样品编号（可选）"
             />
+          </div>
+
+          <div className="form-group">
+            <label>当前保存路径:</label>
+            <div className="path-preview">
+              {previewPath}
+            </div>
           </div>
 
           {error && (
@@ -286,20 +373,22 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
         </div>
 
         <div className="panel-footer">
-          <button
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={loading}
-          >
-            取消
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={loading}
-          >
-            {loading ? '保存中...' : '确定'}
-          </button>
+          <>
+            <button
+              className="btn btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleSave}
+              disabled={loading}
+            >
+              {loading ? '保存中...' : '确定'}
+            </button>
+          </>
         </div>
       </div>
 

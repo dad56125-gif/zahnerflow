@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { FilesService, RegisterFilePayload } from './files.service';
+import { exec } from 'child_process';
+import * as os from 'os';
 
 @Controller('api/files')
 export class FilesController {
@@ -84,6 +86,105 @@ export class FilesController {
       return {
         success: false,
         message: error.message
+      };
+    }
+  }
+
+  /**
+   * 打开系统文件夹选择器（纯 PowerShell 方案）
+   * 仅当服务器与用户在同一台物理机器上运行时有效
+   */
+  @Get('browse-system-path')
+  async browseSystemPath() {
+    try {
+      // 这行代码会挂起，直到用户在服务器弹出的窗口中点击"确定"或"取消"
+      const path = await this.filesService.openSystemFolderDialog();
+      return {
+        success: true,
+        path: path,
+        message: '路径选择成功'
+      };
+    } catch (error) {
+      console.error('打开系统文件夹选择器失败:', error);
+      // 使用清晰的状态码检测
+      if (error.message === 'USER_CANCELLED') {
+        return {
+          success: false,
+          message: 'USER_CANCELLED'
+        };
+      } else {
+        return {
+          success: false,
+          message: '无法打开系统对话框，请手动输入路径'
+        };
+      }
+    }
+  }
+
+  /**
+   * 获取常用文件夹路径列表
+   * 优先尝试使用系统文件夹选择器，失败时提供常用路径
+   */
+  @Get('browse-path')
+  async browsePath() {
+    try {
+      // 首先尝试使用系统文件夹选择器
+      try {
+        const path = await this.filesService.openSystemFolderDialog();
+        return {
+          success: true,
+          path: path,
+          message: '路径选择成功'
+        };
+      } catch (folderError) {
+        console.log('系统文件夹选择器失败，回退到路径列表:', folderError.message);
+
+        // 使用清晰的状态码检测
+        if (folderError.message === 'USER_CANCELLED') {
+          return {
+            success: false,
+            message: 'USER_CANCELLED'
+          };
+        }
+
+        // 如果系统选择失败，提供常用路径列表
+        const commonPaths = [];
+        const userInfo = require('os').userInfo();
+
+        if (os.platform() === 'win32') {
+          // Windows 常用路径
+          commonPaths.push(
+            'C:\\data\\archive',
+            `C:\\Users\\${userInfo.username}\\Documents`,
+            `C:\\Users\\${userInfo.username}\\Desktop`,
+            `C:\\Users\\${userInfo.username}\\Downloads`,
+            'D:\\data',
+            'E:\\data'
+          );
+        } else {
+          // macOS/Linux 常用路径
+          const homeDir = require('os').homedir();
+          commonPaths.push(
+            `${homeDir}/Documents`,
+            `${homeDir}/Desktop`,
+            `${homeDir}/Downloads`,
+            '/tmp/data',
+            '/var/data'
+          );
+        }
+
+        return {
+          success: true,
+          paths: commonPaths,
+          defaultPath: 'C:\\data\\archive',
+          message: '请选择或输入以下路径之一'
+        };
+      }
+    } catch (error) {
+      console.error('browsePath错误:', error);
+      return {
+        success: false,
+        message: error.message || '获取路径失败'
       };
     }
   }
