@@ -826,44 +826,6 @@
   font-size: var(--size-xs);
 }
 
-/* 项目筛选器 */
-.history-filter {
-  display: flex;
-  gap: var(--size-sm);
-  margin-bottom: var(--size-md);
-  min-width: 200px;
-}
-
-.project-filter-select {
-  /* 组合按钮样式，调整尺寸 */
-  display: flex;
-  align-items: center;
-  gap: var(--size-3xs);
-  padding: var(--size-2xs) var(--size-md);
-  height: calc(var(--btn-h) * 0.75);
-  min-width: 120px;
-  justify-content: space-between;
-}
-
-.project-filter-select .user-display {
-  font-size: calc(var(--size-md) - 2px);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-
-.project-filter-select .dropdown-arrow {
-  width: var(--size-md);
-  height: var(--size-md);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 1, 1);
-}
-
-.project-filter-select .dropdown-arrow.rotated {
-  transform: scaleY(-1);
-}
-
 /* 用户下拉菜单已统一到 _ui_kit.css 中的 .dropdown_base */
 
 /* 错误和加载状态 */
