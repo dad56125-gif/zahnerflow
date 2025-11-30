@@ -973,19 +973,23 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
       return (
         <div className="properties-section">
-          <div className="header_action_row">
-            <h3 className="section-title">参数</h3>
-            <button
-              onClick={saveAsWorkflowDefault}
-              className={`btn btn_base btn_layout btn_style_common btn_mini glass ${isDefaultButtonActive ? 'btn_primary' : 'btn_secondary'}`}
-              disabled={isDefaultButtonActive}
-              title={isDefaultButtonActive ? "当前参数已是工作流默认配置" : "将当前参数保存为工作流默认配置"}
-            >
-              <span className="btn-icon">{isDefaultButtonActive ? '✅' : '💾'}</span>
-              <span className="btn-text">
-                {isDefaultButtonActive ? '当前工作流默认' : '设为工作流默认'}
-              </span>
-            </button>
+          <div className="kit_row">
+            <div className="kit_row_left">
+              <h3 className="section-title">参数</h3>
+            </div>
+            <div className="kit_row_right">
+              <button
+                onClick={saveAsWorkflowDefault}
+                className={`btn btn_base btn_layout btn_style_common btn_mini glass ${isDefaultButtonActive ? 'btn_primary' : 'btn_secondary'}`}
+                disabled={isDefaultButtonActive}
+                title={isDefaultButtonActive ? "当前参数已是工作流默认配置" : "将当前参数保存为工作流默认配置"}
+              >
+                <span className="btn-icon">{isDefaultButtonActive ? '✅' : '💾'}</span>
+                <span className="btn-text">
+                  {isDefaultButtonActive ? '当前工作流默认' : '设为工作流默认'}
+                </span>
+              </button>
+            </div>
           </div>
           {visibleParameters.map(([key, defaultValue]) => (
             <div key={key} className="property-group">

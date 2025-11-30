@@ -785,6 +785,42 @@
 }
 
 
+/* === 左右一行显示布局组件 === */
+.kit_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-sm);
+  width: 100%;
+  min-height: var(--btn-h, var(--size-3xl));
+  box-sizing: border-box;
+}
+
+/* 左端内容 - 左对齐 */
+.kit_row_left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1;
+  min-width: 0; /* 允许内容收缩 */
+  gap: var(--size-sm);
+}
+
+/* kit_row 中的标题样式重置 */
+.kit_row_left .section-title {
+  margin: 0; /* 重置默认 margin，确保垂直居中 */
+}
+
+/* 右端内容 - 右对齐 */
+.kit_row_right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  min-width: auto; /* 不收缩，保持内容完整 */
+  gap: var(--size-sm);
+}
+
 /* === 无障碍增强 === */
 @media (prefers-reduced-motion: reduce) {
   .btn, .input, .select, .textarea, .card, .badge, .progress_bar, .switch_slider {

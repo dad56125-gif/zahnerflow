@@ -29,6 +29,14 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // 各字段单独的错误状态
+  const [fieldErrors, setFieldErrors] = useState<{
+    base_path?: string;
+    project_name?: string;
+    individual_name?: string;
+    general?: string;
+  }>({});
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [isProjectHiding, setIsProjectHiding] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -38,12 +46,11 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
 
   // 输入验证函数
   const validateBasePath = (path: string): boolean => {
-    // 文件夹路径必须为纯英文，无数字，无特殊字符
-    const englishAndSpecialChars = /^[a-zA-Z\\/_\\-]*$/;
-    // 允许字母、斜杠、下划线、连字符，但不允许数字和特殊符号
-    const hasNumbers = /[0-9]/.test(path);
-    const hasNoSpecialChars = !/[<>:"|?*]/.test(path);
-    return englishAndSpecialChars.test(path) && hasNoSpecialChars && !hasNumbers;
+    // 文件夹路径允许字母、数字、反斜杠、斜杠、下划线、连字符、冒号（用于Windows盘符）
+    const validPattern = /^[a-zA-Z0-9\\/:_-]*$/;
+    // 不允许Windows文件系统禁止的特殊字符（除了冒号，因为冒号是盘符必需的）
+    const hasInvalidChars = /[<>"|?*]/.test(path);
+    return validPattern.test(path) && !hasInvalidChars;
   };
 
   const validateProjectName = (name: string): boolean => {
@@ -167,6 +174,34 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     }
   }, [projectDropdownOpen]);
 
+  // 实时错误检查
+  useEffect(() => {
+    const realTimeErrors: typeof fieldErrors = {};
+
+    // 实时验证基础路径
+    if (config.base_path && !validateBasePath(config.base_path)) {
+      realTimeErrors.base_path = '文件夹路径包含无效字符（<>"|?*）';
+    }
+
+    // 实时验证项目名
+    if (config.project_name && !validateProjectName(config.project_name)) {
+      realTimeErrors.project_name = '项目名只能包含英文、数字和下划线';
+    }
+
+    // 实时验证样品编号
+    if (config.individual_name && !validateIndividualName(config.individual_name)) {
+      realTimeErrors.individual_name = '样品编号只能包含英文、数字和下划线';
+    }
+
+    // 只更新实时验证的错误，保留用户未输入的字段状态
+    setFieldErrors(prev => ({
+      ...prev,
+      base_path: realTimeErrors.base_path || (prev.base_path && config.base_path ? undefined : prev.base_path),
+      project_name: realTimeErrors.project_name || (prev.project_name && config.project_name ? undefined : prev.project_name),
+      individual_name: realTimeErrors.individual_name || (prev.individual_name && config.individual_name ? undefined : prev.individual_name)
+    }));
+  }, [config.base_path, config.project_name, config.individual_name]);
+
   // 实时计算预览路径 - 支持三种模式
   const previewPath = useMemo(() => {
     const basePath = config.base_path?.trim() || 'C:\\data\\archive';
@@ -175,70 +210,84 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     const testType = '{test_type}'; // 占位符，实际保存时由后端确定
     const timestamp = new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); // 例如: 241129_1430
 
-    // 模式1: 完整配置 (标准归档模式)
-    if (project && individual) {
-      return `${basePath}\\${project}\\${individual}\\${testType}`;
+    // 实时验证基础路径是否有效
+    const isBasePathValid = !config.base_path || validateBasePath(config.base_path);
+    // 实时验证项目名是否有效
+    const isProjectValid = !project || validateProjectName(project);
+    // 实时验证样品编号是否有效
+    const isIndividualValid = !individual || validateIndividualName(individual);
+
+    // 如果基础路径有验证错误，使用默认基础路径
+    const effectiveBasePath = isBasePathValid ? basePath : 'C:\\data\\archive';
+
+    // 模式1: 完整配置 (标准归档模式) - 所有字段都有效
+    if (project && individual && isProjectValid && isIndividualValid) {
+      return `${effectiveBasePath}\\${project}\\${individual}\\${testType}`;
     }
 
-    // 模式2: 只有项目名 (项目默认模式)
-    if (project && !individual) {
-      return `${basePath}\\${project}\\default\\${timestamp}\\${testType}`;
+    // 模式2: 只有项目名 (项目默认模式) - 项目名有效
+    if (project && !individual && isProjectValid) {
+      return `${effectiveBasePath}\\${project}\\default\\${timestamp}\\${testType}`;
     }
 
-    // 模式3: 纯工作流 (临时模式)
-    if (!project && !individual) {
-      return `${basePath}\\workflow_${timestamp}\\${testType}`;
+    // 模式3: 纯工作流 (临时模式) - 没有项目名或项目名无效
+    if (!project || !isProjectValid) {
+      return `C:\\data\\archive\\workflow_${timestamp}\\${testType}`;
     }
 
     // 部分信息的情况
     return '请填写完整信息以显示路径';
   }, [config.base_path, config.project_name, config.individual_name]);
 
-  const handleSave = async () => {
-    // 输入验证
-    if (config.base_path && !validateBasePath(config.base_path)) {
-      setError('文件夹路径必须为英文，不能包含数字或特殊字符');
-      return;
-    }
+  // 自动保存逻辑 - 当配置有效时自动保存
+  useEffect(() => {
+    const autoSave = async () => {
+      // 检查是否满足自动保存条件：至少有项目名
+      if (!config.project_name.trim()) return;
 
-    if (config.project_name && !validateProjectName(config.project_name)) {
-      setError('项目名只能包含英文、数字和下划线');
-      return;
-    }
+      // 验证所有字段
+      const errors: typeof fieldErrors = {};
 
-    if (config.individual_name && !validateIndividualName(config.individual_name)) {
-      setError('样品编号只能包含英文、数字和下划线');
-      return;
-    }
-
-    // 只要求项目名必须填写，样品编号可选
-    if (!config.project_name.trim()) {
-      setError('请至少输入项目名称');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const response: any = await api.post('/files/path-config', {
-        user: currentUser,
-        ...config,
-        test_type: 'eis'
-      });
-
-      if (response?.success) {
-        onSave(config);
-        onClose();
-      } else {
-        setError(response?.message || '保存失败');
+      if (config.base_path && !validateBasePath(config.base_path)) {
+        errors.base_path = '文件夹路径包含无效字符（<>"|?*）';
       }
-    } catch (error) {
-      setError('保存配置失败，请重试');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      if (config.project_name && !validateProjectName(config.project_name)) {
+        errors.project_name = '项目名只能包含英文、数字和下划线';
+      }
+
+      if (config.individual_name && !validateIndividualName(config.individual_name)) {
+        errors.individual_name = '样品编号只能包含英文、数字和下划线';
+      }
+
+      // 如果有验证错误，不自动保存
+      if (Object.keys(errors).length > 0) return;
+
+      setLoading(true);
+      try {
+        const response: any = await api.post('/files/path-config', {
+          user: currentUser,
+          ...config,
+          test_type: 'eis'
+        });
+
+        if (response?.success) {
+          onSave(config);
+        } else {
+          setFieldErrors({ general: response?.message || '自动保存失败' });
+        }
+      } catch (error) {
+        console.error('自动保存失败:', error);
+        // 自动保存失败不显示错误给用户，避免干扰
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // 使用防抖避免频繁保存
+    const timeoutId = setTimeout(autoSave, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [config.base_path, config.project_name, config.individual_name, currentUser, onSave]);
 
   const handleBrowseDirectory = async () => {
     // 防止用户重复点击
@@ -280,13 +329,30 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
 
         <div className="panel-content">
           <div className="form-group">
-            <label htmlFor="base_path">基础路径:</label>
+            <div className="kit_row">
+              <div className="kit_row_left">
+                <label htmlFor="base_path">基础路径:</label>
+              </div>
+              <div className="kit_row_right">
+                {fieldErrors.base_path && (
+                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                    {fieldErrors.base_path}
+                  </span>
+                )}
+              </div>
+            </div>
             <div className="path-input-group">
               <input
                 id="base_path"
                 type="text"
                 value={config.base_path}
-                onChange={(e) => setConfig({ ...config, base_path: e.target.value })}
+                onChange={(e) => {
+                  setConfig({ ...config, base_path: e.target.value });
+                  // 清除该字段的错误
+                  if (fieldErrors.base_path) {
+                    setFieldErrors(prev => ({ ...prev, base_path: undefined }));
+                  }
+                }}
                 placeholder="选择或输入基础路径"
               />
               <button
@@ -306,7 +372,18 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="project_select">项目名</label>
+            <div className="kit_row">
+              <div className="kit_row_left">
+                <label htmlFor="project_select">项目名</label>
+              </div>
+              <div className="kit_row_right">
+                {fieldErrors.project_name && (
+                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                    {fieldErrors.project_name}
+                  </span>
+                )}
+              </div>
+            </div>
             <div className="project-input-group">
               <button
                 ref={projectSelectRef}
@@ -341,54 +418,74 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
               <input
                 type="text"
                 value={config.project_name}
-                onChange={(e) => setConfig({ ...config, project_name: e.target.value })}
+                onChange={(e) => {
+                  setConfig({ ...config, project_name: e.target.value });
+                  // 清除该字段的错误
+                  if (fieldErrors.project_name) {
+                    setFieldErrors(prev => ({ ...prev, project_name: undefined }));
+                  }
+                }}
                 placeholder="或输入新项目名"
               />
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="individual_name">样品编号:</label>
+            <div className="kit_row">
+              <div className="kit_row_left">
+                <label htmlFor="individual_name">样品编号:</label>
+              </div>
+              <div className="kit_row_right">
+                {fieldErrors.individual_name && (
+                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                    {fieldErrors.individual_name}
+                  </span>
+                )}
+              </div>
+            </div>
             <input
               id="individual_name"
               type="text"
               value={config.individual_name}
-              onChange={(e) => setConfig({ ...config, individual_name: e.target.value })}
+              onChange={(e) => {
+                setConfig({ ...config, individual_name: e.target.value });
+                // 清除该字段的错误
+                if (fieldErrors.individual_name) {
+                  setFieldErrors(prev => ({ ...prev, individual_name: undefined }));
+                }
+              }}
               placeholder="输入样品编号（可选）"
             />
           </div>
 
           <div className="form-group">
-            <label>当前保存路径:</label>
+            <div className="kit_row">
+              <div className="kit_row_left">
+                <label>当前保存路径:</label>
+              </div>
+              <div className="kit_row_right">
+                {!config.project_name.trim() ? (
+                  <span className="field-error" style={{ color: 'var(--color-warning)', fontSize: 'var(--size-xs)' }}>
+                    未设置项目名，使用默认保存路径
+                  </span>
+                ) : ((config.base_path && !validateBasePath(config.base_path)) ||
+                       (config.individual_name && !validateIndividualName(config.individual_name))) && (
+                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                    配置错误，使用默认保存路径
+                  </span>
+                )}
+              </div>
+            </div>
             <div className="path-preview">
               {previewPath}
             </div>
           </div>
 
-          {error && (
+          {fieldErrors.general && (
             <div className="error-message">
-              {error}
+              {fieldErrors.general}
             </div>
           )}
-        </div>
-
-        <div className="panel-footer">
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={loading}
-            >
-              取消
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={loading}
-            >
-              {loading ? '保存中...' : '确定'}
-            </button>
-          </>
         </div>
       </div>
 
