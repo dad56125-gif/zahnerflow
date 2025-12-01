@@ -129,6 +129,9 @@ export class StateLinkageManager {
     workflowWebSocketService.onNodeCompleted(this.handleNodeCompleted.bind(this));
     workflowWebSocketService.onConsoleLog(this.handleConsoleLog.bind(this));
 
+    // --- 【新增】监听节点重置事件 ---
+    workflowWebSocketService.onNodesReset(this.handleNodesReset.bind(this));
+
     this.isWebSocketInitialized = true;
   }
 
@@ -369,6 +372,24 @@ export class StateLinkageManager {
         }
       }
     }
+  }
+
+  // --- 【新增】处理节点重置事件 ---
+  private handleNodesReset(resetEvent: { targetStatus: string; timestamp: Date; message: string }): void {
+    console.log(`[StateLinkageManager] 接收节点重置指令: ${resetEvent.targetStatus} - ${resetEvent.message}`);
+
+    // 重置所有节点状态为指定的状态（通常是'ready'）
+    this.nodes = this.nodes.map(node => ({
+      ...node,
+      status: resetEvent.targetStatus as NodeStatus
+    }));
+
+    // 通知前端更新节点显示
+    if (this.onNodesUpdate) {
+      this.onNodesUpdate(this.nodes);
+    }
+
+    console.log(`[StateLinkageManager] 已重置 ${this.nodes.length} 个节点状态为: ${resetEvent.targetStatus}`);
   }
 
   cleanup(): void {

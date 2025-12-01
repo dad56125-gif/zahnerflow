@@ -42,6 +42,9 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   const displayName = config.name;
   const icon = config.icon;
 
+  // 🎯 核武器：从data中读取强制重置标记
+  const remountKey = (node.data as any)?._force_reset_key || 'initial';
+
   // 节点拖拽交换相关状态
   const [isDragOver, setIsDragOver] = React.useState(false);
 
@@ -67,7 +70,9 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       console.log(`开始拖拽节点：${node.name}，当前索引：${index}`);
     }
     onNodeDragStart?.(node, e);
-    (e.currentTarget as HTMLElement).style.opacity = '0.5';
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
   }, [node.id, index, onNodeDragStart]);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
@@ -75,8 +80,10 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       console.log('拖拽结束');
     }
     onNodeDragEnd?.(node, e);
-    (e.currentTarget as HTMLElement).style.opacity = '1';
-  }, [node.id, onNodeDragEnd]);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+  }, [node.id, index, onNodeDragEnd]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -84,7 +91,8 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     setIsDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback(() => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
     setIsDragOver(false);
   }, []);
 
@@ -118,7 +126,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
 
   // 🎯 只在调试模式下显示日志
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[NodeRenderer] 渲染节点: ${node.id}, 状态: ${node.status}, 名称: ${node.name}`);
+    console.log(`[NodeRenderer] 渲染节点: ${node.id}, 状态: ${node.status}, 名称: ${node.name}, 核武器Key: ${remountKey}`);
   }
 
   return (
@@ -134,8 +142,9 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      key={`${node.id}-${remountKey}`}  // 👈 这一行就是能够停止所有动画的关键！
     >
-  
+
       {/* 节点图标 - 左侧 */}
       <div className="node-icon-large">
         {icon}
@@ -384,7 +393,6 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
         )}
       </div>
 
-  
       {/* 选中边框 */}
       {isSelected && (
         <div className="node-selection-border" />
@@ -399,106 +407,13 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // 🎯 自定义比较函数，精确控制重渲染时机
+  // 🎯 使用useCallback优化事件处理函数，避免重复创建
   return (
     prevProps.node.id === nextProps.node.id &&
     prevProps.node.status === nextProps.node.status &&
-    prevProps.node.position.x === nextProps.node.position.x &&
-    prevProps.node.position.y === nextProps.node.position.y &&
-    prevProps.node.name === nextProps.node.name &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isConnecting === nextProps.isConnecting &&
     prevProps.connectionStart === nextProps.connectionStart &&
     JSON.stringify(prevProps.node.data) === JSON.stringify(nextProps.node.data) // 浅比较数据对象
   );
 });
-
-/**
- * 批量节点渲染器
- */
-export interface NodeListRendererProps {
-  nodes: ElectrochemicalNode[];
-  selectedNodeId?: string | null;
-  isConnecting?: boolean;
-  connectionStart?: string | null;
-  onNodeClick?: (node: ElectrochemicalNode) => void;
-  onNodeDoubleClick?: (node: ElectrochemicalNode) => void;
-  onNodeContextMenu?: (node: ElectrochemicalNode, event: React.MouseEvent) => void;
-  onNodeDragStart?: (node: ElectrochemicalNode, event: React.DragEvent) => void;
-  onNodeDragEnd?: (node: ElectrochemicalNode, event: React.DragEvent) => void;
-}
-
-export const NodeListRenderer: React.FC<NodeListRendererProps> = ({
-  nodes,
-  selectedNodeId,
-  isConnecting = false,
-  connectionStart = null,
-  onNodeClick,
-  onNodeDoubleClick,
-  onNodeContextMenu,
-  onNodeDragStart,
-  onNodeDragEnd
-}) => {
-  return (
-    <>
-      {nodes.map((node, index) => (
-        <NodeRenderer
-          key={node.id}
-          node={node}
-          index={index}
-          isSelected={selectedNodeId === node.id}
-          isConnecting={isConnecting}
-          connectionStart={connectionStart}
-          onNodeClick={onNodeClick}
-          onNodeDoubleClick={onNodeDoubleClick}
-          onNodeContextMenu={onNodeContextMenu}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDragEnd={onNodeDragEnd}
-        />
-      ))}
-    </>
-  );
-};
-
-/**
- * 简化的节点渲染器（用于特殊场景）
- */
-export const SimpleNodeRenderer: React.FC<{
-  node: ElectrochemicalNode;
-  isSelected?: boolean;
-  onClick?: () => void;
-}> = ({ node, isSelected = false, onClick }) => {
-  return (
-    <div
-      className={`node glass status-${node.status} ${
-        isSelected ? 'selected' : ''
-      }`}
-      style={{
-        position: 'absolute',
-        left: node.position.x,
-        top: node.position.y,
-        width: node.style.width || 140, // 与配置文件保持一致
-        height: node.style.height || 60, // 与配置文件保持一致
-      }}
-      onClick={onClick}
-    >
-  
-      {/* 节点图标 - 左侧 */}
-      <div className="node-icon-large">
-        {node.style.icon || '🔧'}
-      </div>
-
-      {/* 节点标题 - 右上角 */}
-      <div className="node-title">
-        {node.name}
-      </div>
-
-      {/* 选中边框 */}
-      {isSelected && (
-        <div className="node-selection-border" />
-      )}
-    </div>
-  );
-};
-
-export default NodeRenderer;

@@ -1,14 +1,8 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../services/api';
-import { useUser } from '../contexts/UserContext';
+import { useUser, FilePathConfig } from '../contexts/UserContext';
 import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
 import Portal from '../components/Portal';
-
-export interface FilePathConfig {
-  base_path: string;
-  project_name: string;
-  individual_name: string;
-}
 
 interface FilePathManagerUIProps {
   onClose: () => void;
@@ -19,12 +13,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   onClose,
   onSave
 }) => {
-  const { currentUser } = useUser();
-  const [config, setConfig] = useState<FilePathConfig>({
-    base_path: 'C:\\data\\archive',
-    project_name: '',
-    individual_name: ''
-  });
+  const { currentUser, filePathConfig, setFilePathConfig } = useUser();
 
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -179,39 +168,39 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     const realTimeErrors: typeof fieldErrors = {};
 
     // 实时验证基础路径
-    if (config.base_path && !validateBasePath(config.base_path)) {
+    if (filePathConfig.base_path && !validateBasePath(filePathConfig.base_path)) {
       realTimeErrors.base_path = '文件夹路径包含无效字符（<>"|?*）';
     }
 
     // 实时验证项目名
-    if (config.project_name && !validateProjectName(config.project_name)) {
+    if (filePathConfig.project_name && !validateProjectName(filePathConfig.project_name)) {
       realTimeErrors.project_name = '项目名只能包含英文、数字和下划线';
     }
 
     // 实时验证样品编号
-    if (config.individual_name && !validateIndividualName(config.individual_name)) {
+    if (filePathConfig.individual_name && !validateIndividualName(filePathConfig.individual_name)) {
       realTimeErrors.individual_name = '样品编号只能包含英文、数字和下划线';
     }
 
     // 只更新实时验证的错误，保留用户未输入的字段状态
     setFieldErrors(prev => ({
       ...prev,
-      base_path: realTimeErrors.base_path || (prev.base_path && config.base_path ? undefined : prev.base_path),
-      project_name: realTimeErrors.project_name || (prev.project_name && config.project_name ? undefined : prev.project_name),
-      individual_name: realTimeErrors.individual_name || (prev.individual_name && config.individual_name ? undefined : prev.individual_name)
+      base_path: realTimeErrors.base_path || (prev.base_path && filePathConfig.base_path ? undefined : prev.base_path),
+      project_name: realTimeErrors.project_name || (prev.project_name && filePathConfig.project_name ? undefined : prev.project_name),
+      individual_name: realTimeErrors.individual_name || (prev.individual_name && filePathConfig.individual_name ? undefined : prev.individual_name)
     }));
-  }, [config.base_path, config.project_name, config.individual_name]);
+  }, [filePathConfig.base_path, filePathConfig.project_name, filePathConfig.individual_name]);
 
   // 实时计算预览路径 - 支持三种模式
   const previewPath = useMemo(() => {
-    const basePath = config.base_path?.trim() || 'C:\\data\\archive';
-    const project = config.project_name?.trim() || '';
-    const individual = config.individual_name?.trim() || '';
+    const basePath = filePathConfig.base_path?.trim() || 'C:\\data\\archive';
+    const project = filePathConfig.project_name?.trim() || '';
+    const individual = filePathConfig.individual_name?.trim() || '';
     const testType = '{test_type}'; // 占位符，实际保存时由后端确定
     const timestamp = new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); // 例如: 241129_1430
 
     // 实时验证基础路径是否有效
-    const isBasePathValid = !config.base_path || validateBasePath(config.base_path);
+    const isBasePathValid = !filePathConfig.base_path || validateBasePath(filePathConfig.base_path);
     // 实时验证项目名是否有效
     const isProjectValid = !project || validateProjectName(project);
     // 实时验证样品编号是否有效
@@ -237,26 +226,26 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
 
     // 部分信息的情况
     return '请填写完整信息以显示路径';
-  }, [config.base_path, config.project_name, config.individual_name]);
+  }, [filePathConfig.base_path, filePathConfig.project_name, filePathConfig.individual_name]);
 
   // 自动保存逻辑 - 当配置有效时自动保存
   useEffect(() => {
     const autoSave = async () => {
       // 检查是否满足自动保存条件：至少有项目名
-      if (!config.project_name.trim()) return;
+      if (!filePathConfig.project_name.trim()) return;
 
       // 验证所有字段
       const errors: typeof fieldErrors = {};
 
-      if (config.base_path && !validateBasePath(config.base_path)) {
+      if (filePathConfig.base_path && !validateBasePath(filePathConfig.base_path)) {
         errors.base_path = '文件夹路径包含无效字符（<>"|?*）';
       }
 
-      if (config.project_name && !validateProjectName(config.project_name)) {
+      if (filePathConfig.project_name && !validateProjectName(filePathConfig.project_name)) {
         errors.project_name = '项目名只能包含英文、数字和下划线';
       }
 
-      if (config.individual_name && !validateIndividualName(config.individual_name)) {
+      if (filePathConfig.individual_name && !validateIndividualName(filePathConfig.individual_name)) {
         errors.individual_name = '样品编号只能包含英文、数字和下划线';
       }
 
@@ -267,12 +256,12 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
       try {
         const response: any = await api.post('/files/path-config', {
           user: currentUser,
-          ...config,
+          ...filePathConfig,
           test_type: 'eis'
         });
 
         if (response?.success) {
-          onSave(config);
+          onSave(filePathConfig);
         } else {
           setFieldErrors({ general: response?.message || '自动保存失败' });
         }
@@ -287,7 +276,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     // 使用防抖避免频繁保存
     const timeoutId = setTimeout(autoSave, 1000);
     return () => clearTimeout(timeoutId);
-  }, [config.base_path, config.project_name, config.individual_name, currentUser, onSave]);
+  }, [filePathConfig.base_path, filePathConfig.project_name, filePathConfig.individual_name, currentUser, onSave]);
 
   const handleBrowseDirectory = async () => {
     // 防止用户重复点击
@@ -299,7 +288,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
 
       if (response?.success && response.path) {
         // 拿到后端传回来的真实绝对路径！
-        setConfig({ ...config, base_path: response.path });
+        setFilePathConfig({ ...filePathConfig, base_path: response.path });
       } else {
         // 使用清晰的状态码检测
         if (response?.message === 'USER_CANCELLED') {
@@ -345,9 +334,9 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
               <input
                 id="base_path"
                 type="text"
-                value={config.base_path}
+                value={filePathConfig.base_path}
                 onChange={(e) => {
-                  setConfig({ ...config, base_path: e.target.value });
+                  setFilePathConfig({ ...filePathConfig, base_path: e.target.value });
                   // 清除该字段的错误
                   if (fieldErrors.base_path) {
                     setFieldErrors(prev => ({ ...prev, base_path: undefined }));
@@ -395,14 +384,14 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                     setIsProjectHiding(true);
                   } else {
                     setProjectDropdownOpen(true);
-                    if (!config.project_name && projects.length === 0) {
+                    if (!filePathConfig.project_name && projects.length === 0) {
                       loadProjects();
                     }
                   }
                 }}
               >
                 <span className="user-display">
-                  {config.project_name || '选择已有项目...'}
+                  {filePathConfig.project_name || '选择已有项目...'}
                 </span>
                 <svg className={`dropdown-arrow ${projectDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
                   <path
@@ -417,9 +406,9 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
               </button>
               <input
                 type="text"
-                value={config.project_name}
+                value={filePathConfig.project_name}
                 onChange={(e) => {
-                  setConfig({ ...config, project_name: e.target.value });
+                  setFilePathConfig({ ...filePathConfig, project_name: e.target.value });
                   // 清除该字段的错误
                   if (fieldErrors.project_name) {
                     setFieldErrors(prev => ({ ...prev, project_name: undefined }));
@@ -446,9 +435,9 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
             <input
               id="individual_name"
               type="text"
-              value={config.individual_name}
+              value={filePathConfig.individual_name}
               onChange={(e) => {
-                setConfig({ ...config, individual_name: e.target.value });
+                setFilePathConfig({ ...filePathConfig, individual_name: e.target.value });
                 // 清除该字段的错误
                 if (fieldErrors.individual_name) {
                   setFieldErrors(prev => ({ ...prev, individual_name: undefined }));
@@ -464,12 +453,12 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                 <label>当前保存路径:</label>
               </div>
               <div className="kit_row_right">
-                {!config.project_name.trim() ? (
+                {!filePathConfig.project_name.trim() ? (
                   <span className="field-error" style={{ color: 'var(--color-warning)', fontSize: 'var(--size-xs)' }}>
                     未设置项目名，使用默认保存路径
                   </span>
-                ) : ((config.base_path && !validateBasePath(config.base_path)) ||
-                       (config.individual_name && !validateIndividualName(config.individual_name))) && (
+                ) : ((filePathConfig.base_path && !validateBasePath(filePathConfig.base_path)) ||
+                       (filePathConfig.individual_name && !validateIndividualName(filePathConfig.individual_name))) && (
                   <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
                     配置错误，使用默认保存路径
                   </span>
@@ -506,9 +495,9 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                   projects.map(project => (
                     <div
                       key={project}
-                      className={`dropdown_option ${project === config.project_name ? 'selected' : ''}`}
+                      className={`dropdown_option ${project === filePathConfig.project_name ? 'selected' : ''}`}
                       onClick={() => {
-                        setConfig({ ...config, project_name: project });
+                        setFilePathConfig({ ...filePathConfig, project_name: project });
                         setIsProjectHiding(true);
                       }}
                     >

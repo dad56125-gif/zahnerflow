@@ -1,541 +1,77 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import {
-  Workflow,
-  Execution,
-  Device,
-} from '@zahnerflow/types';
-import { workflowService, executionService } from '../workflowService';
-import { deviceService } from '../deviceService';
-import { workflowWebSocketService } from '../websocket.service';
+// 🎯 【核武器】强制DOM重新挂载 - 彻底杀死动画！
+// 当重置时，给每个节点的data里塞一个"随机数"或者"时间戳"
+// React 会检测到 key 变化，立即销毁旧组件并重新挂载新组件
+// 这会强制浏览器丢弃旧的渲染层，所有动画瞬间归零
 
-// 导入 canvas store
-export { useCanvasStore } from './canvasStore';
-
-// 工作流状态管理
-interface WorkflowState {
-  workflows: Workflow[];
-  currentWorkflow: Workflow | null;
-  isLoading: boolean;
-  error: string | null;
-
-  // 操作方法
-  fetchWorkflows: () => Promise<void>;
-  createWorkflow: (data: any) => Promise<void>;
-  updateWorkflow: (id: string, data: any) => Promise<void>;
-  deleteWorkflow: (id: string) => Promise<void>;
-  setCurrentWorkflow: (workflow: Workflow | null) => void;
-  clearError: () => void;
-}
-
-export const useWorkflowStore = create<WorkflowState>()(
-  devtools(
-    persist(
-      (set, get) => ({
-        workflows: [],
-        currentWorkflow: null,
-        isLoading: false,
-        error: null,
-
-        fetchWorkflows: async () => {
-          set({ isLoading: true, error: null });
-          try {
-            const response = await workflowService.getWorkflows();
-            set({ workflows: response.items, isLoading: false });
-            } catch (error) {
-            set({ error: '加载工作流列表失败', isLoading: false });
-          }
-        },
-
-        createWorkflow: async (data) => {
-          set({ isLoading: true, error: null });
-          try {
-            const workflow = await workflowService.createWorkflow(data);
-            set(state => ({
-              workflows: [...state.workflows, workflow],
-              isLoading: false
-            }));
-            } catch (error) {
-            set({ error: '创建工作流失败', isLoading: false });
-            throw error;
-          }
-        },
-
-        updateWorkflow: async (id, data) => {
-          // 1. 乐观更新前端状态（无论是否临时工作流）
-          set(state => {
-            if (state.currentWorkflow && state.currentWorkflow.id === id) {
-              return {
-                currentWorkflow: { ...state.currentWorkflow, ...data }
-              };
-            }
-            return {};
-          });
-
-          // 2. 拦截临时工作流的API调用
-          if (id.startsWith('temp-workflow-')) {
-            console.log('检测到临时工作流，仅更新本地状态，拦截API请求');
-            return;
-          }
-
-          // 3. 正式工作流才调用API
-          set({ isLoading: true, error: null });
-          try {
-            const workflow = await workflowService.updateWorkflow(id, data);
-            set(state => ({
-              workflows: state.workflows.map(w => w.id === id ? workflow : w),
-              currentWorkflow: state.currentWorkflow?.id === id ? workflow : state.currentWorkflow,
-              isLoading: false
-            }));
-          } catch (error) {
-            set({ error: '更新工作流失败', isLoading: false });
-            throw error;
-          }
-        },
-
-        deleteWorkflow: async (id) => {
-          set({ isLoading: true, error: null });
-          try {
-            await workflowService.deleteWorkflow(id);
-            set(state => ({
-              workflows: state.workflows.filter(w => w.id !== id),
-              currentWorkflow: state.currentWorkflow?.id === id ? null : state.currentWorkflow,
-              isLoading: false
-            }));
-          } catch (error) {
-            set({ error: '删除工作流失败', isLoading: false });
-            throw error;
-          }
-        },
-
-        setCurrentWorkflow: (workflow) => {
-          set({ currentWorkflow: workflow });
-        },
-
-        clearError: () => {
-          set({ error: null });
-        },
-      }),
-      {
-        name: 'workflow-storage',
-        partialize: (state) => ({
-          workflows: state.workflows,
-          // 不持久化currentWorkflow，每次刷新应该是未选择状态
-        }),
-      }
-    ),
-    { name: 'workflow-store' }
-  )
-);
-
-// 执行状态管理
-interface ExecutionState {
-  currentExecution: any;
-  executionHistory: Execution[];
-  isRunning: boolean;
-  isPaused: boolean;
-  progress: number;
-  error: string | null;
-  
-  // 操作方法
-  startExecution: (workflowId: string, params?: any) => Promise<void>;
-  pauseExecution: () => Promise<void>;
-  resumeExecution: () => Promise<void>;
-  stopExecution: () => Promise<void>;
-  fetchExecutionHistory: () => Promise<void>;
-  updateExecutionStatus: (status: any) => void;
-  clearCurrentExecution: () => void;
-  clearError: () => void;
-  pollExecutionStatus: (executionId: string) => void;
-}
-
-export const useExecutionStore = create<ExecutionState>()(
-  devtools(
-    (set, get) => ({
-      currentExecution: null,
-      executionHistory: [],
-      isRunning: false,
-      isPaused: false,
-      progress: 0,
-      error: null,
-
-      startExecution: async (workflowId: string, params?: any) => {
-        set({ isRunning: true, isPaused: false, error: null });
-        try {
-          
-          // 执行工作流
-          const result = await executionService.executeWorkflow(workflowId, params);
-          
-          set({ 
-            currentExecution: result,
-            progress: 0
-          });
-
-          // 监听WebSocket更新
-          const handleExecutionUpdate = (data: any) => {
-            if (data.executionId === result.executionId) {
-              get().updateExecutionStatus(data);
-            }
-          };
-
-          workflowWebSocketService.onExecutionUpdate(handleExecutionUpdate);
-
-          // 开始轮询状态（作为WebSocket的备份）
-          get().pollExecutionStatus(result.executionId);
-
-        } catch (error) {
-          set({ 
-            error: '启动执行失败', 
-            isRunning: false, 
-            isPaused: false 
-          });
-          throw error;
-        }
-      },
-
-      pauseExecution: async () => {
-        const { currentExecution } = get();
-        if (!currentExecution) return;
-
-        try {
-          await executionService.pauseExecution(currentExecution.executionId);
-          set({ isPaused: true });
-        } catch (error) {
-          set({ error: '暂停执行失败' });
-        }
-      },
-
-      resumeExecution: async () => {
-        const { currentExecution } = get();
-        if (!currentExecution) return;
-
-        try {
-          await executionService.resumeExecution(currentExecution.executionId);
-          set({ isPaused: false });
-        } catch (error) {
-          set({ error: '恢复执行失败' });
-        }
-      },
-
-      stopExecution: async () => {
-        const { currentExecution } = get();
-        if (!currentExecution) return;
-
-        try {
-          await executionService.stopExecution(currentExecution.executionId);
-          set({ 
-            isRunning: false, 
-            isPaused: false,
-            progress: 0 
-          });
-          
-          // WebSocket订阅会通过workflowWebSocketService自动管理
-          
-        } catch (error) {
-          set({ error: '停止执行失败' });
-        }
-      },
-
-      pollExecutionStatus: (executionId: string) => {
-        const poll = async () => {
-          const { currentExecution, isRunning } = get();
-          
-          // 如果不再运行，停止轮询
-          if (!isRunning || !currentExecution) {
-            return;
-          }
-
-          try {
-            const status = await executionService.getExecutionStatus(executionId);
-            get().updateExecutionStatus(status);
-            
-            // 如果执行完成或失败，停止轮询
-            if (status.status === 'completed' || status.status === 'failed') {
-              set({ isRunning: false, isPaused: false });
-              return;
-            }
-            
-            // 继续轮询
-            setTimeout(poll, 1000);
-          } catch (error) {
-            // 网络错误时继续轮询
-            setTimeout(poll, 2000);
-          }
-        };
-        
-        poll();
-      },
-
-      updateExecutionStatus: (status: any) => {
-        
-        set({ 
-          currentExecution: status,
-          progress: status.progress || 0,
-          isRunning: status.status === 'running',
-          isPaused: status.status === 'paused'
-        });
-
-        // 如果执行完成或失败，更新状态
-        if (status.status === 'completed' || status.status === 'failed') {
-          set({ 
-            isRunning: false, 
-            isPaused: false 
-          });
-          
-          // 发送通知（通过后端API发送，而不是直接发送WebSocket消息）
-        }
-      },
-
-      fetchExecutionHistory: async () => {
-        try {
-          const response = await executionService.getExecutionHistory({ limit: 50 });
-          set({ executionHistory: response.items });
-        } catch (error) {
-          // Silently fail, as this is not a critical operation for the user
-        }
-      },
-
-      clearCurrentExecution: () => {
-        // WebSocket订阅会通过workflowWebSocketService自动管理
-        set({ 
-          currentExecution: null,
-          isRunning: false,
-          isPaused: false,
-          progress: 0,
-          error: null
-        });
-      },
-
-      clearError: () => {
-        set({ error: null });
-      },
-    }),
-    { name: 'execution-store' }
-  )
-);
-
-// 设备状态管理
-interface DeviceState {
-  devices: Device[];
-  deviceStatuses: Record<string, any>;
-  isLoading: boolean;
-  error: string | null;
-  
-  // 操作方法
-  fetchDevices: () => Promise<void>;
-  connectDevice: (type: string, config?: any) => Promise<void>;
-  disconnectDevice: (type: string) => Promise<void>;
-  updateDeviceStatus: (deviceId: string, status: any) => void;
-  clearError: () => void;
-}
-
-export const useDeviceStore = create<DeviceState>()(
-  devtools(
-    (set) => ({
-      devices: [],
-      deviceStatuses: {},
-      isLoading: false,
-      error: null,
-
-      fetchDevices: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          const devices = await deviceService.getDevices();
-          set({ devices, isLoading: false });
-          console.log('📱 设备列表加载成功:', devices.length, '个');
-          
-          // 获取每个设备的状态
-          for (const device of devices) {
-            try {
-              const status = await deviceService.getDeviceStatus(device.type);
-              set(state => ({
-                deviceStatuses: {
-                  ...state.deviceStatuses,
-                  [device.id]: status
-                }
-              }));
-            } catch (error) {
-              console.warn(`⚠️ 获取设备 ${device.id} 状态失败:`, error);
-            }
-          }
-        } catch (error) {
-          set({ error: '加载设备列表失败', isLoading: false });
-        }
-      },
-
-      connectDevice: async (type: string, config?: any) => {
-        set({ isLoading: true, error: null });
-        try {
-          const result = await deviceService.connectDevice(type, config);
-          
-          // 更新设备状态
-          set(state => ({
-            deviceStatuses: {
-              ...state.deviceStatuses,
-              [result.deviceId]: result
-            }
-          }));
-          
-          set({ isLoading: false });
-        } catch (error) {
-          set({ error: '连接设备失败', isLoading: false });
-          throw error;
-        }
-      },
-
-      disconnectDevice: async (type: string) => {
-        set({ isLoading: true, error: null });
-        try {
-          await deviceService.disconnectDevice(type);
-          
-          // 更新设备状态
-          set(state => {
-            const newStatuses = { ...state.deviceStatuses };
-            Object.keys(newStatuses).forEach(deviceId => {
-              if (deviceId.includes(type)) {
-                delete newStatuses[deviceId];
-              }
-            });
-            return { deviceStatuses: newStatuses };
-          });
-          
-          set({ isLoading: false });
-        } catch (error) {
-          set({ error: '断开设备失败', isLoading: false });
-          throw error;
-        }
-      },
-
-      updateDeviceStatus: (deviceId: string, status: any) => {
-        console.log('📱 更新设备状态:', deviceId, status);
-        set(state => ({
-          deviceStatuses: {
-            ...state.deviceStatuses,
-            [deviceId]: status
-          }
-        }));
-      },
-
-      clearError: () => {
-        set({ error: null });
-      },
-    }),
-    { name: 'device-store' }
-  )
-);
-
-// 全局应用状态
-interface AppState {
-  sidebarOpen: boolean;
-  notificationPanelOpen: boolean;
-  theme: 'light' | 'dark';
-  notifications: Array<{
-    id: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    title: string;
-    message: string;
-    timestamp: string;
-    read: boolean;
-  }>;
-  
-  // 操作方法
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  toggleNotificationPanel: () => void;
-  setNotificationPanelOpen: (open: boolean) => void;
-  setTheme: (theme: 'light' | 'dark') => void;
-  addNotification: (notification: Omit<AppState['notifications'][0], 'id' | 'timestamp' | 'read'>) => void;
-  markNotificationRead: (id: string) => void;
-  removeNotification: (id: string) => void;
-  clearNotifications: () => void;
-}
-
-export const useAppStore = create<AppState>()(
-  devtools(
-    persist(
-      (set) => ({
-        sidebarOpen: true,
-        notificationPanelOpen: false,
-        theme: 'light',
-        notifications: [],
-
-        toggleSidebar: () => {
-          set(state => ({ sidebarOpen: !state.sidebarOpen }));
-        },
-
-        setSidebarOpen: (open) => {
-          set({ sidebarOpen: open });
-        },
-
-        toggleNotificationPanel: () => {
-          set(state => ({ notificationPanelOpen: !state.notificationPanelOpen }));
-        },
-
-        setNotificationPanelOpen: (open) => {
-          set({ notificationPanelOpen: open });
-        },
-
-        setTheme: (theme) => {
-          set({ theme });
-          // 应用主题到document
-          document.documentElement.setAttribute('data-theme', theme);
-        },
-
-        addNotification: (notification) => {
-          const newNotification = {
-            ...notification,
-            id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            timestamp: new Date().toISOString(),
-            read: false,
-          };
-          
-          set(state => ({
-            notifications: [newNotification, ...state.notifications],
-            notificationPanelOpen: true,
-          }));
-          
-          console.log('🔔 新通知:', newNotification);
-        },
-
-        markNotificationRead: (id) => {
-          set(state => ({
-            notifications: state.notifications.map(n => 
-              n.id === id ? { ...n, read: true } : n
-            ),
-          }));
-        },
-
-        removeNotification: (id) => {
-          set(state => ({
-            notifications: state.notifications.filter(n => n.id !== id),
-          }));
-        },
-
-        clearNotifications: () => {
-          set({ notifications: [] });
-        },
-      }),
-      {
-        name: 'app-storage',
-        partialize: (state) => ({ 
-          theme: state.theme,
-          sidebarOpen: state.sidebarOpen,
-        }),
-      }
-    ),
-    { name: 'app-store' }
-  )
-);
-
-// 监听WebSocket通知
+// 现有状态监听器的修复
 if (typeof window !== 'undefined') {
-  workflowWebSocketService.onNotification((data) => {
-    useAppStore.getState().addNotification({
-      type: data.type,
-      title: data.title,
-      message: data.message,
+  // 动态导入以避免循环依赖
+  import('../websocket.service').then(({ workflowWebSocketService }) => {
+    // 1. 监听全量状态快照 -> 更新 Execution Store ✅ 已存在
+    workflowWebSocketService.onSystemStateSnapshot((snapshot: any) => {
+      import('./executionStore').then(({ useExecutionStore }) => {
+        useExecutionStore.getState().updateServerState(snapshot);
+      });
+    });
+
+    // 2. 监听通知 -> 更新 App Store ✅ 已存在
+    workflowWebSocketService.onNotification((data: any) => {
+      // 通知处理延迟到实际需要时实现
+      console.log('[Store] 收到通知:', data);
+    });
+
+    // 🔧 【核心修复】监听节点重置事件 -> 同步更新 Canvas Store
+    workflowWebSocketService.onNodesReset((resetEvent: any) => {
+      console.log('🔄 [WebSocket] 收到重置指令:', resetEvent);
+
+      // 动态导入以避免循环依赖
+      import('./canvasStore').then(({ useCanvasStore }) => {
+        // 获取 Canvas Store 的状态和方法
+        const canvasStore = useCanvasStore.getState();
+        const { nodes, setNodes, connections, setConnections } = canvasStore;
+
+        // 🥥 生成本次重置的唯一ID (核武器激活标记)
+        const resetSessionId = Date.now();
+
+        // 批量重置所有节点状态
+        const updatedNodes: any[] = nodes.map((node: any) => ({
+          ...node,
+          // A. 重置视觉状态
+          status: (resetEvent.targetStatus || 'ready') as any,
+
+          // B. 清理执行残留数据 (关键！避免重置后点击节点还能看到上一次的报错/结果)
+          data: {
+            ...node.data,
+            execution_time: undefined, // 清除耗时
+            result: undefined,         // 清除结果
+            error: undefined,          // 清除错误信息
+            progress: 0               // 如果有进度条，归零
+          },
+
+          // 🎯 核武器：强制React重新挂载的标记！
+          _force_reset_key: resetSessionId
+        }));
+
+        // (可选) 如果连接线也有动画状态(如变红/变绿)，这里也一并重置
+        const updatedConnections = connections.map((connection: any) => ({
+          ...connection,
+          animated: false,   // 停止流动动画
+          // Connection接口没有style属性，这里不做修改
+        }));
+
+        // 原子化更新 Store，触发 React 重新渲染
+        setNodes(updatedNodes);
+        setConnections(updatedConnections);
+
+        console.log(`✅ 系统重置完成: ${updatedNodes.length} 个节点已复位。核武器已激活！`);
+      });
     });
   });
 }
-// 导出工作流参数管理store
+
+// ============================================================================
+// 导出其他store
+export { useCanvasStore } from './canvasStore';
 export { useWorkflowParameterStore } from './workflowParameterStore';
+export { useWorkflowStore } from './workflowStore';
+export { useExecutionStore, useIsRunning, useExecutionError } from './executionStore';

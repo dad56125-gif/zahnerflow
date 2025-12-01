@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
 import { useCanvasStore } from '../services/stores/canvasStore';
-import { NodeListRenderer } from './NodeRenderer';
+import { NodeRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from './Toolbar';
 import {
@@ -16,14 +16,14 @@ import { WorkflowManagerUI } from './features/workflow';
 import { WorkflowIdDisplay } from './common/WorkflowIdDisplay';
 import {
   layout_service,
-  Position,
   LayoutCalculationOptions
 } from '../services/layout';
-
 
 interface CanvasProps {
   zoomLevel: number;
   selectedWorkstation: WorkstationType | null;
+  isRunning: boolean;
+  hasError: boolean;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
@@ -34,12 +34,16 @@ interface CanvasProps {
   onFilePathSave?: (config: any) => void;
   onRunFlow?: () => void;
   onStopFlow?: () => void;
+  // ✅ 新增：接收从 App 传入的重置回调
+  onResetFlow?: () => void;
   onLoopDetected?: (loops: LoopInfo[]) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
   zoomLevel,
   selectedWorkstation,
+  isRunning,
+  hasError,
   onZoomIn,
   onZoomOut,
   onResetZoom,
@@ -50,14 +54,15 @@ export const Canvas: React.FC<CanvasProps> = ({
   onFilePathSave,
   onRunFlow,
   onStopFlow,
+  onResetFlow, // ✅ 解构出重置回调
   onLoopDetected
 }) => {
   const {
     nodes,
     connections,
+    selectedNode,
     canvasSize,
     setCanvasSize,
-    recalculateNodePositions,
     moveNode,
     selectNode,
     setNodes,
@@ -65,7 +70,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     addNode,
   } = useCanvasStore();
 
-    const canvasRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutStable, setLayoutStable] = useState(true);
 
   // Y轴拖动相关状态
@@ -75,36 +80,27 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [canvasOffsetY, setCanvasOffsetY] = useState(0);
   const dragStartScrollY = useRef(0);
 
-  
-  
-  
-  // 新增：循环系统状态
+  // 循环系统状态
   const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
   const [loopContexts, setLoopContexts] = useState<Map<string, LoopExecutionContext>>(new Map());
 
-  
   // 拖动切换处理
-  const toggleDragMode = () => {
-    setIsDragEnabled(!isDragEnabled);
-    // 如果取消拖动模式，重置偏移量
-    if (isDragEnabled) {
-      setCanvasOffsetY(0);
-    }
-  };
+  const toggleDragMode = useCallback(() => {
+    setIsDragEnabled(prev => {
+      if (prev) setCanvasOffsetY(0); // 关闭时重置偏移
+      return !prev;
+    });
+  }, []);
 
+  // 1. 优化：Canvas 尺寸监听（防抖）
   useEffect(() => {
     if (!canvasRef.current) return;
 
     let timeoutId: NodeJS.Timeout;
-    const DEBOUNCE_DELAY = 16; // 约60fps的微小防抖窗口
+    const DEBOUNCE_DELAY = 50; // 增加防抖时间，减少高频触发
 
     const resizeObserver = new ResizeObserver(entries => {
-      // 清除之前的定时器
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-
-      // 设置新的定时器
+      if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         for (const entry of entries) {
           setCanvasSize(entry.contentRect.width, entry.contentRect.height);
@@ -113,43 +109,46 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
 
     resizeObserver.observe(canvasRef.current);
-
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      if (timeoutId) clearTimeout(timeoutId);
       resizeObserver.disconnect();
     };
   }, [setCanvasSize]);
 
-  // 使用统一布局服务更新节点位置
+  // 2. 优化：布局自动重计算
+  // 仅在画布宽度变化或节点数量变化时触发，避免位置微调时的抖动
   useEffect(() => {
     if (canvasSize.width > 0 && nodes.length > 0) {
       setLayoutStable(false);
-
-      // 使用统一布局服务重新计算所有节点位置
-      const updatedNodes = layout_service.recalculateAllPositions(nodes, canvasSize.width);
-      setNodes(updatedNodes);
-      setLayoutStable(true);
+      
+      // 使用 requestAnimationFrame 确保 UI 不卡顿
+      requestAnimationFrame(() => {
+        const updatedNodes = layout_service.recalculateAllPositions(nodes, canvasSize.width);
+        // 只有当位置真正改变时才更新 store，防止死循环
+        // 这里假设 setNodes 内部有简单的引用比较或 diff
+        setNodes(updatedNodes);
+        setLayoutStable(true);
+      });
     }
-  }, [canvasSize, nodes.length, setNodes]);
+  }, [canvasSize.width, nodes.length, setNodes]); // 移除 canvasSize 整体依赖，只依赖 width
 
-  
-  const handleCanvasDrop = (e: React.DragEvent) => {
+  // 拖放处理
+  const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const nodeType = e.dataTransfer.getData('nodeType') as NodeType;
+    
     if (nodeType && canvasRef.current && selectedWorkstation) {
       const rect = canvasRef.current.getBoundingClientRect();
       const dropX = (e.clientX - rect.left) / zoomLevel;
       const dropY = (e.clientY - rect.top) / zoomLevel;
 
-      // 使用统一布局服务计算节点索引
       const options: LayoutCalculationOptions = {
         canvas_width: canvasSize.width,
         nodes: nodes,
         enable_zigzag: true,
         center_single_node: true
       };
+      
       const index = layout_service.calculateNodeIndexFromPosition(
         { x: dropX, y: dropY },
         options
@@ -157,108 +156,83 @@ export const Canvas: React.FC<CanvasProps> = ({
 
       addNode(nodeType, selectedWorkstation, index);
     }
-  };
+  }, [canvasSize.width, nodes, zoomLevel, selectedWorkstation, addNode]);
 
-  
-  // 新增：节点事件处理函数（用于新的渲染器）
-  const handleNodeClick = (node: ElectrochemicalNode) => {
+  // 节点交互事件
+  const handleNodeClick = useCallback((node: ElectrochemicalNode) => {
     selectNode(node);
-  };
+  }, [selectNode]);
 
-  const handleNodeDoubleClick = (node: ElectrochemicalNode) => {
-    
-    // 可以在这里添加双击节点的高级功能，如打开详细配置
-  };
+  const handleNodeDoubleClick = useCallback((node: ElectrochemicalNode) => {
+    // 预留双击扩展槽位
+  }, []);
 
-  const handleNodeContextMenu = (node: ElectrochemicalNode, event: React.MouseEvent) => {
+  const handleNodeContextMenu = useCallback((node: ElectrochemicalNode, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (confirm(`确定要删除节点 "${node.name}" 吗？`)) {
-      // 使用CanvasStore的deleteNode方法（如果存在）
-      const currentState = useCanvasStore.getState();
-      if (currentState.deleteNode) {
-        currentState.deleteNode(node.id);
-      } else {
-        // 如果没有deleteNode方法，手动实现
-        setNodes(nodes.filter(n => n.id !== node.id));
-        setConnections(connections.filter(
+    // 简化的删除确认，实际项目中建议使用自定义 Modal
+    if (window.confirm(`确定要删除节点 "${node.name}" 吗？`)) {
+        // 直接操作 store 更新
+        const newNodes = nodes.filter(n => n.id !== node.id);
+        const newConnections = connections.filter(
           conn => conn.source_id !== node.id && conn.target_id !== node.id
-        ));
-      }
+        );
+        setNodes(newNodes);
+        setConnections(newConnections);
     }
-  };
+  }, [nodes, connections, setNodes, setConnections]);
 
-  const handleNodeDragStartEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
-
+  const handleNodeDragStartEnhanced = useCallback((node: ElectrochemicalNode, event: React.DragEvent) => {
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('nodeId', node.id);
+    if (event.currentTarget instanceof HTMLElement) {
+      event.currentTarget.style.opacity = '0.5';
+    }
+  }, []);
 
-    // ✅ 设置透明度
-    (event.currentTarget as HTMLElement).style.opacity = '0.5';
-  };
-
-  const handleNodeDragEndEnhanced = (node: ElectrochemicalNode, event: React.DragEvent) => {
+  const handleNodeDragEndEnhanced = useCallback((node: ElectrochemicalNode, event: React.DragEvent) => {
+    if (event.currentTarget instanceof HTMLElement) {
+      event.currentTarget.style.opacity = '1';
+    }
     
-    (event.currentTarget as HTMLElement).style.opacity = '1';
-
-    // 获取拖拽结束位置
     if (canvasRef.current) {
       const rect = canvasRef.current.getBoundingClientRect();
       const newX = (event.clientX - rect.left) / zoomLevel;
       const newY = (event.clientY - rect.top) / zoomLevel;
-
-      // 调用moveNode函数来处理节点位置交换
       moveNode(node.id, { x: newX, y: newY });
     }
-  };
+  }, [zoomLevel, moveNode]);
 
-  
-  
-  
-  // Y轴拖动事件处理
+  // Y轴拖动逻辑
   const handleMouseDown = (e: React.MouseEvent) => {
-    // 只有在拖动激活状态下才能拖动
-    if (!isDragEnabled) return;
+    if (!isDragEnabled || e.button !== 0) return;
 
-    // 只响应左键点击
-    if (e.button !== 0) return;
-
-    // 检查点击的是否为canvas-inner区域（而不是节点或其他元素）
     const target = e.target as HTMLElement;
-    if (target.closest('.node') || target.closest('.zoom-controls') || target.closest('.btn-zoom')) {
+    // 排除特定区域，避免冲突
+    if (target.closest('.node') || target.closest('.zoom-controls') || target.closest('.toolbar')) {
       return;
     }
 
     setIsDragging(true);
     setDragStartY(e.clientY);
     dragStartScrollY.current = canvasOffsetY;
-
-    // 防止选中文字
     e.preventDefault();
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
-
-    // 计算Y轴移动距离
     const deltaY = e.clientY - dragStartY;
-    const newOffsetY = dragStartScrollY.current + deltaY;
-
-    setCanvasOffsetY(newOffsetY);
+    setCanvasOffsetY(dragStartScrollY.current + deltaY);
   }, [isDragging, dragStartY]);
 
   const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(false);
-    }
-  }, [isDragging]);
+    setIsDragging(false);
+  }, []);
 
-  // 全局鼠标事件监听
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -266,123 +240,73 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // 🎯 优化：使用哈希值避免不必要的重新计算
-  const nodesHash = useMemo(() =>
-    JSON.stringify(nodes.map(n => ({
-      id: n.id,
-      type: n.type,
-      position: n.position
-    }))),
-    [nodes.map(n => `${n.id}-${n.type}-${n.position.x}-${n.position.y}`).join(',')]
-  );
+  // 3. 优化：结构指纹计算（Stable Hashing）
+  // 用于循环检测的依赖，避免对象引用变化导致的误触发
+  const structureHash = useMemo(() => {
+    // 仅提取影响循环检测的关键字段
+    const nodesIdType = nodes.map(n => `${n.id}:${n.type}`).join('|');
+    const connsId = connections.map(c => `${c.source_id}->${c.target_id}`).join('|');
+    return `${nodesIdType}::${connsId}`;
+  }, [nodes, connections]);
 
-  const connectionsHash = useMemo(() =>
-    JSON.stringify(connections.map(c => ({
-      source_id: c.source_id,
-      target_id: c.target_id
-    }))),
-    [connections.map(c => `${c.source_id}-${c.target_id}`).join(',')]
-  );
-
-  // 循环检测和管理逻辑
+  // 循环检测逻辑
   useEffect(() => {
-    // 只有在有节点时才进行循环检测和初始化
     if (nodes.length === 0) {
       setDetectedLoops([]);
       setLoopContexts(new Map());
       return;
     }
 
-    // 检测循环
+    // 执行检测
     const detectionResult = LoopDetector.detectLoops(nodes, connections);
-    setDetectedLoops(detectionResult.loops);
-    onLoopDetected?.(detectionResult.loops);
+    
+    // 只有当循环结构发生实质变化时才更新状态
+    setDetectedLoops(prev => {
+        const isSame = JSON.stringify(prev) === JSON.stringify(detectionResult.loops);
+        return isSame ? prev : detectionResult.loops;
+    });
+    
+    if (onLoopDetected) onLoopDetected(detectionResult.loops);
 
-    // 初始化循环系统（计算嵌套层级等）
-    const initResult = LoopSystemController.initialize({
+    // 更新循环上下文
+    LoopSystemController.initialize({
       loops: detectionResult.loops,
       nodes: nodes,
       connections: connections
     });
 
-    if (initResult.success) {
-      console.log(`[Canvas] 循环系统初始化成功: ${detectionResult.loops.length} 个循环`);
-    } else {
-      console.error('[Canvas] 循环系统初始化失败:', initResult.error);
-    }
-
-    // 更新循环上下文
-    const newContexts = new Map<string, LoopExecutionContext>();
-    detectionResult.loops.forEach(loop => {
-      const existingContext = loopContexts.get(loop.id);
-      if (existingContext) {
-        newContexts.set(loop.id, existingContext);
-      } else {
-        const context = LoopContextManager.initializeLoop(loop);
-        newContexts.set(loop.id, context);
+    setLoopContexts(prev => {
+      const newContexts = new Map(prev);
+      // 添加新循环
+      detectionResult.loops.forEach(loop => {
+        if (!newContexts.has(loop.id)) {
+          newContexts.set(loop.id, LoopContextManager.initializeLoop(loop));
+        }
+      });
+      // 清理旧循环
+      const currentLoopIds = new Set(detectionResult.loops.map(l => l.id));
+      for (const id of newContexts.keys()) {
+        if (!currentLoopIds.has(id)) {
+          LoopContextManager.cleanupLoop(id);
+          newContexts.delete(id);
+        }
       }
+      return newContexts;
     });
 
-    // 清理已删除的循环上下文
-    loopContexts.forEach((context, loopId) => {
-      if (!detectionResult.loops.some(loop => loop.id === loopId)) {
-        LoopContextManager.cleanupLoop(loopId);
-      } else {
-        newContexts.set(loopId, context);
-      }
-    });
+  }, [structureHash]); // ✅ 依赖优化后的 hash，而不是整个 nodes 数组
 
-    setLoopContexts(newContexts);
-  }, [nodesHash, connectionsHash]); // 🎯 使用哈希值而不是原始对象
-
-  // 移除了循环控制事件处理函数，只保留循环检测和可视化功能
-
-  // 🎯 修复：移除高频定时器，改为事件驱动的状态更新
-  const updateLoopContexts = useCallback(() => {
-    const updatedContexts = new Map<string, LoopExecutionContext>();
-
-    detectedLoops.forEach(loop => {
-      const currentContext = LoopContextManager.getLoopContext(loop.id);
-      if (currentContext) {
-        updatedContexts.set(loop.id, currentContext);
-      }
-    });
-
-    // 只在真正有变化时更新状态
-    if (JSON.stringify(Array.from(loopContexts.entries())) !==
-        JSON.stringify(Array.from(updatedContexts.entries()))) {
-      setLoopContexts(updatedContexts);
-    }
-  }, [detectedLoops, loopContexts]);
-
-  // 🎯 在循环检测变化后触发更新，而不是定时更新
-  useEffect(() => {
-    updateLoopContexts();
-  }, [detectedLoops, updateLoopContexts]);
-
-  // 获取节点位置信息（用于循环可视化）
-  const getNodePosition = (nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return null;
-
-    return {
-      id: node.id,
-      name: node.name,
-      x: node.position.x,
-      y: node.position.y,
-      width: node.style.width || 140,
-      height: node.style.height || 60
-    };
-  };
-
-  const nodePositions = nodes.map(node => getNodePosition(node.id)).filter(Boolean) as Array<{
-    id: string;
-    name: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
+  // 节点位置映射缓存（用于 LoopBoundary）
+  const nodePositions = useMemo(() => {
+    return nodes.map(node => ({
+        id: node.id,
+        name: node.name,
+        x: node.position.x,
+        y: node.position.y,
+        width: node.style.width || 140,
+        height: node.style.height || 60
+    }));
+  }, [nodes]);
 
   return (
     <div
@@ -391,15 +315,18 @@ export const Canvas: React.FC<CanvasProps> = ({
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleCanvasDrop}
     >
-      {/* 网格背景 - 外层框架，不随缩放变化 */}
+      {/* 网格背景 */}
       <div className="canvas-grid"></div>
 
-      {/* Toolbar - 集成在Canvas层内 */}
+      {/* Toolbar - 核心操作栏 */}
       {onRunFlow && onStopFlow && (
         <Toolbar
           onRunFlow={onRunFlow}
           onStopFlow={onStopFlow}
+          onResetFlow={onResetFlow} // ✅ 透传重置回调
           selectedWorkstation={selectedWorkstation}
+          isRunning={isRunning}
+          hasError={hasError}
           onToggleWorkflowManager={onToggleWorkflowManager}
           showWorkflowManager={showWorkflowManager}
           showFilePathManager={showFilePathManager}
@@ -408,9 +335,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         />
       )}
 
-      {/* 缩放控制按钮 - 外层框架，不随缩放变化 */}
+      {/* 缩放控制区域 */}
       <div className="zoom-controls">
-        {/* 拖动切换按钮 */}
         <button
           className={`btn-zoom btn-drag-toggle ${isDragEnabled ? 'active' : ''}`}
           onClick={toggleDragMode}
@@ -419,76 +345,69 @@ export const Canvas: React.FC<CanvasProps> = ({
           ✋
         </button>
 
-        <button className="btn-zoom" onClick={onZoomOut} title="缩小">
-          ➖
-        </button>
-        <button className="btn-zoom" onClick={onResetZoom} title="重置缩放">
-          🎯
-        </button>
-        <button className="btn-zoom" onClick={onZoomIn} title="放大">
-          ➕
-        </button>
+        <button className="btn-zoom" onClick={onZoomOut} title="缩小">➖</button>
+        <button className="btn-zoom" onClick={onResetZoom} title="重置缩放">🎯</button>
+        <button className="btn-zoom" onClick={onZoomIn} title="放大">➕</button>
+        
+        {/* ✅ 已移除：此处多余的重置按钮 */}
       </div>
 
-      {/* 可缩放的内容区域 */}
+      {/* 可缩放画布内容 */}
       <div
         className="canvas-inner"
         style={{
           transform: `scale(${zoomLevel}) translateY(${canvasOffsetY}px)`,
           transformOrigin: 'top left',
           cursor: isDragEnabled ? (isDragging ? 'grabbing' : 'grab') : 'default',
-          minHeight: '300vh' // 扩大内容区域以实现无限画板效果
+          minHeight: '300vh'
         }}
         onMouseDown={handleMouseDown}
       >
-        {/* 渲染工作流执行顺序连接线 */}
         <ConnectionLines
           nodes={nodes}
           canvasWidth={canvasSize.width}
           layoutStable={layoutStable}
         />
 
+        {detectedLoops.map(loop => (
+          <LoopBoundary
+            key={loop.id}
+            loop={loop}
+            nodes={nodePositions}
+            context={loopContexts.get(loop.id)}
+            layoutStable={layoutStable}
+            zoomLevel={zoomLevel}
+            canvasOffsetY={canvasOffsetY}
+          />
+        ))}
 
-        {/* 循环边界组件 - 新的统一组件 */}
-        {detectedLoops.map(loop => {
-          const context = loopContexts.get(loop.id);
-          return (
-            <LoopBoundary
-              key={loop.id}
-              loop={loop}
-              nodes={nodePositions}
-              context={context}
-              layoutStable={layoutStable}
-              zoomLevel={zoomLevel}
-              canvasOffsetY={canvasOffsetY}
-            />
-          );
-        })}
-
-        {/* 渲染画布上的节点 - 使用统一的增强渲染系统 */}
-        <NodeListRenderer
-          nodes={nodes}
-          onNodeClick={handleNodeClick}
-          onNodeDoubleClick={handleNodeDoubleClick}
-          onNodeContextMenu={handleNodeContextMenu}
-          onNodeDragStart={handleNodeDragStartEnhanced}
-          onNodeDragEnd={handleNodeDragEndEnhanced}
-        />
+        {nodes.map((node, index) => (
+          <NodeRenderer
+            key={node.id}
+            node={node}
+            index={index}
+            isSelected={selectedNode?.id === node.id}
+            isConnecting={false}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            onNodeContextMenu={handleNodeContextMenu}
+            onNodeDragStart={handleNodeDragStartEnhanced}
+            onNodeDragEnd={handleNodeDragEndEnhanced}
+          />
+        ))}
       </div>
 
-      {/* 工作流管理面板 - 直接使用Portal，无需额外覆盖层 */}
+      {/* 模态框与浮层 */}
       {showWorkflowManager && (
         <WorkflowManagerUI onClose={onToggleWorkflowManager} />
       )}
 
-      {/* 文件路径管理器覆盖层 - 新增 */}
       {showFilePathManager && (
         <div className="file-path-manager-overlay-container">
-          {/* FilePathManagerUI will be rendered by Toolbar */}
+           {/* 内容由 Toolbar 控制显示 */}
         </div>
       )}
 
-      {/* 工作流ID/名称显示 - 新增 */}
       <WorkflowIdDisplay />
     </div>
   );

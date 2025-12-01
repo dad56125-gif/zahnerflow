@@ -8,12 +8,20 @@ interface User {
   created_at: string;
 }
 
+export interface FilePathConfig {
+  base_path: string;
+  project_name: string;
+  individual_name: string;
+}
+
 interface UserContextType {
   currentUser: string;
   setCurrentUser: (user: string) => void;
   users: User[];
   createUser: (userData: { user: string; email?: string }) => Promise<User>;
   deleteUser: (user: string) => Promise<boolean>;
+  filePathConfig: FilePathConfig;
+  setFilePathConfig: (config: FilePathConfig) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -33,6 +41,24 @@ interface UserProviderProps {
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUserState] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
+
+  // 文件路径配置状态，从sessionStorage初始化
+  const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>(() => {
+    try {
+      const saved = sessionStorage.getItem('filePathConfig');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.warn('Failed to load filePathConfig from sessionStorage:', error);
+    }
+    // 默认配置
+    return {
+      base_path: 'C:\\data\\archive',
+      project_name: '',
+      individual_name: ''
+    };
+  });
 
   const loadUsers = async () => {
     const response = await api.get('/users');
@@ -54,6 +80,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setCurrentUserState(user);
     // 可以在这里添加持久化逻辑，比如保存到localStorage
     localStorage.setItem('currentUser', user);
+  };
+
+  const setFilePathConfig = (config: FilePathConfig) => {
+    setFilePathConfigState(config);
+    // 保存到sessionStorage，实现会话期间持久化
+    try {
+      sessionStorage.setItem('filePathConfig', JSON.stringify(config));
+    } catch (error) {
+      console.warn('Failed to save filePathConfig to sessionStorage:', error);
+    }
   };
 
   const createUser = async (userData: { user: string; email?: string }): Promise<User> => {
@@ -102,7 +138,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setCurrentUser,
     users,
     createUser,
-    deleteUser
+    deleteUser,
+    filePathConfig,
+    setFilePathConfig
   };
 
   return (
