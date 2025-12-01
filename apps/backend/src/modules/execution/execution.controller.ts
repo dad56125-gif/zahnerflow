@@ -48,4 +48,15 @@ export class ExecutionController {
     await this.executionService.cancelExecution(executionId);
     return { message: 'Execution cancelled' };
   }
+
+  @Post('reset')
+  @HttpCode(HttpStatus.OK)
+  async resetExecution() {
+    const result = await this.executionService.resetExecution();
+    return {
+      success: result.success,
+      message: result.message,
+      timestamp: new Date()
+    };
+  }
 }
