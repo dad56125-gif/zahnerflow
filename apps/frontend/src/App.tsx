@@ -4,24 +4,25 @@ import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
 import { PropertyPanel } from './components/PropertyPanel';
 import { StatusBar } from './components/StatusBar';
+import { LoopBoundary } from './components/features/loop';
 import { Canvas } from './components/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
-// --- 移除 stateLinkageManager 的深度依赖，仅用于节点颜色辅助 ---
 import { stateLinkageManager } from './managers/state-linkage.manager';
 import { useCanvasStore } from './services/stores/canvasStore';
-import { useWorkflowStore, useExecutionStore, useIsRunning, useExecutionError } from './services/stores';
+import { useWorkflowStore } from './services/stores';
 import { MFCModal } from './modules/mfc';
 import { workflowService } from './services/workflowService';
 import { useFurnace, DeviceModal } from './modules/furnace';
 import { UserProvider } from './contexts/UserContext';
 import type { LoopInfo } from './components/features/loop';
 
+
+
 const ZahnerFlowApp: React.FC = () => {
   const {
     nodes,
     setNodes,
     connections,
-    setConnections // 需要获取setConnections
   } = useCanvasStore();
 
   const [furnaceState, furnaceControls] = useFurnace();
@@ -30,20 +31,14 @@ const ZahnerFlowApp: React.FC = () => {
   const [workstationNodeGroups, setWorkstationNodeGroups] = useState<any>({} as any);
 
   const [zoomLevel, setZoomLevel] = useState(1);
-  // --- 【重构】使用 Store 的派生状态 ---
-  const isRunning = useIsRunning();
-  const executionError = useExecutionError(); // 获取具体错误信息
-  const hasError = !!executionError;
-  
+  const [isRunning, setIsRunning] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [loopPairs, _setLoopPairs] = useState<Map<string, { startNode: LoopStartNode; endNode: LoopEndNode; nodesInLoop: any[] }>>(new Map());
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(false);
   const [showFilePathManager, setShowFilePathManager] = useState(false);
   const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
-
-  // 获取 Store Actions
-  const { startExecution, stopExecution, clearError } = useExecutionStore();
-  const { currentWorkflow, setCurrentWorkflow } = useWorkflowStore();
 
   const handleWorkstationSelect = (workstation: any) => {
     const workstationType = workstation.id as WorkstationType;
@@ -57,59 +52,72 @@ const ZahnerFlowApp: React.FC = () => {
   };
 
   const handleRunFlow = useCallback(async () => {
-    await runFlow();
-  }, [nodes, connections, selectedWorkstation, isRunning]);
-
-  const handleStopFlow = useCallback(async () => {
-    await stopFlow();
-  }, []);
-
+  await runFlow();
+}, [nodes, connections, selectedWorkstation, isRunning]);
+  const handleStopFlow = useCallback(() => setIsRunning(false), []);
   const handleZoomIn = useCallback(() => setZoomLevel((z) => Math.min(3, +(z + 0.1).toFixed(2))), []);
   const handleZoomOut = useCallback(() => setZoomLevel((z) => Math.max(0.2, +(z - 0.1).toFixed(2))), []);
   const handleResetZoom = useCallback(() => setZoomLevel(1), []);
-  const handleLoopDetected = useCallback((loops: LoopInfo[]) => setDetectedLoops(loops), []);
 
+  // 循环检测回调函数
+  const handleLoopDetected = useCallback((loops: LoopInfo[]) => {
+    setDetectedLoops(loops);
+  }, []);
+
+  
   useEffect(() => {
     const observer = setupAutoGlassEffect();
     return () => observer?.disconnect();
   }, []);
 
-  // --- 【重构】简化初始化逻辑 ---
   useEffect(() => {
-    // 这里的 manager 现在只负责监听 WebSocket 来更新 Canvas 上的节点颜色
-    stateLinkageManager.initialize();
+    stateLinkageManager.initialize().catch(console.error);
     stateLinkageManager.setNodesUpdateCallback(setNodes);
-
-    // 错误处理逻辑：当 Store 中出现错误时自动打开面板
-    if (hasError) {
-      setIsNotificationPanelOpen(true);
-    }
-
+    stateLinkageManager.setExecutionUpdateCallback((executionState) => {
+      setIsRunning(executionState.status === 'running');
+      if (executionState.status === 'failed') {
+        setHasError(true);
+        setIsNotificationPanelOpen(true);
+      } else if (executionState.status === 'running') {
+        setHasError(false);
+      } else if (executionState.status === 'completed') {
+        setHasError(false);
+        setIsRunning(false);
+      }
+    });
     const handleBeforeUnload = () => stateLinkageManager.cleanup();
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      stateLinkageManager.cleanup();
+      setTimeout(() => {
+        if (document.visibilityState === 'hidden') {
+          stateLinkageManager.cleanup();
+        }
+      }, 100);
     };
-  }, [setNodes, hasError]); // 监听 hasError 变化
+  }, [setNodes]);
 
+  
   const runFlow = async () => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation) {
         setIsNotificationPanelOpen(true);
         return;
     }
-    
-    // 如果有之前的错误，先清除
-    if (hasError) clearError();
-
     try {
-      let targetWorkflowId = currentWorkflow?.id;
+      // 检查是否有当前编辑的工作流
+      const { currentWorkflow } = useWorkflowStore.getState();
 
-      // 逻辑保持不变：如果是新工作流或临时工作流，先创建
-      if (!currentWorkflow || currentWorkflow.id.startsWith('temp-workflow-')) {
+      if (currentWorkflow && !currentWorkflow.id.startsWith('temp-workflow-')) {
+        // 历史工作流：直接使用现有工作流执行
+        console.log(`执行历史工作流 "${currentWorkflow.name}" (ID: ${currentWorkflow.id})`);
+        await stateLinkageManager.startExecution(currentWorkflow.id, nodes);
+      } else {
+        // 临时工作流或新工作流：创建新的工作流定义，提供临时ID（后端会重新生成）
         const workflowDefinition = {
-          id: `temp_workflow_${Date.now()}`,
-          name: (currentWorkflow?.name && currentWorkflow.name !== '临时工作流') ? currentWorkflow.name : undefined,
+          id: `temp_workflow_${Date.now()}`, // 临时ID，后端会重新生成
+          name: (currentWorkflow?.name && currentWorkflow.name !== '临时工作流')
+            ? currentWorkflow.name
+            : undefined, // 工作流只依靠ID，name字段不是必需的
           description: '通过前端界面创建的电化学测量流程',
           ownerName: '默认用户',
           individualName: '默认项目',
@@ -120,7 +128,7 @@ const ZahnerFlowApp: React.FC = () => {
             config: node.data?.parameters || {},
             position: node.position,
             data: node.data,
-            status: 'ready' // 重置状态
+            status: node.status
           })),
           edges: connections.map(conn => ({
             id: conn.id,
@@ -131,45 +139,46 @@ const ZahnerFlowApp: React.FC = () => {
           version: 1
         };
 
+        // 创建新工作流（后端会生成ID）
         const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
-        if (!createdWorkflow) throw new Error("Failed to create workflow");
 
-        console.log(`创建新工作流: ${createdWorkflow.id}`);
-        
-        // ID 映射逻辑 (保持不变)
+        if (!createdWorkflow) {
+          throw new Error("Failed to create workflow");
+        }
+        console.log(`创建并执行新工作流 "${createdWorkflow.name}" (ID: ${createdWorkflow.id})`);
+
+        // 同步更新前端的节点ID，使其与后端生成的一致
         const { nodes: backendNodes } = createdWorkflow.definition;
         const idMap = new Map<string, string>();
         nodes.forEach((node, index) => {
-          if (backendNodes[index]) idMap.set(node.id, backendNodes[index].id);
+          if (backendNodes[index]) {
+            idMap.set(node.id, backendNodes[index].id);
+            console.log(`节点ID映射: ${node.id} -> ${backendNodes[index].id}`);
+          }
         });
 
-        const updatedNodes = nodes.map(node => ({ ...node, id: idMap.get(node.id) || node.id }));
+        // 更新节点数组使用新的ID
+        const updatedNodes = nodes.map((node) => ({
+          ...node,
+          id: idMap.get(node.id) || node.id
+        }));
         setNodes(updatedNodes);
 
+        // 更新连接数组使用新的ID
         const updatedConnections = connections.map(conn => ({
           ...conn,
           source_id: idMap.get(conn.source_id) || conn.source_id,
           target_id: idMap.get(conn.target_id) || conn.target_id
         }));
-        setConnections(updatedConnections); // 使用解构出的 setter
-        
+        const { setConnections } = useCanvasStore.getState();
+        setConnections(updatedConnections);
+
+        // 更新WorkflowStore的currentWorkflow状态，确保workflow-id-display能正确显示
+        const { setCurrentWorkflow } = useWorkflowStore.getState();
         setCurrentWorkflow(createdWorkflow);
-        targetWorkflowId = createdWorkflow.id;
-        
-        // 更新 Manager 里的节点引用，以便后续更新颜色
-        stateLinkageManager.setNodes(updatedNodes);
-      } else {
-        // 历史工作流：更新 Manager 节点引用
-        stateLinkageManager.setNodes(nodes);
-      }
 
-      // --- 【重构】调用 Store Action 启动执行 ---
-      if (targetWorkflowId) {
-        // 告知 Manager 当前工作流ID，以便它能过滤 WebSocket 消息
-        stateLinkageManager.setCurrentWorkflow(targetWorkflowId);
-        await startExecution(targetWorkflowId);
+        await stateLinkageManager.startExecution(createdWorkflow.id, updatedNodes);
       }
-
     } catch (error) {
       console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);
@@ -177,11 +186,12 @@ const ZahnerFlowApp: React.FC = () => {
   };
 
   const stopFlow = async () => {
+    if (!isRunning) return;
     try {
-      // --- 【重构】调用 Store Action 停止执行 ---
-      await stopExecution();
-    } catch (error) {
-      console.error('Stop flow failed:', error);
+      const execState = stateLinkageManager.getExecutionState();
+      if (execState) await stateLinkageManager.cancelExecution(execState.executionId);
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -200,7 +210,8 @@ const ZahnerFlowApp: React.FC = () => {
         console.log('[App] 重置成功:', result.message);
 
         // 清除本地错误状态
-        if (hasError) clearError();
+        if (hasError) setHasError(false);
+        setIsRunning(false);
       } else {
         console.error('[App] 重置失败:', response.status, response.statusText);
       }
@@ -208,6 +219,7 @@ const ZahnerFlowApp: React.FC = () => {
       console.error('Reset flow failed:', error);
     }
   };
+
 
   return (
     <>
@@ -219,6 +231,7 @@ const ZahnerFlowApp: React.FC = () => {
             onWorkstationSelect={handleWorkstationSelect}
           />
 
+        {/* 主要内容区域：三区域布局 */}
         <div className="leftbar-area">
           <Sidebar
             activePanel={activePanel}
@@ -253,6 +266,7 @@ const ZahnerFlowApp: React.FC = () => {
           <PropertyPanel selectedWorkstation={selectedWorkstation} />
         </div>
 
+        {/* 娴眰锛氳澶囨ā鎬佹锛屽惛闄勫乏渚т笌鐢诲竷椤堕儴锛堝湪 main-viewport 鍐咃級 */}
         {fixedDevice && (
           <div className="layout-overlay align-to-L align-to-canvas-top">
             {fixedDevice === 'mfc' ? (
@@ -278,6 +292,7 @@ const ZahnerFlowApp: React.FC = () => {
           </div>
         )}
 
+        {/* 集成到grid系统的状态栏 */}
         <StatusBar
           zoomLevel={zoomLevel}
           isRunning={isRunning}
@@ -292,3 +307,4 @@ const ZahnerFlowApp: React.FC = () => {
 };
 
 export default ZahnerFlowApp;
+
