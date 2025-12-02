@@ -34,7 +34,7 @@ export const useSnakeLayout = (nodes: any[]) => {
           y: LAYOUT_CONFIG.START_Y + row * LAYOUT_CONFIG.ROW_HEIGHT,
         },
         // 附加布局元数据，方便连线组件判断方向
-        layoutMeta: { index, row, isLeftToRight, isLastInRow: colIndex === LAYOUT_CONFIG.COLUMNS - 1 }
+        layoutMeta: { index, row, isLeftToRight, isLastInRow: colIndex === LAYOUT_CONFIG.COLUMNS - 1, width: LAYOUT_CONFIG.NODE_WIDTH }
       };
     });
 
@@ -45,17 +45,48 @@ export const useSnakeLayout = (nodes: any[]) => {
       const current = nodesWithPosition[i];
       const next = nodesWithPosition[i + 1];
 
-      // 判断是否是换行连接 (当前行 != 下一行)
-      const isRowChange = current.layoutMeta.row !== next.layoutMeta.row;
+      // 🔥 关键修复：根据蛇形布局的实际位置判断是否需要L形连接
+      // 不是简单的行变化，而是基于实际的节点位置和蛇形连接逻辑
+      const currentRight = current.position.x + current.layoutMeta.width;
+      const nextLeft = next.position.x;
+      const currentY = current.position.y;
+      const nextY = next.position.y;
+
+      // 🐍 蛇形连接规则：
+      // 1. 同行内：顺序连接（直线）
+      // 2. 偶数行到奇数行：从右到左的连接（可能需要L形）
+      // 3. 奇数行到偶数行：从左到右的连接（可能需要L形）
+
+      const currentRow = current.layoutMeta.row;
+      const nextRow = next.layoutMeta.row;
+      const currentIsLeftToRight = current.layoutMeta.isLeftToRight;
+      const nextIsLeftToRight = next.layoutMeta.isLeftToRight;
+
+      let needsLShape = false;
+
+      if (currentRow === nextRow) {
+        // 同一行：总是直线连接
+        needsLShape = false;
+      } else if (currentRow % 2 === 0 && nextRow % 2 === 1) {
+        // 偶数行 -> 奇数行：偶数行从左往右，奇数行从右往左
+        // 如果当前节点不是最后一个，需要L形连接
+        needsLShape = !current.layoutMeta.isLastInRow;
+      } else if (currentRow % 2 === 1 && nextRow % 2 === 0) {
+        // 奇数行 -> 偶数行：奇数行从右往左，偶数行从左往右
+        // 如果下一个节点不是第一个，需要L形连接
+        needsLShape = !next.layoutMeta.isLastInRow;
+      } else {
+        // 其他情况（应该很少）：也用位置判断
+        needsLShape = Math.abs(currentY - nextY) > 80 || nextLeft < currentRight;
+      }
 
       computedEdges.push({
         id: `auto-edge-${i}-${i+1}`,
         source: current.id,
         target: next.id,
-        // 如果是换行，使用特殊连线类型（画那个"下折线"），否则是直线
-        type: isRowChange ? 'smoothstep' : 'straight',
+        type: needsLShape ? 'smoothstep' : 'straight',
         animated: false, // 截图里看起来不是动画线，如果运行中可以设为true
-        style: { stroke: '#888', strokeWidth: 2 }, // 样式匹配截图
+        style: { stroke: 'rgba(255,255,255,0.6)', strokeWidth: 2.5 }, // 使用原有的颜色和线宽
       });
     }
 
