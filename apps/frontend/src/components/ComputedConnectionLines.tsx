@@ -76,71 +76,52 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
 
     if (!source || !target) return null;
 
-    // 计算连接点（节点右侧中点 到 目标节点左侧中点）
-    const sourceX = source.x + source.width;
-    const sourceY = source.y + source.height / 2;
-    const targetX = target.x;
-    const targetY = target.y + target.height / 2;
+    // 🔥 完全复用原有的连接算法逻辑
+    const sourceCenterY = source.y + source.height / 2;
+    const targetCenterY = target.y + target.height / 2;
 
-    // 使用原有的颜色和样式
-    const stroke = edge.style?.stroke || 'rgba(255,255,255,0.6)';
-    const strokeWidth = edge.style?.strokeWidth || LINE_STROKE_WIDTH;
-
-    // 根据连接类型生成路径（复用原有的L形逻辑）
-    if (edge.type === 'smoothstep' && Math.abs(sourceY - targetY) > 50) {
-      // 换行连接使用阶梯线（复用原有的L形逻辑）
-      const midY = sourceY + (targetY - sourceY) / 2;
-      const seg1 = padSegment(
-        { x: sourceX, y: sourceY },
-        { x: sourceX + 30, y: sourceY },
-        START_GAP,
-        0
-      );
-      const seg2 = { x1: sourceX + 30, y1: sourceY, x2: sourceX + 30, y2: midY };
-      const seg3 = padSegment(
-        { x: sourceX + 30, y: midY },
-        { x: targetX, y: targetY },
-        0,
-        END_GAP
-      );
+    // 根据连接类型决定使用哪种连接算法
+    if (edge.type === 'smoothstep') {
+      // 🐍 L形连接：完全复用原有的三段式逻辑
+      const midY = sourceCenterY + (targetCenterY - sourceCenterY) / 2;
 
       return (
         <g key={edge.id}>
           <line
-            x1={seg1.x1}
-            y1={seg1.y1}
-            x2={seg1.x2}
-            y2={seg1.y2}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
+            x1={source.x + source.width}
+            y1={sourceCenterY}
+            x2={source.x + source.width + 30}
+            y2={sourceCenterY}
+            stroke="rgba(255,255,255,0.6)"
+            strokeWidth={LINE_STROKE_WIDTH}
             strokeLinecap="round"
           />
           <line
-            x1={seg2.x1}
-            y1={seg2.y1}
-            x2={seg2.x2}
-            y2={seg2.y2}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
+            x1={source.x + source.width + 30}
+            y1={sourceCenterY}
+            x2={source.x + source.width + 30}
+            y2={targetCenterY}
+            stroke="rgba(255,255,255,0.6)"
+            strokeWidth={LINE_STROKE_WIDTH}
             strokeLinecap="round"
           />
           <line
-            x1={seg3.x1}
-            y1={seg3.y1}
-            x2={seg3.x2}
-            y2={seg3.y2}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
+            x1={source.x + source.width + 30}
+            y1={targetCenterY}
+            x2={target.x}
+            y2={targetCenterY}
+            stroke="rgba(255,255,255,0.6)"
+            strokeWidth={LINE_STROKE_WIDTH}
             strokeLinecap="round"
             markerEnd="url(#arrowhead)"
           />
         </g>
       );
     } else {
-      // 普通直线连接（复用原有的padSegment逻辑）
+      // 📏 直线连接：使用原有的padSegment逻辑
       const seg = padSegment(
-        { x: sourceX, y: sourceY },
-        { x: targetX, y: targetY },
+        { x: source.x + source.width, y: sourceCenterY },
+        { x: target.x, y: targetCenterY },
         START_GAP,
         END_GAP
       );
@@ -152,8 +133,8 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
           y1={seg.y1}
           x2={seg.x2}
           y2={seg.y2}
-          stroke={stroke}
-          strokeWidth={strokeWidth}
+          stroke="rgba(255,255,255,0.6)"
+          strokeWidth={LINE_STROKE_WIDTH}
           strokeLinecap="round"
           markerEnd="url(#arrowhead)"
           className={edge.animated ? 'animated-edge' : ''}
