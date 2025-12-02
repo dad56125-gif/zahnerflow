@@ -70,18 +70,13 @@ export const workflowExecutionService = {
               }
             };
           }),
-          edges: connections.map(conn => ({
-            id: conn.id,
-            source: conn.source_id,
-            target: conn.target_id
-          })),
-          version: (currentWorkflow.version || 0) + 1
+          edges: [], // 不再使用edges，使用空数组
+          version: 1.0 // 使用固定版本号
         };
 
         // 同步到后端
         await workflowService.updateWorkflow(workflowId, {
-          definition: workflowDefinition,
-          version: workflowDefinition.version
+          definition: workflowDefinition
         });
 
         console.log('[WorkflowExecutionService] 前端参数已成功同步到后端工作流');
@@ -166,11 +161,11 @@ export const workflowExecutionService = {
       nodeCount: nodes.length,
       connectionCount: connections.length,
       configuredNodes: nodes.filter(node => {
-        const hasConfig = (node as any).config && Object.keys((node as any).config).length > 0;
+        // 检查节点是否有配置参数（新版本只使用data.parameters）
         const hasParameters = node.data && node.data.parameters && Object.keys(node.data.parameters).length > 0;
-        return hasConfig || hasParameters;
+        return hasParameters;
       }).length,
-      workflowVersion: currentWorkflow?.version || 0,
+      workflowVersion: 1.0, // 使用固定版本号
       lastUpdated: currentWorkflow?.updatedAt ? new Date(currentWorkflow.updatedAt) : null
     };
   }

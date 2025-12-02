@@ -2,7 +2,7 @@
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
 import { useCanvasStore } from '../services/stores/canvasStore';
 import { NodeRenderer } from './NodeRenderer';
-import { ConnectionLines } from './ConnectionLines';
+import { ComputedConnectionLines } from './ComputedConnectionLines';
 import { Toolbar } from './Toolbar';
 import {
   LoopDetector,
@@ -18,6 +18,7 @@ import {
   layout_service,
   LayoutCalculationOptions
 } from '../services/layout';
+import { useSnakeLayout } from '../hooks/useSnakeLayout';
 
 interface CanvasProps {
   zoomLevel: number;
@@ -59,16 +60,16 @@ export const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const {
     nodes,
-    connections,
     selectedNode,
     canvasSize,
     setCanvasSize,
-    moveNode,
     selectNode,
     setNodes,
-    setConnections,
     addNode,
   } = useCanvasStore();
+
+  // 使用蛇形布局hook生成计算属性的位置和连接线
+  const { layoutNodes, layoutEdges } = useSnakeLayout(nodes);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutStable, setLayoutStable] = useState(true);
@@ -172,15 +173,11 @@ export const Canvas: React.FC<CanvasProps> = ({
     event.stopPropagation();
     // 简化的删除确认，实际项目中建议使用自定义 Modal
     if (window.confirm(`确定要删除节点 "${node.name}" 吗？`)) {
-        // 直接操作 store 更新
+        // 直接操作 store 更新，由于使用计算属性布局，不需要手动管理连接线
         const newNodes = nodes.filter(n => n.id !== node.id);
-        const newConnections = connections.filter(
-          conn => conn.source_id !== node.id && conn.target_id !== node.id
-        );
         setNodes(newNodes);
-        setConnections(newConnections);
     }
-  }, [nodes, connections, setNodes, setConnections]);
+  }, [nodes, setNodes]);
 
   const handleNodeDragStartEnhanced = useCallback((node: ElectrochemicalNode, event: React.DragEvent) => {
     event.dataTransfer.effectAllowed = 'move';
@@ -190,18 +187,15 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, []);
 
-  const handleNodeDragEndEnhanced = useCallback((node: ElectrochemicalNode, event: React.DragEvent) => {
+  const handleNodeDragEndEnhanced = useCallback((_node: ElectrochemicalNode, event: React.DragEvent) => {
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.style.opacity = '1';
     }
-    
-    if (canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const newX = (event.clientX - rect.left) / zoomLevel;
-      const newY = (event.clientY - rect.top) / zoomLevel;
-      moveNode(node.id, { x: newX, y: newY });
-    }
-  }, [zoomLevel, moveNode]);
+
+    // 🚫 禁用位置拖拽更新 - 位置现在由useSnakeLayout自动计算
+    // 如果需要重新排序，应该实现拖拽重排序逻辑而不是位置更新
+    console.log('拖拽结束，但位置由自动布局系统管理');
+  }, []);
 
   // Y轴拖动逻辑
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -245,9 +239,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   const structureHash = useMemo(() => {
     // 仅提取影响循环检测的关键字段
     const nodesIdType = nodes.map(n => `${n.id}:${n.type}`).join('|');
-    const connsId = connections.map(c => `${c.source_id}->${c.target_id}`).join('|');
-    return `${nodesIdType}::${connsId}`;
-  }, [nodes, connections]);
+    const edgesId = layoutEdges.map(e => `${e.source}->${e.target}`).join('|');
+    return `${nodesIdType}::${edgesId}`;
+  }, [nodes, layoutEdges]);
 
   // 循环检测逻辑
   useEffect(() => {
@@ -257,8 +251,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       return;
     }
 
-    // 执行检测
-    const detectionResult = LoopDetector.detectLoops(nodes, connections);
+    // 执行检测 - 将计算生成的edges转换为连接格式供LoopDetector使用
+    const convertedConnections = layoutEdges.map(edge => ({
+      id: edge.id,
+      source_id: edge.source,
+      target_id: edge.target
+    }));
+    const detectionResult = LoopDetector.detectLoops(nodes, convertedConnections);
     
     // 只有当循环结构发生实质变化时才更新状态
     setDetectedLoops(prev => {
@@ -272,7 +271,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     LoopSystemController.initialize({
       loops: detectionResult.loops,
       nodes: nodes,
-      connections: connections
+      connections: convertedConnections
     });
 
     setLoopContexts(prev => {
@@ -298,7 +297,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // 节点位置映射缓存（用于 LoopBoundary）
   const nodePositions = useMemo(() => {
-    return nodes.map(node => ({
+    return layoutNodes.map(node => ({
         id: node.id,
         name: node.name,
         x: node.position.x,
@@ -306,7 +305,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         width: node.style.width || 140,
         height: node.style.height || 60
     }));
-  }, [nodes]);
+  }, [layoutNodes]);
 
   return (
     <div
@@ -363,9 +362,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
         onMouseDown={handleMouseDown}
       >
-        <ConnectionLines
-          nodes={nodes}
-          canvasWidth={canvasSize.width}
+        <ComputedConnectionLines
+          edges={layoutEdges}
+          nodes={layoutNodes}
           layoutStable={layoutStable}
         />
 
@@ -381,7 +380,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           />
         ))}
 
-        {nodes.map((node, index) => (
+        {layoutNodes.map((node, index) => (
           <NodeRenderer
             key={node.id}
             node={node}

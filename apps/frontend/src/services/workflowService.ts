@@ -109,7 +109,7 @@ export const executionService = {
     results?: any[];
   }> => {
     // 1. 获取前端当前的工作流状态
-    const { nodes, connections } = useCanvasStore.getState();
+    const { nodes } = useCanvasStore.getState();
     const { currentWorkflow } = useWorkflowStore.getState();
 
     // 2. 如果是当前正在编辑的工作流，先同步参数到后端
@@ -130,17 +130,13 @@ export const executionService = {
             name: node.name,
             position: node.position,
             data: node.data,
-            config: node.config || node.data?.parameters || {},
+            // 移除config字段，只使用data.parameters
             input: node.input,
             output: node.output,
             status: node.status || 'ready'
           })),
-          edges: connections.map(conn => ({
-            id: conn.id,
-            source: conn.source_id,
-            target: conn.target_id
-          })),
-          version: currentWorkflow.version || 1
+          // 移除edges字段，不再使用
+          version: 1.0 // 使用固定版本号
         };
 
         // 同步到后端

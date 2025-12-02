@@ -34,8 +34,8 @@ export const workflowSyncUtil = {
         ownerName: currentWorkflow.ownerName,
         individualName: currentWorkflow.individualName,
         nodes: nodes.map(node => {
-          // 确保参数正确映射到 config 字段
-          const config = node.config || node.data?.parameters || {};
+          // 直接使用 data.parameters，不再依赖config字段
+          const parameters = node.data?.parameters || {};
 
           return {
             id: node.id,
@@ -44,32 +44,24 @@ export const workflowSyncUtil = {
             position: node.position,
             data: {
               ...node.data,
-              // 保持 parameters 以向后兼容
-              parameters: config
+              parameters: parameters
             },
-            // 优先使用 config 字段存储参数
-            config: config,
             input: node.input,
             output: node.output,
             status: node.status || 'ready'
           };
         }),
-        edges: connections.map(conn => ({
-          id: conn.id,
-          source: conn.source_id,
-          target: conn.target_id
-        })),
-        version: (currentWorkflow.version || 1) + 1
+        // 移除edges字段，不再使用
+        version: 1.0 // 使用固定版本号
       };
 
       // 3. 同步到后端
       await workflowService.updateWorkflow(workflowId, {
-        definition: updatedDefinition,
-        version: updatedDefinition.version
+        definition: updatedDefinition
       });
 
       console.log('[WorkflowSync] 前端参数已同步到后端工作流');
-      console.log(`[WorkflowSync] 同步了 ${nodes.length} 个节点和 ${connections.length} 个连接`);
+      console.log(`[WorkflowSync] 同步了 ${nodes.length} 个节点`);
 
       return true;
     } catch (error) {
@@ -94,7 +86,7 @@ export const workflowSyncUtil = {
 
     // 检查是否有未保存的参数修改
     const hasUnsavedChanges = nodes.some(node => {
-      const nodeConfig = node.config || node.data?.parameters || {};
+      const nodeConfig = node.data?.parameters || {};
       const hasConfig = Object.keys(nodeConfig).length > 0;
       return hasConfig; // 简化版：如果节点有参数配置，就认为需要同步
     });
@@ -109,18 +101,18 @@ export const workflowSyncUtil = {
    */
   getSyncStatus: (workflowId: string) => {
     const { currentWorkflow } = useWorkflowStore.getState();
-    const { nodes, connections } = useCanvasStore.getState();
+    const { nodes } = useCanvasStore.getState();
 
     return {
       canSync: currentWorkflow?.id === workflowId,
       nodeCount: nodes.length,
-      connectionCount: connections.length,
+      connectionCount: 0, // 不再使用connections，固定为0
       nodesWithConfig: nodes.filter(node => {
-        const config = node.config || node.data?.parameters || {};
+        const config = node.data?.parameters || {};
         return Object.keys(config).length > 0;
       }).length,
       lastSyncTime: currentWorkflow?.updatedAt ? new Date(currentWorkflow.updatedAt) : null,
-      workflowVersion: currentWorkflow?.version || 1
+      workflowVersion: 1.0 // 使用固定版本号
     };
   }
 };

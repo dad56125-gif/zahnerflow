@@ -390,13 +390,12 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         updatedAt: new Date(workflow.created_at),
         workstation: 'zahner-zennium', // 添加缺失的workstation字段
         status: 'active', // 添加缺失的status字段
-        // 构建完整的工作流对象
+        // 构建完整的工作流对象（不再包含edges）
         definition: {
           nodes: convertedNodes,
           id: workflow.id,
           name: workflow.name,
-          version: 1.0,
-          edges: formattedConnections
+          version: 1.0
         },
         ownerName: workflow.project_name || '默认项目'
       });
