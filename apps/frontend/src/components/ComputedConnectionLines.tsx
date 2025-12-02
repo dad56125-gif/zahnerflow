@@ -33,6 +33,15 @@ const MARKER_WIDTH_PX = 10 * BASE_STROKE_FOR_ARROW;  // 10 * 2 = 20px
 const MARKER_HEIGHT_PX = 10 * BASE_STROKE_FOR_ARROW; // 10 * 2 = 20px
 const REF_X_PX = -9 * BASE_STROKE_FOR_ARROW;        // -15 * 2 = -30px
 
+/** 蛇形布局配置常量（与useSnakeLayout保持一致） */
+const LAYOUT_CONFIG = {
+  COLUMNS: 4,           // 每行4个节点
+  NODE_WIDTH: 240,      // 节点宽 + 间距
+  ROW_HEIGHT: 160,      // 行高
+  START_X: 50,          // 起始X偏移
+  START_Y: 50,          // 起始Y偏移
+};
+
 /** 将线段两端按比例回缩 */
 function padSegment(
   start: { x: number; y: number },
@@ -80,38 +89,73 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
     const sourceCenterY = source.y + source.height / 2;
     const targetCenterY = target.y + target.height / 2;
 
+    // 根据蛇形布局算法确定连接点的正确位置
+    let sourceX = source.x + source.width;  // 默认从右侧连接
+    let targetX = target.x;  // 默认从左侧连接
+
+    // 判断连接规则（完全按照原ConnectionLines的逻辑）
+    const sourceIsInOddRow = Math.floor(source.layoutMeta.index / LAYOUT_CONFIG.COLUMNS) % 2 === 1;
+    const targetIsInOddRow = Math.floor(target.layoutMeta.index / LAYOUT_CONFIG.COLUMNS) % 2 === 1;
+
+    // 偶数行连接到奇数行的连接规则
+    if (sourceIsInOddRow && targetIsInOddRow) {
+      // 偶数行 → 奇数行：偶数行最后一个 → 奇数行第一个
+      if (source.layoutMeta.isLastInRow && !target.layoutMeta.isFirstInRow) {
+        targetX = target.x + target.width;  // 目标从右侧连接
+      }
+    }
+    // 奇数行连接到偶数行的连接规则
+    else if (!sourceIsInOddRow && !targetIsInOddRow) {
+      // 奇数行 → 偶数行：奇数行最后一个 → 偶数行第一个
+      if (!source.layoutMeta.isFirstInRow && target.layoutMeta.isLastInRow) {
+        sourceX = source.x;  // 源从左侧连接
+      }
+    }
+    // 同行内的连接：保持原有逻辑（从左到右）
+    else if (source.layoutMeta.row === target.layoutMeta.row) {
+      if (source.layoutMeta.index < target.layoutMeta.index) {
+        sourceX = source.x + source.width;  // 从左到右
+      } else {
+        targetX = target.x + target.width;  // 从左到右
+      }
+    }
+
+    // 使用原有的颜色和样式
+    const stroke = edge.style?.stroke || 'rgba(255,255,255,0.6)';
+    const strokeWidth = edge.style?.strokeWidth || LINE_STROKE_WIDTH;
+
     // 根据连接类型决定使用哪种连接算法
     if (edge.type === 'smoothstep') {
-      // 🐍 L形连接：完全复用原有的三段式逻辑
+      // 🐍 L形连接：完全复用原有的四段式逻辑
       const midY = sourceCenterY + (targetCenterY - sourceCenterY) / 2;
 
       return (
         <g key={edge.id}>
           <line
-            x1={source.x + source.width}
+            x1={sourceX}
             y1={sourceCenterY}
-            x2={source.x + source.width + 30}
+            x2={sourceX + 30}
             y2={sourceCenterY}
-            stroke="rgba(255,255,255,0.6)"
-            strokeWidth={LINE_STROKE_WIDTH}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
           <line
-            x1={source.x + source.width + 30}
+            x1={sourceX + 30}
             y1={sourceCenterY}
-            x2={source.x + source.width + 30}
-            y2={targetCenterY}
-            stroke="rgba(255,255,255,0.6)"
-            strokeWidth={LINE_STROKE_WIDTH}
+            x2={sourceX + 30}
+            y2={midY}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
           <line
-            x1={source.x + source.width + 30}
-            y1={targetCenterY}
-            x2={target.x}
-            y2={targetCenterY}
-            stroke="rgba(255,255,255,0.6)"
-            strokeWidth={LINE_STROKE_WIDTH}
+            x1={sourceX + 30}
+            y1={midY}
+            x2={targetX}
+            y2={midY}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
             markerEnd="url(#arrowhead)"
           />
@@ -120,8 +164,8 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
     } else {
       // 📏 直线连接：使用原有的padSegment逻辑
       const seg = padSegment(
-        { x: source.x + source.width, y: sourceCenterY },
-        { x: target.x, y: targetCenterY },
+        { x: sourceX, y: sourceCenterY },
+        { x: targetX, y: targetCenterY },
         START_GAP,
         END_GAP
       );
@@ -133,8 +177,8 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
           y1={seg.y1}
           x2={seg.x2}
           y2={seg.y2}
-          stroke="rgba(255,255,255,0.6)"
-          strokeWidth={LINE_STROKE_WIDTH}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
           strokeLinecap="round"
           markerEnd="url(#arrowhead)"
           className={edge.animated ? 'animated-edge' : ''}
