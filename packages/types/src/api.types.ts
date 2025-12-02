@@ -50,7 +50,6 @@ export interface WorkflowDefinition {
 
   // 工作流结构
   nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
 
   // 可选参数
   parameters?: Record<string, any>;
@@ -77,14 +76,6 @@ export interface WorkflowNode {
 
   // 状态管理（主要用于前端）
   status?: NodeStatus;
-}
-
-// 工作流连接 - 前后端共享
-export interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
-  type: string;
 }
 
 // 工作流状态 - 前后端共享

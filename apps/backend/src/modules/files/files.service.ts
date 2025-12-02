@@ -180,7 +180,6 @@ export class FilesService implements OnModuleInit {
         const wfProject = project || defaultProject;
 
         const nodeCount = Array.isArray(wf.definition?.nodes) ? wf.definition.nodes.length : 0;
-        const connCount = Array.isArray(wf.definition?.edges) ? wf.definition.edges.length : 0;
 
         workflowFiles.push({
           id: wf.id,
@@ -190,7 +189,7 @@ export class FilesService implements OnModuleInit {
           project_name: wfProject,
           created_at: wf.createdAt || row.updated_at,
           node_count: nodeCount,
-          connection_count: connCount
+          connection_count: 0
         });
       } catch (e) {
         console.warn(`Skipping invalid workflow json for id ${row.id}`);

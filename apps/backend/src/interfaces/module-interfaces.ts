@@ -31,7 +31,6 @@ export interface WorkflowDefinition {
   ownerName?: string;
   individualName?: string;
   nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
   version: number;
 }
 
@@ -56,12 +55,6 @@ export interface WorkflowNode {
   position: { x: number; y: number };
 }
 
-export interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
-  type: string;
-}
 
 // ==========================================
 // 3. 执行结果定义

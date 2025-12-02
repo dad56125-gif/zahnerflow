@@ -50,18 +50,10 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       return { ...node, id: newId };
     });
 
-    // 更新边的连接关系
-    const updatedEdges = definition.edges.map(edge => ({
-      ...edge,
-      source: nodeIdMap.get(edge.source) || edge.source,
-      target: nodeIdMap.get(edge.target) || edge.target
-    }));
-
     const updatedDefinition = {
       ...definition,
-      id, 
-      nodes: updatedNodes,
-      edges: updatedEdges
+      id,
+      nodes: updatedNodes
     };
 
     const workflow: Workflow = {
@@ -105,11 +97,10 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       current.definition.individualName = updates.individualName;
     }
 
-    if (updates.nodes || updates.edges) {
+    if (updates.nodes) {
       const updatedDefinition: WorkflowDefinition = {
         ...current.definition,
-        nodes: updates.nodes || current.definition.nodes,
-        edges: updates.edges || current.definition.edges
+        nodes: updates.nodes || current.definition.nodes
       };
 
       const validation = this.validateWorkflow(updatedDefinition);
@@ -166,7 +157,6 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       ownerName: original.ownerName,
       individualName: original.individualName,
       nodes: JSON.parse(JSON.stringify(original.definition.nodes)),
-      edges: JSON.parse(JSON.stringify(original.definition.edges)),
       version: 1,
     };
 
@@ -175,10 +165,6 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       const nid = this.generateNodeId();
       idMap.set(n.id, nid);
       n.id = nid;
-    });
-    cloned.edges.forEach((e: any) => {
-      if (idMap.has(e.source)) e.source = idMap.get(e.source)!;
-      if (idMap.has(e.target)) e.target = idMap.get(e.target)!;
     });
 
     return this.createWorkflow(cloned);
@@ -201,63 +187,7 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       });
     }
 
-    if (Array.isArray(definition.edges)) {
-      const nodeIds = new Set(definition.nodes.map((n: any) => n.id));
-      definition.edges.forEach((edge: any, idx: number) => {
-        if (!edge.source || !nodeIds.has(edge.source)) errors.push(`Edge ${idx + 1} invalid source`);
-        if (!edge.target || !nodeIds.has(edge.target)) errors.push(`Edge ${idx + 1} invalid target`);
-        if (edge.source === edge.target) errors.push(`Edge ${idx + 1} cannot self-connect`);
-      });
-      if (this.detectCycle(definition.nodes as any[], definition.edges as any[])) {
-        errors.push('Workflow contains circular dependencies');
-      }
-    }
-
-    if (definition.nodes?.length) {
-      const disconnected = this.findDisconnectedNodes(definition.nodes as any[], definition.edges as any[]);
-      if (disconnected.length > 0) warnings.push(`Disconnected nodes: ${disconnected.join(', ')}`);
-    }
-
     return { valid: errors.length === 0, errors, warnings };
-  }
-
-  private detectCycle(nodes: any[], edges: any[]): boolean {
-    const graph = new Map<string, string[]>();
-    nodes.forEach(n => graph.set(n.id, []));
-    edges.forEach(e => graph.get(e.source)!.push(e.target));
-
-    const visited = new Set<string>();
-    const inStack = new Set<string>();
-
-    const dfs = (id: string): boolean => {
-      if (inStack.has(id)) return true;
-      if (visited.has(id)) return false;
-      visited.add(id); inStack.add(id);
-      for (const nb of graph.get(id) || []) if (dfs(nb)) return true;
-      inStack.delete(id);
-      return false;
-    };
-
-    return nodes.some(n => dfs(n.id));
-  }
-
-  private findDisconnectedNodes(nodes: any[], edges: any[]): string[] {
-    if (!nodes.length) return [];
-    if (!edges?.length) return nodes.map(n => n.id);
-
-    const graph = new Map<string, string[]>();
-    nodes.forEach(n => graph.set(n.id, []));
-    edges.forEach(e => { graph.get(e.source)!.push(e.target); graph.get(e.target)!.push(e.source); });
-
-    const visited = new Set<string>();
-    const stack = [nodes[0].id];
-    while (stack.length) {
-      const cur = stack.pop()!;
-      if (visited.has(cur)) continue;
-      visited.add(cur);
-      (graph.get(cur) || []).forEach(nb => { if (!visited.has(nb)) stack.push(nb); });
-    }
-    return nodes.map(n => n.id).filter(id => !visited.has(id));
   }
 
   // 【重构点】生成 Workflow ID：改为调用 storage 的原子计数器
