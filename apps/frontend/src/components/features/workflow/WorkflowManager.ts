@@ -6,7 +6,7 @@
  */
 
 import { ElectrochemicalNode, NodeType, NodeCategory } from '@/types/nodes';
-import { LoopInfo } from '.';
+import type { SimpleLoopInfo } from '../../../hooks/useSimpleLoopDetection';
 
 // 工作流数据接口
 export interface WorkflowData {
@@ -18,7 +18,7 @@ export interface WorkflowData {
     sourceId: string;
     targetId: string;
   }>;
-  loops: LoopInfo[];
+  loops: SimpleLoopInfo[];
   settings: WorkflowSettings;
   timestamp: number;
 }
@@ -94,7 +94,7 @@ export class WorkflowManager {
   public static async exportWorkflow(
     nodes: ElectrochemicalNode[],
     connections: Array<{ id: string; sourceId: string; targetId: string }>,
-    loops: LoopInfo[],
+    loops: SimpleLoopInfo[],
     metadata: WorkflowMetadata,
     settings: WorkflowSettings,
     options: WorkflowExportOptions = {}
@@ -292,10 +292,10 @@ export class WorkflowManager {
         if (!loop.id) {
           errors.push(`循环 ${index} 缺少 ID`);
         }
-        if (!loop.start_node_id || !loop.end_node_id) {
+        if (!loop.startNodeId || !loop.endNodeId) {
           errors.push(`循环 ${loop.id || index} 缺少开始或结束节点`);
         }
-        if (!loop.node_ids || !Array.isArray(loop.node_ids)) {
+        if (!loop.nodeIds || !Array.isArray(loop.nodeIds)) {
           errors.push(`循环 ${loop.id || index} 节点列表无效`);
         }
       });
@@ -378,10 +378,10 @@ export class WorkflowManager {
       workflow.loops.forEach(loop => {
         csvLines.push([
           loop.id,
-          loop.start_node_id,
-          loop.end_node_id,
-          loop.iteration_count,
-          loop.node_ids.join(';')
+          loop.startNodeId,
+          loop.endNodeId,
+          loop.iterationCount,
+          loop.nodeIds.join(';')
         ].join(','));
       });
     }
@@ -396,7 +396,7 @@ export class WorkflowManager {
     name: string,
     nodes: ElectrochemicalNode[],
     connections: Array<{ id: string; sourceId: string; targetId: string }>,
-    loops: LoopInfo[]
+    loops: SimpleLoopInfo[]
   ): WorkflowData {
     return {
       version: this.CURRENT_VERSION,
@@ -443,7 +443,7 @@ export class WorkflowManager {
 
     if (config.loops && config.loops.length > 0) {
       config.loops.forEach((loop, index) => {
-        if (!loop.start_node_id || !loop.end_node_id) {
+        if (!loop.startNodeId || !loop.endNodeId) {
           errors.push(`循环 ${index + 1} 缺少开始或结束节点`);
         }
       });
@@ -549,13 +549,11 @@ export class WorkflowManager {
             const parts = trimmedLine.split(',');
             workflow.loops.push({
               id: key,
-              start_node_id: value,
-              end_node_id: parts[2]?.trim() || '',
-              node_ids: parts[4]?.trim().split(';').filter(Boolean) || [],
-              iteration_count: parseInt(parts[3] || '1'),
-              current_iteration: 0,
-              is_active: false,
-              parameters: {}
+              startNodeId: value,
+              endNodeId: parts[2]?.trim() || '',
+              nodeIds: parts[4]?.trim().split(';').filter(Boolean) || [],
+              iterationCount: parseInt(parts[3] || '1'),
+              level: 0
             });
           }
           break;
@@ -636,9 +634,9 @@ export class WorkflowManager {
     // 更新循环中的节点ID
     const newLoops = workflow.loops.map(loop => ({
       ...loop,
-      start_node_id: idMap.get(loop.start_node_id) || loop.start_node_id,
-      end_node_id: idMap.get(loop.end_node_id) || loop.end_node_id,
-      node_ids: loop.node_ids.map(nodeId => idMap.get(nodeId) || nodeId)
+      startNodeId: idMap.get(loop.startNodeId) || loop.startNodeId,
+      endNodeId: idMap.get(loop.endNodeId) || loop.endNodeId,
+      nodeIds: loop.nodeIds.map(nodeId => idMap.get(nodeId) || nodeId)
     }));
 
     return {

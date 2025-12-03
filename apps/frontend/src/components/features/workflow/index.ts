@@ -8,9 +8,6 @@ export { WorkflowExporter } from './WorkflowExporter';
 export { WorkflowImporter } from './WorkflowImporter';
 export { WorkflowManagerUI } from './WorkflowManagerUI';
 
-// 从循环模块导出
-export { LoopDetector, type LoopInfo, type LoopDetectionResult, type LoopConfig } from '../loop/core/LoopDetector';
-
 // 类型导出
 export type {
   WorkflowData,

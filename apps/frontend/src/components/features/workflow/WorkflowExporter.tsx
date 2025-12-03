@@ -7,14 +7,14 @@
 
 import React, { useState } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
-import { LoopInfo } from '.';
+import type { SimpleLoopInfo } from '../../../hooks/useSimpleLoopDetection';
 import { WorkflowManager, type WorkflowMetadata, type WorkflowSettings, type WorkflowExportOptions } from './WorkflowManager';
 
 // 工作流导出器属性接口
 export interface WorkflowExporterProps {
   nodes: ElectrochemicalNode[];
   connections: Array<{ id: string; source_id: string; target_id: string }>;
-  loops: LoopInfo[];
+  loops: SimpleLoopInfo[];
   className?: string;
   style?: React.CSSProperties;
   onExportComplete?: (filename: string) => void;

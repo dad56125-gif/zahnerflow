@@ -27,8 +27,7 @@ export {
   DEFAULT_LAYOUT_CONFIG,
   calculateDynamicColumns,
   getActualColumns,
-  isValidZoomLevel,
-  getZoomAdjustedDimensions
+  isValidZoomLevel
 } from './LayoutConfig';
 
 export { ConnectionBindingService, connection_binding_service } from './ConnectionBindingService';

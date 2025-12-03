@@ -1,14 +1,14 @@
 import React from 'react';
 import { NotificationPanel } from './NotificationPanel';
 import { useCanvasStore } from '../services/stores/canvasStore';
-import type { LoopInfo } from './features/loop';
+import type { SimpleLoopInfo } from '../hooks/useSimpleLoopDetection';
 
 interface StatusBarProps {
   zoomLevel: number;
   isRunning: boolean;
   isNotificationPanelOpen: boolean;
   setIsNotificationPanelOpen: (open: boolean) => void;
-  detectedLoops?: LoopInfo[];
+  detectedLoops?: SimpleLoopInfo[];
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({

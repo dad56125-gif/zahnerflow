@@ -12,8 +12,6 @@ import {
 } from '../layout';
 import { useWorkflowParameterStore } from './workflowParameterStore';
 import { useWorkflowStore } from './index';
-import { LoopSystemController } from '../../components/features/loop/core/loop_system_controller';
-import { ChangeHandler } from '../../components/features/loop/core/fingerprint_cache';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
@@ -158,17 +156,6 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
           validationError: validateNodes(newNodes)
         };
       });
-
-      // 通知循环系统（异步）
-      setTimeout(() => {
-        const state = get();
-        const change = ChangeHandler.handle_parameter_change({
-          loops: [],
-          nodes: state.nodes,
-          connections: state.connections
-        });
-        LoopSystemController.handle_workflow_change(change);
-      }, 0);
     },
 
     moveNode: (nodeId, newPosition) => {
@@ -221,17 +208,6 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     setConnections: (connections) => {
       // 更新连接
       set({ connections });
-
-      // 通知循环系统
-      setTimeout(() => {
-        const state = get();
-        const change = ChangeHandler.handle_parameter_change({
-          loops: [],
-          nodes: state.nodes,
-          connections: state.connections
-        });
-        LoopSystemController.handle_workflow_change(change);
-      }, 0);
     },
 
     // 🎯 批量更新方法，减少状态变化次数

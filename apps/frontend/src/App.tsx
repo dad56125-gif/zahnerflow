@@ -14,7 +14,7 @@ import { MFCModal } from './modules/mfc';
 import { workflowService } from './services/workflowService';
 import { useFurnace, DeviceModal } from './modules/furnace';
 import { UserProvider } from './contexts/UserContext';
-import type { LoopInfo } from './components/features/loop';
+import type { SimpleLoopInfo } from './hooks/useSimpleLoopDetection';
 
 
 
@@ -38,7 +38,7 @@ const ZahnerFlowApp: React.FC = () => {
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(false);
   const [showFilePathManager, setShowFilePathManager] = useState(false);
-  const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
+  const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
 
   const handleWorkstationSelect = (workstation: any) => {
     const workstationType = workstation.id as WorkstationType;
@@ -60,11 +60,11 @@ const ZahnerFlowApp: React.FC = () => {
   const handleResetZoom = useCallback(() => setZoomLevel(1), []);
 
   // 循环检测回调函数
-  const handleLoopDetected = useCallback((loops: LoopInfo[]) => {
+  const handleLoopDetected = useCallback((loops: SimpleLoopInfo[]) => {
     setDetectedLoops(loops);
   }, []);
 
-  
+
   useEffect(() => {
     const observer = setupAutoGlassEffect();
     return () => observer?.disconnect();
