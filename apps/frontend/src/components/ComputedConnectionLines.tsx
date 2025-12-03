@@ -1,31 +1,14 @@
 import React from 'react';
 
-// 引入动态segmentLength计算函数
-import { getDynamicSegmentLength, DEFAULT_LAYOUT_CONFIG } from '../services/layout/LayoutConfig';
-
-// ComputedEdge接口已在LayoutConfig中定义，这里引用即可
-interface ComputedEdge {
-  id: string;
-  source: string;
-  target: string;
-  type?: 'straight' | 'smoothstep' | 'default';
-  sourcePosition: { x: number; y: number };
-  targetPosition: { x: number; y: number };
-  layoutMeta?: {
-    sourceIsInOddRow: boolean;
-    targetIsInOddRow: boolean;
-  };
-  animated?: boolean;
-  style?: React.CSSProperties;
-  label?: string;
-}
+// 引入ComputedEdge接口
+import { ComputedEdge } from '../services/layout/LayoutConfig';
 
 interface ComputedConnectionLinesProps {
   // 预计算的连接线数据，由useUnifiedLayout生成
   layoutEdges: ComputedEdge[];
   // 布局稳定状态，用于控制动画过渡
   layoutStable?: boolean;
-  // 🎯 核心修复：Canvas缩放级别，用于连接线坐标变换
+  // Canvas缩放级别，用于视觉补偿
   zoomLevel?: number;
 }
 
@@ -45,6 +28,10 @@ const BASE_STROKE_FOR_ARROW = 2;          // 基准线宽
 const MARKER_WIDTH_PX = 10 * BASE_STROKE_FOR_ARROW;  // 10 * 2 = 20px
 const MARKER_HEIGHT_PX = 10 * BASE_STROKE_FOR_ARROW; // 10 * 2 = 20px
 const REF_X_PX = -9 * BASE_STROKE_FOR_ARROW;        // -15 * 2 = -30px
+
+// 🎯 架构解耦：硬编码渲染段长度，不动态计算
+// 几何坐标来自layoutEdges（100%比例），视觉补偿由zoomLevel处理
+const RENDER_SEGMENT_LENGTH = 40;
 
 /** 将线段两端按比例回缩 */
 function padSegment(
@@ -69,118 +56,113 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
   layoutStable = true,
   zoomLevel = 1.0
 }) => {
-  // 🎯 核心修复验证：连接线应该使用基础坐标，与节点保持一致的缩放方式
-  // 节点和连接线都在同一个缩放容器内，都应该由CSS transform统一处理缩放
-  // 这样确保连接线与节点视觉位置完全匹配
+  // 🎯 架构解耦：明确区分几何渲染和视觉补偿
+  // 几何坐标直接来自layoutEdges（100%比例），只有strokeWidth进行反向补偿
   const renderEdge = React.useCallback((edge: ComputedEdge) => {
-    // ✅ 修复确认：直接使用基础坐标，与节点position保持一致
-    // 让CSS transform统一处理缩放，避免双重缩放问题
-    const sourcePosition = edge.sourcePosition;
-    const targetPosition = edge.targetPosition;
-
+    const { sourcePosition, targetPosition, sourceDir = 1, targetDir = -1 } = edge; // 默认值防炸
     if (!sourcePosition || !targetPosition) return null;
 
-    // 使用原有的颜色和样式
     const stroke = edge.style?.stroke || 'rgba(255,255,255,0.6)';
-    // 🎯 核心修复：动态计算stroke-width，与缩放级别协调
-    // 确保连接线宽度与节点比例匹配，避免缩放时线条过粗或过细
     const baseStrokeWidth = edge.style?.strokeWidth || LINE_STROKE_WIDTH;
-    const strokeWidth = baseStrokeWidth / (zoomLevel || 1.0);
+    // 🎯 只有strokeWidth进行视觉补偿：/ zoomLevel反向补偿
+    const strokeWidth = Number(baseStrokeWidth) / (zoomLevel || 1.0);
 
-    // 🎯 针对60%缩放的验证调试
-    if (process.env.NODE_ENV === 'development' && Math.abs(zoomLevel - 0.6) < 0.01) {
-      const segmentLength = getDynamicSegmentLength(DEFAULT_LAYOUT_CONFIG, zoomLevel);
-      console.log(`🎯 60%缩放连接线渲染调试 - ${edge.id}:`, {
-        缩放级别: zoomLevel,
-        基础线宽: baseStrokeWidth,
-        计算后线宽: strokeWidth,
-        基础segmentLength: DEFAULT_LAYOUT_CONFIG.segmentLength,
-        动态segmentLength: segmentLength,
-        源位置: sourcePosition,
-        目标位置: targetPosition,
-        连接类型: edge.type,
-        修复验证: {
-          segmentLength正确缩放: Math.abs(segmentLength - 18) < 0.1,
-          strokeWidth正确缩放: Math.abs(strokeWidth - 4.166666666666667) < 0.1,
-          移除了vectorEffect: true
-        }
-      });
-    }
+    // 🎯 使用硬编码的RENDER_SEGMENT_LENGTH，不动态计算
+    const segmentLength = RENDER_SEGMENT_LENGTH;
 
-    // 根据连接类型决定使用哪种连接算法（使用基础坐标）
     if (edge.type === 'smoothstep') {
-      // 🐍 L形连接：使用动态segmentLength，确保与缩放级别协调
-      const midY = sourcePosition.y + (targetPosition.y - sourcePosition.y) / 2;
-      // 🎯 核心修复：使用动态segmentLength替换固定30px
-      // 确保连接线长度与缩放级别协调，避免60%缩放下变成18px的问题
-      const segmentLength = getDynamicSegmentLength(DEFAULT_LAYOUT_CONFIG, zoomLevel);
+      // 🐍 蛇形折线 / L型连接
+      // 计算关键拐点
 
-      return (
-        <g key={edge.id}>
-          <line
-            x1={sourcePosition.x}
-            y1={sourcePosition.y}
-            x2={sourcePosition.x + segmentLength}
-            y2={sourcePosition.y}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-          />
-          <line
-            x1={sourcePosition.x + segmentLength}
-            y1={sourcePosition.y}
-            x2={sourcePosition.x + segmentLength}
-            y2={midY}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-          />
-          <line
-            x1={sourcePosition.x + segmentLength}
-            y1={midY}
-            x2={targetPosition.x}
-            y2={midY}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-          />
-          <line
-            x1={targetPosition.x}
-            y1={midY}
-            x2={targetPosition.x}
-            y2={targetPosition.y}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            markerEnd="url(#arrowhead)"
-          />
-        </g>
-      );
+      // 1. 起点延伸点 (P1): 根据 sourceDir 决定向左还是向右延伸
+      const p1 = {
+        x: sourcePosition.x + (segmentLength * Number(sourceDir)),
+        y: sourcePosition.y
+      };
+
+      // 2. 终点延伸点 (P2): 目标点出来的延伸位置，通常用于最后一段对齐
+      // 如果是转折连接 (U-turn)，我们希望线出来后，垂直走，然后水平进
+      // 简单逻辑：如果是同侧转折（比如都在右边），中间X取最大值
+
+      const midY = sourcePosition.y + (targetPosition.y - sourcePosition.y) / 2;
+
+      // 处理 U 型转折 (Turn) 的特殊情况
+      // 如果 sourceDir 和 targetDir 相同（比如都是 1，右出右进），说明是蛇形转弯
+      if (Number(sourceDir) === Number(targetDir)) {
+        // 确定垂直线的 X 坐标：取两点中更"靠外"的那个，再加一点间距
+        // 如果是右侧转弯 (Dir=1)，取 max(src.x, tgt.x) + gap
+        // 如果是左侧转弯 (Dir=-1)，取 min(src.x, tgt.x) - gap
+        const gap = segmentLength; // 转弯的额外外扩距离
+
+        let verticalX = 0;
+        if (Number(sourceDir) === 1) {
+          verticalX = Math.max(sourcePosition.x, targetPosition.x) + gap;
+        } else {
+          verticalX = Math.min(sourcePosition.x, targetPosition.x) - gap;
+        }
+
+        return (
+          <g key={edge.id}>
+            {/* 1. 源点 -> 外扩点 */}
+            <line x1={sourcePosition.x} y1={sourcePosition.y} x2={verticalX} y2={sourcePosition.y} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+            {/* 2. 垂直下落 */}
+            <line x1={verticalX} y1={sourcePosition.y} x2={verticalX} y2={targetPosition.y} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+            {/* 3. 外扩点 -> 目标点 */}
+            <line x1={verticalX} y1={targetPosition.y} x2={targetPosition.x} y2={targetPosition.y} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" markerEnd="url(#arrowhead)" />
+          </g>
+        );
+      } else {
+        // 标准 Z 型连接 (跨行但不在端点，或者是 Grid 模式)
+        // 使用 p1 延伸
+
+        return (
+          <g key={edge.id}>
+            {/* 源点 -> P1 */}
+            <line x1={sourcePosition.x} y1={sourcePosition.y} x2={p1.x} y2={p1.y} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+            {/* P1 -> 中间垂直点 */}
+            <line x1={p1.x} y1={sourcePosition.y} x2={p1.x} y2={midY} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+            {/* 中间水平线 */}
+            <line x1={p1.x} y1={midY} x2={targetPosition.x} y2={midY} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+            {/* 垂直下落到目标高度 */}
+            <line x1={targetPosition.x} y1={midY} x2={targetPosition.x} y2={targetPosition.y} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" markerEnd="url(#arrowhead)" />
+          </g>
+        );
+      }
     } else {
-      // 📏 直线连接：使用基础坐标和原有的间隙
-      const seg = padSegment(
-        sourcePosition,
-        targetPosition,
-        START_GAP,
-        END_GAP
-      );
+      // 📏 直线连接 (同行)
+      // 直线也需要缩进处理，防止箭头被遮挡
+      // 简化逻辑：直接画线，箭头由 marker 处理
+
+      // 注意：如果是反向行 (R->L)，直线是从右向左画。markerEnd 会自动旋转方向，只要线坐标是对的。
+      // 在 useUnifiedLayout 中我们已经交换了 sourceX 和 targetX，所以这里直接画即可。
+
+      // 稍微做一点点缩进以免盖住节点边框 (使用 padSegment 逻辑，这里简化演示)
+      const dx = targetPosition.x - sourcePosition.x;
+      const dy = targetPosition.y - sourcePosition.y;
+      const length = Math.sqrt(dx*dx + dy*dy);
+      // 简单的缩进计算
+      const startGap = 0;
+      const endGap = 10 * (zoomLevel || 1); // 留给箭头的空间
+
+      const ratio = length > 0 ? (length - endGap) / length : 1;
+      const finalX = sourcePosition.x + dx * ratio;
+      const finalY = sourcePosition.y + dy * ratio;
 
       return (
         <line
           key={edge.id}
-          x1={seg.x1}
-          y1={seg.y1}
-          x2={seg.x2}
-          y2={seg.y2}
+          x1={sourcePosition.x}
+          y1={sourcePosition.y}
+          x2={finalX} // 使用缩进后的终点
+          y2={finalY}
           stroke={stroke}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           markerEnd="url(#arrowhead)"
-          className={edge.animated ? 'animated-edge' : ''}
         />
       );
     }
-  }, []); // 移除transformCoordinates依赖，直接使用基础坐标
+  }, [zoomLevel]); // 依赖 zoomLevel
 
   return (
     <svg
@@ -193,7 +175,9 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
         height: '100%',
         pointerEvents: 'none',
         zIndex: 1,
-        transition: layoutStable ? 'none' : 'all 0.3s ease'
+        transition: layoutStable ? 'none' : 'all 0.3s ease',
+        // ✅ 关键修复：显示SVG画布外的连接线，解决超过5列断连问题
+        overflow: 'visible'  // 允许显示超出SVG边界的连接线
       }}
     >
       <defs>

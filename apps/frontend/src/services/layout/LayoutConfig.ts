@@ -238,48 +238,6 @@ export function isValidZoomLevel(
   return zoomLevel >= config.minZoomLevel && zoomLevel <= config.maxZoomLevel;
 }
 
-/**
- * 获取基础尺寸（用于布局计算）
- *
- * 布局计算始终使用基础尺寸，缩放完全由CSS transform处理
- * 这样可以避免双重缩放冲突
- *
- * @param config 布局配置
- * @param zoomLevel 缩放级别（保留参数但不在布局中应用）
- * @returns 基础尺寸（不包含缩放）
- */
-export function getZoomAdjustedDimensions(
-  config: LayoutConfig = DEFAULT_LAYOUT_CONFIG,
-  zoomLevel: number = 1.0
-): { nodeWidth: number; nodeHeight: number; spacing: number; segmentLength: number } {
-  // 布局计算始终返回基础尺寸，缩放由CSS transform处理
-  // 这样确保布局层和渲染层的缩放策略统一，避免双重缩放冲突
-  return {
-    nodeWidth: config.nodeWidth,
-    nodeHeight: config.nodeHeight,
-    spacing: config.spacing,
-    segmentLength: config.segmentLength
-  };
-}
-
-/**
- * 计算动态segmentLength（用于渲染）
- *
- * 根据缩放级别动态调整segmentLength，确保连接线长度与缩放级别协调
- * 这个函数主要用于渲染层，不是布局计算
- *
- * @param config 布局配置
- * @param zoomLevel 缩放级别
- * @returns 调整后的segmentLength
- */
-export function getDynamicSegmentLength(
-  config: LayoutConfig = DEFAULT_LAYOUT_CONFIG,
-  zoomLevel: number = 1.0
-): number {
-  // 🎯 核心修复：根据缩放级别动态计算segmentLength
-  // 确保连接线长度与缩放级别协调，避免60%缩放下变成18px的问题
-  return config.segmentLength * (zoomLevel || 1.0);
-}
 
 // 布局结果接口
 export interface LayoutResult {
@@ -316,7 +274,6 @@ export interface LayoutResult {
       isInOddRow: boolean;
       width: number;
       columns: number;
-      zoomLevel?: number;
       [key: string]: any;
     };
     [key: string]: any; // 允许其他属性
@@ -343,6 +300,10 @@ export interface ComputedEdge {
     sourceIsInOddRow: boolean;
     targetIsInOddRow: boolean;
   };
+  // ✅ 新增：明确连线的出入方向 (1: 向右, -1: 向左)
+  sourceDir?: 1 | -1;
+  targetDir?: 1 | -1;
+
   animated?: boolean;
   style?: React.CSSProperties;
   label?: string;

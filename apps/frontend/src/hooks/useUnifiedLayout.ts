@@ -15,34 +15,21 @@ import {
   DEFAULT_LAYOUT_CONFIG,
   calculateDynamicColumns,
   getActualColumns,
-  getZoomAdjustedDimensions,
-  getDynamicSegmentLength,
   isValidZoomLevel,
   ResponsiveParams
 } from '../services/layout/LayoutConfig';
 
 /**
- * 生成连接线的通用函数
- *
- * @param nodesWithPosition 带有位置的节点数组
- * @param columns 列数
- * @param dimensions 调整后的尺寸
- * @param layoutMode 布局模式
- * @param zoomLevel 缩放级别
- * @returns 预计算的连接线数组
+ * 生成连接线的通用函数 (已完全重写以支持蛇形逻辑)
+ * 只使用基准尺寸进行几何计算，缩放由渲染层处理
  */
 function generateConnectionLines(
   nodesWithPosition: any[],
   columns: number,
   dimensions: { nodeWidth: number; nodeHeight: number; spacing: number; segmentLength: number },
-  layoutMode: LayoutMode = 'snake',
-  zoomLevel: number = 1.0
+  layoutMode: LayoutMode = 'snake'
 ): ComputedEdge[] {
   const computedEdges: ComputedEdge[] = [];
-
-  // 🎯 核心修复：使用动态计算的segmentLength，而不是固定值
-  // 确保连接线长度与缩放级别协调，避免60%缩放下变成18px的问题
-  const dynamicSegmentLength = getDynamicSegmentLength(DEFAULT_LAYOUT_CONFIG, zoomLevel);
 
   for (let i = 0; i < nodesWithPosition.length - 1; i++) {
     const current = nodesWithPosition[i];
@@ -51,196 +38,84 @@ function generateConnectionLines(
     if (!current || !next) continue;
 
     const nodeWidth = current.layoutMeta.width || dimensions.nodeWidth;
-    const nodeHeight = current.height || dimensions.nodeHeight;
+    const nodeHeight = current.height || dimensions.nodeHeight; // 使用节点实际高度或默认
 
-    const currentRight = current.position.x + nodeWidth;
-    const nextLeft = next.position.x;
+    // 垂直中心
     const currentY = current.position.y + nodeHeight / 2;
     const nextY = next.position.y + nodeHeight / 2;
 
-    // 根据布局模式确定连接点位置
-    let sourceX = currentRight;  // 默认从右侧连接
-    let targetX = nextLeft;      // 默认从左侧连接
+    // 默认坐标和方向 (假设 Grid 模式或 L->R)
+    let sourceX = current.position.x + nodeWidth; // 默认右侧出
+    let targetX = next.position.x;                // 默认左侧进
+    let sourceDir: 1 | -1 = 1;                    // 1 = 向右
+    let targetDir: 1 | -1 = 1;                    // 1 = 向右(指箭头方向，实际上通常不仅是方向，而是连接侧。这里定义：1=右侧连接，-1=左侧连接)
+    // 修正定义：
+    // sourceDir = 1 表示从 Source 的右侧出。 -1 表示从 Source 的左侧出。
+    // targetDir = -1 表示从 Target 的左侧进。 1 表示从 Target 的右侧进。
+
     let connectionType: 'straight' | 'smoothstep' | 'default' = 'straight';
 
     if (layoutMode === 'snake') {
-      // 蛇形布局连接逻辑
-      const sourceIsInOddRow = Math.floor(current.layoutMeta.index / columns) % 2 === 1;
-      const targetIsInOddRow = Math.floor(next.layoutMeta.index / columns) % 2 === 1;
+      const currentRow = current.layoutMeta.row;
+      const nextRow = next.layoutMeta.row;
 
-      // 同行内的连接（优先处理）
-      if (current.layoutMeta.row === next.layoutMeta.row) {
-        if (current.layoutMeta.index < next.layoutMeta.index) {
-          sourceX = current.position.x + nodeWidth;
+      // 蛇形布局定义：
+      // 偶数行 (0, 2...): 从左到右 (L->R)
+      // 奇数行 (1, 3...): 从右到左 (R->L)
+      const rowIsLeftToRight = currentRow % 2 === 0;
+
+      // 情况 1: 同行连接
+      if (currentRow === nextRow) {
+        connectionType = 'straight'; // 同行通常直线，除非有障碍（这里简化为直线）
+
+        if (rowIsLeftToRight) {
+          // L->R: [Current] -> [Next]
+          sourceX = current.position.x + nodeWidth; // 右出
+          sourceDir = 1;
+          targetX = next.position.x;                // 左进
+          targetDir = -1;
         } else {
-          targetX = next.position.x + (next.layoutMeta.width || dimensions.nodeWidth);
+          // R->L: [Next] <- [Current]
+          // 视觉上 Next 在 Current 左边
+          sourceX = current.position.x;             // 左出
+          sourceDir = -1;
+          targetX = next.position.x + nodeWidth;    // 右进
+          targetDir = 1;
         }
       }
-      // 奇数行连接到偶数行的跨行连接（奇数行最后一列 → 偶数行第一列）
-      else if (sourceIsInOddRow && !targetIsInOddRow) {
-        // 🎯 核心修复：奇数行从左到右，最后一列的节点应该从右侧连接
-        // 偶数行从右到左，第一列的节点应该从右侧连接
-        if (current.layoutMeta.isLastInRow && next.layoutMeta.isFirstInRow) {
-          // 源节点从右侧连接（因为奇数行从左到右，最后一列在右侧）
-          sourceX = current.position.x + nodeWidth;
-          // 目标节点从右侧连接（因为偶数行从右到左，第一列在右侧）
-          targetX = next.position.x + (next.layoutMeta.width || dimensions.nodeWidth);
-        }
-      }
-      // 偶数行连接到奇数行的跨行连接（偶数行最后一列 → 奇数行第一列）
-      else if (!sourceIsInOddRow && targetIsInOddRow) {
-        // 🎯 核心修复：偶数行从右到左，最后一列的节点应该从左侧连接
-        // 奇数行从左到右，第一列的节点应该从左侧连接
-        if (current.layoutMeta.isLastInRow && next.layoutMeta.isFirstInRow) {
-          // 源节点从左侧连接（因为偶数行从右到左，最后一列在左侧）
-          sourceX = current.position.x;
-          // 目标节点从左侧连接（因为奇数行从左到右，第一列在左侧）
-          targetX = next.position.x;
-        }
-      }
-      // 其他跨行连接情况的处理
+      // 情况 2: 跨行转折 (Current 是行尾，Next 是下一行行首)
       else {
-        // 奇数行内部的其他连接
-        if (sourceIsInOddRow && targetIsInOddRow) {
-          if (current.layoutMeta.isLastInRow && !next.layoutMeta.isFirstInRow) {
-            targetX = next.position.x + (next.layoutMeta.width || dimensions.nodeWidth);
-          }
-        }
-        // 偶数行内部的其他连接
-        else if (!sourceIsInOddRow && !targetIsInOddRow) {
-          if (!current.layoutMeta.isFirstInRow && next.layoutMeta.isLastInRow) {
-            sourceX = current.position.x;
-          }
+        connectionType = 'smoothstep'; // 必须是折线
+
+        // 判断是右侧转弯还是左侧转弯
+        if (rowIsLeftToRight) {
+          // 当前是 L->R (偶数行)，下一行是 R->L。转折点在右侧。
+          // [Current] -> ⤵
+          //              [Next]
+          sourceX = current.position.x + nodeWidth; // 右出
+          sourceDir = 1;
+          targetX = next.position.x + nodeWidth;    // 下一行的起点在最右边，所以是右进
+          targetDir = 1;
+        } else {
+          // 当前是 R->L (奇数行)，下一行是 L->R。转折点在左侧。
+          // ⤵ <- [Current]
+          // [Next]
+          sourceX = current.position.x;             // 左出
+          sourceDir = -1;
+          targetX = next.position.x;                // 下一行的起点在最左边，所以是左进
+          targetDir = -1;
         }
       }
-
-      // 判断连接类型：跨行使用L形，同行使用直线
-      const isSameRow = current.layoutMeta.row === next.layoutMeta.row;
-      connectionType = isSameRow ? 'straight' : 'smoothstep';
     } else if (layoutMode === 'grid') {
-      // 网格布局使用直线连接
+      // Grid 模式永远是从左连到右，换行直接飞过去
       sourceX = current.position.x + nodeWidth;
+      sourceDir = 1;
       targetX = next.position.x;
-      connectionType = 'straight';
+      targetDir = -1;
+      connectionType = 'smoothstep';
     }
 
-    // 连接点位置验证：确保连接点不会超出节点边界
-    const sourceNodeWidth = current.layoutMeta.width || dimensions.nodeWidth;
-    const targetNodeWidth = next.layoutMeta.width || dimensions.nodeWidth;
-
-    // 验证源连接点
-    if (sourceX < current.position.x) {
-      console.warn(`连接点超出源节点左边界: 节点${current.id}, sourceX=${sourceX}, nodeLeft=${current.position.x}`);
-      sourceX = current.position.x;
-    } else if (sourceX > current.position.x + sourceNodeWidth) {
-      console.warn(`连接点超出源节点右边界: 节点${current.id}, sourceX=${sourceX}, nodeRight=${current.position.x + sourceNodeWidth}`);
-      sourceX = current.position.x + sourceNodeWidth;
-    }
-
-    // 验证目标连接点
-    if (targetX < next.position.x) {
-      console.warn(`连接点超出目标节点左边界: 节点${next.id}, targetX=${targetX}, nodeLeft=${next.position.x}`);
-      targetX = next.position.x;
-    } else if (targetX > next.position.x + targetNodeWidth) {
-      console.warn(`连接点超出目标节点右边界: 节点${next.id}, targetX=${targetX}, nodeRight=${next.position.x + targetNodeWidth}`);
-      targetX = next.position.x + targetNodeWidth;
-    }
-
-    // 开发环境下的详细调试信息
-    if (process.env.NODE_ENV === 'development') {
-      // 计算奇偶行信息（用于调试）
-      const sourceIsInOddRow = Math.floor(current.layoutMeta.index / columns) % 2 === 1;
-      const targetIsInOddRow = Math.floor(next.layoutMeta.index / columns) % 2 === 1;
-
-      // 🎯 专门针对60%缩放7列布局的验证调试
-      const is60PercentZoom = Math.abs((zoomLevel || 1.0) - 0.6) < 0.01;
-      const is7Columns = columns === 7;
-      const isTargetScenario = is60PercentZoom && is7Columns;
-
-      if (isTargetScenario) {
-        console.log(`🎯 60%缩放7列布局调试 - ${current.id} → ${next.id}:`, {
-          缩放级别: zoomLevel,
-          列数: columns,
-          源节点: {
-            id: current.id,
-            index: current.layoutMeta.index,
-            row: current.layoutMeta.row,
-            col: current.layoutMeta.col,
-            isLeftToRight: current.layoutMeta.isLeftToRight,
-            isFirstInRow: current.layoutMeta.isFirstInRow,
-            isLastInRow: current.layoutMeta.isLastInRow,
-            isInOddRow: sourceIsInOddRow,
-            position: current.position,
-            sourceX,
-            sourceY: currentY
-          },
-          目标节点: {
-            id: next.id,
-            index: next.layoutMeta.index,
-            row: next.layoutMeta.row,
-            col: next.layoutMeta.col,
-            isLeftToRight: next.layoutMeta.isLeftToRight,
-            isFirstInRow: next.layoutMeta.isFirstInRow,
-            isLastInRow: next.layoutMeta.isLastInRow,
-            isInOddRow: targetIsInOddRow,
-            position: next.position,
-            targetX,
-            targetY: nextY
-          },
-          连接信息: {
-            connectionType,
-            isSameRow: current.layoutMeta.row === next.layoutMeta.row,
-            columns,
-            segmentLength: dynamicSegmentLength || dimensions.segmentLength  // 🎯 使用动态segmentLength
-          },
-          修复验证: {
-            跨行连接: current.layoutMeta.row !== next.layoutMeta.row,
-            偶数行到奇数行: !sourceIsInOddRow && targetIsInOddRow,
-            奇数行到偶数行: sourceIsInOddRow && !targetIsInOddRow,
-            源是否使用左侧连接: sourceX === current.position.x,
-            源是否使用右侧连接: sourceX === current.position.x + nodeWidth,
-            目标是否使用左侧连接: targetX === next.position.x,
-            目标是否使用右侧连接: targetX === next.position.x + (next.layoutMeta.width || dimensions.nodeWidth)
-          }
-        });
-      } else {
-        // 标准调试信息
-        console.log(`连接线生成 - ${current.id} → ${next.id}:`, {
-          源节点: {
-            id: current.id,
-            index: current.layoutMeta.index,
-            row: current.layoutMeta.row,
-            col: current.layoutMeta.col,
-            isLeftToRight: current.layoutMeta.isLeftToRight,
-            isFirstInRow: current.layoutMeta.isFirstInRow,
-            isLastInRow: current.layoutMeta.isLastInRow,
-            isInOddRow: sourceIsInOddRow,
-            position: current.position,
-            sourceX,
-            sourceY: currentY
-          },
-          目标节点: {
-            id: next.id,
-            index: next.layoutMeta.index,
-            row: next.layoutMeta.row,
-            col: next.layoutMeta.col,
-            isLeftToRight: next.layoutMeta.isLeftToRight,
-            isFirstInRow: next.layoutMeta.isFirstInRow,
-            isLastInRow: next.layoutMeta.isLastInRow,
-            isInOddRow: targetIsInOddRow,
-            position: next.position,
-            targetX,
-            targetY: nextY
-          },
-          连接信息: {
-            connectionType,
-            isSameRow: current.layoutMeta.row === next.layoutMeta.row,
-            columns
-          }
-        });
-      }
-    }
-
+    // 压入结果
     computedEdges.push({
       id: `edge-${current.id}-${next.id}`,
       source: current.id,
@@ -249,9 +124,12 @@ function generateConnectionLines(
       sourcePosition: { x: sourceX, y: currentY },
       targetPosition: { x: targetX, y: nextY },
       layoutMeta: {
-        sourceIsInOddRow: current.layoutMeta.isInOddRow || false,
-        targetIsInOddRow: next.layoutMeta.isInOddRow || false
-      }
+        sourceIsInOddRow: current.layoutMeta.isInOddRow,
+        targetIsInOddRow: next.layoutMeta.isInOddRow
+      },
+      // ✅ 传递计算好的方向
+      sourceDir,
+      targetDir
     });
   }
 
@@ -261,8 +139,7 @@ function generateConnectionLines(
 // 蛇形布局算法
 function calculateSnakeLayout(
   nodes: any[],
-  config: LayoutConfig,
-  zoomLevel?: number
+  config: LayoutConfig
 ): LayoutResult {
   const {
     columns = 4,  // 默认4列
@@ -275,10 +152,9 @@ function calculateSnakeLayout(
 
   // 布局计算使用基础尺寸，缩放由CSS transform处理
   // 这样避免双重缩放冲突，确保布局层和渲染层职责分离
-  const baseDimensions = getZoomAdjustedDimensions(config, zoomLevel);
-  const baseNodeWidth = baseDimensions.nodeWidth;
-  const baseNodeHeight = baseDimensions.nodeHeight;
-  const baseSpacing = baseDimensions.spacing;
+  const baseNodeWidth = nodeWidth;
+  const baseNodeHeight = nodeHeight;
+  const baseSpacing = spacing;
 
   const nodesWithPosition = nodes.map((node, index) => {
     const row = Math.floor(index / columns);
@@ -309,10 +185,8 @@ function calculateSnakeLayout(
         isLastInRow,
         isInOddRow: row % 2 === 1,
         width: baseNodeWidth,
-        columns,
-        zoomLevel, // 保留zoomLevel信息供渲染层使用
-        // 🎯 添加位置重写标记，确保Canvas能识别这是强制重写的位置
-        forcePositionRewrite: true
+        columns
+        // 移除zoomLevel污染
       },
       // 节点样式使用基础尺寸，实际视觉效果由CSS transform缩放
       style: {
@@ -330,8 +204,7 @@ function calculateSnakeLayout(
         gridCol,
         oldPosition: node.position || 'undefined',
         newPosition,
-        columns,
-        zoomLevel
+        columns
       });
     }
 
@@ -339,26 +212,26 @@ function calculateSnakeLayout(
   });
 
   // 使用基础尺寸生成连接线
-  const computedEdges = generateConnectionLines(nodesWithPosition, columns, baseDimensions, 'snake', zoomLevel);
+  const baseDimensions = {
+    nodeWidth: baseNodeWidth,
+    nodeHeight: baseNodeHeight,
+    spacing: baseSpacing,
+    segmentLength: config.segmentLength
+  };
+  const computedEdges = generateConnectionLines(nodesWithPosition, columns, baseDimensions, 'snake');
 
   return {
     layoutNodes: nodesWithPosition,
     layoutEdges: computedEdges,
     actualColumns: columns,
-    adjustedDimensions: {
-      nodeWidth: baseNodeWidth,
-      nodeHeight: baseNodeHeight,
-      spacing: baseSpacing,
-      segmentLength: getDynamicSegmentLength(DEFAULT_LAYOUT_CONFIG, zoomLevel)  // 🎯 使用动态segmentLength
-    }
+    adjustedDimensions: baseDimensions
   };
 }
 
 // 网格布局算法
 function calculateGridLayout(
   nodes: any[],
-  config: LayoutConfig,
-  zoomLevel?: number
+  config: LayoutConfig
 ): LayoutResult {
   const {
     columns = 4,  // 默认4列
@@ -371,10 +244,9 @@ function calculateGridLayout(
 
   // 布局计算使用基础尺寸，缩放由CSS transform处理
   // 这样避免双重缩放冲突，确保布局层和渲染层职责分离
-  const baseDimensions = getZoomAdjustedDimensions(config, zoomLevel);
-  const baseNodeWidth = baseDimensions.nodeWidth;
-  const baseNodeHeight = baseDimensions.nodeHeight;
-  const baseSpacing = baseDimensions.spacing;
+  const baseNodeWidth = nodeWidth;
+  const baseNodeHeight = nodeHeight;
+  const baseSpacing = spacing;
 
   const nodesWithPosition = nodes.map((node, index) => {
     const row = Math.floor(index / columns);
@@ -403,10 +275,8 @@ function calculateGridLayout(
         isLastInRow,
         isInOddRow: row % 2 === 1,
         width: baseNodeWidth,
-        columns,
-        zoomLevel, // 保留zoomLevel信息供渲染层使用
-        // 🎯 添加位置重写标记，确保Canvas能识别这是强制重写的位置
-        forcePositionRewrite: true
+        columns
+        // 移除zoomLevel污染
       },
       // 节点样式使用基础尺寸，实际视觉效果由CSS transform缩放
       style: {
@@ -424,8 +294,7 @@ function calculateGridLayout(
         colIndex,
         oldPosition: node.position || 'undefined',
         newPosition,
-        columns,
-        zoomLevel
+        columns
       });
     }
 
@@ -433,18 +302,19 @@ function calculateGridLayout(
   });
 
   // 使用基础尺寸生成连接线（网格模式）
-  const computedEdges = generateConnectionLines(nodesWithPosition, columns, baseDimensions, 'grid', zoomLevel);
+  const baseDimensions = {
+    nodeWidth: baseNodeWidth,
+    nodeHeight: baseNodeHeight,
+    spacing: baseSpacing,
+    segmentLength: config.segmentLength
+  };
+  const computedEdges = generateConnectionLines(nodesWithPosition, columns, baseDimensions, 'grid');
 
   return {
     layoutNodes: nodesWithPosition,
     layoutEdges: computedEdges,
     actualColumns: columns,
-    adjustedDimensions: {
-      nodeWidth: baseNodeWidth,
-      nodeHeight: baseNodeHeight,
-      spacing: baseSpacing,
-      segmentLength: getDynamicSegmentLength(DEFAULT_LAYOUT_CONFIG, zoomLevel)  // 🎯 使用动态segmentLength
-    }
+    adjustedDimensions: baseDimensions
   };
 }
 
@@ -455,10 +325,6 @@ function calculateResponsiveLayout(
   canvasWidth?: number,
   zoomLevel?: number
 ): LayoutResult {
-  // 布局计算使用基础尺寸，缩放由CSS transform处理
-  // 这样避免双重缩放冲突，确保布局层和渲染层职责分离
-  const baseDimensions = getZoomAdjustedDimensions(config, zoomLevel);
-
   // 计算实际列数（传递正确的canvasWidth和zoomLevel）
   const actualColumns = getActualColumns(config, canvasWidth ? {
     canvasWidth,
@@ -475,9 +341,9 @@ function calculateResponsiveLayout(
   } = config;
 
   // 使用基础尺寸进行布局计算
-  const baseNodeWidth = baseDimensions.nodeWidth;
-  const baseNodeHeight = baseDimensions.nodeHeight;
-  const baseSpacing = baseDimensions.spacing;
+  const baseNodeWidth = nodeWidth;
+  const baseNodeHeight = nodeHeight;
+  const baseSpacing = spacing;
 
   const nodesWithPosition = nodes.map((node, index) => {
     const row = Math.floor(index / actualColumns);
@@ -508,10 +374,8 @@ function calculateResponsiveLayout(
         isLastInRow,
         isInOddRow: row % 2 === 1,
         width: baseNodeWidth,
-        columns: actualColumns,
-        zoomLevel, // 保留zoomLevel信息供渲染层使用
-        // 🎯 添加位置重写标记，确保Canvas能识别这是强制重写的位置
-        forcePositionRewrite: true
+        columns: actualColumns
+        // 移除zoomLevel污染
       },
       // 节点样式使用基础尺寸，实际视觉效果由CSS transform缩放
       style: {
@@ -538,18 +402,19 @@ function calculateResponsiveLayout(
   });
 
   // 使用基础尺寸预计算连接线
-  const computedEdges = generateConnectionLines(nodesWithPosition, actualColumns, baseDimensions, 'snake', zoomLevel);
+  const baseDimensions = {
+    nodeWidth: baseNodeWidth,
+    nodeHeight: baseNodeHeight,
+    spacing: baseSpacing,
+    segmentLength: config.segmentLength
+  };
+  const computedEdges = generateConnectionLines(nodesWithPosition, actualColumns, baseDimensions, 'snake');
 
   return {
     layoutNodes: nodesWithPosition,
     layoutEdges: computedEdges,
     actualColumns,
-    adjustedDimensions: {
-      nodeWidth: baseNodeWidth,
-      nodeHeight: baseNodeHeight,
-      spacing: baseSpacing,
-      segmentLength: getDynamicSegmentLength(DEFAULT_LAYOUT_CONFIG, zoomLevel)  // 🎯 使用动态segmentLength
-    }
+    adjustedDimensions: baseDimensions
   };
 }
 
@@ -582,13 +447,13 @@ export const useUnifiedLayout = (
     // 根据模式选择布局算法
     switch (finalConfig.mode) {
       case 'snake':
-        return calculateSnakeLayout(nodes, finalConfig, zoomLevel);
+        return calculateSnakeLayout(nodes, finalConfig);
       case 'grid':
-        return calculateGridLayout(nodes, finalConfig, zoomLevel);
+        return calculateGridLayout(nodes, finalConfig);
       case 'dynamic-responsive':
         return calculateResponsiveLayout(nodes, finalConfig, canvasWidth, zoomLevel);
       default:
-        return calculateSnakeLayout(nodes, finalConfig, zoomLevel);
+        return calculateSnakeLayout(nodes, finalConfig);
     }
   }, [nodes, finalConfig, canvasWidth, zoomLevel]);
 };

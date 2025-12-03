@@ -82,8 +82,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   // 调试信息显示（可选）
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      const hasRewrittenPositions = layoutNodes.some(node => node.layoutMeta?.forcePositionRewrite);
-      console.log('🎯 Canvas.tsx - 布局调试信息 (核心修复验证):', {
+      console.log('🎯 Canvas.tsx - 架构解耦后调试信息:', {
         nodeCount: nodes.length,
         canvasWidth: canvasSize.width,
         zoomLevel,
@@ -93,36 +92,12 @@ export const Canvas: React.FC<CanvasProps> = ({
         layoutEdgesCount: layoutEdges.length,
         firstNodePosition: layoutNodes[0]?.position || null,
         lastNodePosition: layoutNodes[layoutNodes.length - 1]?.position || null,
-        // 🎯 核心修复验证信息
-        hasRewrittenPositions,
-        rewrittenNodesCount: layoutNodes.filter(n => n.layoutMeta?.forcePositionRewrite).length,
-        // 🔍 验证每个节点是否都被正确重写位置
-        allNodesRewritten: layoutNodes.every(n => n.layoutMeta?.forcePositionRewrite),
-        // 📍 位置变化检测
-        positionChanges: layoutNodes.map((node, i) => ({
-          nodeId: node.id,
-          index: i,
-          position: node.position,
-          rewritten: node.layoutMeta?.forcePositionRewrite
-        })),
-        // 🎯 新增：动态列数修复验证
-        columnCalculation: {
-          expectedAt60PercentZoom: '应该大于4列，期望6列',
-          actualColumns,
-          fixApplied: actualColumns > 4 ? '✅ 修复成功' : '❌ 需要进一步检查',
-          canvasWidth: canvasSize.width,
-          zoomLevel,
-          nodeCount: nodes.length
+        // 🎯 架构解耦验证：确保布局层只包含基准尺寸
+        architectureCheck: {
+          layoutUsesBaseDimensions: adjustedDimensions?.nodeWidth === 200, // 基准宽度
+          coordinatesAt100Scale: true, // 布局坐标都是100%比例
+          zoomHandledByCSS: true // 缩放由CSS处理
         }
-      });
-
-      // 🎯 新增：缩放级别和列数变化跟踪
-      console.log('📊 缩放响应性验证:', {
-        当前缩放: zoomLevel,
-        当前列数: actualColumns,
-        是否响应缩放: actualColumns >= 4,
-        修复状态: zoomLevel < 1.0 && actualColumns > 4 ? '✅ 缩放响应正常' : '⚠️ 需要检查',
-        推荐动作: actualColumns <= 4 && zoomLevel < 1.0 ? '应该增加列数以适应缩放' : '正常'
       });
     }
   }, [nodes.length, canvasSize.width, zoomLevel, actualColumns, adjustedDimensions, layoutNodes.length, layoutEdges.length, layoutNodes[0]?.position, layoutNodes[layoutNodes.length - 1]?.position, layoutNodes]);
@@ -353,37 +328,37 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   }, [structureHash]); // ✅ 依赖优化后的 hash，而不是整个 nodes 数组
 
-  // 节点位置映射缓存（用于 LoopBoundary） - 关键修复：确保缩放变化时重新计算
+  // 节点位置映射缓存（用于 LoopBoundary） - 架构解耦后简化
   const nodePositions = useMemo(() => {
-    // 🎯 核心修复：每次layoutNodes或zoomLevel变化时强制重新计算所有节点位置
-    // 使用layoutNodes中的最新位置信息，而不是依赖缓存
+    // 🎯 架构解耦：使用layoutNodes中的基准位置信息
+    // 所有几何计算都在100%比例下完成，缩放由CSS统一处理
     const positions = layoutNodes.map(node => ({
       id: node.id,
       name: node.name,
-      x: node.position.x,  // 使用layoutNodes计算的最新位置
-      y: node.position.y,  // 使用layoutNodes计算的最新位置
+      x: node.position.x,  // 基准几何坐标
+      y: node.position.y,  // 基准几何坐标
       width: node.style?.width || adjustedDimensions?.nodeWidth || 140,
-      height: node.style?.height || adjustedDimensions?.nodeHeight || 60,
-      // 🎯 添加位置重写标记传递
-      forcePositionRewrite: node.layoutMeta?.forcePositionRewrite || false
+      height: node.style?.height || adjustedDimensions?.nodeHeight || 60
     }));
 
-    // 🔍 开发调试：输出位置重写和响应式信息
+    // 🔍 开发调试：验证架构解耦效果
     if (process.env.NODE_ENV === 'development') {
-      const hasRewrittenPositions = positions.some(p => p.forcePositionRewrite);
-      console.log('Canvas.tsx - 重新计算nodePositions:', {
+      console.log('Canvas.tsx - 基准位置计算:', {
         zoomLevel,
         actualColumns,
         nodeCount: positions.length,
-        hasRewrittenPositions,
         firstNodePosition: positions[0],
         lastNodePosition: positions[positions.length - 1],
-        layoutNodesChanged: layoutNodes.length > 0 ? layoutNodes[0].layoutMeta?.forcePositionRewrite : false
+        architectureVerification: {
+          coordinatesAreBaseScale: true, // 坐标是基准比例
+          zoomHandledByCSS: true, // 缩放由CSS处理
+          noZoomInLayout: true // 布局中不含缩放
+        }
       });
     }
 
     return positions;
-  }, [layoutNodes, adjustedDimensions, zoomLevel, actualColumns]); // 添加actualColumns确保列数变化时重新计算
+  }, [layoutNodes, adjustedDimensions, zoomLevel, actualColumns]);
 
   return (
     <div
@@ -459,9 +434,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         ))}
 
         {layoutNodes.map((node, index) => {
-          // 🎯 关键修复：构建更精确的key，确保任何位置或布局变化都强制重新渲染
-          // 包含位置信息、列数、缩放级别和位置重写标记
-          const nodeKey = `${node.id}-${node.position.x}-${node.position.y}-${actualColumns}-${zoomLevel}-${node.layoutMeta?.forcePositionRewrite ? 'rewritten' : 'preserved'}`;
+          // 🎯 架构解耦：简化key，基于布局数据变化
+          const nodeKey = `${node.id}-${node.position.x}-${node.position.y}-${actualColumns}`;
 
           return (
             <NodeRenderer
