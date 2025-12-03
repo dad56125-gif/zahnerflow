@@ -1,7 +1,7 @@
 import React from 'react';
 
 // 引入ComputedEdge接口
-import { ComputedEdge } from '../services/layout/LayoutConfig';
+import { ComputedEdge } from './LayoutConfig';
 
 interface ComputedConnectionLinesProps {
   // 预计算的连接线数据，由useUnifiedLayout生成

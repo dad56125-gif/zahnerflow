@@ -4,17 +4,16 @@ import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
 import { PropertyPanel } from './components/PropertyPanel';
 import { StatusBar } from './components/StatusBar';
-import { LoopBoundary } from './components/features/loop';
-import { Canvas } from './components/Canvas';
-import { setupAutoGlassEffect } from './utils/glassEffect';
+import { Canvas } from './canvas/Canvas';
+import { setupAutoGlassEffect } from './shared/utils/glassEffect';
 import { stateLinkageManager } from './managers/state-linkage.manager';
-import { useCanvasStore } from './services/stores/canvasStore';
+import { useCanvasStore } from './canvas/canvasStore';
 import { useWorkflowStore } from './services/stores';
 import { MFCModal } from './modules/mfc';
 import { workflowService } from './services/workflowService';
 import { useFurnace, DeviceModal } from './modules/furnace';
 import { UserProvider } from './contexts/UserContext';
-import type { SimpleLoopInfo } from './hooks/useSimpleLoopDetection';
+import type { SimpleLoopInfo } from './canvas/useSimpleLoopDetection';
 
 
 

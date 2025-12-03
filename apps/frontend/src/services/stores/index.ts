@@ -10,7 +10,7 @@ import { deviceService } from '../deviceService';
 import { workflowWebSocketService } from '../websocket.service';
 
 // 导入 canvas store
-export { useCanvasStore } from './canvasStore';
+export { useCanvasStore } from '../../canvas/canvasStore';
 
 // 工作流状态管理
 interface WorkflowState {

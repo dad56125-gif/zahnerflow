@@ -1,14 +1,14 @@
 ﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
-import { useCanvasStore } from '../services/stores/canvasStore';
+import { useCanvasStore } from './canvasStore';
 import { NodeRenderer } from './NodeRenderer';
 import { ComputedConnectionLines } from './ComputedConnectionLines';
-import { Toolbar } from './Toolbar';
-import { LoopBoundary } from './features/loop';
-import { WorkflowManagerUI } from './features/workflow';
-import { WorkflowIdDisplay } from './common/WorkflowIdDisplay';
-import { useUnifiedLayout } from '../hooks/useUnifiedLayout';
-import { useSimpleLoopDetection, type SimpleLoopInfo } from '../hooks/useSimpleLoopDetection';
+import { Toolbar } from '../components/Toolbar';
+import { LoopBoundary } from './LoopBoundary';
+import { WorkflowManagerUI } from '../components/features/workflow';
+import { WorkflowIdDisplay } from '../components/common/WorkflowIdDisplay';
+import { useUnifiedLayout } from './useUnifiedLayout';
+import { useSimpleLoopDetection, type SimpleLoopInfo } from './useSimpleLoopDetection';
 
 interface CanvasProps {
   zoomLevel: number;

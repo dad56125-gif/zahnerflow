@@ -7,8 +7,8 @@
 
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { connection_binding_service } from '../layout/ConnectionBindingService';
-import { ElectrochemicalNode } from '../../types/nodes';
+import { connection_binding_service } from './ConnectionBindingService';
+import { ElectrochemicalNode } from '../types/nodes';
 
 /**
  * Hook 配置选项接口

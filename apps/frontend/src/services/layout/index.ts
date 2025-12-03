@@ -21,21 +21,21 @@ export type {
   DynamicCalculationResult,
   ComputedEdge,
   LayoutResult
-} from './LayoutConfig';
+} from '../../canvas/LayoutConfig';
 
 export {
   DEFAULT_LAYOUT_CONFIG,
   calculateDynamicColumns,
   getActualColumns,
   isValidZoomLevel
-} from './LayoutConfig';
+} from '../../canvas/LayoutConfig';
 
-export { ConnectionBindingService, connection_binding_service } from './ConnectionBindingService';
+export { ConnectionBindingService, connection_binding_service } from '../../canvas/ConnectionBindingService';
 
 // 便捷组合函数
 export {
   ConnectionBindingService as ConnectionService
-} from './ConnectionBindingService';
+} from '../../canvas/ConnectionBindingService';
 
 // 默认实例
-export { connection_binding_service as default_connection_service } from './ConnectionBindingService';
+export { connection_binding_service as default_connection_service } from '../../canvas/ConnectionBindingService';

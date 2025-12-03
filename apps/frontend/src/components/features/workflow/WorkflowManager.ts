@@ -6,7 +6,7 @@
  */
 
 import { ElectrochemicalNode, NodeType, NodeCategory } from '@/types/nodes';
-import type { SimpleLoopInfo } from '../../../hooks/useSimpleLoopDetection';
+import type { SimpleLoopInfo } from '../../../canvas/useSimpleLoopDetection';
 
 // 工作流数据接口
 export interface WorkflowData {

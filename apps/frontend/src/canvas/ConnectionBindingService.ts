@@ -16,7 +16,7 @@ import {
   ConnectionBindingOptions,
   IConnectionBindingService,
   LayoutUtils
-} from './types';
+} from '../services/layout/types';
 import { ComputedEdge } from './LayoutConfig';
 
 export class ConnectionBindingService implements IConnectionBindingService {

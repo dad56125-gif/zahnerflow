@@ -6,12 +6,12 @@ import {
   WorkstationType,
   createDefaultNodeDataWithWorkstation,
   getNodeConfigByWorkstation
-} from '../../types/nodes';
+} from '../types/nodes';
 import {
   Position
-} from '../layout';
-import { useWorkflowParameterStore } from './workflowParameterStore';
-import { useWorkflowStore } from './index';
+} from '../services/layout';
+import { useWorkflowParameterStore } from '../services/stores/workflowParameterStore';
+import { useWorkflowStore } from '../services/stores/index';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
@@ -192,17 +192,6 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     setNodes: (nodes) => {
       // 更新节点
       set({ nodes: nodes, validationError: validateNodes(nodes) });
-
-      // 通知循环系统（异步，避免阻塞UI）
-      setTimeout(() => {
-        const state = get();
-        const change = ChangeHandler.handle_parameter_change({
-          loops: [], // loops将在Canvas中重新检测
-          nodes: state.nodes,
-          connections: state.connections
-        });
-        LoopSystemController.handle_workflow_change(change);
-      }, 0);
     },
 
     setConnections: (connections) => {

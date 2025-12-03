@@ -1,6 +1,6 @@
 import React from 'react';
 import { WorkstationType } from '../types/nodes';
-import { useCanvasStore } from '../services/stores/canvasStore';
+import { useCanvasStore } from '../canvas/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
 import { FilePathConfig } from '../contexts/UserContext';
 import './FilePathManagerUI.css';
@@ -33,11 +33,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onFilePathSave
 }) => {
   const {
-    nodes,
-    connections,
-    clearCanvas,
-    setNodes,
-    setConnections
+    clearCanvas
   } = useCanvasStore();
 
   // 计算按钮状态 - 基于四种状态模式
@@ -115,56 +111,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }
   };
 
-  const handleFileOpen = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = JSON.parse(e.target?.result as string);
-          if (data.nodes) setNodes(data.nodes);
-          if (data.connections) setConnections(data.connections);
-        } catch (error) {
-          console.error('文件解析失败:', error);
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleFileSave = () => {
-    // ... (保持原有代码不变)
-    const data = {
-        nodes,
-        connections,
-        metadata: {
-          version: '2.0.0',
-          layout: '1d',
-          workstation: selectedWorkstation,
-          workstationName: selectedWorkstation === 'zahner-zennium' ? 'Zahner Zennium' : 'PP242',
-          createdAt: new Date(),
-          exportedAt: new Date()
-        }
-      };
-
-    if (data) {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      
-      const workstationPrefix = selectedWorkstation === 'zahner-zennium' ? 'zahner_zennium' : 'zahnerflow';
-      
-      a.download = `${workstationPrefix}_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  };
-
   return (
     <>
       <div className="toolbar glass">
-        {/* 左侧：文件操作 (保持不变) */}
+        {/* 左侧：文件操作 */}
         <div className="flex items-center gap_sm">
           <div className="flex gap_xs">
             <button
@@ -177,34 +127,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             >
               <span className="btn-icon">📄</span>
               <span className="btn-text">新建</span>
-            </button>
-
-            <label className="btn_layout">
-              <input
-                type="file"
-                accept=".json"
-                className="file-input"
-                onChange={handleFileOpen}
-                disabled={buttonStates.fileOperationsDisabled}
-              />
-              <span className={`btn_base btn_layout btn_style_common btn_mini glass btn-secondary ${
-                buttonStates.fileOperationsDisabled ? 'disabled' : ''
-              }`} title="打开文件">
-                <span className="btn-icon">📂</span>
-                <span className="btn-text">打开</span>
-              </span>
-            </label>
-
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass btn-accent ${
-                buttonStates.fileOperationsDisabled ? 'disabled' : ''
-              }`}
-              onClick={handleFileSave}
-              title="保存文件"
-              disabled={buttonStates.fileOperationsDisabled}
-            >
-              <span className="btn-icon">💾</span>
-              <span className="btn-text">保存</span>
             </button>
           </div>
         </div>

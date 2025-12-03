@@ -7,10 +7,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
-import { useCanvasStore } from '@/services/stores/canvasStore';
+import { useCanvasStore } from '@/canvas/canvasStore';
 import { useWorkflowStore } from '@/services/stores';
 import { useWorkflowParameterStore } from '@/services/stores';
-import { LoopDetector } from '.';
+import { useSimpleLoopDetection } from '../../../canvas/useSimpleLoopDetection';
 import WorkflowManager, { type WorkflowData, type WorkflowMetadata } from './WorkflowManager';
 import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';
 import { api } from '@/services/api';
@@ -89,8 +89,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     )
   ]);
 
-  // 检测循环
-  const detectedLoops = LoopDetector.detectLoops(nodes, connections).loops;
+  // 检测循环（使用简化版Hook）
+  const detectedLoops = useSimpleLoopDetection(nodes);
 
   // 使用useOnClickOutside Hook实现点击外部关闭
   useOnClickOutside(panelRef, () => {

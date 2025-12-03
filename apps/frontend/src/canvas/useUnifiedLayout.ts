@@ -17,7 +17,7 @@ import {
   getActualColumns,
   isValidZoomLevel,
   ResponsiveParams
-} from '../services/layout/LayoutConfig';
+} from './LayoutConfig';
 
 /**
  * 生成连接线的通用函数 (已完全重写以支持蛇形逻辑)

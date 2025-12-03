@@ -1,7 +1,7 @@
 import React from 'react';
 import { NotificationPanel } from './NotificationPanel';
-import { useCanvasStore } from '../services/stores/canvasStore';
-import type { SimpleLoopInfo } from '../hooks/useSimpleLoopDetection';
+import { useCanvasStore } from '../canvas/canvasStore';
+import type { SimpleLoopInfo } from '../canvas/useSimpleLoopDetection';
 
 interface StatusBarProps {
   zoomLevel: number;

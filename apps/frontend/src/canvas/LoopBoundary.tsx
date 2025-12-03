@@ -7,9 +7,9 @@
  */
 
 import React from 'react';
-import { type SimpleLoopInfo } from '../../../../hooks/useSimpleLoopDetection';
-import { useNodeChangeDetection } from '../../../../services/hooks/useNodeChangeDetection';
-import { generateBeltPath } from '../../../../utils/clipper';
+import { type SimpleLoopInfo } from './useSimpleLoopDetection';
+import { useNodeChangeDetection } from './useNodeChangeDetection';
+import { generateBeltPath } from './clipper';
 
 /**
  * 循环边界组件属性接口
