@@ -7,9 +7,7 @@
  */
 
 import React from 'react';
-import { LoopInfo } from '../core/LoopDetector';
-import { type LoopExecutionContext } from '../core/LoopContextManager';
-import { LoopMetadataManager } from '../core/loop_metadata_manager';
+import { type SimpleLoopInfo } from '../../../../hooks/useSimpleLoopDetection';
 import { useNodeChangeDetection } from '../../../../services/hooks/useNodeChangeDetection';
 import { generateBeltPath } from '../../../../utils/clipper';
 
@@ -17,7 +15,7 @@ import { generateBeltPath } from '../../../../utils/clipper';
  * 循环边界组件属性接口
  */
 export interface LoopBoundaryProps {
-  loop: LoopInfo;
+  loop: SimpleLoopInfo;
   nodes: Array<{
     id: string;
     name: string;
@@ -28,8 +26,7 @@ export interface LoopBoundaryProps {
     position?: { x: number; y: number };
     style?: { width?: number; height?: number };
   }>;
-  context?: LoopExecutionContext;
-  layoutStable?: boolean;
+  layoutMode?: 'snake' | 'grid';
   zoomLevel?: number;
   canvasOffsetY?: number;
   className?: string;
@@ -67,8 +64,7 @@ function getNodeCenterPoint(
 export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   loop,
   nodes,
-  context,
-  layoutStable = true,
+  layoutMode = 'snake',
   zoomLevel = 1,
   canvasOffsetY = 0,
   className = '',
@@ -77,7 +73,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   // 使用 useNodeChangeDetection Hook 进行节点变化检测
   const updateTrigger = useNodeChangeDetection(nodes, {
     enable_delay: false,
-    layout_stable: layoutStable
+    layout_stable: true
   });
 
   /**
@@ -142,20 +138,20 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
   // 获取完整的循环路径节点（包括循环间节点）
   const completeLoopNodes = React.useMemo(() => {
-    return findCompleteLoopPath(loop.start_node_id, loop.end_node_id, nodes);
-  }, [loop.start_node_id, loop.end_node_id, nodes, findCompleteLoopPath, updateTrigger]);
+    return findCompleteLoopPath(loop.startNodeId, loop.endNodeId, nodes);
+  }, [loop.startNodeId, loop.endNodeId, nodes, findCompleteLoopPath, updateTrigger]);
 
   // 获取循环内的节点（用于特殊标记和显示）
   const loopInnerNodes = React.useMemo(() => {
     const innerNodes: typeof nodes = [];
-    loop.node_ids.forEach(nodeId => {
+    loop.nodeIds.forEach(nodeId => {
       const node = nodes.find(n => n.id === nodeId);
       if (node) {
         innerNodes.push(node);
       }
     });
     return innerNodes;
-  }, [nodes, loop.node_ids, updateTrigger]);
+  }, [nodes, loop.nodeIds, updateTrigger]);
 
   // 计算路径段
   const pathSegments = React.useMemo(() => {
@@ -202,26 +198,8 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     return segments;
   }, [completeLoopNodes, zoomLevel, canvasOffsetY, updateTrigger]);
 
-  // 计算循环层级（从LoopMetadataManager获取）
-  const loopLevel = React.useMemo(() => {
-    // 从元数据管理器获取真实的层级
-    const level = LoopMetadataManager.get_loop_level(loop.id);
-    console.log(`[LoopBoundary] 循环 ${loop.id} - 计算层级: ${level}`);
-    return level >= 0 ? level : 0;
-  }, [loop]);
-
-  // 根据执行状态设置样式类
-  const getStateClass = React.useCallback(() => {
-    if (!context) return '';
-    switch (context.state) {
-      case 'running': return 'running';
-      case 'paused': return 'paused';
-      case 'completed': return 'completed';
-      case 'error': return 'error';
-      case 'cancelled': return 'cancelled';
-      default: return '';
-    }
-  }, [context]);
+  // 从传入的 loop 对象直接获取层级（不再调用 LoopMetadataManager）
+  const loopLevel = loop.level;
 
   // 计算带状宽度（基于循环内节点）
   const nodeHeight = loopInnerNodes[0]?.style?.height || loopInnerNodes[0]?.height || 60;
@@ -242,7 +220,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
   return (
     <svg
-      className={`loop-boundary-svg ${className} level-${loopLevel} ${getStateClass()}`}
+      className={`loop-boundary-svg ${className} level-${loopLevel}`}
       style={{
         position: 'absolute',
         left: 0,
@@ -283,7 +261,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
                   textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
                 }}
               >
-                第{loopLevel + 1}级循环 • {loop.iteration_count}次
+                第{loopLevel + 1}级循环 • {loop.iterationCount}次
               </text>
 
               </>

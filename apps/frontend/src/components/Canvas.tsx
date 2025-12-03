@@ -4,17 +4,11 @@ import { useCanvasStore } from '../services/stores/canvasStore';
 import { NodeRenderer } from './NodeRenderer';
 import { ComputedConnectionLines } from './ComputedConnectionLines';
 import { Toolbar } from './Toolbar';
-import {
-  LoopDetector,
-  LoopContextManager,
-  LoopBoundary,
-  LoopInfo,
-  LoopExecutionContext,
-  LoopSystemController
-} from './features/loop';
+import { LoopBoundary } from './features/loop';
 import { WorkflowManagerUI } from './features/workflow';
 import { WorkflowIdDisplay } from './common/WorkflowIdDisplay';
 import { useUnifiedLayout } from '../hooks/useUnifiedLayout';
+import { useSimpleLoopDetection, type SimpleLoopInfo } from '../hooks/useSimpleLoopDetection';
 
 interface CanvasProps {
   zoomLevel: number;
@@ -33,7 +27,7 @@ interface CanvasProps {
   onStopFlow?: () => void;
   // ✅ 新增：接收从 App 传入的重置回调
   onResetFlow?: () => void;
-  onLoopDetected?: (loops: LoopInfo[]) => void;
+  onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -112,9 +106,15 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [canvasOffsetY, setCanvasOffsetY] = useState(0);
   const dragStartScrollY = useRef(0);
 
-  // 循环系统状态
-  const [detectedLoops, setDetectedLoops] = useState<LoopInfo[]>([]);
-  const [loopContexts, setLoopContexts] = useState<Map<string, LoopExecutionContext>>(new Map());
+  // 循环系统状态（简化版）
+  const detectedLoops = useSimpleLoopDetection(nodes);
+
+  // 循环检测回调
+  useEffect(() => {
+    if (onLoopDetected) {
+      onLoopDetected(detectedLoops);
+    }
+  }, [detectedLoops, onLoopDetected]);
 
   // 拖动切换处理
   const toggleDragMode = useCallback(() => {
@@ -267,66 +267,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // 3. 优化：结构指纹计算（Stable Hashing）
-  // 用于循环检测的依赖，避免对象引用变化导致的误触发
-  const structureHash = useMemo(() => {
-    // 仅提取影响循环检测的关键字段
-    const nodesIdType = nodes.map(n => `${n.id}:${n.type}`).join('|');
-    const edgesId = layoutEdges.map(e => `${e.source}->${e.target}`).join('|');
-    return `${nodesIdType}::${edgesId}`;
-  }, [nodes, layoutEdges]);
-
-  // 循环检测逻辑
-  useEffect(() => {
-    if (nodes.length === 0) {
-      setDetectedLoops([]);
-      setLoopContexts(new Map());
-      return;
-    }
-
-    // 执行检测 - 将计算生成的edges转换为连接格式供LoopDetector使用
-    const convertedConnections = layoutEdges.map(edge => ({
-      id: edge.id,
-      source_id: edge.source,
-      target_id: edge.target
-    }));
-    const detectionResult = LoopDetector.detectLoops(nodes, convertedConnections);
-    
-    // 只有当循环结构发生实质变化时才更新状态
-    setDetectedLoops(prev => {
-        const isSame = JSON.stringify(prev) === JSON.stringify(detectionResult.loops);
-        return isSame ? prev : detectionResult.loops;
-    });
-    
-    if (onLoopDetected) onLoopDetected(detectionResult.loops);
-
-    // 更新循环上下文
-    LoopSystemController.initialize({
-      loops: detectionResult.loops,
-      nodes: nodes,
-      connections: convertedConnections
-    });
-
-    setLoopContexts(prev => {
-      const newContexts = new Map(prev);
-      // 添加新循环
-      detectionResult.loops.forEach(loop => {
-        if (!newContexts.has(loop.id)) {
-          newContexts.set(loop.id, LoopContextManager.initializeLoop(loop));
-        }
-      });
-      // 清理旧循环
-      const currentLoopIds = new Set(detectionResult.loops.map(l => l.id));
-      for (const id of newContexts.keys()) {
-        if (!currentLoopIds.has(id)) {
-          LoopContextManager.cleanupLoop(id);
-          newContexts.delete(id);
-        }
-      }
-      return newContexts;
-    });
-
-  }, [structureHash]); // ✅ 依赖优化后的 hash，而不是整个 nodes 数组
+  // 循环检测已简化：使用 useSimpleLoopDetection Hook（在组件顶部）
 
   // 节点位置映射缓存（用于 LoopBoundary） - 架构解耦后简化
   const nodePositions = useMemo(() => {
@@ -426,8 +367,6 @@ export const Canvas: React.FC<CanvasProps> = ({
             key={loop.id}
             loop={loop}
             nodes={nodePositions}
-            context={loopContexts.get(loop.id)}
-            layoutStable={layoutStable}
             zoomLevel={zoomLevel}
             canvasOffsetY={canvasOffsetY}
           />
