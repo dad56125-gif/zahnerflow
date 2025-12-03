@@ -1,95 +1,393 @@
-第一部分：初始代码诊断与问题定位
-1. 现有代码结构分析
-Store 管理：workflowStore.ts（状态管理）、workflowParameterStore.ts（参数暂存）、executionStore.ts（执行状态）。
-Service 层：workflowService.ts（API 封装）、workflowExecutionService.ts（包含复杂的同步逻辑）、workflowSyncUtil.ts（同步工具）。
-核心管理器：WorkflowManager.ts（包含导入导出、版本管理、CSV 解析等）。
-UI 组件：WorkflowManagerUI.tsx（历史记录与模板面板）、WorkflowIdDisplay.tsx。
-2. 核心痛点定位
-违背单一数据源：services/stores/workflowParameterStore.ts 是为了解决“历史 ID 指向旧参数”与“画布上的新参数”冲突而产生的复杂中间层。
-您的判断：这种曲折的实现造成了代码复杂化。既然数据最终都要传给后端，不应在前端产生这种复杂的暂存实现。
-临时 ID 废弃：确认 generateTemporaryWorkflowId 及 temp_ 逻辑在新架构下应被彻底废弃，ID 由后端主导。
-第二部分：核心数据定义的演进（The Definition）
-1. 节点定义（WorkflowNode）
-结构：仅包含 id（持久化身份）、type（类型）、data.parameters（业务参数）。
-剔除：position（后端不需要）、label（无意义）、next_node_id（指针无意义）。
-真理：索引（Index）即执行顺序。
-2. 工作流定义（WorkflowDefinition）
-剔除：edges（无显式连线）、version（无版本兼容）。
-定位：这是前端定义的接口，而非后端数据库结构的直接映射。
-3. 最终确立的前端逻辑定义
-结构：一个线性的、有序的节点数组 nodes[]。
-顺序：数组索引 0 为起始，1 为下一步，以此类推。
-特征：无坐标、无连线数据、无标签、无版本号、无显式指针。
-第三部分：文件与功能的重构指令（Refactoring Directives）
-1. 必须彻底删除的文件
-services/stores/workflowParameterStore.ts：违背单一数据源。
-services/workflowExecutionService.ts：逻辑已过时。
-services/workflowSyncUtil.ts：不再需要计算 Diff。
-exportWorkflow / importWorkflow / convertToCSV / parseFromCSV：前端不再处理 IO。
-regenerateIds / createWorkflowTemplate：未实现或无用功能。
-2. 必须重写的文件：WorkflowManager.ts
-指令：删除所有版本兼容逻辑和未实现功能。
-保留：createEmpty（只返回空数组 nodes: []，不预设 ID）和 validate。
-3. Service 层的限制
-禁止在当前重构中补充未提及的 Service 实现细节。
-第四部分：交互与生命周期逻辑（Logic & Lifecycle）
-1. 按钮策略：三钮分离
-另存为（Save As）
-更新（Update / Save）
-运行（Run）：兼具数据传输与指令触发功能。
-2. 运行与创建逻辑（Run = Create if Null）
-前端状态：初始 ID 为空。
-传递逻辑：用户点击运行，前端将当前画布上的 nodes 数据发送给后端。
-后端处理：
-若无 ID：后端创建新记录 -> 生成 ID -> 启动执行。
-若有 ID：后端使用接收到的 nodes 数据 -> 启动执行。
-返回逻辑：后端必须返回 workflowId。
-副作用：前端接收 ID 后更新 Store，确立身份。
-第五部分：视图与拖拽逻辑（View & Drag Logic）
-1. 自动布局（Auto-Drawing）
-逻辑：UI 根据 nodes 数组的索引顺序，动态计算坐标并生成视觉连线。
-数据流：Store 不存坐标 -> 渲染时计算 -> 显示。
-2. 拖拽即排序（Drag is Reorder）
-新逻辑：拖拽的本质是改变数组索引（Splice / Move 操作）。
-行为：将 node[10] 移到 node[3]，意味着原 node[3] 及后续节点后移。
-限制：这属于定义阶段的操作，运行时 UI 将锁定，禁止拖拽。
-第六部分：交通层设计（Traffic Layer）
-1. 设计原则
-所见即所跑：运行接口直接携带数据，不依赖隐式保存。
-数据分层：只传输 type 和 parameters，不传输 UI 坐标和配置。
-2. API 交互流程
-保存/更新 (Update)：
+# ZAHNERFLOW 前端重构架构规范 (The Definition)
+
+## 1. 核心数据结构 (Core Data Structure)
+
+### 1.1 WorkflowNode 定义
+```typescript
+interface WorkflowNode {
+  id: string;  // 持久化身份标识
+  type: string;  // 节点类型
+  data: {
+    parameters: Record<string, any>;  // 业务参数
+  };
+}
+```
+
+**严格禁止字段**:
+- ❌ `position` (后端不需要)
+- ❌ `label` (无意义)
+- ❌ `next_node_id` (指针无意义)
+- ❌ `edges` (无显式连线)
+- ❌ `version` (无版本兼容，向后端看齐)
+
+### 1.2 WorkflowDefinition 定义
+```typescript
+interface WorkflowDefinition {
+  id?: string;  // 可选，由后端生成
+  name?: string;
+  description?: string;
+  nodes: WorkflowNode[];  // 线性有序数组
+}
+```
+
+**核心原则**: **索引 (Index) 即执行顺序**
+- 数组索引 0 为起始节点
+- 数组索引 1 为第二步
+- 以此类推
+
+## 2. 必须删除的文件 (To Be Deleted)
+
+### 2.1 违背单一数据源
+- `services/stores/workflowParameterStore.ts`
+  - 原因：为了"历史ID指向旧参数"与"画布新参数"的冲突而产生复杂中间层
+  - 违背后端主导ID原则
+  - 违背单一数据源原则
+
+### 2.2 过时的执行服务
+- `services/workflowExecutionService.ts`
+  - 原因：复杂的参数同步逻辑已过时
+  - "前端参数同步到后端"模式被废弃
+
+### 2.3 无用的同步工具
+- `services/workflowSyncUtil.ts`
+  - 原因：不再需要计算Diff
+  - 后端直接接收完整nodes数组
+
+### 2.4 前端IO处理
+- WorkflowManager.ts 中的 `exportWorkflow`
+- WorkflowManager.ts 中的 `importWorkflow`
+- WorkflowManager.ts 中的 `convertToCSV`
+- WorkflowManager.ts 中的 `parseFromCSV`
+- 原因：**前端不处理IO**，所有导入导出由后端完成
+
+### 2.5 未实现/无用功能
+- WorkflowManager.ts 中的 `regenerateIds`
+- WorkflowManager.ts 中的 `createWorkflowTemplate`
+- 原因：未实现或在新架构下无用
+
+## 3. 必须重写的文件 (To Be Rewritten)
+
+### 3.1 WorkflowManager.ts
+**保留的方法**:
+```typescript
+class WorkflowManager {
+  // 仅保留：创建空工作流
+  static createEmpty(): WorkflowDefinition {
+    return { nodes: [] };  // 不预设ID
+  }
+
+  // 仅保留：验证工作流配置
+  static validateWorkflowConfig(config: Partial<WorkflowDefinition>): {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+  } {
+    // 基础验证逻辑
+  }
+}
+```
+
+**必须删除的方法**:
+- ❌ `exportWorkflow` (前端不处理导出)
+- ❌ `importWorkflow` (前端不处理导入)
+- ❌ `convertToCSV` (CSV格式废弃)
+- ❌ `parseFromCSV` (CSV解析废弃)
+- ❌ `regenerateIds` (ID由后端生成)
+- ❌ `createWorkflowTemplate` (模板功能废弃)
+- ❌ `upgradeWorkflowVersion` (版本兼容废弃)
+- ❌ `compareWorkflows` (比较功能废弃)
+
+### 3.2 workflowStore.ts
+**必须删除的逻辑**:
+- ❌ 所有与 ParameterStore 同步的代码
+- ❌ `generateTemporaryWorkflowId` 调用
+- ❌ `isTemporaryWorkflow` 判断
+
+**保留的职责**:
+- ✅ 当前工作流状态管理
+- ✅ 工作流列表缓存
+- ✅ 工作流CRUD操作
+
+### 3.3 executionStore.ts
+**重构核心**: 基于索引而非节点ID
+
+**旧的 Store 结构 (淘汰)**:
+```typescript
+// 错误的：基于节点ID映射
+interface ExecutionState {
+  nodeStatuses: Map<string, string>;  // nodeId -> status
+  nodeResults: Map<string, any>;      // nodeId -> result
+  currentNodeId: string | null;
+}
+```
+
+**新的 Store 结构**:
+```typescript
+// 正确的：基于数组索引
+interface ExecutionState {
+  nodeStatuses: string[];  // index -> status (O(1)访问)
+  nodeResults: any[];      // index -> result (O(1)访问)
+  currentNodeIndex: number | null;
+}
+
+// WebSocket 更新逻辑
+onExecutionUpdate({ i, s, d }) => {
+  nodeStatuses[i] = s;  // 直接索引赋值，无查找
+  if (d) nodeResults[i] = d;
+}
+```
+
+## 4. 交互逻辑 (Interaction Logic)
+
+### 4.1 按钮策略：三钮分离
+
+#### 另存为 (Save As)
+```typescript
+// 创建新工作流
+POST /api/workflows
+Body: { nodes: [...], name: "..." }
+
+// 后端响应
+{ id: "wf_123", nodes: [...] }
+
+// 前端更新 Store
+setCurrentWorkflow({ id: "wf_123", nodes: [...] });
+```
+
+#### 更新 (Update / Save)
+```typescript
+// 更新现有工作流
 PUT /api/workflows/:id
 Body: { nodes: [...] }
-运行 (Run)：
+
+// 前提：必须有 workflowId
+if (!currentWorkflow.id) throw new Error('Must Save As first');
+```
+
+#### 运行 (Run)
+**核心原则**: **兼具数据传输与指令触发功能**
+
+```typescript
+// 请求结构
 POST /api/executions
-Body: { workflowId?: "...", nodes: [...] }
-逻辑：后端根据是否有 ID 决定是“新建并运行”还是“直接运行”。
-停止 (Stop)：
+Body: {
+  workflowId?: string,  // 可选，可能为 null (新工作流)
+  nodes: WorkflowNode[]  // 必须，当前画布数据
+}
+
+// 后端处理逻辑
+if (workflowId == null) {
+  // 1. 创建新记录
+  const newWorkflow = await db.workflows.create({ nodes });
+  // 2. 启动执行
+  const execution = await startExecution(newWorkflow.id, nodes);
+  // 3. 返回 workflowId
+  return { workflowId: newWorkflow.id, executionId: execution.id };
+} else {
+  // 1. 使用接收到的 nodes 数据
+  // 2. 启动执行
+  const execution = await startExecution(workflowId, nodes);
+  // 3. 返回原 workflowId
+  return { workflowId: workflowId, executionId: execution.id };
+}
+
+// 前端处理
+const result = await executionService.run(workflowId, nodes);
+if (!currentWorkflow.id) {
+  // 副作用：首次运行后确立身份
+  setCurrentWorkflow({ id: result.workflowId, nodes });
+}
+```
+
+**为什么不能依赖隐式保存**:
+- 用户可能只想运行不想保存
+- "运行" 是高频操作，不应强制保存
+- 确保所见即所跑
+
+### 4.2 运行与创建的关系
+
+| 场景 | 前端 workflowId | 后端行为 | 前端更新 |
+|------|----------------|----------|----------|
+| 新工作流 | `null` | 创建记录 → 生成ID → 执行 | 接收ID并更新Store |
+| 现有工作流 | `"wf_123"` | 使用接收nodes → 执行 | 无需更新ID |
+
+## 5. 视图与拖拽逻辑 (View & Drag)
+
+### 5.1 自动布局 (Auto-Drawing)
+
+**原则**: Store 不存储坐标，渲染时计算
+
+```typescript
+// 渲染逻辑
+function renderWorkflow(nodes: WorkflowNode[]) {
+  return nodes.map((node, index) => {
+    // 根据索引计算坐标
+    const position = calculatePosition(index);
+
+    return (
+      <WorkflowNode
+        key={index}  // 使用索引作为key
+        node={node}
+        position={position}
+        status={executionStore.nodeStatuses[index]}  // 直接索引访问
+      />
+    );
+  });
+}
+
+// 布局算法示例
+function calculatePosition(index: number) {
+  const row = Math.floor(index / 3);  // 每行3个节点
+  const col = index % 3;
+  return {
+    x: 100 + col * 250,  // 水平间距250px
+    y: 100 + row * 150   // 垂直间距150px
+  };
+}
+```
+
+**连线生成**:
+```typescript
+// 自动连接线
+function generateConnections(nodes: WorkflowNode[]) {
+  const connections = [];
+
+  for (let i = 0; i < nodes.length - 1; i++) {
+    connections.push({
+      id: `conn_${i}`,
+      source: i,      // 源节点索引
+      target: i + 1   // 目标节点索引
+    });
+  }
+
+  return connections;
+}
+```
+
+### 5.2 拖拽即排序 (Drag is Reorder)
+
+**新逻辑**: 拖拽的本质是**改变数组索引**
+
+```typescript
+// 拖拽前
+nodes = [A, B, C, D, E];
+//          0  1  2  3  4
+
+// 将节点 D (索引 3) 移到索引 1
+function moveNode(nodes: WorkflowNode[], fromIndex: number, toIndex: number) {
+  const newNodes = [...nodes];
+  const [movedNode] = newNodes.splice(fromIndex, 1);
+  newNodes.splice(toIndex, 0, movedNode);
+  return newNodes;
+}
+
+// 拖拽后
+nodes = [A, D, B, C, E];
+//          0  1  2  3  4
+```
+
+**限制条件**:
+- 定义阶段：允许拖拽排序
+- 运行阶段：**UI锁定，禁止拖拽**
+  - 原因：执行期间节点顺序不可变
+  - 实现：`isRunning && disableDrag`
+
+## 6. 交通层设计 (Traffic Layer)
+
+### 6.1 API 设计
+
+#### 保存/更新 (Update)
+```typescript
+PUT /api/workflows/:id
+Body: {
+  nodes: WorkflowNode[]
+}
+
+// 前提：workflowId 必须存在
+// 返回：更新后的 Workflow 对象
+```
+
+#### 运行 (Run)
+```typescript
+POST /api/executions
+Body: {
+  workflowId?: string,  // 可选，null 表示新工作流
+  nodes: WorkflowNode[]  // 必须，当前画布完整数据
+}
+
+// 响应
+{
+  workflowId: string,   // 后端生成或原ID
+  executionId: string,  // 执行ID
+  status: string,
+  startTime: Date
+}
+```
+
+#### 停止 (Stop)
+```typescript
 POST /api/executions/stop
-Body: { workflowId: "..." }
-第七部分：执行状态反馈机制（Execution Feedback）
-1. 协议层的变革：索引主导（Index-Based）
-核心思想：执行层只关心序列位置（Index），不关心节点 ID，也不需要前端知道 Execution ID。
-上下文：通过 WebSocket joinRoom(workflowId) 锁定上下文。
-2. WebSocket 通信协议
-服务端推送 (Server Push)：
-格式：{ i: number, s: string, d?: any }
-示例：
-{ "i": 3, "s": "run" } （第 4 个节点开始运行）
-{ "i": 3, "s": "ok", "d": {...} } （第 4 个节点完成，附带数据）
-{ "i": 3, "s": "err" } （出错）
-循环/跳转处理：
-若节点再次变为 run，直接覆盖之前的 ok 状态。无需额外的重置信号。
-3. 前端状态管理 (Store & Render)
-Store 结构：executionStore 维护一个简单数组 nodeStatuses: string[]。
-更新逻辑：收到 { i, s } -> 执行 nodeStatuses[i] = s。
-渲染逻辑：
-code
-Tsx
-<NodeRenderer
-  key={index}
-  data={node}
-  status={executionStore.nodeStatuses[index]} // O(1) 直连，无查找
-/>
-停止反馈：收到 cancelled 信号后，UI 解锁，按钮恢复为“运行”。
+Body: {
+  workflowId: string  // 必须
+}
+```
+
+### 6.2 WebSocket 协议
+
+**协议格式**:
+```typescript
+// 服务端推送
+interface ExecutionUpdate {
+  i: number;  // 节点索引 (Index)，不是 nodeId
+  s: string;  // 状态: 'run' | 'ok' | 'err' | 'cancelled'
+  d?: any;    // 可选数据
+}
+
+// 示例
+{ "i": 3, "s": "run" }           // 第4个节点开始运行
+{ "i": 3, "s": "ok", "d": {} }   // 第4个节点完成
+{ "i": 3, "s": "err" }           // 第4个节点出错
+```
+
+**循环/跳转处理**:
+```typescript
+// 如果节点再次变为 run，直接覆盖之前的 ok 状态
+// 无需额外的重置信号
+
+// 前端处理逻辑
+onExecutionUpdate({ i, s, d }) {
+  // 直接赋值，覆盖旧状态
+  this.nodeStatuses[i] = s;
+  if (d) this.nodeResults[i] = d;
+}
+```
+
+## 7. 核心原则总结
+
+### 7.1 数据流原则
+- **后端主导**: ID 生成、持久化、版本控制由后端负责
+- **单一数据源**: 参数不经过中间层，直接传输
+- **所见即所跑**: 运行接口携带当前完整数据，不依赖隐式保存
+
+### 7.2 性能原则
+- **O(1) 状态访问**: 使用数组索引，避免 Map 查找
+- **无冗余数据**: 不存储坐标、连线、版本号
+- **最小化协议**: WebSocket 仅传输必要字段
+
+### 7.3 职责分离原则
+- **运行时锁定**: 执行期间禁止拖拽修改顺序
+- **三钮分离**: Save As / Update / Run 职责清晰
+- **层次清晰**: Store(MV) → View(V) → API(C)
+
+### 7.4 架构真理
+```
+索引即顺序
+数组即真理
+后端即权威
+```
+
+---
+
+**版本**: 1.0.0
+**生效日期**: 2025-12-03
+**维护者**: 总代理 (Total Agent)

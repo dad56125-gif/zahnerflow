@@ -1,0 +1,104 @@
+{
+  "phase": 1,
+  "name": "删除冗余文件与清理Store依赖",
+  "total_tasks": 6,
+  "completed_tasks": 0,
+  "tasks": [
+    {
+      "id": "task_1_1",
+      "content": "删除 services/stores/workflowParameterStore.ts 文件",
+      "description": "此文件违背单一数据源原则，必须彻底删除",
+      "actions": [
+        {
+          "type": "delete_file",
+          "target": "services/stores/workflowParameterStore.ts",
+          "verify": "文件不存在"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_1_2",
+      "content": "删除 services/workflowExecutionService.ts 文件",
+      "description": "此文件包含过时的参数同步逻辑，在执行前先同步前端参数到后端的模式已废弃",
+      "actions": [
+        {
+          "type": "delete_file",
+          "target": "services/workflowExecutionService.ts",
+          "verify": "文件不存在"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_1_3",
+      "content": "删除 services/workflowSyncUtil.ts 文件",
+      "description": "Diff计算和同步工具不再需要，后端直接接收完整nodes数组",
+      "actions": [
+        {
+          "type": "delete_file",
+          "target": "services/workflowSyncUtil.ts",
+          "verify": "文件不存在"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_1_4",
+      "content": "更新 services/stores/workflowStore.ts - 清理ParameterStore依赖",
+      "description": "删除所有与ParameterStore相关的逻辑，包括临时ID生成和同步逻辑",
+      "actions": [
+        {
+          "type": "remove_import",
+          "target": "services/stores/workflowStore.ts",
+          "pattern": "useWorkflowParameterStore"
+        },
+        {
+          "type": "remove_code_block",
+          "target": "services/stores/workflowStore.ts",
+          "pattern": "generateTemporaryWorkflowId"
+        },
+        {
+          "type": "remove_code_block",
+          "target": "services/stores/workflowStore.ts",
+          "pattern": "isTemporaryWorkflow"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_1_5",
+      "content": "更新 services/workflowService.ts - 删除IO相关方法",
+      "description": "删除exportWorkflow、importWorkflow等前端IO处理方法",
+      "actions": [
+        {
+          "type": "remove_method",
+          "target": "services/workflowService.ts",
+          "method_name": "exportWorkflow"
+        },
+        {
+          "type": "remove_method",
+          "target": "services/workflowService.ts",
+          "method_name": "importWorkflow"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_1_6",
+      "content": "扫描并清理其他文件中的ParameterStore引用",
+      "description": "检查WorkflowManagerUI.tsx等文件，删除useWorkflowParameterStore导入和使用",
+      "actions": [
+        {
+          "type": "grep_and_remove",
+          "pattern": "useWorkflowParameterStore",
+          "files": [
+            "components/features/workflow/WorkflowManagerUI.tsx",
+            "components/features/workflow/WorkflowCanvas.tsx"
+          ]
+        }
+      ],
+      "completed": false
+    }
+  ]
+}

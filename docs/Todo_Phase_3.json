@@ -1,0 +1,144 @@
+{
+  "phase": 3,
+  "name": "更新UI组件与最终验证",
+  "total_tasks": 5,
+  "completed_tasks": 0,
+  "tasks": [
+    {
+      "id": "task_3_1",
+      "content": "更新 components/features/workflow/WorkflowManagerUI.tsx",
+      "description": "移除对ParameterStore的依赖，移除导入导出模板相关UI，简化面板",
+      "actions": [
+        {
+          "type": "remove_import",
+          "target": "components/features/workflow/WorkflowManagerUI.tsx",
+          "pattern": "useWorkflowParameterStore"
+        },
+        {
+          "type": "remove_state",
+          "target": "components/features/workflow/WorkflowManagerUI.tsx",
+          "state_name": "setCurrentEditingWorkflowId"
+        },
+        {
+          "type": "remove_method",
+          "target": "components/features/workflow/WorkflowManagerUI.tsx",
+          "method_name": "applyTemplate"
+        },
+        {
+          "type": "remove_ui_section",
+          "target": "components/features/workflow/WorkflowManagerUI.tsx",
+          "section": "templates-tab",
+          "reason": "模板功能由后端提供"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_3_2",
+      "content": "更新 components/common/WorkflowIdDisplay.tsx",
+      "description": "简化显示组件，移除与ParameterStore相关的逻辑，仅显示ID和名称",
+      "actions": [
+        {
+          "type": "remove_import",
+          "target": "components/common/WorkflowIdDisplay.tsx",
+          "pattern": "useWorkflowParameterStore"
+        },
+        {
+          "type": "simplify_component",
+          "target": "components/common/WorkflowIdDisplay.tsx",
+          "remove_logic": [
+            "临时ID检测",
+            "参数同步状态显示"
+          ],
+          "preserve": [
+            "工作流ID显示",
+            "工作流名称编辑"
+          ]
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_3_3",
+      "content": "更新工作流画布组件 - 实现自动布局和拖拽排序",
+      "description": "根据nodes数组索引实现自动布局，拖拽时重新排序数组",
+      "actions": [
+        {
+          "type": "add_function",
+          "target": "components/features/workflow/WorkflowCanvas.tsx",
+          "function_name": "calculateNodePosition",
+          "description": "根据节点索引计算坐标"
+        },
+        {
+          "type": "add_function",
+          "target": "components/features/workflow/WorkflowCanvas.tsx",
+          "function_name": "handleNodeDrag",
+          "description": "拖拽结束时重新排序nodes数组"
+        },
+        {
+          "type": "update_render",
+          "target": "components/features/workflow/WorkflowCanvas.tsx",
+          "change": "使用索引而非position渲染节点"
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_3_4",
+      "content": "更新主控制按钮 - 实现三钮分离逻辑",
+      "description": "实现Save As、Update、Run三个独立按钮，Run按钮包含Create if Null逻辑",
+      "actions": [
+        {
+          "type": "update_component",
+          "target": "components/features/workflow/WorkflowControls.tsx",
+          "changes": [
+            {
+              "name": "Save As按钮",
+              "api": "POST /api/workflows",
+              "body": "{ nodes, name }"
+            },
+            {
+              "name": "Update按钮",
+              "api": "PUT /api/workflows/:id",
+              "body": "{ nodes }",
+              "condition": "currentWorkflow.id必须存在"
+            },
+            {
+              "name": "Run按钮",
+              "api": "POST /api/executions",
+              "body": "{ workflowId, nodes }",
+              "logic": "如果!currentWorkflow.id，接收返回的ID并更新Store"
+            }
+          ]
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": "task_3_5",
+      "content": "最终验证 - 类型检查与架构符合性检查",
+      "description": "运行TypeScript类型检查，确保所有代码符合talk.md规范，无编译错误",
+      "actions": [
+        {
+          "type": "run_command",
+          "command": "npm run type-check",
+          "expect": "无编译错误"
+        },
+        {
+          "type": "grep_verify",
+          "pattern": "position|label|next_node_id|edges|version|temp_",
+          "files": [
+            "services/stores/*.ts",
+            "components/features/workflow/*.tsx"
+          ],
+          "expect": "无匹配结果"
+        },
+        {
+          "type": "verify_imports",
+          "target": "确保没有残留对workflowParameterStore的引用"
+        }
+      ],
+      "completed": false
+    }
+  ]
+}
