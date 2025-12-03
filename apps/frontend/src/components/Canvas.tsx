@@ -14,11 +14,7 @@ import {
 } from './features/loop';
 import { WorkflowManagerUI } from './features/workflow';
 import { WorkflowIdDisplay } from './common/WorkflowIdDisplay';
-import {
-  layout_service,
-  LayoutCalculationOptions
-} from '../services/layout';
-import { useSnakeLayout } from '../hooks/useSnakeLayout';
+import { useUnifiedLayout } from '../hooks/useUnifiedLayout';
 
 interface CanvasProps {
   zoomLevel: number;
@@ -58,7 +54,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onResetFlow, // ✅ 解构出重置回调
   onLoopDetected
 }) => {
-  const {
+    const {
     nodes,
     selectedNode,
     canvasSize,
@@ -68,8 +64,68 @@ export const Canvas: React.FC<CanvasProps> = ({
     addNode,
   } = useCanvasStore();
 
-  // 使用蛇形布局hook生成计算属性的位置和连接线
-  const { layoutNodes, layoutEdges } = useSnakeLayout(nodes);
+  // 使用统一布局hook生成计算属性的位置和连接线
+  const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useUnifiedLayout(
+    nodes,
+    {
+      mode: 'dynamic-responsive',
+      zoomAware: true,
+      minColumns: 2,
+      maxColumns: 8,
+      minNodeWidth: 140,
+      containerPadding: 50
+    },
+    canvasSize.width,
+    zoomLevel
+  );
+
+  // 调试信息显示（可选）
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const hasRewrittenPositions = layoutNodes.some(node => node.layoutMeta?.forcePositionRewrite);
+      console.log('🎯 Canvas.tsx - 布局调试信息 (核心修复验证):', {
+        nodeCount: nodes.length,
+        canvasWidth: canvasSize.width,
+        zoomLevel,
+        actualColumns,
+        adjustedDimensions,
+        layoutNodesCount: layoutNodes.length,
+        layoutEdgesCount: layoutEdges.length,
+        firstNodePosition: layoutNodes[0]?.position || null,
+        lastNodePosition: layoutNodes[layoutNodes.length - 1]?.position || null,
+        // 🎯 核心修复验证信息
+        hasRewrittenPositions,
+        rewrittenNodesCount: layoutNodes.filter(n => n.layoutMeta?.forcePositionRewrite).length,
+        // 🔍 验证每个节点是否都被正确重写位置
+        allNodesRewritten: layoutNodes.every(n => n.layoutMeta?.forcePositionRewrite),
+        // 📍 位置变化检测
+        positionChanges: layoutNodes.map((node, i) => ({
+          nodeId: node.id,
+          index: i,
+          position: node.position,
+          rewritten: node.layoutMeta?.forcePositionRewrite
+        })),
+        // 🎯 新增：动态列数修复验证
+        columnCalculation: {
+          expectedAt60PercentZoom: '应该大于4列，期望6列',
+          actualColumns,
+          fixApplied: actualColumns > 4 ? '✅ 修复成功' : '❌ 需要进一步检查',
+          canvasWidth: canvasSize.width,
+          zoomLevel,
+          nodeCount: nodes.length
+        }
+      });
+
+      // 🎯 新增：缩放级别和列数变化跟踪
+      console.log('📊 缩放响应性验证:', {
+        当前缩放: zoomLevel,
+        当前列数: actualColumns,
+        是否响应缩放: actualColumns >= 4,
+        修复状态: zoomLevel < 1.0 && actualColumns > 4 ? '✅ 缩放响应正常' : '⚠️ 需要检查',
+        推荐动作: actualColumns <= 4 && zoomLevel < 1.0 ? '应该增加列数以适应缩放' : '正常'
+      });
+    }
+  }, [nodes.length, canvasSize.width, zoomLevel, actualColumns, adjustedDimensions, layoutNodes.length, layoutEdges.length, layoutNodes[0]?.position, layoutNodes[layoutNodes.length - 1]?.position, layoutNodes]);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutStable, setLayoutStable] = useState(true);
@@ -116,55 +172,57 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
   }, [setCanvasSize]);
 
-  // 2. 优化：布局自动重计算
-  // 仅在画布宽度变化或节点数量变化时触发，避免位置微调时的抖动
+  // 布局状态管理 - 关键修复：确保缩放变化时正确触发布局重新计算
   useEffect(() => {
+    // 注意：现在布局由useUnifiedLayout完全控制，这里只需要管理布局稳定状态
     if (canvasSize.width > 0 && nodes.length > 0) {
       setLayoutStable(false);
-      
+
       // 使用 requestAnimationFrame 确保 UI 不卡顿
       requestAnimationFrame(() => {
-        const updatedNodes = layout_service.recalculateAllPositions(nodes, canvasSize.width);
-        // 只有当位置真正改变时才更新 store，防止死循环
-        // 这里假设 setNodes 内部有简单的引用比较或 diff
-        setNodes(updatedNodes);
+        // 布局计算现在由useUnifiedLayout Hook完全控制
+        // 这里只需要标记布局稳定状态
         setLayoutStable(true);
       });
     }
-  }, [canvasSize.width, nodes.length, setNodes]); // 移除 canvasSize 整体依赖，只依赖 width
+  }, [canvasSize.width, nodes.length, zoomLevel]); // 关键修复：添加zoomLevel到依赖数组
 
   // 拖放处理
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const nodeType = e.dataTransfer.getData('nodeType') as NodeType;
-    
+
     if (nodeType && canvasRef.current && selectedWorkstation) {
       const rect = canvasRef.current.getBoundingClientRect();
       const dropX = (e.clientX - rect.left) / zoomLevel;
       const dropY = (e.clientY - rect.top) / zoomLevel;
 
-      const options: LayoutCalculationOptions = {
-        canvas_width: canvasSize.width,
-        nodes: nodes,
-        enable_zigzag: true,
-        center_single_node: true
-      };
-      
-      const index = layout_service.calculateNodeIndexFromPosition(
-        { x: dropX, y: dropY },
-        options
-      );
+      // 使用统一布局的实际列数和调整后尺寸进行估算
+      const estimatedColumns = actualColumns || 4; // 使用实际列数，默认4
+      const estimatedRow = Math.floor(dropY / ((adjustedDimensions?.nodeHeight || 60) + (adjustedDimensions?.spacing || 40)));
+      const estimatedCol = Math.floor(dropX / ((adjustedDimensions?.nodeWidth || 200) + (adjustedDimensions?.spacing || 40)));
+      const estimatedIndex = Math.min(estimatedRow * estimatedColumns + estimatedCol, nodes.length);
 
-      addNode(nodeType, selectedWorkstation, index);
+      console.log('Canvas拖放估算:', {
+        dropX,
+        dropY,
+        estimatedColumns,
+        estimatedRow,
+        estimatedCol,
+        estimatedIndex,
+        nodeCount: nodes.length
+      });
+
+      addNode(nodeType, selectedWorkstation, estimatedIndex);
     }
-  }, [canvasSize.width, nodes, zoomLevel, selectedWorkstation, addNode]);
+  }, [canvasSize.width, nodes, zoomLevel, selectedWorkstation, addNode, actualColumns, adjustedDimensions]);
 
   // 节点交互事件
   const handleNodeClick = useCallback((node: ElectrochemicalNode) => {
     selectNode(node);
   }, [selectNode]);
 
-  const handleNodeDoubleClick = useCallback((node: ElectrochemicalNode) => {
+  const handleNodeDoubleClick = useCallback((_node: ElectrochemicalNode) => {
     // 预留双击扩展槽位
   }, []);
 
@@ -192,9 +250,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       event.currentTarget.style.opacity = '1';
     }
 
-    // 🚫 禁用位置拖拽更新 - 位置现在由useSnakeLayout自动计算
+    // 🚫 禁用位置拖拽更新 - 位置现在由useUnifiedLayout自动计算
     // 如果需要重新排序，应该实现拖拽重排序逻辑而不是位置更新
-    console.log('拖拽结束，但位置由自动布局系统管理');
+    console.log('拖拽结束，但位置由统一布局系统管理');
   }, []);
 
   // Y轴拖动逻辑
@@ -295,17 +353,37 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   }, [structureHash]); // ✅ 依赖优化后的 hash，而不是整个 nodes 数组
 
-  // 节点位置映射缓存（用于 LoopBoundary）
+  // 节点位置映射缓存（用于 LoopBoundary） - 关键修复：确保缩放变化时重新计算
   const nodePositions = useMemo(() => {
-    return layoutNodes.map(node => ({
-        id: node.id,
-        name: node.name,
-        x: node.position.x,
-        y: node.position.y,
-        width: node.style.width || 140,
-        height: node.style.height || 60
+    // 🎯 核心修复：每次layoutNodes或zoomLevel变化时强制重新计算所有节点位置
+    // 使用layoutNodes中的最新位置信息，而不是依赖缓存
+    const positions = layoutNodes.map(node => ({
+      id: node.id,
+      name: node.name,
+      x: node.position.x,  // 使用layoutNodes计算的最新位置
+      y: node.position.y,  // 使用layoutNodes计算的最新位置
+      width: node.style?.width || adjustedDimensions?.nodeWidth || 140,
+      height: node.style?.height || adjustedDimensions?.nodeHeight || 60,
+      // 🎯 添加位置重写标记传递
+      forcePositionRewrite: node.layoutMeta?.forcePositionRewrite || false
     }));
-  }, [layoutNodes]);
+
+    // 🔍 开发调试：输出位置重写和响应式信息
+    if (process.env.NODE_ENV === 'development') {
+      const hasRewrittenPositions = positions.some(p => p.forcePositionRewrite);
+      console.log('Canvas.tsx - 重新计算nodePositions:', {
+        zoomLevel,
+        actualColumns,
+        nodeCount: positions.length,
+        hasRewrittenPositions,
+        firstNodePosition: positions[0],
+        lastNodePosition: positions[positions.length - 1],
+        layoutNodesChanged: layoutNodes.length > 0 ? layoutNodes[0].layoutMeta?.forcePositionRewrite : false
+      });
+    }
+
+    return positions;
+  }, [layoutNodes, adjustedDimensions, zoomLevel, actualColumns]); // 添加actualColumns确保列数变化时重新计算
 
   return (
     <div
@@ -363,9 +441,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         onMouseDown={handleMouseDown}
       >
         <ComputedConnectionLines
-          edges={layoutEdges}
-          nodes={layoutNodes}
+          layoutEdges={layoutEdges}
           layoutStable={layoutStable}
+          zoomLevel={zoomLevel}
         />
 
         {detectedLoops.map(loop => (
@@ -380,20 +458,26 @@ export const Canvas: React.FC<CanvasProps> = ({
           />
         ))}
 
-        {layoutNodes.map((node, index) => (
-          <NodeRenderer
-            key={node.id}
-            node={node}
-            index={index}
-            isSelected={selectedNode?.id === node.id}
-            isConnecting={false}
-            onNodeClick={handleNodeClick}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            onNodeContextMenu={handleNodeContextMenu}
-            onNodeDragStart={handleNodeDragStartEnhanced}
-            onNodeDragEnd={handleNodeDragEndEnhanced}
-          />
-        ))}
+        {layoutNodes.map((node, index) => {
+          // 🎯 关键修复：构建更精确的key，确保任何位置或布局变化都强制重新渲染
+          // 包含位置信息、列数、缩放级别和位置重写标记
+          const nodeKey = `${node.id}-${node.position.x}-${node.position.y}-${actualColumns}-${zoomLevel}-${node.layoutMeta?.forcePositionRewrite ? 'rewritten' : 'preserved'}`;
+
+          return (
+            <NodeRenderer
+              key={nodeKey}
+              node={node}
+              index={index}
+              isSelected={selectedNode?.id === node.id}
+              isConnecting={false}
+              onNodeClick={handleNodeClick}
+              onNodeDoubleClick={handleNodeDoubleClick}
+              onNodeContextMenu={handleNodeContextMenu}
+              onNodeDragStart={handleNodeDragStartEnhanced}
+              onNodeDragEnd={handleNodeDragEndEnhanced}
+            />
+          );
+        })}
       </div>
 
       {/* 模态框与浮层 */}

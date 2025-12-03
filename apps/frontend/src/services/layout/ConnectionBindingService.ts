@@ -1,8 +1,9 @@
 /**
- * 连接线绑定服务
+ * 连接线绑定服务 - 重构版本
  *
- * 负责计算和管理节点间的连接线，确保连接线与节点位置完全同步
- * 替代ConnectionLines.tsx中的重复计算逻辑
+ * 专注于连接线数据转换和缓存，移除重复计算逻辑
+ * 使用统一layout提供的预计算连接点（ComputedEdge格式）
+ * 保持向后兼容性，支持现有API接口
  */
 
 import {
@@ -16,6 +17,7 @@ import {
   IConnectionBindingService,
   LayoutUtils
 } from './types';
+import { ComputedEdge } from './LayoutConfig';
 
 export class ConnectionBindingService implements IConnectionBindingService {
   private utils: LayoutUtils;
@@ -25,10 +27,21 @@ export class ConnectionBindingService implements IConnectionBindingService {
   }
 
   /**
-   * 计算所有连接线数据
-   * 根据节点位置和布局配置生成连接线路径
+   * 【新方法】从ComputedEdge数组转换连接线数据
+   * 使用统一layout提供的预计算连接点，避免重复计算
+   */
+  convertFromComputedEdges(computedEdges: ComputedEdge[]): ConnectionData[] {
+    return computedEdges.map(edge => this.convertSingleEdge(edge));
+  }
+
+  /**
+   * 【兼容性方法】计算所有连接线数据（保持向后兼容）
+   * 为了兼容现有代码，保留此方法但标记为deprecated
+   * @deprecated 建议使用 convertFromComputedEdges 方法
    */
   calculateConnections(nodes: NodePosition[], layout: DynamicLayoutResult): ConnectionData[] {
+    console.warn('ConnectionBindingService.calculateConnections is deprecated. Consider using convertFromComputedEdges for better performance.');
+
     const connections: ConnectionData[] = [];
 
     for (let i = 0; i < nodes.length - 1; i++) {
@@ -53,8 +66,41 @@ export class ConnectionBindingService implements IConnectionBindingService {
   }
 
   /**
-   * 计算单个连接线数据
-   * 支持直线和L形连接线
+   * 将单个ComputedEdge转换为ConnectionData格式
+   */
+  private convertSingleEdge(edge: ComputedEdge): ConnectionData {
+    const is_l_shape = edge.type === 'smoothstep';
+    const path_points = [edge.sourcePosition, edge.targetPosition];
+
+    // 如果是L形连接，需要确定控制点
+    let control_point: Position | undefined;
+    if (is_l_shape) {
+      // 🎯 核心修复：根据源节点是否在奇数行决定控制点方向
+      // 奇数行从左到右，向右延伸；偶数行从右到左，向左延伸
+      const controlX = edge.sourcePosition.x + (edge.layoutMeta?.sourceIsInOddRow ? 30 : -30);
+      control_point = {
+        x: controlX,
+        y: edge.targetPosition.y
+      };
+      // 重新构造path_points为三段式路径
+      path_points.splice(1, 0, control_point);
+    }
+
+    return {
+      id: edge.id.replace('edge-', 'connection-'), // 统一ID格式
+      source_id: edge.source,
+      target_id: edge.target,
+      source_position: edge.sourcePosition,
+      target_position: edge.targetPosition,
+      path_points: path_points,
+      is_l_shape: is_l_shape,
+      control_point: control_point
+    };
+  }
+
+  /**
+   * 【兼容性方法】计算单个连接线数据（保持向后兼容）
+   * @deprecated 保留用于兼容性，但建议使用新的转换方法
    */
   private calculateSingleConnection(
     source_node: NodePosition,
@@ -107,8 +153,8 @@ export class ConnectionBindingService implements IConnectionBindingService {
   }
 
   /**
-   * 计算节点连接点位置
-   * 根据连接方向和行号决定连接点在节点的左侧还是右侧
+   * 【兼容性方法】计算节点连接点位置
+   * @deprecated 保留用于兼容性
    */
   private calculateConnectionPoint(
     node: NodePosition,
@@ -154,7 +200,8 @@ export class ConnectionBindingService implements IConnectionBindingService {
   }
 
   /**
-   * 计算L形连接线的控制点
+   * 【兼容性方法】计算L形连接线的控制点
+   * @deprecated 保留用于兼容性
    */
   private calculateControlPoint(
     source_position: Position,
@@ -211,6 +258,43 @@ export class ConnectionBindingService implements IConnectionBindingService {
   }
 
   /**
+   * 【新方法】直接从ComputedEdge生成缓存连接线
+   * 避免中间转换步骤，提升性能
+   */
+  generateCachedConnectionsFromEdges(computedEdges: ComputedEdge[]): CachedConnection[] {
+    return computedEdges.map(edge => {
+      const is_l_shape = edge.type === 'smoothstep';
+
+      if (is_l_shape) {
+        // L形连接线：需要计算控制点
+        // 🎯 核心修复：根据源节点是否在奇数行决定控制点方向
+        // 奇数行从左到右，向右延伸；偶数行从右到左，向左延伸
+        const controlX = edge.sourcePosition.x + (edge.layoutMeta?.sourceIsInOddRow ? 30 : -30);
+        return {
+          id: edge.id,
+          start_x: edge.sourcePosition.x,
+          start_y: edge.sourcePosition.y,
+          end_x: edge.targetPosition.x,
+          end_y: edge.targetPosition.y,
+          mid_x: controlX,
+          mid_y: edge.targetPosition.y,
+          is_l_shape: true
+        };
+      } else {
+        // 直线连接
+        return {
+          id: edge.id,
+          start_x: edge.sourcePosition.x,
+          start_y: edge.sourcePosition.y,
+          end_x: edge.targetPosition.x,
+          end_y: edge.targetPosition.y,
+          is_l_shape: false
+        };
+      }
+    });
+  }
+
+  /**
    * 检查连接线是否需要更新
    * 优化渲染性能，避免不必要的重新计算
    */
@@ -254,6 +338,66 @@ export class ConnectionBindingService implements IConnectionBindingService {
   }
 
   /**
+   * 【新方法】检查ComputedEdge是否需要更新
+   * 基于节点数据直接判断，避免重复计算
+   */
+  shouldUpdateEdges(prev_edges: ComputedEdge[], curr_edges: ComputedEdge[]): boolean {
+    // 边数量变化
+    if (prev_edges.length !== curr_edges.length) {
+      return true;
+    }
+
+    // 检查每条边的关键属性
+    for (let i = 0; i < curr_edges.length; i++) {
+      const prev_edge = prev_edges[i];
+      const curr_edge = curr_edges[i];
+
+      if (!prev_edge || !curr_edge) {
+        return true;
+      }
+
+      // 检查连接点位置变化
+      if (prev_edge.sourcePosition.x !== curr_edge.sourcePosition.x ||
+          prev_edge.sourcePosition.y !== curr_edge.sourcePosition.y ||
+          prev_edge.targetPosition.x !== curr_edge.targetPosition.x ||
+          prev_edge.targetPosition.y !== curr_edge.targetPosition.y) {
+        return true;
+      }
+
+      // 检查连接类型变化
+      if (prev_edge.type !== curr_edge.type) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 【新方法】获取连接线统计信息
+   * 用于性能监控和调试
+   */
+  getConnectionStats(edges: ComputedEdge[]): {
+    total: number;
+    straight: number;
+    lShape: number;
+    animated: number;
+  } {
+    return edges.reduce((stats, edge) => {
+      stats.total++;
+      if (edge.type === 'straight') {
+        stats.straight++;
+      } else if (edge.type === 'smoothstep') {
+        stats.lShape++;
+      }
+      if (edge.animated) {
+        stats.animated++;
+      }
+      return stats;
+    }, { total: 0, straight: 0, lShape: 0, animated: 0 });
+  }
+
+  /**
    * 创建布局工具函数实例
    */
   static createDefaultUtils(): LayoutUtils {
@@ -287,3 +431,34 @@ export class ConnectionBindingService implements IConnectionBindingService {
 export const connection_binding_service = new ConnectionBindingService(
   ConnectionBindingService.createDefaultUtils()
 );
+
+/**
+ * 【兼容性导出】便捷函数：直接从ComputedEdge生成缓存连接线
+ * 为使用统一布局的组件提供简化的API
+ */
+export function generateCachedConnectionsFromLayout(
+  computedEdges: ComputedEdge[]
+): CachedConnection[] {
+  return connection_binding_service.generateCachedConnectionsFromEdges(computedEdges);
+}
+
+/**
+ * 【兼容性导出】便捷函数：将ComputedEdge转换为ConnectionData
+ * 保持与现有代码的兼容性
+ */
+export function convertComputedEdgesToConnections(
+  computedEdges: ComputedEdge[]
+): ConnectionData[] {
+  return connection_binding_service.convertFromComputedEdges(computedEdges);
+}
+
+/**
+ * 【兼容性导出】便捷函数：检查边数据是否需要更新
+ * 提供基于ComputedEdge的性能优化
+ */
+export function shouldUpdateConnectionEdges(
+  prevEdges: ComputedEdge[],
+  currEdges: ComputedEdge[]
+): boolean {
+  return connection_binding_service.shouldUpdateEdges(prevEdges, currEdges);
+}

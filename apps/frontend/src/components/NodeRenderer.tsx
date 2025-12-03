@@ -9,7 +9,21 @@ import React, { memo, useCallback, useMemo } from 'react';
 import { ElectrochemicalNode, getNodeConfig } from '../types/nodes';
 
 export interface NodeRendererProps {
-  node: ElectrochemicalNode;
+  node: ElectrochemicalNode & {
+    layoutMeta?: {
+      index: number;
+      row: number;
+      col: number;
+      isLeftToRight: boolean;
+      isFirstInRow: boolean;
+      isLastInRow: boolean;
+      isInOddRow: boolean;
+      width: number;
+      columns: number;
+      zoomLevel?: number;
+      [key: string]: any;
+    };
+  };
   index?: number;
   isSelected?: boolean;
   isConnecting?: boolean;
@@ -104,14 +118,28 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   }, []);
 
   // 🎯 使用useMemo优化样式对象和类名，避免重复创建
-  const nodeStyle = useMemo(() => ({
-    position: 'absolute' as const,
-    left: node.position.x,
-    top: node.position.y,
-    width: node.style.width || 140, // 与配置文件保持一致
-    height: node.style.height || 60, // 与配置文件保持一致
-    cursor: 'grab',
-  }), [node.position.x, node.position.y, node.style.width, node.style.height]);
+  const nodeStyle = useMemo(() => {
+    const style = {
+      position: 'absolute' as const,
+      left: node.position.x,
+      top: node.position.y,
+      width: node.style.width || 140, // 与配置文件保持一致
+      height: node.style.height || 60, // 与配置文件保持一致
+      cursor: 'grab',
+    };
+
+    // 调试信息：确保位置来自于layoutNodes
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[NodeRenderer] 节点 ${node.name} 位置计算:`, {
+        position: node.position,
+        styleWidth: style.width,
+        styleHeight: style.height,
+        zoomLevel: node.layoutMeta?.zoomLevel || 'unknown'
+      });
+    }
+
+    return style;
+  }, [node.position.x, node.position.y, node.style.width, node.style.height, node.layoutMeta?.zoomLevel]);
 
   const nodeClassName = useMemo(() =>
     `node glass status-${node.status} ${

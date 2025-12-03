@@ -8,9 +8,7 @@ import {
   getNodeConfigByWorkstation
 } from '../../types/nodes';
 import {
-  layout_service,
-  Position,
-  LayoutCalculationOptions
+  Position
 } from '../layout';
 import { useWorkflowParameterStore } from './workflowParameterStore';
 import { useWorkflowStore } from './index';
@@ -138,48 +136,26 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
           ...nodes.slice(targetIndex)
       ];
 
-      // 使用统一布局服务重新计算位置
-      const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
-
-      // 自动创建连接：如果不是第一个节点，创建与前一个节点的连接
-      const newConnections = [...connections];
-      if (repositionedNodes.length > 1) {
-        const prevNode = repositionedNodes[targetIndex - 1];
-        if (prevNode) {
-          // 查找是否已存在相同的连接
-          const existingConnection = newConnections.find(
-            conn => conn.source_id === prevNode.id && conn.target_id === newNode.id
-          );
-
-          if (!existingConnection) {
-            newConnections.push({
-              id: `conn_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-              source_id: prevNode.id,
-              target_id: newNode.id
-            });
-            console.log(`[Canvas Store] 自动创建连接: ${prevNode.name} → ${newNode.name}`);
-          }
-        }
-      }
-
+      // 注意：布局计算现在由useUnifiedLayout在Canvas组件中处理
+      // 这里只需要更新节点数组，布局会自动重新计算
+      // 连接线也由useUnifiedLayout预计算，不需要在这里手动创建
       set({
-        nodes: repositionedNodes,
-        connections: newConnections,
-        validationError: validateNodes(repositionedNodes)
+        nodes: newNodes,
+        connections: connections, // 保持原有连接，新连接由useUnifiedLayout自动生成
+        validationError: validateNodes(newNodes)
       });
     },
 
     deleteNode: (nodeId) => {
-      const { canvasSize } = get();
       set(state => {
         const newNodes = state.nodes.filter(node => node.id !== nodeId);
-        // 使用统一布局服务重新计算位置
-        const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
+        // 注意：布局计算现在由useUnifiedLayout在Canvas组件中处理
+        // 这里只需要更新节点数组，布局会自动重新计算
         return {
-          nodes: repositionedNodes,
+          nodes: newNodes,
           connections: state.connections.filter(conn => conn.source_id !== nodeId && conn.target_id !== nodeId),
           selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
-          validationError: validateNodes(repositionedNodes)
+          validationError: validateNodes(newNodes)
         };
       });
 
@@ -196,31 +172,15 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     },
 
     moveNode: (nodeId, newPosition) => {
-      const { nodes, canvasSize } = get();
+      const { nodes } = get();
       const nodeIndex = nodes.findIndex(node => node.id === nodeId);
       if (nodeIndex === -1) return;
 
-      // 使用统一布局服务计算目标索引
-      const options: LayoutCalculationOptions = {
-        canvas_width: canvasSize.width,
-        nodes: nodes,
-        enable_zigzag: true,
-        center_single_node: true
-      };
-      const targetIndex = layout_service.calculateNodeIndexFromPosition(newPosition, options);
-      if (targetIndex === nodeIndex) return;
-
-      const newNodes = [...nodes];
-      const [movedNode] = newNodes.splice(nodeIndex, 1);
-      newNodes.splice(targetIndex, 0, movedNode);
-
-      // 使用统一布局服务重新计算位置
-      const repositionedNodes = layout_service.recalculateAllPositions(newNodes, canvasSize.width);
-
-      set({
-        nodes: repositionedNodes,
-        validationError: validateNodes(repositionedNodes)
-      });
+      // 注意：布局计算现在由useUnifiedLayout在Canvas组件中处理
+      // 这个函数现在主要用于节点的重新排序，而不是位置计算
+      // 暂时禁用手动移动，由布局系统控制位置
+      // 未来可以扩展支持拖拽重排序
+      return;
     },
 
     selectNode: (node) => set({ selectedNode: node }),
@@ -304,21 +264,23 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     },
 
     recalculateNodePositions: () => {
-      const { nodes, canvasSize } = get();
-      // 使用统一布局服务重新计算位置
-      const repositionedNodes = layout_service.recalculateAllPositions(nodes, canvasSize.width);
-      set({ nodes: repositionedNodes });
+      // 注意：布局计算现在由useUnifiedLayout在Canvas组件中处理
+      // 这个函数已弃用，因为布局现在是响应式的
+      console.log('[Canvas Store] recalculateNodePositions is now handled by useUnifiedLayout');
     },
 
     calculateNodeIndex: (position, canvasWidth, nodeCount) => {
-      // 使用统一布局服务计算节点索引
-      const options: LayoutCalculationOptions = {
-        canvas_width: canvasWidth,
-        nodes: get().nodes, // 使用当前nodes
-        enable_zigzag: true,
-        center_single_node: true
-      };
-      return layout_service.calculateNodeIndexFromPosition(position, options);
+      // 注意：这个函数现在主要由Canvas组件中的拖放处理使用
+      // 简化实现，基于画布尺寸和节点数量的估算
+      const nodeWidth = 200; // 默认节点宽度
+      const spacing = 40;   // 默认间距
+      const columns = Math.max(1, Math.floor(canvasWidth / (nodeWidth + spacing)));
+
+      const estimatedCol = Math.floor(position.x / (nodeWidth + spacing));
+      const estimatedRow = Math.floor(position.y / 100); // 假设行高为100
+      const estimatedIndex = Math.min(estimatedRow * columns + estimatedCol, nodeCount - 1);
+
+      return Math.max(0, estimatedIndex);
     }
   };
 }));
