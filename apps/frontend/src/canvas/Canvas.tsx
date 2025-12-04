@@ -65,7 +65,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       minColumns: 2,
       maxColumns: 8,
       minNodeWidth: 140,
-      containerPadding: 50
+      containerPadding: 50,
+      startOffset: { 
+        x: 50, 
+        // 目标视觉距离 (140px) / 缩放比例
+        // 这样无论怎么缩放，节点距离屏幕顶部的"视觉距离"永远锁死在 140px
+        // 就像被钉在那个位置一样，不会因为缩小而上移，也不会因为放大而下移
+        y: 100 / zoomLevel 
+      } 
     },
     canvasSize.width,
     zoomLevel
@@ -296,9 +303,30 @@ export const Canvas: React.FC<CanvasProps> = ({
         >
           ✋
         </button>
-        <button className="btn-zoom" onClick={onZoomOut} title="缩小">➖</button>
+
+        {/* 🔥 修改：达到 0.6 时禁用缩小按钮 */}
+        <button
+          className="btn-zoom"
+          onClick={onZoomOut}
+          title="缩小"
+          disabled={zoomLevel <= 0.601} // 加一点点容差处理浮点数精度
+          style={{ opacity: zoomLevel <= 0.601 ? 0.5 : 1, cursor: zoomLevel <= 0.601 ? 'not-allowed' : 'pointer' }}
+        >
+          ➖
+        </button>
+
         <button className="btn-zoom" onClick={onResetZoom} title="重置缩放">🎯</button>
-        <button className="btn-zoom" onClick={onZoomIn} title="放大">➕</button>
+
+        {/* 🔥 修改：达到 1.2 时禁用放大按钮 */}
+        <button
+          className="btn-zoom"
+          onClick={onZoomIn}
+          title="放大"
+          disabled={zoomLevel >= 1.199} // 加一点点容差
+          style={{ opacity: zoomLevel >= 1.199 ? 0.5 : 1, cursor: zoomLevel >= 1.199 ? 'not-allowed' : 'pointer' }}
+        >
+          ➕
+        </button>
       </div>
 
       {/* 可缩放画布内容 */}

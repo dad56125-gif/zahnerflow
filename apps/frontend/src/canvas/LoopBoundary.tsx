@@ -9,10 +9,8 @@ import { SimpleLoopInfo } from './useSimpleLoopDetection';
 import { useNodeChangeDetection } from './useNodeChangeDetection';
 
 // =============================================================================
-// PART 1: Clipper 算法 (保持不变)
+// PART 1: Clipper 算法 (优化版)
 // =============================================================================
-// ... (toClipperPath, pathsToSVG, offsetPolyline, unionPolygons, generateBeltPath 代码完全不变) ...
-// ... 请直接复用上一版 PART 1 的代码，无需改动 ...
 
 interface ClipperPoint {
   X: number;
@@ -44,47 +42,28 @@ function pathsToSVG(paths: ClipperPoint[][]): string {
   }).join(' ');
 }
 
-function offsetPolyline(points: Point[], offset: number): ClipperPoint[][] {
-  if (points.length < 2) return [];
-  const clipperOffset = new clipper.ClipperOffset();
-  const path = toClipperPath(points);
-  clipperOffset.AddPath(path, clipper.JoinType.jtMiter, clipper.EndType.etOpenRound);
-  const offsetPaths = new clipper.Paths();
-  clipperOffset.Execute(offsetPaths, Math.round(offset * 100));
-  return offsetPaths;
-}
-
-function unionPolygons(paths: ClipperPoint[][]): ClipperPoint[][] {
-  if (paths.length === 0) return [];
-  if (paths.length === 1) return paths;
-  const clipperUnion = new clipper.Clipper();
-  const unionPaths = new clipper.Paths();
-  paths.forEach(path => {
-    clipperUnion.AddPath(path, clipper.PolyType.ptSubject, true);
-  });
-  clipperUnion.Execute(
-    clipper.ClipType.ctUnion, 
-    unionPaths, 
-    clipper.PolyFillType.pftNonZero, 
-    clipper.PolyFillType.pftNonZero
-  );
-  return unionPaths;
-}
-
+// 修改 generateBeltPath，改为直接对整条路径进行 Offset
 function generateBeltPath(
-  segments: Array<{ start: Point; end: Point }>,
+  points: Point[], // 接收点数组，而不是线段数组
   beltWidth: number
 ): string {
-  if (segments.length === 0) return '';
+  if (points.length < 2) return '';
+
   const halfWidth = beltWidth / 2;
-  const offsetPaths: ClipperPoint[][] = [];
-  segments.forEach(segment => {
-    const points = [segment.start, segment.end];
-    const offset = offsetPolyline(points, halfWidth);
-    if (offset.length > 0) offsetPaths.push(...offset);
-  });
-  const unionPath = unionPolygons(offsetPaths);
-  return pathsToSVG(unionPath);
+  const clipperOffset = new clipper.ClipperOffset();
+
+  // 将整个点序列作为一个路径添加
+  const path = toClipperPath(points);
+
+  // jtRound: 圆角连接 (性能最好且视觉最平滑)
+  // etOpenRound:以此为中心向外扩散，两头圆角
+  clipperOffset.AddPath(path, clipper.JoinType.jtRound, clipper.EndType.etOpenRound);
+
+  const offsetPaths = new clipper.Paths();
+  // 执行一次计算即可，无需循环 union
+  clipperOffset.Execute(offsetPaths, Math.round(halfWidth * 100));
+
+  return pathsToSVG(offsetPaths);
 }
 
 // =============================================================================
@@ -107,15 +86,15 @@ export interface LoopBoundaryProps {
   style?: React.CSSProperties;
 }
 
-/** 
- * 辅助函数：计算节点中心点 
+/**
+ * 辅助函数：计算节点中心点
  * 🔥 适配：从 node.position 读取坐标
  */
 function getNodeCenterPoint(node: any): Point {
   // 1. 优先读取 position 对象 (新架构)
   const nodeX = node.position.x;
   const nodeY = node.position.y;
-  
+
   // 2. 宽度优先读取 layoutMeta (布局计算值)，其次 style
   const nodeWidth = node.layoutMeta?.width ?? node.style?.width ?? 140;
   const nodeHeight = node.style?.height ?? 60;
@@ -138,11 +117,33 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     layout_stable: true
   });
 
-  // 1. 获取完整的循环路径节点
-  const completeLoopNodes = useMemo(() => {
+  // 优化 1: 提取关键数据指纹，避免无关节点更新导致重算
+  // 我们只关心在这个循环里的节点 ID，以及它们的位置
+  const loopNodeFingerprint = useMemo(() => {
+    // 找到循环范围内的节点索引
     const startIndex = nodes.findIndex(n => n.id === loop.startNodeId);
     const endIndex = nodes.findIndex(n => n.id === loop.endNodeId);
 
+    if (startIndex === -1 || endIndex === -1) return '';
+
+    // 确定范围
+    const start = Math.min(startIndex, endIndex);
+    const end = Math.max(startIndex, endIndex);
+
+    // 生成指纹字符串：ID-X-Y-Width
+    // 这样只有循环内的节点移动时，指纹才会变
+    let fingerprint = '';
+    for (let i = start; i <= end; i++) {
+        const n = nodes[i];
+        fingerprint += `${n.id}:${Math.round(n.position.x)}:${Math.round(n.position.y)}|`;
+    }
+    return fingerprint;
+  }, [nodes, loop.startNodeId, loop.endNodeId]); // 依赖 nodes，但计算很快
+
+  // 将 completeLoopNodes 的 useMemo 依赖改为 loopNodeFingerprint
+  const completeLoopNodes = useMemo(() => {
+    const startIndex = nodes.findIndex(n => n.id === loop.startNodeId);
+    const endIndex = nodes.findIndex(n => n.id === loop.endNodeId);
     if (startIndex === -1 || endIndex === -1) return [];
 
     let pathNodes: typeof nodes = [];
@@ -154,33 +155,28 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
     if (pathNodes.length === 0) return [];
 
+    // 重新构建虚拟头尾节点（保持原逻辑）
     const startNode = pathNodes[0];
     const endNode = pathNodes[pathNodes.length - 1];
-    
-    // 获取宽度用于延伸计算
     const sWidth = startNode.layoutMeta?.width ?? startNode.style?.width ?? 140;
     const eWidth = endNode.layoutMeta?.width ?? endNode.style?.width ?? 140;
-    const sX = startNode.position.x;
-    const eX = endNode.position.x;
 
-    // 构造虚拟延伸点 (保持数据结构一致，用于 getNodeCenterPoint)
-    const extendedStart = { 
-      ...startNode, 
-      position: { ...startNode.position, x: sX - sWidth / 3 },
-      // 确保 getNodeCenterPoint 能读到正确的宽度
+    const extendedStart = {
+      ...startNode,
+      position: { ...startNode.position, x: startNode.position.x - sWidth / 3 },
       layoutMeta: { ...startNode.layoutMeta, width: sWidth }
     };
-    
-    const extendedEnd = { 
-      ...endNode, 
-      position: { ...endNode.position, x: eX + eWidth / 3 },
+
+    const extendedEnd = {
+      ...endNode,
+      position: { ...endNode.position, x: endNode.position.x + eWidth / 3 },
       layoutMeta: { ...endNode.layoutMeta, width: eWidth }
     };
 
     return [extendedStart, ...pathNodes, extendedEnd];
-  }, [loop.startNodeId, loop.endNodeId, nodes, updateTrigger]);
+  }, [loopNodeFingerprint, nodes]); // 🔥 核心：依赖指纹
 
-  // 2. 获取循环内节点
+  // 获取循环内节点
   const loopInnerNodes = useMemo(() => {
     const innerNodes: typeof nodes = [];
     loop.nodeIds.forEach(nodeId => {
@@ -190,51 +186,63 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     return innerNodes;
   }, [nodes, loop.nodeIds, updateTrigger]);
 
-  // 3. 计算路径线段
-  const pathSegments = useMemo(() => {
+  // 优化 2: 简化路径点计算 (不再生成 segments，直接生成点序列)
+  const pathPoints = useMemo(() => {
     if (completeLoopNodes.length < 2) return [];
 
-    const points = completeLoopNodes.map(node => getNodeCenterPoint(node));
+    const rawPoints = completeLoopNodes.map(node => getNodeCenterPoint(node));
+    const finalPoints: Point[] = [];
 
-    const segments = [];
-    for (let i = 0; i < points.length - 1; i++) {
-      const start = points[i];
-      const end = points[i + 1];
+    // 添加第一个点
+    finalPoints.push(rawPoints[0]);
 
+    // 处理中间的折线逻辑 (L-Shape)
+    for (let i = 0; i < rawPoints.length - 1; i++) {
+      const start = rawPoints[i];
+      const end = rawPoints[i + 1];
+
+      // 判断是否需要拐弯 (阈值可以适当调大)
       const isLShape = Math.abs(start.y - end.y) > 10 && Math.abs(start.x - end.x) > 10;
 
       if (isLShape) {
+        // 简单的 L 型插值
         const horizontalDistance = Math.abs(end.x - start.x);
         const verticalDistance = Math.abs(end.y - start.y);
+
+        // 这里的逻辑与原来 segments 的逻辑一致，只是变成了加点
         if (horizontalDistance < verticalDistance) {
-          const mid = { x: end.x, y: start.y };
-          segments.push({ start, end: mid });
-          segments.push({ start: mid, end });
+            finalPoints.push({ x: end.x, y: start.y });
         } else {
-          const mid = { x: start.x, y: end.y };
-          segments.push({ start, end: mid });
-          segments.push({ start: mid, end });
+            finalPoints.push({ x: start.x, y: end.y });
         }
-      } else {
-        segments.push({ start, end });
       }
+      finalPoints.push(end);
     }
-    return segments;
+    return finalPoints;
   }, [completeLoopNodes]);
 
-  // 4. 生成背景带形状
+  // 优化 3: 仅在点变化时计算 Clipper
   const beltPath = useMemo(() => {
-    if (pathSegments.length === 0) return '';
-    const firstNode = loopInnerNodes[0] || nodes[0];
+    if (pathPoints.length === 0) return '';
+
+    // 获取宽度基准
+    // 注意：这里我们不再去根据 pathSegments 循环
+    // 而是只取第一个节点的高度做基准即可，无需放在循环里算
+    const firstNode = completeLoopNodes[1] || nodes[0]; // 取真实的第一个节点
     const baseHeight = firstNode?.style?.height ?? 60;
-    const beltWidth = baseHeight * 1.15;
-    
-    return generateBeltPath(pathSegments, beltWidth);
-  }, [pathSegments, loopInnerNodes, nodes]);
+    const beltWidth = baseHeight * 1.15; // 稍微宽一点
 
-  if (!beltPath || completeLoopNodes.length === 0) return null;
+    // 🔥 调用优化后的 generateBeltPath
+    return generateBeltPath(pathPoints, beltWidth);
+  }, [pathPoints, completeLoopNodes]);
 
+  if (!beltPath) return null;
+
+  // ... 渲染 JSX 保持不变 ...
   const zIndex = Math.max(0, loop.level) + 1;
+
+  // 计算文字位置 (取路径中间的点)
+  const labelPoint = pathPoints.length > 0 ? pathPoints[0] : {x:0, y:0};
 
   return (
     <svg

@@ -177,9 +177,28 @@ const ZahnerFlowApp: React.FC = () => {
 
   const handleStopFlow = useCallback(stopFlow, [isRunning, stopExecution]);
   
+  // 缩放限制常量
+  const MIN_ZOOM = 0.6;
+  const MAX_ZOOM = 1.2;
+  const ZOOM_STEP = 0.1;
+
   // 缩放控制
-  const handleZoomIn = useCallback(() => setZoomLevel((z) => Math.min(3, +(z + 0.1).toFixed(2))), []);
-  const handleZoomOut = useCallback(() => setZoomLevel((z) => Math.max(0.2, +(z - 0.1).toFixed(2))), []);
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((prev) => {
+      const next = prev + ZOOM_STEP;
+      // 限制最大值
+      return next > MAX_ZOOM ? MAX_ZOOM : parseFloat(next.toFixed(2));
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((prev) => {
+      const next = prev - ZOOM_STEP;
+      // 限制最小值
+      return next < MIN_ZOOM ? MIN_ZOOM : parseFloat(next.toFixed(2));
+    });
+  }, []);
+
   const handleResetZoom = useCallback(() => setZoomLevel(1), []);
 
   // 循环检测回调函数
