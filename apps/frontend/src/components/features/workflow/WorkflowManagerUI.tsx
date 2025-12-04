@@ -1,17 +1,16 @@
 /**
- * 工作流管理UI组件
+ * 工作流管理UI组件 - 简化版本
  *
- * 提供工作流的导出、导入和管理功能
- * 集成工作流模板、历史记录和配置管理
+ * 移除违背单一数据源原则的ParameterStore依赖
+ * 模板功能由后端提供，前端仅展示历史工作流
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
 import { useCanvasStore } from '@/canvas/canvasStore';
 import { useWorkflowStore } from '@/services/stores';
-import { useWorkflowParameterStore } from '@/services/stores';
 import { useSimpleLoopDetection } from '../../../canvas/useSimpleLoopDetection';
-import WorkflowManager, { type WorkflowData, type WorkflowMetadata } from './WorkflowManager';
+import WorkflowManager from './WorkflowManager';
 import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';
 import { api } from '@/services/api';
 import { useUser } from '@/contexts/UserContext';
@@ -39,7 +38,7 @@ interface WorkflowHistory {
 }
 
 /**
- * 工作流管理UI组件
+ * 工作流管理UI组件 - 简化版本
  */
 export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   className = '',
@@ -54,7 +53,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   } = useCanvasStore();
 
   const { setCurrentWorkflow } = useWorkflowStore();
-  const { setCurrentEditingWorkflowId } = useWorkflowParameterStore();
 
   const { currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'templates' | 'history'>('history');
@@ -70,24 +68,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const projectDropdownButtonRef = useRef<HTMLButtonElement>(null);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
-
-  const [templates] = useState<WorkflowData[]>([
-    WorkflowManager.createWorkflowTemplate(
-      '基础电化学测试',
-      '包含开路电位和计时安培法的基础测试流程',
-      ['ocp_measurement', 'chronoamperometry']
-    ),
-    WorkflowManager.createWorkflowTemplate(
-      '循环伏安测试',
-      '标准的循环伏安法测试流程',
-      ['ocp_measurement', 'cv_measurement', 'eis_potentiostatic']
-    ),
-    WorkflowManager.createWorkflowTemplate(
-      '阻抗谱分析',
-      '电化学阻抗谱分析流程',
-      ['ocp_measurement', 'eis_potentiostatic']
-    )
-  ]);
 
   // 检测循环（使用简化版Hook）
   const detectedLoops = useSimpleLoopDetection(nodes);
@@ -284,8 +264,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     }
   };
 
-  
-  
+
+
   // 加载历史工作流
   const loadHistoryWorkflow = async (workflow: WorkflowHistory) => {
     try {
@@ -399,8 +379,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         },
         ownerName: workflow.project_name || '默认项目'
       });
-      // 同步设置当前编辑的工作流ID以加载对应的默认参数
-      setCurrentEditingWorkflowId(workflow.id);
+      // 注意：移除setCurrentEditingWorkflowId调用
 
       console.log(`历史工作流 "${workflow.name}" 加载成功`);
 
@@ -435,21 +414,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     setDeletingItemId(null);
   };
 
-  // 应用模板
-  const applyTemplate = (template: WorkflowData) => {
-    if (window.confirm(`确定要应用模板 "${template.metadata?.name}" 吗？这将替换当前工作流。`)) {
-      setNodes(template.nodes);
-      // 转换连接线格式：从 camelCase 到 snake_case
-      const formattedConnections = template.connections.map(conn => ({
-        id: conn.id,
-        source_id: conn.sourceId,
-        target_id: conn.targetId
-      }));
-      setConnections(formattedConnections);
-    }
-  };
-
-  
   // 获取工作流统计
   const getWorkflowStats = () => {
     return {
@@ -493,6 +457,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
             <button
               className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
               onClick={() => setActiveTab('templates')}
+              disabled // 模板功能由后端提供
             >
               收藏
             </button>
@@ -559,7 +524,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                     <div className="empty-hint">
                       {selectedProject
                         ? `项目 "${selectedProject}" 中没有找到历史工作流`
-                        : '导出工作流后会在这里显示记录'
+                        : '应用工作流设置后会自动创建历史记录'
                       }
                     </div>
                   </div>
@@ -628,38 +593,20 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
               </div>
             )}
 
-            {/* 收藏标签 */}
+            {/* 收藏标签 - 简化，模板功能由后端提供 */}
             {activeTab === 'templates' && (
               <div className="templates-tab">
                 <div className="templates-header">
                   <h4>收藏</h4>
-                  <p>选择一个收藏快速开始新的工作流</p>
+                  <p>模板功能由后端提供，将在后续版本中实现</p>
                 </div>
 
-                <div className="templates-grid">
-                  {templates.map((template, index) => (
-                    <div key={index} className="template-card card">
-                      <div className="template-header">
-                        <h5>{template.metadata?.name}</h5>
-                        <span className="template-badge badge badge_neutral">收藏</span>
-                      </div>
-                      <div className="template-description">
-                        {template.metadata?.description}
-                      </div>
-                      <div className="template-stats">
-                        <span>节点: {template.nodes.length}</span>
-                        <span>连接: {template.connections.length}</span>
-                      </div>
-                      <div className="template-actions">
-                        <button
-                          onClick={() => applyTemplate(template)}
-                          className="btn-apply btn btn_primary btn_small"
-                        >
-                          应用模板
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="templates-empty">
+                  <div className="empty-icon">⭐</div>
+                  <div className="empty-text">暂无收藏模板</div>
+                  <div className="empty-hint">
+                    工作流模板管理功能将在后续版本中提供
+                  </div>
                 </div>
               </div>
             )}

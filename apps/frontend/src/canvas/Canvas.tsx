@@ -25,7 +25,6 @@ interface CanvasProps {
   onFilePathSave?: (config: any) => void;
   onRunFlow?: () => void;
   onStopFlow?: () => void;
-  // ✅ 新增：接收从 App 传入的重置回调
   onResetFlow?: () => void;
   onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
 }
@@ -45,7 +44,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onFilePathSave,
   onRunFlow,
   onStopFlow,
-  onResetFlow, // ✅ 解构出重置回调
+  onResetFlow,
   onLoopDetected
 }) => {
     const {
@@ -73,29 +72,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     zoomLevel
   );
 
-  // 调试信息显示（可选）
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 Canvas.tsx - 架构解耦后调试信息:', {
-        nodeCount: nodes.length,
-        canvasWidth: canvasSize.width,
-        zoomLevel,
-        actualColumns,
-        adjustedDimensions,
-        layoutNodesCount: layoutNodes.length,
-        layoutEdgesCount: layoutEdges.length,
-        firstNodePosition: layoutNodes[0]?.position || null,
-        lastNodePosition: layoutNodes[layoutNodes.length - 1]?.position || null,
-        // 🎯 架构解耦验证：确保布局层只包含基准尺寸
-        architectureCheck: {
-          layoutUsesBaseDimensions: adjustedDimensions?.nodeWidth === 200, // 基准宽度
-          coordinatesAt100Scale: true, // 布局坐标都是100%比例
-          zoomHandledByCSS: true // 缩放由CSS处理
-        }
-      });
-    }
-  }, [nodes.length, canvasSize.width, zoomLevel, actualColumns, adjustedDimensions, layoutNodes.length, layoutEdges.length, layoutNodes[0]?.position, layoutNodes[layoutNodes.length - 1]?.position, layoutNodes]);
-
   const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutStable, setLayoutStable] = useState(true);
 
@@ -106,7 +82,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [canvasOffsetY, setCanvasOffsetY] = useState(0);
   const dragStartScrollY = useRef(0);
 
-  // 循环系统状态（简化版）
+  // 循环系统状态
   const detectedLoops = useSimpleLoopDetection(nodes);
 
   // 循环检测回调
@@ -124,12 +100,12 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
   }, []);
 
-  // 1. 优化：Canvas 尺寸监听（防抖）
+  // Canvas 尺寸监听（防抖）
   useEffect(() => {
     if (!canvasRef.current) return;
 
     let timeoutId: NodeJS.Timeout;
-    const DEBOUNCE_DELAY = 50; // 增加防抖时间，减少高频触发
+    const DEBOUNCE_DELAY = 50;
 
     const resizeObserver = new ResizeObserver(entries => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -147,22 +123,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     };
   }, [setCanvasSize]);
 
-  // 布局状态管理 - 关键修复：确保缩放变化时正确触发布局重新计算
+  // 布局状态管理
   useEffect(() => {
-    // 注意：现在布局由useUnifiedLayout完全控制，这里只需要管理布局稳定状态
     if (canvasSize.width > 0 && nodes.length > 0) {
       setLayoutStable(false);
-
-      // 使用 requestAnimationFrame 确保 UI 不卡顿
       requestAnimationFrame(() => {
-        // 布局计算现在由useUnifiedLayout Hook完全控制
-        // 这里只需要标记布局稳定状态
         setLayoutStable(true);
       });
     }
-  }, [canvasSize.width, nodes.length, zoomLevel]); // 关键修复：添加zoomLevel到依赖数组
+  }, [canvasSize.width, nodes.length, zoomLevel]);
 
-  // 拖放处理
+  // 拖放处理（从工具栏拖入）
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const nodeType = e.dataTransfer.getData('nodeType') as NodeType;
@@ -173,20 +144,10 @@ export const Canvas: React.FC<CanvasProps> = ({
       const dropY = (e.clientY - rect.top) / zoomLevel;
 
       // 使用统一布局的实际列数和调整后尺寸进行估算
-      const estimatedColumns = actualColumns || 4; // 使用实际列数，默认4
+      const estimatedColumns = actualColumns || 4;
       const estimatedRow = Math.floor(dropY / ((adjustedDimensions?.nodeHeight || 60) + (adjustedDimensions?.spacing || 40)));
       const estimatedCol = Math.floor(dropX / ((adjustedDimensions?.nodeWidth || 200) + (adjustedDimensions?.spacing || 40)));
       const estimatedIndex = Math.min(estimatedRow * estimatedColumns + estimatedCol, nodes.length);
-
-      console.log('Canvas拖放估算:', {
-        dropX,
-        dropY,
-        estimatedColumns,
-        estimatedRow,
-        estimatedCol,
-        estimatedIndex,
-        nodeCount: nodes.length
-      });
 
       addNode(nodeType, selectedWorkstation, estimatedIndex);
     }
@@ -204,9 +165,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handleNodeContextMenu = useCallback((node: ElectrochemicalNode, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // 简化的删除确认，实际项目中建议使用自定义 Modal
+
+    // 简化的删除确认
     if (window.confirm(`确定要删除节点 "${node.name}" 吗？`)) {
-        // 直接操作 store 更新，由于使用计算属性布局，不需要手动管理连接线
         const newNodes = nodes.filter(n => n.id !== node.id);
         setNodes(newNodes);
     }
@@ -220,22 +181,54 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, []);
 
-  const handleNodeDragEndEnhanced = useCallback((_node: ElectrochemicalNode, event: React.DragEvent) => {
+  // 🔥 核心修复：解决拖拽导致节点丢失的问题
+  const handleNodeDragEndEnhanced = useCallback((draggedNode: ElectrochemicalNode, event: React.DragEvent) => {
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.style.opacity = '1';
     }
 
-    // 🚫 禁用位置拖拽更新 - 位置现在由useUnifiedLayout自动计算
-    // 如果需要重新排序，应该实现拖拽重排序逻辑而不是位置更新
-    console.log('拖拽结束，但位置由统一布局系统管理');
-  }, []);
+    // ✅ 关键点：直接从 Store 获取最新的节点列表，而不是依赖闭包中的 nodes
+    // 这避免了因 NodeRenderer Memoization 导致闭包过期而引用旧数据的问题
+    const currentNodes = useCanvasStore.getState().nodes;
+
+    const target = event.target as HTMLElement;
+    const canvasRect = target.closest('.canvas-container')?.getBoundingClientRect();
+
+    if (!canvasRect) return;
+
+    // 计算相对于画布的鼠标位置
+    const mousePosition = {
+      x: event.clientX - canvasRect.left,
+      y: event.clientY - canvasRect.top
+    };
+
+    // 找到被拖拽节点的当前索引
+    const fromIndex = currentNodes.findIndex(n => n.id === draggedNode.id);
+    if (fromIndex === -1) return;
+
+    // 根据鼠标位置计算目标索引
+    const { calculateNodeIndex } = useCanvasStore.getState();
+    const canvasWidth = canvasSize.width;
+    const rawTargetIndex = calculateNodeIndex(mousePosition, canvasWidth, currentNodes.length);
+    const toIndex = Math.min(
+      Math.max(0, rawTargetIndex),
+      currentNodes.length - 1
+    );
+
+    // 如果不是同一个索引，重新排序数组
+    if (fromIndex !== toIndex) {
+      const newNodes = [...currentNodes];
+      const [movedNode] = newNodes.splice(fromIndex, 1);
+      newNodes.splice(toIndex, 0, movedNode);
+      setNodes(newNodes);
+    }
+  }, [canvasSize.width, setNodes]); // 移除 'nodes' 依赖
 
   // Y轴拖动逻辑
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isDragEnabled || e.button !== 0) return;
 
     const target = e.target as HTMLElement;
-    // 排除特定区域，避免冲突
     if (target.closest('.node') || target.closest('.zoom-controls') || target.closest('.toolbar')) {
       return;
     }
@@ -267,39 +260,17 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // 循环检测已简化：使用 useSimpleLoopDetection Hook（在组件顶部）
-
-  // 节点位置映射缓存（用于 LoopBoundary） - 架构解耦后简化
+  // 节点位置映射缓存（用于 LoopBoundary）
   const nodePositions = useMemo(() => {
-    // 🎯 架构解耦：使用layoutNodes中的基准位置信息
-    // 所有几何计算都在100%比例下完成，缩放由CSS统一处理
-    const positions = layoutNodes.map(node => ({
+    return layoutNodes.map(node => ({
       id: node.id,
       name: node.name,
-      x: node.position.x,  // 基准几何坐标
-      y: node.position.y,  // 基准几何坐标
+      x: node.position.x,
+      y: node.position.y,
       width: node.style?.width || adjustedDimensions?.nodeWidth || 140,
       height: node.style?.height || adjustedDimensions?.nodeHeight || 60
     }));
-
-    // 🔍 开发调试：验证架构解耦效果
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Canvas.tsx - 基准位置计算:', {
-        zoomLevel,
-        actualColumns,
-        nodeCount: positions.length,
-        firstNodePosition: positions[0],
-        lastNodePosition: positions[positions.length - 1],
-        architectureVerification: {
-          coordinatesAreBaseScale: true, // 坐标是基准比例
-          zoomHandledByCSS: true, // 缩放由CSS处理
-          noZoomInLayout: true // 布局中不含缩放
-        }
-      });
-    }
-
-    return positions;
-  }, [layoutNodes, adjustedDimensions, zoomLevel, actualColumns]);
+  }, [layoutNodes, adjustedDimensions]);
 
   return (
     <div
@@ -311,12 +282,12 @@ export const Canvas: React.FC<CanvasProps> = ({
       {/* 网格背景 */}
       <div className="canvas-grid"></div>
 
-      {/* Toolbar - 核心操作栏 */}
+      {/* Toolbar */}
       {onRunFlow && onStopFlow && (
         <Toolbar
           onRunFlow={onRunFlow}
           onStopFlow={onStopFlow}
-          onResetFlow={onResetFlow} // ✅ 透传重置回调
+          onResetFlow={onResetFlow}
           selectedWorkstation={selectedWorkstation}
           isRunning={isRunning}
           hasError={hasError}
@@ -337,12 +308,9 @@ export const Canvas: React.FC<CanvasProps> = ({
         >
           ✋
         </button>
-
         <button className="btn-zoom" onClick={onZoomOut} title="缩小">➖</button>
         <button className="btn-zoom" onClick={onResetZoom} title="重置缩放">🎯</button>
         <button className="btn-zoom" onClick={onZoomIn} title="放大">➕</button>
-        
-        {/* ✅ 已移除：此处多余的重置按钮 */}
       </div>
 
       {/* 可缩放画布内容 */}
@@ -373,8 +341,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         ))}
 
         {layoutNodes.map((node, index) => {
-          // 🎯 架构解耦：简化key，基于布局数据变化
           const nodeKey = `${node.id}-${node.position.x}-${node.position.y}-${actualColumns}`;
+          const dragEnabled = !isRunning;
 
           return (
             <NodeRenderer
@@ -386,8 +354,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               onNodeClick={handleNodeClick}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodeContextMenu={handleNodeContextMenu}
-              onNodeDragStart={handleNodeDragStartEnhanced}
-              onNodeDragEnd={handleNodeDragEndEnhanced}
+              onNodeDragStart={dragEnabled ? handleNodeDragStartEnhanced : undefined}
+              onNodeDragEnd={dragEnabled ? handleNodeDragEndEnhanced : undefined}
             />
           );
         })}
@@ -397,13 +365,9 @@ export const Canvas: React.FC<CanvasProps> = ({
       {showWorkflowManager && (
         <WorkflowManagerUI onClose={onToggleWorkflowManager} />
       )}
-
       {showFilePathManager && (
-        <div className="file-path-manager-overlay-container">
-           {/* 内容由 Toolbar 控制显示 */}
-        </div>
+        <div className="file-path-manager-overlay-container"></div>
       )}
-
       <WorkflowIdDisplay />
     </div>
   );

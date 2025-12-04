@@ -103,80 +103,21 @@ const ZahnerFlowApp: React.FC = () => {
         return;
     }
     try {
-      // 检查是否有当前编辑的工作流
+      // Create if Null 模式：workflowId为null时后端创建新工作流
       const { currentWorkflow } = useWorkflowStore.getState();
+      const workflowId = currentWorkflow?.id || null;
 
-      if (currentWorkflow && !currentWorkflow.id.startsWith('temp-workflow-')) {
-        // 历史工作流：直接使用现有工作流执行
-        console.log(`执行历史工作流 "${currentWorkflow.name}" (ID: ${currentWorkflow.id})`);
-        await stateLinkageManager.startExecution(currentWorkflow.id, nodes);
-      } else {
-        // 临时工作流或新工作流：创建新的工作流定义，提供临时ID（后端会重新生成）
-        const workflowDefinition = {
-          id: `temp_workflow_${Date.now()}`, // 临时ID，后端会重新生成
-          name: (currentWorkflow?.name && currentWorkflow.name !== '临时工作流')
-            ? currentWorkflow.name
-            : undefined, // 工作流只依靠ID，name字段不是必需的
-          description: '通过前端界面创建的电化学测量流程',
-          ownerName: '默认用户',
-          individualName: '默认项目',
-          nodes: nodes.map(node => ({
-            id: node.id,
-            type: node.type,
-            name: node.name,
-            config: node.data?.parameters || {},
-            position: node.position,
-            data: node.data,
-            status: node.status
-          })),
-          edges: connections.map(conn => ({
-            id: conn.id,
-            source: conn.source_id,
-            target: conn.target_id,
-            type: 'flow'
-          })),
-          version: 1
-        };
+      const result = await stateLinkageManager.startExecution(workflowId, nodes);
 
-        // 创建新工作流（后端会生成ID）
-        const createdWorkflow = await workflowService.createWorkflow(workflowDefinition);
-
-        if (!createdWorkflow) {
-          throw new Error("Failed to create workflow");
-        }
-        console.log(`创建并执行新工作流 "${createdWorkflow.name}" (ID: ${createdWorkflow.id})`);
-
-        // 同步更新前端的节点ID，使其与后端生成的一致
-        const { nodes: backendNodes } = createdWorkflow.definition;
-        const idMap = new Map<string, string>();
-        nodes.forEach((node, index) => {
-          if (backendNodes[index]) {
-            idMap.set(node.id, backendNodes[index].id);
-            console.log(`节点ID映射: ${node.id} -> ${backendNodes[index].id}`);
-          }
-        });
-
-        // 更新节点数组使用新的ID
-        const updatedNodes = nodes.map((node) => ({
-          ...node,
-          id: idMap.get(node.id) || node.id
-        }));
-        setNodes(updatedNodes);
-
-        // 更新连接数组使用新的ID
-        const updatedConnections = connections.map(conn => ({
-          ...conn,
-          source_id: idMap.get(conn.source_id) || conn.source_id,
-          target_id: idMap.get(conn.target_id) || conn.target_id
-        }));
-        const { setConnections } = useCanvasStore.getState();
-        setConnections(updatedConnections);
-
-        // 更新WorkflowStore的currentWorkflow状态，确保workflow-id-display能正确显示
+      // 如果后端返回了新创建的workflowId，更新currentWorkflow
+      if (result?.workflowId && !currentWorkflow?.id) {
         const { setCurrentWorkflow } = useWorkflowStore.getState();
-        setCurrentWorkflow(createdWorkflow);
-
-        await stateLinkageManager.startExecution(createdWorkflow.id, updatedNodes);
+        setCurrentWorkflow({
+          id: result.workflowId,
+          name: '新建工作流',
+          nodes: nodes
+        });
+        console.log(`后端创建新工作流: ${result.workflowId}`);
       }
     } catch (error) {
       console.error('工作流执行失败:', error);

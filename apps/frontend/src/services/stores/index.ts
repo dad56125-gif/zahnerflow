@@ -62,7 +62,7 @@ export const useWorkflowStore = create<WorkflowState>()(
         },
 
         updateWorkflow: async (id, data) => {
-          // 1. 乐观更新前端状态（无论是否临时工作流）
+          // 1. 乐观更新前端状态
           set(state => {
             if (state.currentWorkflow && state.currentWorkflow.id === id) {
               return {
@@ -72,13 +72,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             return {};
           });
 
-          // 2. 拦截临时工作流的API调用
-          if (id.startsWith('temp-workflow-')) {
-            console.log('检测到临时工作流，仅更新本地状态，拦截API请求');
-            return;
-          }
-
-          // 3. 正式工作流才调用API
+          // 2. 调用API更新后端（前端不处理临时ID）
           set({ isLoading: true, error: null });
           try {
             const workflow = await workflowService.updateWorkflow(id, data);
@@ -537,5 +531,3 @@ if (typeof window !== 'undefined') {
     });
   });
 }
-// 导出工作流参数管理store
-export { useWorkflowParameterStore } from './workflowParameterStore';

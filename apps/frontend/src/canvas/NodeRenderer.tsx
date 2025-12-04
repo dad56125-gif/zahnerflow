@@ -1,10 +1,3 @@
-/**
- * 节点渲染器
- *
- * 统一的节点渲染系统，从配置获取显示信息
- * 参数编辑功能完全转移到 PropertyPanel 中
- */
-
 import React, { memo, useCallback, useMemo } from 'react';
 import { ElectrochemicalNode, getNodeConfig } from '../types/nodes';
 
@@ -37,7 +30,6 @@ export interface NodeRendererProps {
 
 /**
  * 节点渲染器组件
- * 从配置获取节点的显示信息，统一处理所有节点类型
  */
 export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   node,
@@ -51,18 +43,12 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   onNodeDragStart,
   onNodeDragEnd
 }) => {
-  // 从配置获取节点信息
   const config = getNodeConfig(node.type);
   const displayName = config.name;
   const icon = config.icon;
-
-  // 🎯 核武器：从data中读取强制重置标记
   const remountKey = (node.data as any)?._force_reset_key || 'initial';
-
-  // 节点拖拽交换相关状态
   const [isDragOver, setIsDragOver] = React.useState(false);
 
-  // 🎯 使用useCallback优化事件处理函数，避免重复创建
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onNodeClick?.(node);
@@ -80,9 +66,6 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   }, [node.id, onNodeContextMenu]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`开始拖拽节点：${node.name}，当前索引：${index}`);
-    }
     onNodeDragStart?.(node, e);
     if (e.currentTarget instanceof HTMLElement) {
       e.currentTarget.style.opacity = '0.5';
@@ -90,9 +73,6 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   }, [node.id, index, onNodeDragStart]);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('拖拽结束');
-    }
     onNodeDragEnd?.(node, e);
     if (e.currentTarget instanceof HTMLElement) {
       e.currentTarget.style.opacity = '1';
@@ -117,27 +97,15 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     (e.currentTarget as HTMLElement).style.opacity = '1';
   }, []);
 
-  // 🎯 使用useMemo优化样式对象和类名，避免重复创建
   const nodeStyle = useMemo(() => {
     const style = {
       position: 'absolute' as const,
       left: node.position.x,
       top: node.position.y,
-      width: node.style.width || 140, // 与配置文件保持一致
-      height: node.style.height || 60, // 与配置文件保持一致
+      width: node.style.width || 140,
+      height: node.style.height || 60,
       cursor: 'grab',
     };
-
-    // 调试信息：确保位置来自于layoutNodes
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[NodeRenderer] 节点 ${node.name} 位置计算:`, {
-        position: node.position,
-        styleWidth: style.width,
-        styleHeight: style.height,
-        zoomLevel: node.layoutMeta?.zoomLevel || 'unknown'
-      });
-    }
-
     return style;
   }, [node.position.x, node.position.y, node.style.width, node.style.height, node.layoutMeta?.zoomLevel]);
 
@@ -152,11 +120,6 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     [node.status, isSelected, isConnecting, isDragOver]
   );
 
-  // 🎯 只在调试模式下显示日志
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[NodeRenderer] 渲染节点: ${node.id}, 状态: ${node.status}, 名称: ${node.name}, 核武器Key: ${remountKey}`);
-  }
-
   return (
     <div
       className={nodeClassName}
@@ -170,17 +133,17 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      key={`${node.id}-${remountKey}`}  // 👈 这一行就是能够停止所有动画的关键！
+      key={`${node.id}-${remountKey}`}
     >
+      <div className="node-index-badge">
+        [{index}]
+      </div>
 
-      {/* 节点图标 - 左侧 */}
       <div className="node-icon-large">
         {icon}
       </div>
 
-      {/* 节点内容容器 - 包含标题和特殊显示 */}
       <div className="node-content">
-        {/* 节点标题 */}
         <div className="node-title">
           {displayName}
         </div>
@@ -190,11 +153,9 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.current_temperature && node.data.parameters?.target_temperature ? (
               <>
-                {/* 执行后显示温度区间 */}
                 <div className="eis-current">
                   温度：{Math.round(node.data.parameters.current_temperature)}→{Math.round(node.data.parameters.target_temperature)}°C
                 </div>
-                {/* 执行后显示计算时间 */}
                 {node.data.parameters?.calculated_duration && (
                   <div className="eis-frequency">
                     时间：{node.data.parameters.calculated_duration}分钟
@@ -202,7 +163,6 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
                 )}
               </>
             ) : (
-              /* 执行前显示目标温度 */
               <div className="eis-current">
                 温度：{Math.round(node.data.parameters?.target_temperature || 25)}°C
               </div>
@@ -215,17 +175,14 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.current_flow_rate !== undefined && node.data.parameters?.target_flow_rate ? (
               <>
-                {/* 执行后显示流量区间 */}
                 <div className="eis-current">
                   流量：{node.data.parameters.current_flow_rate.toFixed(1)}→{node.data.parameters.target_flow_rate.toFixed(1)} sccm
                 </div>
-                {/* 执行后显示设备信息 */}
                 <div className="eis-frequency">
                   地址{node.data.parameters.device_address} ({node.data.parameters.gas_type})
                 </div>
               </>
             ) : (
-              /* 执行前显示目标流量 */
               <div className="eis-current">
                 流量：{(node.data.parameters?.target_flow_rate || 0).toFixed(1)} sccm
               </div>
@@ -238,17 +195,14 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.eis_current && node.data.parameters?.eis_amplitude ? (
               <>
-                {/* 显示直流偏置电流 */}
                 <div className="eis-current">
                   直流：{node.data.parameters.eis_current}A
                 </div>
-                {/* 显示交流扰动幅值 */}
                 <div className="eis-frequency">
                   扰动：{node.data.parameters.eis_amplitude}A
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -261,17 +215,14 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.eis_potential && node.data.parameters?.eis_amplitude ? (
               <>
-                {/* 显示直流偏置电位 */}
                 <div className="eis-current">
                   直流：{node.data.parameters.eis_potential}V
                 </div>
-                {/* 显示交流扰动幅值 */}
                 <div className="eis-frequency">
                   扰动：{node.data.parameters.eis_amplitude}V
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -284,13 +235,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.measurement_duration ? (
               <>
-                {/* 显示测量时间 */}
                 <div className="eis-current">
                   时间：{node.data.parameters.measurement_duration}s
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -303,17 +252,14 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.polarization_voltage && node.data.parameters?.measurement_duration ? (
               <>
-                {/* 显示直流电压 */}
                 <div className="eis-current">
                   直流：{node.data.parameters.polarization_voltage}V
                 </div>
-                {/* 显示测量时间 */}
                 <div className="eis-frequency">
                   时间：{node.data.parameters.measurement_duration}s
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -326,17 +272,14 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.polarization_current && node.data.parameters?.measurement_duration ? (
               <>
-                {/* 显示直流电流 */}
                 <div className="eis-current">
                   直流：{Math.round(node.data.parameters.polarization_current * 1000)}mA
                 </div>
-                {/* 显示测量时间 */}
                 <div className="eis-frequency">
                   时间：{node.data.parameters.measurement_duration}s
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -349,13 +292,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.start_voltage !== undefined && node.data.parameters?.end_voltage !== undefined ? (
               <>
-                {/* 显示电压范围 */}
                 <div className="eis-current">
                   范围：{node.data.parameters.start_voltage}→{node.data.parameters.end_voltage}V
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -368,13 +309,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.start_current !== undefined && node.data.parameters?.end_current !== undefined ? (
               <>
-                {/* 显示电流范围 */}
                 <div className="eis-current">
                   范围：{Math.round(node.data.parameters.start_current * 1000)}→{Math.round(node.data.parameters.end_current * 1000)}mA
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -387,13 +326,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.start_voltage !== undefined && node.data.parameters?.end_voltage !== undefined ? (
               <>
-                {/* 显示电压范围 */}
                 <div className="eis-current">
                   范围：{node.data.parameters.start_voltage}→{node.data.parameters.end_voltage}V
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -406,13 +343,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           <div className="eis-parameters">
             {node.data.parameters?.duration ? (
               <>
-                {/* 显示等待时间 */}
                 <div className="eis-current">
                   时间：{node.data.parameters.duration}s
                 </div>
               </>
             ) : (
-              /* 参数未设置时显示默认信息 */
               <div className="eis-empty">
                 --
               </div>
@@ -421,12 +356,10 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
         )}
       </div>
 
-      {/* 选中边框 */}
       {isSelected && (
         <div className="node-selection-border" />
       )}
 
-      {/* 连接模式指示器 */}
       {isConnecting && connectionStart === node.id && (
         <div className="connection-start-indicator">
           🔗
@@ -435,13 +368,14 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // 🎯 使用useCallback优化事件处理函数，避免重复创建
+  // 🎯 优化比较逻辑：包括 onNodeDragEnd 的检查，防止闭包过期的额外保障
   return (
     prevProps.node.id === nextProps.node.id &&
     prevProps.node.status === nextProps.node.status &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isConnecting === nextProps.isConnecting &&
     prevProps.connectionStart === nextProps.connectionStart &&
-    JSON.stringify(prevProps.node.data) === JSON.stringify(nextProps.node.data) // 浅比较数据对象
+    prevProps.onNodeDragEnd === nextProps.onNodeDragEnd && // 👈 关键：检查事件处理函数是否变化
+    JSON.stringify(prevProps.node.data) === JSON.stringify(nextProps.node.data)
   );
 });

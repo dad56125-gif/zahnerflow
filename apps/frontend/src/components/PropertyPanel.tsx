@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
-import { useCanvasStore, useWorkflowParameterStore } from '../services/stores';
+import { useCanvasStore } from '../services/stores';
 import { useMfc } from '../modules/mfc';
 import { MfcDeviceInfo } from '../modules/mfc/mfcTypes';
 import Portal from '../components/Portal';
@@ -70,12 +70,6 @@ const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, position
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
     const { selectedNode: node, updateNode } = useCanvasStore();
-    const {
-      currentEditingWorkflowId,
-      setWorkflowDefaultParameters,
-      generateTemporaryWorkflowId,
-      getWorkflowDefaultParameters
-    } = useWorkflowParameterStore();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'data'>('basic');
 
     // Dropdown状态管理
@@ -196,16 +190,8 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
         return;
       }
 
-      // 如果没有当前编辑的工作流，创建一个临时工作流
-      if (!currentEditingWorkflowId) {
-        const tempWorkflowId = generateTemporaryWorkflowId();
-        useWorkflowParameterStore.getState().setCurrentEditingWorkflowId(tempWorkflowId);
-      }
-
-      // 保存参数
-      setWorkflowDefaultParameters(node.type, node.data.parameters);
-
-      // 显示成功消息（可选）
+      // 参数通过工作流定义直接保存到后端，不再使用ParameterStore中间层
+      // 显示提示消息
       console.log(`✅ 已保存 ${node.name} 的参数为工作流默认配置`);
     };
 

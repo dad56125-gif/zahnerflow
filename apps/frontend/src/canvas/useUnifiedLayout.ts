@@ -172,6 +172,16 @@ function calculateSnakeLayout(
       y: startOffset.y + row * (baseNodeHeight + baseSpacing),
     };
 
+    // 🔍 调试日志：显示节点位置计算详情
+    if (process.env.NODE_ENV === 'development' && (index < 5 || index > nodes.length - 5)) {
+      console.log(`布局计算 - 节点 ${node.id} (${node.name}):`, {
+        数组索引: index,
+        计算位置: newPosition,
+        行列信息: { row, col: gridCol, isLeftToRight },
+        总节点数: nodes.length
+      });
+    }
+
     const updatedNode = {
       ...node, // 保留原始ElectrochemicalNode的所有属性
       // 🚫 关键修复：强制覆盖position，不允许任何原有position干扰
@@ -196,17 +206,17 @@ function calculateSnakeLayout(
       }
     };
 
-    // 🔍 开发调试：输出位置重写信息
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`蛇形布局 - 节点 ${node.id} 位置重写:`, {
-        index,
-        row,
-        gridCol,
-        oldPosition: node.position || 'undefined',
-        newPosition,
-        columns
-      });
-    }
+    // 🔍 开发调试：输出位置重写信息（已注释掉）
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log(`蛇形布局 - 节点 ${node.id} 位置重写:`, {
+    //     index,
+    //     row,
+    //     gridCol,
+    //     oldPosition: node.position || 'undefined',
+    //     newPosition,
+    //     columns
+    //   });
+    // }
 
     return updatedNode;
   });
@@ -286,17 +296,17 @@ function calculateGridLayout(
       }
     };
 
-    // 🔍 开发调试：输出位置重写信息
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`网格布局 - 节点 ${node.id} 位置重写:`, {
-        index,
-        row,
-        colIndex,
-        oldPosition: node.position || 'undefined',
-        newPosition,
-        columns
-      });
-    }
+    // 🔍 开发调试：输出位置重写信息（已注释掉）
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log(`网格布局 - 节点 ${node.id} 位置重写:`, {
+    //     index,
+    //     row,
+    //     colIndex,
+    //     oldPosition: node.position || 'undefined',
+    //     newPosition,
+    //     columns
+    //   });
+    // }
 
     return updatedNode;
   });
@@ -385,18 +395,18 @@ function calculateResponsiveLayout(
       }
     };
 
-    // 🔍 开发调试：输出位置重写信息
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`响应式布局 - 节点 ${node.id} 位置重写:`, {
-        index,
-        row,
-        gridCol,
-        oldPosition: node.position || 'undefined',
-        newPosition,
-        actualColumns,
-        zoomLevel
-      });
-    }
+    // 🔍 开发调试：输出位置重写信息（已注释掉）
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log(`响应式布局 - 节点 ${node.id} 位置重写:`, {
+    //     index,
+    //     row,
+    //     gridCol,
+    //     oldPosition: node.position || 'undefined',
+    //     newPosition,
+    //     actualColumns,
+    //     zoomLevel
+    //   });
+    // }
 
     return updatedNode;
   });
@@ -442,8 +452,11 @@ export const useUnifiedLayout = (
     ...config
   }), [config]);
 
+  // 🔍 调试：检查输入输出节点数量
+  console.log(`[useUnifiedLayout] 输入节点数量: ${nodes.length}`);
+
   // 完全控制节点在canvas上的显示方式
-  return useMemo(() => {
+  const result = useMemo(() => {
     // 根据模式选择布局算法
     switch (finalConfig.mode) {
       case 'snake':
@@ -456,4 +469,9 @@ export const useUnifiedLayout = (
         return calculateSnakeLayout(nodes, finalConfig);
     }
   }, [nodes, finalConfig, canvasWidth, zoomLevel]);
+
+  // 🔍 调试：检查输出节点数量
+  console.log(`[useUnifiedLayout] 输出节点数量: ${result.layoutNodes.length}`);
+
+  return result;
 };

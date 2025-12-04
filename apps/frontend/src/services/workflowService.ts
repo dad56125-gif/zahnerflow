@@ -7,7 +7,6 @@ import {
   ExecutionStatus
 } from '@zahnerflow/types';
 import { useCanvasStore, useWorkflowStore } from './stores';
-import { workflowSyncUtil } from './workflowSyncUtil';
 
 // 工作流相关API
 export const workflowService = {
@@ -77,83 +76,32 @@ export const workflowService = {
   }> => {
     return apiHelpers.post('/workflows/validate', { definition });
   },
-
-  // 导出工作流
-  exportWorkflow: (id: string): Promise<{
-    metadata: any;
-    definition: WorkflowDefinition;
-  }> => {
-    return apiHelpers.get(`/workflows/${id}/export`);
-  },
-
-  // 导入工作流
-  importWorkflow: (data: {
-    metadata: any;
-    definition: WorkflowDefinition;
-  }): Promise<Workflow> => {
-    return apiHelpers.post<Workflow>('/workflows/import', data);
-  },
 };
 
 // 执行相关API
 export const executionService = {
-  // 执行工作流 - 先同步前端参数到后端
-  executeWorkflow: async (workflowId: string, params?: {
-    parameters?: Record<string, any>;
-    priority?: 'low' | 'normal' | 'high';
-  }): Promise<{
+  /**
+   * 执行工作流
+   * - 支持Create if Null: workflowId为null时后端创建新工作流
+   * - 直接传递nodes数组，不经过前端同步
+   */
+  executeWorkflow: async (
+    workflowId: string | null,
+    nodes: any[],
+    params?: {
+      priority?: 'low' | 'normal' | 'high';
+    }
+  ): Promise<{
     executionId: string;
+    workflowId: string;
     status: ExecutionStatus;
     startTime: Date;
-    error?: string;
-    results?: any[];
   }> => {
-    // 1. 获取前端当前的工作流状态
-    const { nodes } = useCanvasStore.getState();
-    const { currentWorkflow } = useWorkflowStore.getState();
-
-    // 2. 如果是当前正在编辑的工作流，先同步参数到后端
-    if (currentWorkflow && currentWorkflow.id === workflowId) {
-      try {
-        console.log('[executionService] 正在同步前端参数到后端工作流...');
-
-        // 构建更新的工作流定义
-        const updatedDefinition: WorkflowDefinition = {
-          id: workflowId,
-          name: currentWorkflow.name,
-          description: currentWorkflow.description || '',
-          ownerName: currentWorkflow.ownerName,
-          individualName: currentWorkflow.individualName,
-          nodes: nodes.map(node => ({
-            id: node.id,
-            type: node.type,
-            name: node.name,
-            position: node.position,
-            data: node.data,
-            // 移除config字段，只使用data.parameters
-            input: node.input,
-            output: node.output,
-            status: node.status || 'ready'
-          })),
-          // 移除edges字段，不再使用
-          version: 1.0 // 使用固定版本号
-        };
-
-        // 同步到后端
-        await workflowService.updateWorkflow(workflowId, {
-          definition: updatedDefinition
-        });
-
-        console.log('[executionService] 前端参数已同步到后端工作流');
-      } catch (error) {
-        console.error('[executionService] 同步前端参数失败:', error);
-        // 同步失败不影响执行，但给出警告
-        console.warn('[executionService] 将使用后端存储的工作流定义执行，可能包含过时参数');
-      }
-    }
-
-    // 3. 执行工作流
-    return apiHelpers.post(`/executions`, { workflowId, ...params });
+    return apiHelpers.post('/executions', {
+      workflowId,
+      nodes,
+      ...params
+    });
   },
 
   // 获取执行状态
