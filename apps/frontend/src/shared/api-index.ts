@@ -5,8 +5,8 @@
  */
 
 // 导出设备API类
-export { FurnaceApi } from '../../modules/furnace/furnaceApi';
-export { MfcApi } from '../../modules/mfc/mfcApi';
+export { FurnaceApi } from '../modules/furnace/furnaceApi';
+export { MfcApi } from '../modules/mfc/mfcApi';
 
 // 重新导出类型定义
 export type {

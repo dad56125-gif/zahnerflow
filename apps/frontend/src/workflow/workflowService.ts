@@ -60,23 +60,7 @@ export const workflowService = {
     return apiHelpers.post<Workflow>(`/workflows/${id}/duplicate`);
   },
 
-  // 验证工作流
-  validateWorkflow: (definition: WorkflowDefinition): Promise<{
-    isValid: boolean;
-    errors: Array<{
-      type: string;
-      message: string;
-      nodeId?: string;
-    }>;
-    warnings: Array<{
-      type: string;
-      message: string;
-      nodeId?: string;
-    }>;
-  }> => {
-    return apiHelpers.post('/workflows/validate', { definition });
-  },
-};
+  };
 
 // 执行相关API
 export const executionService = {

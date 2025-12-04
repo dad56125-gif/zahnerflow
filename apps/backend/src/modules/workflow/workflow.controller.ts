@@ -1,8 +1,12 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { WorkflowService } from './workflow.service';
 import { WorkflowStorageService } from './workflow-storage.service';
-import { Workflow, WorkflowDefinition, ValidationResult } from '../../interfaces/module-interfaces';
+// ❌ 删除 WorkflowDefinition
+import { Workflow, ValidationResult } from '../../interfaces/module-interfaces';
 import { PaginatedResponse } from '@zahnerflow/types';
+
+// 定义一个创建用的 DTO 类型
+type CreateWorkflowDto = Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>;
 
 @Controller('api/workflows')
 export class WorkflowController {
@@ -13,7 +17,7 @@ export class WorkflowController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createWorkflow(@Body() definition: WorkflowDefinition): Promise<Workflow> {
+  async createWorkflow(@Body() definition: CreateWorkflowDto): Promise<Workflow> {
     return this.workflowService.createWorkflow(definition);
   }
 
@@ -23,7 +27,7 @@ export class WorkflowController {
   }
 
   @Put(':id')
-  async updateWorkflow(@Param('id') id: string, @Body() updates: Partial<WorkflowDefinition>): Promise<Workflow> {
+  async updateWorkflow(@Param('id') id: string, @Body() updates: Partial<CreateWorkflowDto>): Promise<Workflow> {
     return this.workflowService.updateWorkflow(id, updates);
   }
 
@@ -63,14 +67,10 @@ export class WorkflowController {
 
   @Post('validate')
   @HttpCode(HttpStatus.OK)
-  async validateWorkflow(@Body() definition: WorkflowDefinition): Promise<ValidationResult> {
+  async validateWorkflow(@Body() definition: CreateWorkflowDto): Promise<ValidationResult> {
     return this.workflowService.validateWorkflow(definition);
   }
 
-  /**
-   * 批量更新节点参数
-   * body: { key: string; value: any; nodeType?: string }
-   */
   @Post(':id/params/batch-update')
   @HttpCode(HttpStatus.OK)
   async batchUpdateNodeParam(
@@ -80,6 +80,7 @@ export class WorkflowController {
     if (!body || !body.key) {
       throw new Error('Missing parameter: key');
     }
+    // ✅ 这个方法现在需要在 Service 里补回来
     return this.workflowService.batchUpdateNodeParam(id, body.key, body.value, body.nodeType);
   }
 
@@ -96,6 +97,7 @@ export class WorkflowController {
     @Param('id') id: string,
     @Body() body?: { name?: string }
   ): Promise<Workflow> {
+    // ✅ 这个方法现在需要在 Service 里补回来
     return this.workflowService.duplicateWorkflow(id, body?.name);
   }
 }

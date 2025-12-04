@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { api } from '../services/api';
-import { useUser, FilePathConfig } from '../contexts/UserContext';
-import { useOnClickOutside } from '../services/hooks/useOnClickOutside';
+import { api } from '../shared/api';
+import { useUser, FilePathConfig } from '../shared/UserContext';
+import { useOnClickOutside } from '../shared/useOnClickOutside';
 import Portal from '../components/Portal';
 
 interface FilePathManagerUIProps {

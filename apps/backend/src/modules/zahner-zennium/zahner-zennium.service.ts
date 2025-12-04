@@ -9,20 +9,18 @@ import { MeasurementType } from '@zahnerflow/types';
 @Injectable()
 export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   readonly name = 'zahner-zennium';
-  readonly version = '2.5.0';
+  readonly version = '2.5.1'; // Bump version
   readonly dependencies = ['HttpModule'];
 
   private readonly logger = new Logger(ZahnerZenniumService.name);
   private readonly moduleName = 'ZahnerZenniumService';
 
-  // 状态管理 (原 BaseDeviceService 的功能)
   private connected = false;
   private busy = false;
   private lastActivity = new Date();
   private error?: string;
 
-  // 配置
-  private readonly timeoutMs = 900000; // 15分钟
+  private readonly timeoutMs = 900000;
   private readonly endpoint: string;
 
   constructor(
@@ -34,7 +32,6 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    // 启动时仅做健康检查，不自动连接
     await this.healthCheck().catch(e =>
       this.log('enableWarn', `FastAPI 服务检查失败: ${e.message}`)
     );
@@ -46,7 +43,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // ---------- 状态管理辅助方法 ----------
+  // ---------- 状态管理 ----------
 
   private updateStatus(connected: boolean, busy?: boolean, error?: string) {
     const oldConnected = this.connected;
@@ -57,12 +54,10 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     if (error !== undefined) this.error = error;
     this.lastActivity = new Date();
 
-    // 只在状态真正发生变化时才记录日志
     if (oldConnected !== connected || oldBusy !== this.busy) {
-      this.logger.log(`设备状态变化 ${this.name} ${oldConnected}->${connected}, ${oldBusy}->${this.busy}`);
+      this.logger.log(`Device status change: ${this.name} Conn:${oldConnected}->${connected}, Busy:${oldBusy}->${this.busy}`);
     }
 
-    // 发送状态变更事件
     this.eventBus.emit('device.status.changed', {
       deviceType: this.name,
       oldStatus: { connected: oldConnected, busy: oldBusy },
@@ -91,13 +86,13 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   }
 
   async connect(host?: string): Promise<void> {
-    this.log('enableLog', '正在连接 Zahner 设备...');
+    this.log('enableLog', `Connecting to Zahner at ${host || 'localhost'}...`);
 
     try {
-      // 1. 检查 FastAPI
-      if (!(await this.healthCheck())) throw new Error('FastAPI 服务不可用');
+      if (!(await this.healthCheck())) {
+        throw new Error(`Zahner Middleware (FastAPI) at ${this.endpoint} is not reachable.`);
+      }
 
-      // 2. 连接硬件
       const res = await firstValueFrom(
         this.httpService.post(`${this.endpoint}/connect`,
           { host: host || 'localhost' },
@@ -107,7 +102,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
 
       if (res?.data?.status === 'success') {
         this.updateStatus(true, false);
-        this.log('enableLog', '设备连接成功');
+        this.log('enableLog', 'Connection successful');
         this.eventBus.emit('device.connected', {
           deviceType: 'zahner-zennium',
           endpoint: this.endpoint,
@@ -115,44 +110,47 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
           context: { source: 'zahner-service' }
         });
       } else {
-        throw new Error(res?.data?.error || '未知错误');
+        throw new Error(res?.data?.error || 'Unknown connection error from Python backend');
       }
     } catch (error: any) {
-      this.updateStatus(false, false, error.message);
-      this.log('enableError', `连接失败: ${error.message}`);
+      const errMsg = error.response?.data?.error || error.message;
+      this.updateStatus(false, false, errMsg);
+      this.log('enableError', `Connection failed: ${errMsg}`);
+      
       this.eventBus.emit('device.error', {
         deviceType: 'zahner-zennium',
-        error: error.message,
-        endpoint: this.endpoint,
+        error: errMsg,
         timestamp: new Date(),
         context: { source: 'zahner-service' }
       });
-      throw error;
+      
+      // ✅ 关键：必须抛出错误，让上层感知
+      throw new Error(`Zahner Connection Error: ${errMsg}`);
     }
   }
 
   async disconnect(): Promise<void> {
     if (!this.connected) return;
-
     try {
-      // HTTP 无状态，主要更新本地状态
       this.updateStatus(false, false);
-      this.log('enableLog', '设备已断开');
+      this.log('enableLog', 'Device disconnected');
       this.eventBus.emit('device.disconnected', {
         deviceType: 'zahner-zennium',
         timestamp: new Date(),
         context: { source: 'zahner-service' }
       });
     } catch (error: any) {
-      this.log('enableError', `断开失败: ${error.message}`);
+      this.log('enableError', `Disconnect failed: ${error.message}`);
     }
   }
 
-  // 执行测量
   async performMeasurement(measurementType: string, parameters: Record<string, any>, nodeId?: string, executionId?: string): Promise<any> {
-    if (!this.connected) throw new Error('设备未连接');
+    if (!this.connected) {
+      // ✅ 关键：未连接直接报错
+      throw new Error('Zahner device is NOT connected. Cannot start measurement.');
+    }
 
-    this.updateStatus(true, true); // Set Busy
+    this.updateStatus(true, true); // Busy
     this.eventBus.emit('measurement.started', {
       measurementType, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
     });
@@ -166,31 +164,39 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       );
 
       const result = response?.data;
+      
+      // 检查 Python 端是否返回逻辑错误
+      if (result && result.status === 'error') {
+         throw new Error(result.error || 'Unknown measurement error');
+      }
 
       this.eventBus.emit('measurement.completed', {
         measurementType, result, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
       });
 
       return result;
+
     } catch (error: any) {
+      const errMsg = error.response?.data?.error || error.message;
+      
       this.eventBus.emit('measurement.failed', {
-        measurementType, error: error.message, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
+        measurementType, error: errMsg, parameters, nodeId, executionId, timestamp: new Date(), context: { source: 'zahner-service' }
       });
-      throw error;
+      
+      // ✅ 关键：抛出带具体信息的错误
+      throw new Error(`Measurement Failed (${measurementType}): ${errMsg}`);
     } finally {
-      this.updateStatus(true, false); // Clear Busy
+      this.updateStatus(true, false); // Idle
     }
   }
 
-  // ---------- 辅助接口 ----------
+  // ---------- 适配接口 ----------
 
   async getDeviceStatus(): Promise<DeviceStatus> {
-    // 实时检查一次健康状况
     if (this.connected) {
         const healthy = await this.healthCheck();
-        if (!healthy) this.updateStatus(false, false, '连接丢失');
+        if (!healthy) this.updateStatus(false, false, 'Connection lost to middleware');
     }
-
     return {
       connected: this.connected,
       busy: this.busy,
@@ -200,37 +206,38 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async calibrate(): Promise<CalibrationResult> {
-    const result = await this.performMeasurement('calibration', {}, 'cal-node', 'cal-exec');
-    return {
-      success: result.status === 'success',
-      timestamp: new Date(),
-      parameters: result.data || {}
-    };
+  // ✅ 修复：Explicitly handle startup errors
+  async startup(p: any) { 
+    try {
+      await this.connect(p?.host);
+      return { status: 'success' };
+    } catch (e: any) {
+      // 这里的错会被 ExecutionService 捕获
+      throw new Error(`Startup Sequence Failed: ${e.message}`);
+    }
   }
 
+  async shutdown() { 
+    await this.disconnect();
+    return { status: 'success' };
+  }
+
+  // ... (Other helpers unchanged)
+  async calibrate(): Promise<CalibrationResult> {
+    const result = await this.performMeasurement('calibration', {}, 'cal-node', 'cal-exec');
+    return { success: result.status === 'success', timestamp: new Date(), parameters: result.data || {} };
+  }
   async getDeviceOptions(): Promise<any> {
     try {
       const res = await firstValueFrom(this.httpService.get(`${this.endpoint}/options`));
       return res.data;
     } catch {
-      return {
-        potentiostat_modes: ['POTMODE_POTENTIOSTATIC'], // Fallback
-        supported_measurements: Object.values(MeasurementType)
-      };
+      return { potentiostat_modes: ['POTMODE_POTENTIOSTATIC'], supported_measurements: Object.values(MeasurementType) };
     }
   }
-
-  // 兼容旧接口
   async health() { return this.getDeviceStatus(); }
-  async startup(p: any) { return this.connect(p?.host).then(() => ({ status: 'success' })); }
-  async shutdown() { return this.disconnect().then(() => ({ status: 'success' })); }
   async checkConnection() { return this.connected; }
   async getModuleStatus(): Promise<ModuleStatus> {
-      return {
-          state: this.connected ? 'running' : 'stopped',
-          health: this.connected ? 'healthy' : 'unhealthy',
-          lastCheck: new Date()
-      };
+      return { state: this.connected ? 'running' : 'stopped', health: this.connected ? 'healthy' : 'unhealthy', lastCheck: new Date() };
   }
 }

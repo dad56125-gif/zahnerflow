@@ -2,7 +2,7 @@ import React from 'react';
 import { WorkstationType } from '../types/nodes';
 import { useCanvasStore } from '../canvas/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
-import { FilePathConfig } from '../contexts/UserContext';
+import { FilePathConfig } from '../shared/UserContext';
 import './FilePathManagerUI.css';
 
 interface ToolbarProps {

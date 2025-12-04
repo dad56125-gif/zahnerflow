@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../shared/UserContext';
 import { Portal } from './common/Portal';
 
 interface UserSelectorProps {

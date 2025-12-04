@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { UserSelector } from './UserSelector';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../shared/UserContext';
 import { Portal } from './common/Portal';
 import './UserSelector.css';
 

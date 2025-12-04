@@ -1,233 +1,202 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { IWorkflowModule, Workflow, WorkflowDefinition, ValidationResult } from '../../interfaces/module-interfaces';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { IWorkflowModule, Workflow, WorkflowNode, ValidationResult } from '../../interfaces/module-interfaces';
 import { WorkflowStorageService } from './workflow-storage.service';
 
 @Injectable()
 export class WorkflowService implements IWorkflowModule, OnModuleInit {
   readonly name = 'workflow';
-  readonly version = '1.0.0';
+  readonly version = '2.0.0';
   readonly dependencies = [];
+  private readonly logger = new Logger(WorkflowService.name);
 
-  // 保持内存缓存，为了极致的读取性能
+  // 内存缓存
   private workflows = new Map<string, Workflow>();
 
   constructor(
     private readonly workflowStorage: WorkflowStorageService,
-    // 注意：这里不再需要注入 DbService，实现了彻底解耦
   ) {}
 
   async onModuleInit(): Promise<void> {
-    // ✅ 关键修复：强制先初始化表结构
     this.workflowStorage.ensureTables();
-
-    // ✅ 然后再读取数据
     await this.loadWorkflowsFromStorage();
   }
 
   private async loadWorkflowsFromStorage(): Promise<void> {
     try {
       this.workflows = await this.workflowStorage.loadAllWorkflows();
-      console.log(`[WorkflowService] Loaded ${this.workflows.size} workflows from SQLite.`);
+      this.logger.log(`Loaded ${this.workflows.size} workflows from storage.`);
     } catch (error) {
-      console.error('Failed to load workflows from storage:', error);
+      this.logger.error('Failed to load workflows', error);
       this.workflows = new Map();
     }
   }
 
-  async createWorkflow(definition: WorkflowDefinition): Promise<Workflow> {
-    const validation = this.validateWorkflow(definition);
+  // --- 核心方法：创建工作流 ---
+  async createWorkflow(data: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workflow> {
+    // 1. 校验
+    const validation = this.validateWorkflow(data);
     if (!validation.valid) {
       throw new Error(`Workflow validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // 2. ID 生成 (Workflow ID & Node IDs)
     const id = this.generateWorkflowId();
+    
+    // 处理节点 ID：如果是临时 ID (temp_) 则重新生成，否则保留
+    const processedNodes = data.nodes.map(node => ({
+      ...node,
+      id: (!node.id || node.id.startsWith('temp_')) ? this.generateNodeId() : node.id
+    }));
 
-    // 为所有临时节点ID生成真正的ID
-    const nodeIdMap = new Map<string, string>();
-    const updatedNodes = definition.nodes.map(node => {
-      const newId = node.id.startsWith('temp_node_') ? this.generateNodeId() : node.id;
-      nodeIdMap.set(node.id, newId);
-      return { ...node, id: newId };
-    });
-
-    const updatedDefinition = {
-      ...definition,
-      id,
-      nodes: updatedNodes
-    };
-
+    // 3. 构建完整对象
     const workflow: Workflow = {
+      ...data,
       id,
-      name: definition.name,
-      description: definition.description,
-      ownerName: definition.ownerName,
-      individualName: definition.individualName,
-      definition: updatedDefinition,
-      version: 1,
+      nodes: processedNodes,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    // 1. 更新内存
+    // 4. 保存
     this.workflows.set(id, workflow);
-    // 2. 持久化到 SQLite
     await this.workflowStorage.saveWorkflow(workflow);
     
+    this.logger.log(`Created workflow ${id} with ${workflow.nodes.length} nodes`);
     return workflow;
   }
+// --- [补全缺失方法] ---
 
-  async updateWorkflow(id: string, updates: Partial<WorkflowDefinition>): Promise<Workflow> {
+  async duplicateWorkflow(id: string, newName?: string): Promise<Workflow> {
+    const original = await this.getWorkflow(id);
+    
+    // 生成新 ID
+    const newId = this.generateWorkflowId();
+    
+    // 深拷贝 nodes 并重生成 node IDs
+    const newNodes = original.nodes.map(node => ({
+      ...node,
+      id: this.generateNodeId()
+    }));
+
+    const clonedWorkflow: Workflow = {
+      id: newId,
+      name: newName || `${original.name} (Copy)`,
+      // description 等其他字段被移除了，不用管
+      ownerName: original.ownerName,
+      individualName: original.individualName,
+      nodes: newNodes,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    this.workflows.set(newId, clonedWorkflow);
+    await this.workflowStorage.saveWorkflow(clonedWorkflow);
+    
+    return clonedWorkflow;
+  }
+
+  async batchUpdateNodeParam(id: string, key: string, value: any, nodeType?: string): Promise<Workflow> {
+    const wf = await this.getWorkflow(id);
+    
+    let updated = false;
+    for (const node of wf.nodes) {
+      if (nodeType && node.type !== nodeType) continue;
+      
+      if (!node.config) node.config = {};
+      node.config[key] = value;
+      updated = true;
+    }
+
+    if (updated) {
+      wf.updatedAt = new Date();
+      this.workflows.set(id, wf);
+      await this.workflowStorage.updateWorkflow(id, wf);
+    }
+    
+    return wf;
+  }
+
+  // --- [补全结束] ---
+  async updateWorkflow(id: string, updates: Partial<Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Workflow> {
     const current = await this.getWorkflow(id);
+    
+    // 简单合并
+    const updatedWorkflow: Workflow = {
+      ...current,
+      ...updates,
+      updatedAt: new Date()
+    };
 
-    // 更新属性逻辑保持不变...
-    if (typeof updates.name === 'string') {
-      current.name = updates.name;
-      current.definition.name = updates.name;
-    }
-    if (typeof updates.description === 'string') {
-      current.description = updates.description;
-      current.definition.description = updates.description;
-    }
-    if (typeof updates.ownerName !== 'undefined') {
-      current.ownerName = updates.ownerName;
-      current.definition.ownerName = updates.ownerName;
-    }
-    if (typeof updates.individualName !== 'undefined') {
-      current.individualName = updates.individualName;
-      current.definition.individualName = updates.individualName;
-    }
-
+    // 如果更新了节点，重新校验
     if (updates.nodes) {
-      const updatedDefinition: WorkflowDefinition = {
-        ...current.definition,
-        nodes: updates.nodes || current.definition.nodes
-      };
-
-      const validation = this.validateWorkflow(updatedDefinition);
-      if (!validation.valid) {
-        throw new Error(`Workflow validation failed: ${validation.errors.join(', ')}`);
-      }
-
-      current.definition = updatedDefinition;
+      const validation = this.validateWorkflow(updatedWorkflow);
+      if (!validation.valid) throw new Error(`Invalid workflow update: ${validation.errors.join(', ')}`);
     }
 
-    current.version += 1;
-    current.updatedAt = new Date();
-
-    this.workflows.set(id, current);
-    await this.workflowStorage.updateWorkflow(id, current);
-    return current;
+    this.workflows.set(id, updatedWorkflow);
+    await this.workflowStorage.updateWorkflow(id, updatedWorkflow);
+    return updatedWorkflow;
   }
 
   async deleteWorkflow(id: string): Promise<void> {
-    // 先查是否存在
-    const exists = this.workflows.has(id) || (await this.workflowStorage.getWorkflow(id));
-    if (!exists) throw new Error(`Workflow ${id} not found`);
-    
+    if (!this.workflows.has(id)) throw new Error(`Workflow ${id} not found`);
     this.workflows.delete(id);
     await this.workflowStorage.deleteWorkflow(id);
   }
 
   async getWorkflow(id: string): Promise<Workflow> {
-    // 优先查内存
-    const inMem = this.workflows.get(id);
-    if (inMem) return inMem;
-    
-    // 内存没有查数据库
+    const wf = this.workflows.get(id);
+    if (wf) return wf;
+
     const fromStore = await this.workflowStorage.getWorkflow(id);
     if (!fromStore) throw new Error(`Workflow ${id} not found`);
     
-    // 补回内存
     this.workflows.set(id, fromStore);
     return fromStore;
   }
 
   async listWorkflows(): Promise<Workflow[]> {
-    if (this.workflows.size === 0) await this.loadWorkflowsFromStorage();
     return Array.from(this.workflows.values())
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  async duplicateWorkflow(id: string, newName?: string): Promise<Workflow> {
-    const original = await this.getWorkflow(id);
-    const cloned: WorkflowDefinition = {
-      id: '',
-      name: newName || `${original.name} (Copy)`,
-      description: original.definition.description || '',
-      ownerName: original.ownerName,
-      individualName: original.individualName,
-      nodes: JSON.parse(JSON.stringify(original.definition.nodes)),
-      version: 1,
-    };
-
-    const idMap = new Map<string, string>();
-    cloned.nodes.forEach((n: any) => {
-      const nid = this.generateNodeId();
-      idMap.set(n.id, nid);
-      n.id = nid;
-    });
-
-    return this.createWorkflow(cloned);
-  }
-
-  // 验证逻辑保持完全不变
-  validateWorkflow(definition: WorkflowDefinition): ValidationResult {
+  // 验证逻辑 (针对简化后的结构)
+  validateWorkflow(data: Partial<Workflow>): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    if (!definition.description?.trim()) warnings.push('Workflow description is recommended');
-
-    if (!Array.isArray(definition.nodes) || definition.nodes.length === 0) {
+    if (!data.name?.trim()) errors.push('Workflow name is required');
+    
+    if (!Array.isArray(data.nodes) || data.nodes.length === 0) {
       errors.push('Workflow must have at least one node');
     } else {
-      definition.nodes.forEach((node: any, idx: number) => {
-        if (!node.id?.trim()) errors.push(`Node ${idx + 1} must have an ID`);
-        if (!node.type?.trim()) errors.push(`Node ${node.id || idx + 1} must have a type`);
-        if (!node.name?.trim()) warnings.push(`Node ${node.id || idx + 1} should have a name`);
+      data.nodes.forEach((node, idx) => {
+        if (!node.type) errors.push(`Node at index ${idx} missing type`);
+        // config 是 Record<string, any>，不需要严格校验内容，只要存在即可
+        if (!node.config) warnings.push(`Node ${node.id || idx} has no config`);
       });
     }
 
     return { valid: errors.length === 0, errors, warnings };
   }
 
-  // 【重构点】生成 Workflow ID：改为调用 storage 的原子计数器
+  // --- ID 生成器 (封装了 Storage Counter) ---
   private generateWorkflowId(): string {
     try {
-      // 直接从 DB 获取下一个数字，如 101
-      const currentCount = this.workflowStorage.getNextCounter('workflow');
-      // 格式化为 workflow_00000101
-      return `workflow_${String(currentCount).padStart(8, '0')}`;
-    } catch (error) {
-      console.warn('Failed to generate workflow ID with DB counter, falling back to timestamp:', error);
-      return `workflow_${Date.now()}`;
+      const count = this.workflowStorage.getNextCounter('workflow');
+      return `wf_${String(count).padStart(6, '0')}`;
+    } catch (e) {
+      return `wf_${Date.now()}`;
     }
   }
 
-  // 【重构点】生成 Node ID：改为调用 storage 的原子计数器
   private generateNodeId(): string {
     try {
-      const currentCount = this.workflowStorage.getNextCounter('node');
-      return `node_${String(currentCount).padStart(8, '0')}`;
-    } catch (error) {
-      console.warn('Failed to generate node ID with DB counter, falling back to timestamp:', error);
-      return `node_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const count = this.workflowStorage.getNextCounter('node');
+      return `n_${String(count).padStart(8, '0')}`;
+    } catch (e) {
+      return `n_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
     }
-  }
-
-  async batchUpdateNodeParam(id: string, key: string, value: any, nodeType?: string): Promise<Workflow> {
-    const wf = await this.getWorkflow(id);
-    const nodes = wf.definition?.nodes || [];
-    for (const node of nodes) {
-      if (nodeType && node.type !== nodeType) continue;
-      if (!node.config || typeof node.config !== 'object') node.config = {} as any;
-      (node.config as any)[key] = value;
-    }
-    wf.definition.nodes = nodes;
-    wf.version += 1;
-    wf.updatedAt = new Date();
-    this.workflows.set(id, wf);
-    await this.workflowStorage.updateWorkflow(id, wf);
-    return wf;
   }
 
   getStatus() {

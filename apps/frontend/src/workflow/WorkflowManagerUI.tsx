@@ -6,14 +6,12 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ElectrochemicalNode } from '@/types/nodes';
 import { useCanvasStore } from '@/canvas/canvasStore';
 import { useWorkflowStore } from '@/workflow';
-import { useSimpleLoopDetection } from '../../../canvas/useSimpleLoopDetection';
-import WorkflowManager from './WorkflowManager';
-import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';
-import { api } from '@/services/api';
-import { useUser } from '@/contexts/UserContext';
+import { useSimpleLoopDetection } from '../canvas/useSimpleLoopDetection';
+import { useOnClickOutside } from '../shared/useOnClickOutside';
+import { api } from '../shared/api';
+import { useUser } from '../shared/UserContext';
 import Portal from '@/components/Portal';
 
 // 工作流管理UI属性接口

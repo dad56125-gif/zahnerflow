@@ -8,18 +8,20 @@ export class ExecutionController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createExecution(@Body() body: { workflowId: string }): Promise<ExecutionResult> {
-    return this.executionService.executeWorkflow(body.workflowId);
+  async createExecution(@Body() body: { workflowId: string | null; nodes?: any[] }): Promise<ExecutionResult> {
+    return this.executionService.executeWorkflow(body.workflowId, body.nodes);
   }
 
   @Get()
   async getAllExecutions(): Promise<ExecutionStatus[]> {
+    // ✅ 需要在 Service 补回此方法
     return this.executionService.getAllExecutions();
   }
 
   @Get('hooks/rules')
   @HttpCode(HttpStatus.OK)
   getHookRules() {
+    // ✅ 需要在 Service 补回此方法
     return { items: this.executionService.getLoadedHookRules() };
   }
 
@@ -53,9 +55,13 @@ export class ExecutionController {
   @HttpCode(HttpStatus.OK)
   async resetExecution() {
     const result = await this.executionService.resetExecution();
+    // ✅ 修复：Service 返回 { success, error }，这里适配一下
+    if (!result.success) {
+       throw new Error(result.error || 'Reset failed');
+    }
     return {
-      success: result.success,
-      message: result.message,
+      success: true,
+      message: 'Execution reset successfully',
       timestamp: new Date()
     };
   }

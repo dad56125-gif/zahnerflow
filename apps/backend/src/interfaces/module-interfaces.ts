@@ -1,8 +1,10 @@
 // src/interfaces/module-interfaces.ts
 
 // ==========================================
-// 1. 基础状态定义
+// 1. 通用状态定义
 // ==========================================
+
+export type RunState = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'success';
 
 export interface ModuleStatus {
   state: 'initialized' | 'running' | 'stopped' | 'error';
@@ -20,77 +22,60 @@ export interface DeviceStatus {
 }
 
 // ==========================================
-// 2. 核心业务数据模型 (Data Models)
+// 2. 核心业务数据模型 (Workflow)
 // ==========================================
-
-// 工作流定义 (对应 JSON 结构)
-export interface WorkflowDefinition {
-  id: string;
-  name: string;
-  description: string;
-  ownerName?: string;
-  individualName?: string;
-  nodes: WorkflowNode[];
-  version: number;
-}
-
-// 工作流实例 (对应 DB 记录)
-export interface Workflow {
-  id: string;
-  name: string;
-  description: string;
-  ownerName?: string;
-  individualName?: string;
-  definition: WorkflowDefinition;
-  version: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 export interface WorkflowNode {
   id: string;
   type: string;
+  // name 移除
+  // position 移除
+  config: Record<string, any>; // 统一参数存放处
+}
+
+// 单一数据源：DB存储结构 = 业务传输对象
+export interface Workflow {
+  id: string;
   name: string;
-  config: any;
-  position: { x: number; y: number };
+  ownerName?: string;
+  individualName?: string;
+  nodes: WorkflowNode[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-
 // ==========================================
-// 3. 执行结果定义
+// 3. 执行结果定义 (Execution)
 // ==========================================
 
-export interface ExecutionResult {
-  executionId: string;
-  status: 'success' | 'failed' | 'running' | 'paused';
-  startTime: Date;
-  endTime?: Date;
-  error?: string;
-  results?: any[];
-}
-
-export interface ExecutionStatus {
+export interface ExecutionBase {
   executionId: string;
   workflowId: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
-  currentNode?: string;     // 可选
-  completedNodes?: string[]; // 可选
-  error?: string;
+  status: RunState;
   startTime: Date;
   endTime?: Date;
+  error?: string;
+}
+
+export interface ExecutionStatus extends ExecutionBase {
+  currentNode?: string;
+  completedNodes?: string[];
   progress?: number;
 }
 
+export interface ExecutionResult extends ExecutionBase {
+  results?: Record<string, any>[];
+}
+
 // ==========================================
-// 4. 测量与校准 (Zahner 专用)
+// 4. 测量与校准
 // ==========================================
 
 export interface MeasurementResult {
   success: boolean;
   data: any;
   metadata: {
-    startTime: Date;
-    endTime: Date;
+    timestamp: Date;
     duration: number;
     device: string;
     measurement_type?: string;
@@ -106,8 +91,14 @@ export interface CalibrationResult {
 }
 
 // ==========================================
-// 5. 模块行为接口 (只保留核心)
+// 5. 模块行为接口
 // ==========================================
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
 
 export interface IModuleInterface {
   name: string;
@@ -117,24 +108,21 @@ export interface IModuleInterface {
 }
 
 export interface IExecutionModule extends IModuleInterface {
-  executeWorkflow(workflowId: string): Promise<ExecutionResult>;
+  // 支持直接传入 nodes 进行执行（Create-if-Null 模式）
+  executeWorkflow(workflowId: string | null, nodes?: WorkflowNode[]): Promise<ExecutionResult>;
   pauseExecution(executionId: string): Promise<void>;
   resumeExecution(executionId: string): Promise<void>;
   cancelExecution(executionId: string): Promise<void>;
-  getExecutionStatus(executionId: string): Promise<ExecutionStatus>; // 返回值类型放宽
+  getExecutionStatus(executionId: string): Promise<ExecutionStatus>;
 }
 
 export interface IWorkflowModule extends IModuleInterface {
-  createWorkflow(definition: WorkflowDefinition): Promise<Workflow>;
-  updateWorkflow(id: string, definition: WorkflowDefinition): Promise<Workflow>;
+  // 创建只需要核心数据，ID和时间由后端生成
+  createWorkflow(data: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workflow>;
+  
+  updateWorkflow(id: string, data: Partial<Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Workflow>;
   deleteWorkflow(id: string): Promise<void>;
   getWorkflow(id: string): Promise<Workflow>;
   listWorkflows(): Promise<Workflow[]>;
-  validateWorkflow(definition: WorkflowDefinition): ValidationResult;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
+  validateWorkflow(data: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): ValidationResult;
 }
