@@ -2,11 +2,23 @@
  * Furnace 模块类型定义
  */
 
-// 基础类型定义（如果 @zahnerflow/types 不可用）
-export interface ProgramSegment {
-  id: number;
-  temperature: number; // 温度 (℃)
-  time: number;       // 时间 (分钟)
+// 从 @zahnerflow/types 导入基础类型
+export type {
+  ProgramSegment,
+  FurnacePreset,
+  FurnaceSample
+} from '@zahnerflow/types';
+
+// 兼容性接口 - 使用 timestamp 而不是 ts
+export interface FurnaceSampleWithTimestamp {
+  timestamp: string;      // ISO 时间戳
+  temperature: number;    // Process Value 实测温度（℃）
+  sv?: number;            // Set Value 目标温度（℃）
+  mv?: number;            // Manipulated Value 输出百分比（0-100）
+  segment?: number;       // 当前段号
+  segmentTime?: number;   // 当前段已运行时间（秒）
+  segmentTimeSet?: number;// 当前段设定时间（秒）
+  status_code?: number;   // 设备状态码 (0=运行, 4=暂停, 12=停止)
 }
 
 export interface FurnacePresetMeta {
@@ -14,18 +26,6 @@ export interface FurnacePresetMeta {
   created_at: string;
   updated_at: string;
   summary?: string;
-}
-
-export interface FurnacePreset extends FurnacePresetMeta {
-  segments: ProgramSegment[];
-}
-
-export interface FurnaceSample {
-  timestamp: string;
-  temperature: number;
-  sv?: number;
-  mv?: number;
-  status_code?: number;  // 设备状态码 (0=运行, 4=暂停, 12=停止)
 }
 
 export interface FurnaceStatus {

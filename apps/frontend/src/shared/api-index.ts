@@ -8,10 +8,6 @@
 export { FurnaceApi } from '../../modules/furnace/furnaceApi';
 export { MfcApi } from '../../modules/mfc/mfcApi';
 
-// 导出ZAHNER通信API
-export { default as zahnerApi } from './zahnerApi';
-export { apiHelpers } from './zahnerApi';
-
 // 重新导出类型定义
 export type {
   ProgramSegment,

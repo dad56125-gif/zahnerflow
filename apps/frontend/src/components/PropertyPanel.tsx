@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode, getNodeConfig, WorkstationType } from '../types/nodes';
-import { useCanvasStore } from '../services/stores';
+import { useCanvasStore } from '../workflow';
 import { useMfc } from '../modules/mfc';
 import { MfcDeviceInfo } from '../modules/mfc/mfcTypes';
 import Portal from '../components/Portal';

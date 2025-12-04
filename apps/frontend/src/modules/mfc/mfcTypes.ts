@@ -2,26 +2,21 @@
  * MFC 模块类型定义
  */
 
-// 基础类型定义（如果 @zahnerflow/types 不可用）
-export interface MfcDeviceInfo {
-  address: number;
-  gas_type: string;
-  max_flow_sccm: number;
-}
+// 从 @zahnerflow/types 导入基础类型
+export type {
+  MfcDeviceInfo,
+  MfcStatus,
+  MfcSample
+} from '@zahnerflow/types';
 
-export interface MfcStatus {
-  address: number;
-  flow_percent: number;
-  flow_sccm: number;
-  digital_setpoint_percent: number;
-  active_setpoint_percent: number;
-}
-
-export interface MfcSample {
-  timestamp: string;
-  address: number;
-  flow_sccm: number;
-  flow_percent: number;
+// 兼容性接口 - 使用 timestamp 而不是 ts
+export interface MfcSampleWithTimestamp {
+  timestamp: string;          // ISO 时间戳
+  address: number;            // 设备地址
+  flow_sccm: number;          // 实测流量（sccm）
+  flow_percent: number;       // 实测流量百分比（0-100）
+  digital_setpoint_percent: number; // 数字通道设定百分比
+  active_setpoint_percent: number;  // 实际生效设定百分比
 }
 
 // 前端扩展类型定义

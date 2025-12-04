@@ -1,4 +1,4 @@
-import { apiHelpers } from './api/zahnerApi';
+import { apiHelpers } from '../services/api/zahnerApi';
 import {
   Workflow,
   WorkflowDefinition,
@@ -6,7 +6,7 @@ import {
   Execution,
   ExecutionStatus
 } from '@zahnerflow/types';
-import { useCanvasStore, useWorkflowStore } from './stores';
+import { useCanvasStore, useWorkflowStore } from '.';
 
 // 工作流相关API
 export const workflowService = {

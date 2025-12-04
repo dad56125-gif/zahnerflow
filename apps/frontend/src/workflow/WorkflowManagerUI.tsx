@@ -8,7 +8,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ElectrochemicalNode } from '@/types/nodes';
 import { useCanvasStore } from '@/canvas/canvasStore';
-import { useWorkflowStore } from '@/services/stores';
+import { useWorkflowStore } from '@/workflow';
 import { useSimpleLoopDetection } from '../../../canvas/useSimpleLoopDetection';
 import WorkflowManager from './WorkflowManager';
 import { useOnClickOutside } from '@/services/hooks/useOnClickOutside';

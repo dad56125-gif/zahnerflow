@@ -8,7 +8,7 @@ import {
   getNodeConfigByWorkstation
 } from '../types/nodes';
 import { Position } from '../services/layout';
-import { useWorkflowStore } from '../services/stores/index';
+import { useWorkflowStore } from '../workflow/index';
 
 // Re-defining Connection as they are local to App.tsx
 interface Connection {
