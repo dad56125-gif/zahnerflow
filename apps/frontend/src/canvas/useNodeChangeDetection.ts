@@ -1,36 +1,76 @@
 /**
- * useNodeChangeDetection Hook
+ * 节点变化检测 Hook (优化版)
+ * 文件位置: src/services/layout/useNodeChangeDetection.ts
  *
- * 封装节点变化检测逻辑，复用 ConnectionBindingService 的 shouldUpdateConnections 方法
- * 支持延迟更新机制和布局稳定检查，返回 updateTrigger 计数器用于强制重新渲染
+ * 职责：监听节点数组，当且仅当节点的【几何属性】(位置、大小)或状态发生实质变化时，
+ * 触发更新计数器。内置了 Diff 算法，不再依赖外部 Service。
  */
 
-import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { connection_binding_service } from './ConnectionBindingService';
 import { ElectrochemicalNode } from '../types/nodes';
 
+// =============================================================================
+// 1. 内置 Diff 工具函数
+//    替代了原 ConnectionBindingService.shouldUpdateConnections
+// =============================================================================
+
 /**
- * Hook 配置选项接口
+ * 比较两组节点是否发生"几何级"变化
+ * 仅比较影响布局渲染的属性：position(x,y), style(width,height), status
  */
+function hasGeometricChanges(
+  prevNodes: ElectrochemicalNode[], 
+  currNodes: ElectrochemicalNode[]
+): boolean {
+  // 1. 数量不同，肯定变了
+  if (prevNodes.length !== currNodes.length) return true;
+
+  for (let i = 0; i < currNodes.length; i++) {
+    const prev = prevNodes[i];
+    const curr = currNodes[i];
+    
+    if (!prev || !curr) return true;
+
+    // 2. 比较位置 (x, y)
+    // 使用极小的容差处理浮点数，虽然通常是整数
+    if (Math.abs(prev.position.x - curr.position.x) > 0.01 || 
+        Math.abs(prev.position.y - curr.position.y) > 0.01) {
+      return true;
+    }
+
+    // 3. 比较尺寸 (width, height)
+    // 处理 style 可能为空的情况
+    const prevW = prev.style?.width || 140;
+    const currW = curr.style?.width || 140;
+    if (prevW !== currW) return true;
+
+    const prevH = prev.style?.height || 60;
+    const currH = curr.style?.height || 60;
+    if (prevH !== currH) return true;
+    
+    // 4. 比较状态 (Status 变化通常伴随颜色变化，需要重绘)
+    if (prev.status !== curr.status) return true;
+  }
+
+  // 走到这里说明所有关键属性都一样
+  return false;
+}
+
+// =============================================================================
+// 2. Hook 主体
+// =============================================================================
+
 export interface UseNodeChangeDetectionOptions {
-  /** 是否启用延迟更新机制 */
+  /** 是否启用延迟更新机制 (防抖) */
   enable_delay?: boolean;
   /** 延迟时间（毫秒） */
   delay_ms?: number;
-  /** 布局是否稳定 */
+  /** 外部传入的布局稳定状态 */
   layout_stable?: boolean;
 }
 
-/**
- * 节点变化检测 Hook
- *
- * @param nodes - 要监听的节点数组
- * @param options - 配置选项
- * @returns update_trigger - 更新触发计数器，用于强制重新渲染
- */
 export const useNodeChangeDetection = (
-  nodes: any[],
+  nodes: any[], // 接收原始节点数据
   options: UseNodeChangeDetectionOptions = {}
 ): number => {
   const {
@@ -39,158 +79,68 @@ export const useNodeChangeDetection = (
     layout_stable = true
   } = options;
 
-  // 状态管理
-  const [prev_nodes, setPrevNodes] = useState<ElectrochemicalNode[]>([]);
-  const [update_trigger, setUpdateTrigger] = useState(0);
+  // 保存上一次的节点快照用于比较
+  const [prevNodes, setPrevNodes] = useState<ElectrochemicalNode[]>([]);
+  // 更新触发器（计数器）
+  const [updateTrigger, setUpdateTrigger] = useState(0);
 
-  // 定时器引用
-  const timeout_ref = useRef<NodeJS.Timeout | null>(null);
-  const pending_update_ref = useRef<boolean>(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingUpdateRef = useRef<boolean>(false);
 
-  /**
-   * 将普通节点转换为 ElectrochemicalNode 格式
-   * 这里需要根据实际传入的节点格式进行转换
-   */
-  const convertToElectrochemicalNodes = (raw_nodes: any[]): ElectrochemicalNode[] => {
-    return raw_nodes.map(node => {
-      // 如果已经是 ElectrochemicalNode 格式，直接返回
-      if (node && typeof node === 'object' && 'id' in node && 'type' in node) {
-        return {
-          id: node.id,
-          type: node.type || 'startup',
-          name: node.name || node.data?.name || 'Unknown',
-          category: node.category || 'device',
-          position: {
-            x: node.position?.x || node.x || 0,
-            y: node.position?.y || node.y || 0
-          },
-          data: {
-            name: node.data?.name || node.name || 'Unknown',
-            description: node.data?.description || node.description || '',
-            parameters: node.data?.parameters || node.parameters || {},
-            results: node.data?.results || node.results || {},
-            createdAt: node.data?.createdAt || node.createdAt || new Date(),
-            updatedAt: node.data?.updatedAt || node.updatedAt || new Date()
-          },
-          status: node.status || 'idle',
-          input: node.input || {
-            id: 'input',
-            name: '输入',
-            dataType: 'flow' as const,
-            description: '流程输入'
-          },
-          output: node.output || {
-            id: 'output',
-            name: '输出',
-            dataType: 'flow' as const,
-            description: '流程输出'
-          },
-          style: node.style || {
-            width: 140,
-            height: 60
-          }
-        };
-      }
-
-      // 如果是无效节点，返回默认的 ElectrochemicalNode
-      return {
-        id: `node_${Math.random().toString(36).substring(2, 11)}`,
-        type: 'startup',
-        name: 'Unknown Node',
-        category: 'device',
-        position: { x: 0, y: 0 },
-        data: {
-          name: 'Unknown Node',
-          description: '',
-          parameters: {},
-          results: {},
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        status: 'idle',
-        input: {
-          id: 'input',
-          name: '输入',
-          dataType: 'flow',
-          description: '流程输入'
-        },
-        output: {
-          id: 'output',
-          name: '输出',
-          dataType: 'flow',
-          description: '流程输出'
-        },
-        style: {
-          width: 140,
-          height: 60
-        }
-      };
-    });
-  };
-
-  /**
-   * 清理定时器
-   */
-  const clearPendingUpdate = () => {
-    if (timeout_ref.current) {
-      clearTimeout(timeout_ref.current);
-      timeout_ref.current = null;
-    }
-    pending_update_ref.current = false;
-  };
-
-  /**
-   * 触发更新
-   */
+  // 触发更新的内部函数
   const triggerUpdate = () => {
     setUpdateTrigger(prev => prev + 1);
   };
 
-  // 监听 nodes 变化
   useEffect(() => {
-    // 将当前节点转换为 ElectrochemicalNode 格式
-    const current_electrochemical_nodes = convertToElectrochemicalNodes(nodes);
+    // 简单的类型断言，不再进行昂贵的深拷贝和全量字段映射
+    // 因为我们只读 position/style，即使缺少其他字段也不会报错
+    const currentNodes = nodes as ElectrochemicalNode[];
 
-    // 使用 ConnectionBindingService 的 shouldUpdateConnections 方法检查是否需要更新
-    const should_update = connection_binding_service.shouldUpdateConnections(
-      prev_nodes,
-      current_electrochemical_nodes
-    );
+    // 执行比较
+    const shouldUpdate = hasGeometricChanges(prevNodes, currentNodes);
 
-    // 只有在需要更新且布局稳定时才触发更新
-    if (should_update && layout_stable) {
+    // 如果需要更新 且 布局已稳定
+    if (shouldUpdate && layout_stable) {
       if (enable_delay) {
-        // 启用延迟更新机制
-        if (!pending_update_ref.current) {
-          pending_update_ref.current = true;
-          timeout_ref.current = setTimeout(() => {
+        // 启用防抖模式
+        if (!pendingUpdateRef.current) {
+          pendingUpdateRef.current = true;
+          timeoutRef.current = setTimeout(() => {
             triggerUpdate();
-            clearPendingUpdate();
+            // 清理定时器引用
+            if (timeoutRef.current) {
+              clearTimeout(timeoutRef.current);
+              timeoutRef.current = null;
+            }
+            pendingUpdateRef.current = false;
           }, delay_ms);
         }
       } else {
-        // 立即触发更新
+        // 立即响应模式
         triggerUpdate();
       }
-
-      // 更新 prev_nodes
-      setPrevNodes(current_electrochemical_nodes);
+      
+      // 更新快照，准备下一次比较
+      // 注意：这里保存引用是安全的，因为 Zustand 每次更新都会产生新的数组引用
+      setPrevNodes(currentNodes);
     }
-  }, [nodes, layout_stable, enable_delay, delay_ms, prev_nodes]);
+  }, [nodes, layout_stable, enable_delay, delay_ms, prevNodes]);
 
-  // 清理副作用
+  // 组件卸载时清理定时器
   useEffect(() => {
     return () => {
-      clearPendingUpdate();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  return update_trigger;
+  return updateTrigger;
 };
 
-/**
- * 预设的配置常量
- */
+// =============================================================================
+// 3. 配置常量 (保留原功能)
+// =============================================================================
+
 export const NODE_CHANGE_DETECTION_CONFIG = {
   /** 快速响应配置 - 禁用延迟 */
   FAST_RESPONSE: {
@@ -221,7 +171,4 @@ export const NODE_CHANGE_DETECTION_CONFIG = {
   }
 } as const;
 
-/**
- * 默认导出
- */
 export default useNodeChangeDetection;

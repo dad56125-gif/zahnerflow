@@ -1,12 +1,12 @@
-﻿import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
 import { useCanvasStore } from './canvasStore';
 import { NodeRenderer } from './NodeRenderer';
 import { ComputedConnectionLines } from './ComputedConnectionLines';
 import { Toolbar } from '../components/Toolbar';
 import { LoopBoundary } from './LoopBoundary';
-import { WorkflowManagerUI } from '../components/features/workflow';
-import { WorkflowIdDisplay } from '../components/common/WorkflowIdDisplay';
+import { WorkflowManagerUI } from '../workflow/WorkflowManagerUI';
+import { WorkflowIdDisplay } from '../workflow/WorkflowIdDisplay';
 import { useUnifiedLayout } from './useUnifiedLayout';
 import { useSimpleLoopDetection, type SimpleLoopInfo } from './useSimpleLoopDetection';
 
@@ -61,7 +61,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useUnifiedLayout(
     nodes,
     {
-      mode: 'dynamic-responsive',
       zoomAware: true,
       minColumns: 2,
       maxColumns: 8,
@@ -260,18 +259,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // 节点位置映射缓存（用于 LoopBoundary）
-  const nodePositions = useMemo(() => {
-    return layoutNodes.map(node => ({
-      id: node.id,
-      name: node.name,
-      x: node.position.x,
-      y: node.position.y,
-      width: node.style?.width || adjustedDimensions?.nodeWidth || 140,
-      height: node.style?.height || adjustedDimensions?.nodeHeight || 60
-    }));
-  }, [layoutNodes, adjustedDimensions]);
-
+  
   return (
     <div
       className="canvas-container glass"
@@ -317,10 +305,18 @@ export const Canvas: React.FC<CanvasProps> = ({
       <div
         className="canvas-inner"
         style={{
+          // 🔥 核心修改 1: 将变换原点改回左上角
+          transformOrigin: '0 0',
+
+          // 🔥 核心修改 2: 容器宽度设为"逻辑宽度" (100% 除以缩放比例)
+          // 例如：缩放 0.5 时，容器宽度变成 200%，缩放后刚好填满屏幕
+          width: `${100 / zoomLevel}%`,
+
+          // 🔥 核心修改 3: 高度也同步调整，保证拖拽区域足够大
+          minHeight: `${100 / zoomLevel}vh`,
+
           transform: `scale(${zoomLevel}) translateY(${canvasOffsetY}px)`,
-          transformOrigin: 'top left',
           cursor: isDragEnabled ? (isDragging ? 'grabbing' : 'grab') : 'default',
-          minHeight: '300vh'
         }}
         onMouseDown={handleMouseDown}
       >
@@ -334,7 +330,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           <LoopBoundary
             key={loop.id}
             loop={loop}
-            nodes={nodePositions}
+            nodes={layoutNodes}
+            // ⚠️ 注意：这里传入 zoomLevel 仅用于线宽/字号的视觉微调，
+            // 坐标计算不应再乘 zoomLevel (见下文 LoopBoundary 修改)
             zoomLevel={zoomLevel}
             canvasOffsetY={canvasOffsetY}
           />
