@@ -5,7 +5,17 @@
  */
 
 // 重新导出 @zahnerflow/types 中的基础类型
-// 注意：这里假设 @zahnerflow/types 包含以下类型，如果没有，需要定义
+export type {
+  ProgramSegment,
+  FurnacePreset,
+  MfcDeviceInfo,
+  MfcStatus,
+  FurnaceSample,
+  MfcSample,
+  MeasurementType,
+  NodeState as NodeStatus,
+  ExecutionState as ExecutionStatus
+} from '@zahnerflow/types';
 
 // 程序段操作进度
 export interface SegmentProgress {
@@ -14,11 +24,24 @@ export interface SegmentProgress {
   progress: number;       // 进度百分比 (0-100)
 }
 
-// 基础类型定义（如果 @zahnerflow/types 不可用）
-export interface ProgramSegment {
-  id: number;
-  temperature: number; // 温度 (℃)
-  time: number;       // 时间 (分钟)
+// 兼容性接口 - 使用 timestamp 而不是 ts
+export interface FurnaceSampleWithTimestamp {
+  timestamp: string;      // ISO 时间戳
+  temperature: number;    // Process Value 实测温度（℃）
+  sv?: number;            // Set Value 目标温度（℃）
+  mv?: number;            // Manipulated Value 输出百分比（0-100）
+  segment?: number;       // 当前段号
+  segmentTime?: number;   // 当前段已运行时间（秒）
+  segmentTimeSet?: number;// 当前段设定时间（秒）
+}
+
+export interface MfcSampleWithTimestamp {
+  timestamp: string;          // ISO 时间戳
+  address: number;            // 设备地址
+  flow_sccm: number;          // 实测流量（sccm）
+  flow_percent: number;       // 实测流量百分比（0-100）
+  digital_setpoint_percent: number; // 数字通道设定百分比
+  active_setpoint_percent: number;  // 实际生效设定百分比
 }
 
 export interface FurnacePresetMeta {
@@ -28,36 +51,10 @@ export interface FurnacePresetMeta {
   summary?: string;
 }
 
-export interface FurnacePreset extends FurnacePresetMeta {
-  segments: ProgramSegment[];
-}
-
-export interface MfcDeviceInfo {
+// MFC 设定请求 (前端专用)
+export interface MfcSetpointRequestFrontend {
   address: number;
-  gas_type: string;
-  max_flow_sccm: number;
-}
-
-export interface MfcStatus {
-  address: number;
-  flow_percent: number;
-  flow_sccm: number;
-  digital_setpoint_percent: number;
-  active_setpoint_percent: number;
-}
-
-export interface FurnaceSample {
-  timestamp: string;
-  temperature: number;
-  sv?: number;
-  mv?: number;
-}
-
-export interface MfcSample {
-  timestamp: string;
-  address: number;
-  flow_sccm: number;
-  flow_percent: number;
+  sccm: number;
 }
 
 export interface CreatePresetRequest {
@@ -109,10 +106,8 @@ export interface FurnaceOperationResponse {
   error?: string;         // 错误信息（当ok为false时）
 }
 
-export interface MfcSetpointRequest {
-  address: number;
-  sccm: number;
-}
+// 使用 MfcSetpointRequestFrontend 作为前端专用的 MFC 设定请求
+// 避免 MfcSetpointRequest 的重复定义冲突
 
 export interface FurnaceConnectRequest {
   port: string;           // 串口号
