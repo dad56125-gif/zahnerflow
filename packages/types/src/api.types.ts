@@ -1,4 +1,6 @@
-// API相关类型定义
+// API通信协议类型定义
+
+// API响应格式
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -24,28 +26,26 @@ export interface ApiError {
   details?: any;
 }
 
-// 工作流相关类型 - 前后端共享
+// 工作流核心类型 - API协议层
 export interface Workflow {
   id: string;
   name: string;
-  description?: string;
   definition: WorkflowDefinition;
   workstation: WorkstationType;
   status: WorkflowStatus;
   createdAt: Date;
   updatedAt: Date;
 
-  // 后端管理字段（前端可选）
+  // 后端管理字段
   ownerName?: string;
   individualName?: string;
 }
 
-// 工作流定义 - 前后端共享核心结构
+// 工作流定义 - API协议层
 export interface WorkflowDefinition {
   // 核心标识
   id: string;
   name: string;
-  description?: string;
   version: number;
 
   // 工作流结构
@@ -54,60 +54,34 @@ export interface WorkflowDefinition {
   // 可选参数
   parameters?: Record<string, any>;
 
-  // 后端管理字段（前端可选）
+  // 后端管理字段
   ownerName?: string;
   individualName?: string;
 }
 
-// 节点状态类型 - 前后端共享
-export type NodeStatus = 'ready' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'pending';
-
-// 工作流节点 - 前后端共享
+// 工作流节点 - API协议层
 export interface WorkflowNode {
   // 核心标识
   id: string;
   type: string;
   name: string;
-  position: { x: number; y: number };
 
-  // 数据和配置（前后端通用）
-  data?: any;  // 前端用户数据，后端可读取
-  config?: any;  // 后端执行配置，前端可设置
+  // 数据和配置
+  data?: any;  // 用户数据
+  config?: any;  // 执行配置
 
-  // 状态管理（主要用于前端）
+  // 状态管理
   status?: NodeStatus;
 }
 
-// 工作流状态 - 前后端共享
+// 节点状态类型
+export type NodeStatus = 'ready' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'pending';
+
+// 工作流状态
 export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
 
 // 设备相关类型
 export type WorkstationType = 'zahner-zennium';
-
-export interface DeviceConfiguration {
-  id: string;
-  type: WorkstationType;
-  name: string;
-  parameters: DeviceParameters;
-  calibration: any;
-  safety: any;
-}
-
-export interface DeviceParameters {
-  // Zahner Zennium 特定参数
-  thalesMode?: 'standard' | 'advanced';
-  impedanceRange?: string;
-  potentiostatMode?: 'potentiostatic' | 'galvanostatic';
-  
-  // PP242 特定参数
-  frameworkMode?: 'standard' | 'custom';
-  echemVersion?: string;
-  
-  // 通用参数
-  samplingRate: number;
-  dataBuffer: number;
-  timeout: number;
-}
 
 export interface Device {
   id: string;
@@ -141,14 +115,6 @@ export interface ExecutionResult {
   duration?: number;
 }
 
-
-// 模块状态类型
-export interface ModuleStatus {
-  state: 'initialized' | 'running' | 'stopped' | 'error';
-  health: 'good' | 'warning' | 'error';
-  lastCheck: Date;
-}
-
 // 用户相关类型
 export interface User {
   id: string;
@@ -176,7 +142,7 @@ export interface ExecutionUpdateMessage {
   error?: string;
 }
 
-// 通知系统类型定义
+// 通知系统类型
 export enum UserNotificationLevel {
   SYSTEM = 'system',
   WORKFLOW = 'workflow',
