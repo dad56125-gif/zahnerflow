@@ -144,8 +144,17 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private handleRawStreamData(rawData: { t: number; v: number; i: number }) {
-    if (this._globalState.status !== 'running') return;
-    if (!this._globalState.executionId || !this._globalState.currentStep) return;
+    // 添加调试日志
+    this.logger.log(`[handleRawStreamData] Status: ${this._globalState.status}, ExecutionId: ${this._globalState.executionId}, StepIndex: ${this._globalState.currentStep?.index}, NodeId: ${this._globalState.currentStep?.nodeId}`);
+
+    if (this._globalState.status !== 'running') {
+      this.logger.warn(`[handleRawStreamData] Filtered: status is not running (${this._globalState.status})`);
+      return;
+    }
+    if (!this._globalState.executionId || !this._globalState.currentStep) {
+      this.logger.warn(`[handleRawStreamData] Filtered: missing executionId or currentStep`);
+      return;
+    }
 
     const enrichedPayload = {
       executionId: this._globalState.executionId,
@@ -154,6 +163,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       data: rawData
     };
 
+    this.logger.log(`[handleRawStreamData] Broadcasting: stepIndex=${enrichedPayload.stepIndex}, nodeId=${enrichedPayload.nodeId}`);
     this.workflowGateway.broadcast('measurementData', enrichedPayload);
   }
 

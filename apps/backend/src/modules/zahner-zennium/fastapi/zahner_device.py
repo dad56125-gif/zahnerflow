@@ -186,7 +186,7 @@ async def execute_measurement(req: MeasureRequest):
         # 核心调度逻辑：将 API 请求映射到 Logic 函数
         # ==========================================
         
-        if m_type == "ocp" or m_type == "open_circuit_potential":
+        if m_type == "ocp" or m_type == "open_circuit_potential" or m_type == "ocp_measurement":
             result = await run_in_threadpool(
                 logic.measure_ocp, 
                 wrapper, params, stream_cb

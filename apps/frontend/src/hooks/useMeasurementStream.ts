@@ -22,16 +22,23 @@ export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasur
 
     // 核心监听逻辑
     const handleData = (payload: EnrichedStreamData) => {
+      console.log(`[useMeasurementStream] Received: executionId=${payload.executionId}, stepIndex=${payload.stepIndex}, nodeId=${payload.nodeId}, activeExecutionId=${activeExecutionId}, nodeIndex=${nodeIndex}`);
+
       // 1. 批次校验：防止显示上一次运行的残影
-      if (payload.executionId !== activeExecutionId) return;
+      if (payload.executionId !== activeExecutionId) {
+        console.warn(`[useMeasurementStream] Filtered: executionId mismatch (${payload.executionId} !== ${activeExecutionId})`);
+        return;
+      }
 
       // 2. 步骤校验：这一步是核心！
       // 只有当流数据的 stepIndex 等于我这个组件的 nodeIndex 时，我才处理
       if (payload.stepIndex !== nodeIndex) {
+        console.warn(`[useMeasurementStream] Filtered: stepIndex mismatch (${payload.stepIndex} !== ${nodeIndex})`);
         isReceiving.current = false;
         return;
       }
 
+      console.log(`[useMeasurementStream] Accepted: stepIndex=${payload.stepIndex}, data points=${dataBufferRef.current.length + 1}`);
       isReceiving.current = true;
 
       // 3. 推入缓冲
