@@ -10,6 +10,7 @@ import { CommonModule } from '../../common/common.module';
 import { HttpModule } from '@nestjs/axios';
 import { DbModule } from '../../db/db.module';
 import { FilesModule } from '../files/files.module';
+import { GatewayModule } from '../../gateways/gateway.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { FilesModule } from '../files/files.module';
     CommonModule,
     HttpModule,
     DbModule,
+    forwardRef(() => GatewayModule),
   ],
   controllers: [ExecutionController],
   providers: [

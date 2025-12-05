@@ -1,9 +1,13 @@
 // --- START OF FILE PropertyPanel.tsx ---
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // ✅ 新增 useMemo, useEffect
 import { ElectrochemicalNode, WorkstationType } from '../types/NodeInterfaces';
+// ✅ 引入 store 获取节点列表
 import { useCanvasStore } from '../workflow';
 import { useMfc } from '../modules/mfc';
+import { NodeChart } from './NodeChart';
+// ✅ 引入统一的 SystemState Hook
+import { useSystemState } from '../workflow/executionStore';
 
 // ✅ 修改：从 NodeUtilities 导入存储逻辑
 import {
@@ -22,17 +26,46 @@ import {
     GasFlowInput
 } from './PropertyInputs';
 
+// ✅ 定义哪些节点类型支持图表显示
+const MEASUREMENT_NODE_TYPES = [
+  'eis_potentiostatic',
+  'eis_galvanostatic',
+  'ocp_measurement',
+  'chronoamperometry',
+  'chronopotentiometry',
+  'voltage_ramp',
+  'current_ramp',
+  'lsv_measurement'
+  // 如果 change_temperature 有实时温度曲线，也可以加进去，否则移除
+];
+
 interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;
 }
 
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
-    const { selectedNode: node, updateNode } = useCanvasStore();
-    const [activeTab, setActiveTab] = useState<'basic' | 'parameters'>('basic');
+    // ✅ 获取 nodes 列表用于计算 index
+    const { selectedNode: node, updateNode, nodes } = useCanvasStore();
+
+    // ✅ 获取实时系统状态
+    const systemState = useSystemState();
+    const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
     // 强制刷新触发器（当保存默认值后触发重渲染）
     const [_, setRefreshTrigger] = useState(0);
     const [mfcState] = useMfc();
+
+    // ✅ 新增：判断当前节点是否支持图表
+    const supportsChart = useMemo(() => {
+        return node && MEASUREMENT_NODE_TYPES.includes(node.type);
+    }, [node]);
+
+    // ✅ 新增：当节点切换时，如果新节点不支持图表且当前停留在图表页，强制切回 basic
+    useEffect(() => {
+        if (!supportsChart && activeTab === 'chart') {
+            setActiveTab('basic');
+        }
+    }, [supportsChart, activeTab]);
 
     // Dropdown 状态管理
     const [dropdownState, setDropdownState] = useState<{
@@ -281,9 +314,32 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
               >
                 <span className="btn-icon">⚙️</span><span className="btn-text">参数</span>
               </button>
+
+              {/* ✅ 修改：条件渲染图表按钮 */}
+              {supportsChart && (
+                <button
+                    className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'chart' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveTab('chart')}
+                >
+                    <span className="btn-icon">📈</span><span className="btn-text">图表</span>
+                </button>
+              )}
             </div>
+                      {/* Content Rendering */}
             {activeTab === 'basic' && renderBasicProperties()}
             {activeTab === 'parameters' && renderParameters()}
+
+            {/* ✅ 修改：确保只有支持且选中时才渲染 */}
+            {activeTab === 'chart' && supportsChart && node && (
+              <NodeChart
+                nodeId={node.id}
+                // ✅ 传入真实的索引
+                nodeIndex={nodes.findIndex(n => n.id === node.id) === -1 ? 0 : nodes.findIndex(n => n.id === node.id)}
+                nodeConfig={node.data}
+                // ✅ 传入真实的系统状态
+                systemState={systemState}
+              />
+            )}
           </div>
         </div>
       </div>

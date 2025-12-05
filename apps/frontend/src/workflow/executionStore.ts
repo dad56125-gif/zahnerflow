@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { executionService } from './workflowService';
-import { workflowWebSocketService, ExecutionSnapshot } from './websocket.service';
+import { workflowWebSocketService } from './websocket.service';
+import { ExecutionSnapshot } from '../types/module-interfaces';
 
 interface ExecutionState {
   isRunning: boolean;
@@ -10,11 +11,14 @@ interface ExecutionState {
   workflowId: string | null;
   progress: number;
   error: string | null;
-  
+
   // 核心状态：基于索引
   nodeStatuses: string[];
   nodeResults: any[];
   currentNodeIndex: number | null;
+
+  // ✅ 新增：保存最新的完整快照，供组件读取详细信息
+  lastSnapshot: ExecutionSnapshot | null;
 
   // Actions
   startExecution: (workflowId: string | null, nodes: any[]) => Promise<void>;
@@ -30,11 +34,14 @@ export const useExecutionStore = create<ExecutionState>()(
     (set, get) => {
       // 在 Store 创建时仅初始化一次 WebSocket 监听
       if (typeof window !== 'undefined') {
+        // 确保 WebSocket 连接已建立
+        workflowWebSocketService.connect();
         
         // 1. 监听节点细粒度更新 (用于UI实时反馈：节点变色、数据更新)
-        workflowWebSocketService.onExecutionUpdate((update: any) => {
-          // 假设 update 格式是 { i: number, s: string, d?: any } (简化的索引更新)
-          // 或者如果是完整对象，需要在此适配
+        // 注意：这里使用 any 类型，因为实际传输的是简写格式以优化带宽
+        // 预期格式: { i: index, s: status, d?: data } 而非完整的 NodeStatusUpdate
+        workflowWebSocketService.onNodeStatusUpdate((update: any) => {
+          // update 格式是 { i: number, s: string, d?: any } (简化的索引更新)
           
           const state = get();
           // 仅当 update 包含索引且当前有执行ID时处理
@@ -66,75 +73,70 @@ export const useExecutionStore = create<ExecutionState>()(
         // 替代了原本不存在的 onExecutionComplete，统一处理开始、暂停、完成、失败
         workflowWebSocketService.onSystemStateSnapshot((snapshot: ExecutionSnapshot) => {
             const state = get();
+
+            // ✅ 核心改动：直接把快照存入 Store
+            const updates: any = { lastSnapshot: snapshot };
+
             const { status, executionId, error, currentStep, workflowId } = snapshot;
 
             // 如果当前没有运行，但收到了运行中的快照（例如页面刷新后重连），则同步状态
             // 或者如果当前正在运行，根据快照更新状态
-            
+
             // 情况 A: 执行结束 (Completed / Failed / Cancelled)
             if (['completed', 'failed', 'cancelled'].includes(status)) {
                 // 只有当快照的 executionId 匹配当前 store 的 ID，或者 store 认为正在运行时才处理
                 // 防止处理旧的残留快照
                 if (state.executionId === executionId || state.isRunning) {
-                    set({ 
-                        isRunning: false, 
-                        isPaused: false, 
-                        currentNodeIndex: null,
-                        error: status === 'failed' ? (error || '执行失败') : null
-                    });
+                    updates.isRunning = false;
+                    updates.isPaused = false;
+                    updates.currentNodeIndex = null;
+                    updates.error = status === 'failed' ? (error || '执行失败') : null;
                 }
             }
-            
+
             // 情况 B: 正在运行或暂停 (Running / Paused)
             else if (status === 'running' || status === 'paused') {
                 const isPaused = status === 'paused';
-                
-                // 状态同步对象
-                const updates: Partial<ExecutionState> = {};
-                let hasUpdates = false;
 
+  
                 // 强制同步运行状态
                 if (!state.isRunning) {
                     updates.isRunning = true;
-                    hasUpdates = true;
                 }
-                
+
                 // 同步暂停状态
                 if (state.isPaused !== isPaused) {
                     updates.isPaused = isPaused;
-                    hasUpdates = true;
                 }
 
                 // 同步 ID (如果是接管会话)
                 if (state.executionId !== executionId) {
                     updates.executionId = executionId;
                     updates.workflowId = workflowId;
-                    hasUpdates = true;
                 }
 
                 // 同步当前步骤 (如果有)
                 if (currentStep && currentStep.index !== undefined && currentStep.index !== state.currentNodeIndex) {
                     updates.currentNodeIndex = currentStep.index;
-                    hasUpdates = true;
                 }
 
                 // 同步错误信息 (如果有)
                 if (error && state.error !== error) {
                     updates.error = error;
-                    hasUpdates = true;
-                }
-
-                if (hasUpdates) {
-                    set(updates);
                 }
             }
-            
+
             // 情况 C: 空闲 (Idle)
             else if (status === 'idle') {
                 if (state.isRunning) {
-                    set({ isRunning: false, isPaused: false, currentNodeIndex: null });
+                    updates.isRunning = false;
+                    updates.isPaused = false;
+                    updates.currentNodeIndex = null;
                 }
             }
+
+            // ✅ 统一更新所有状态
+            set(updates);
         });
       }
 
@@ -148,6 +150,7 @@ export const useExecutionStore = create<ExecutionState>()(
         nodeStatuses: [],
         nodeResults: [],
         currentNodeIndex: null,
+        lastSnapshot: null, // ✅ 初始化为空
 
         startExecution: async (workflowId, nodes) => {
           // 初始化状态
@@ -235,3 +238,5 @@ export const useExecutionStore = create<ExecutionState>()(
 export const useIsRunning = () => useExecutionStore(state => state.isRunning);
 export const useExecutionError = () => useExecutionStore(state => state.error);
 export const useNodeStatus = (index: number) => useExecutionStore(state => state.nodeStatuses[index] || 'idle');
+// ✅ 导出 Hook：直接获取最新的 SystemState
+export const useSystemState = () => useExecutionStore(state => state.lastSnapshot);
