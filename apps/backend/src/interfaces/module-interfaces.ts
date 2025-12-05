@@ -1,7 +1,26 @@
 // src/interfaces/module-interfaces.ts
 
 // ==========================================
-// 1. 通用状态定义
+// 1. 物理层数据 (Python -> NestJS)
+// ==========================================
+export interface RawStreamData {
+  t: number; // 时间 (s)
+  v: number; // 电压 (V)
+  i: number; // 电流 (A)
+}
+
+// ==========================================
+// 2. 业务层数据 (NestJS -> Frontend)
+// ==========================================
+export interface EnrichedStreamData {
+  executionId: string; // 批次号，防止混淆旧数据
+  stepIndex: number;   // 核心过滤键：当前是第几步？
+  nodeId: string;      // 辅助校验
+  data: RawStreamData; // 物理载荷
+}
+
+// ==========================================
+// 3. 通用状态定义
 // ==========================================
 
 export type RunState = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'success';
@@ -19,6 +38,25 @@ export interface DeviceStatus {
   error?: string;
   lastActivity: Date;
   capabilities: string[];
+}
+
+// ==========================================
+// 4. 状态快照 (用于 System State)
+// ==========================================
+export interface ExecutionSnapshot {
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
+  workflowId: string | null;
+  executionId: string | null;
+  currentStep: {
+    nodeId: string | null;
+    nodeType: string | null;
+    index: number; // 前端组件用这个 index 与 EnrichedStreamData.stepIndex 比对
+    total: number;
+  } | null;
+  startTime: Date | null;
+  duration: number;
+  error: string | null;
+  timestamp: Date;
 }
 
 // ==========================================
