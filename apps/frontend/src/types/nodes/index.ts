@@ -1,5 +1,5 @@
 // 导出节点类型和配置
-export * from './types';
+export * from '../types';
 
 // 注意：独立的节点组件已被移除，改用统一渲染
 // 所有节点现在都使用 DefaultNodeRenderer 和基于配置的显示

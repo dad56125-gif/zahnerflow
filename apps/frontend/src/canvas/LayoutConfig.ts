@@ -88,8 +88,8 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   minNodeWidth: 140,
   containerPadding: 50,
   zoomAware: true,
-  maxZoomLevel: 3.0,
-  minZoomLevel: 0.2,
+  maxZoomLevel: 1.2,
+  minZoomLevel: 0.6,
   startOffset: { x: 50, y: 50 }
 };
 

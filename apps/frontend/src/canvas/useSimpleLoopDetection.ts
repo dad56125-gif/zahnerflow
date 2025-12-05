@@ -8,7 +8,7 @@
  */
 
 import { useMemo } from 'react';
-import { ElectrochemicalNode } from '../types/nodes/types';
+import { ElectrochemicalNode } from '../types/types';
 
 export interface SimpleLoopInfo {
   id: string;

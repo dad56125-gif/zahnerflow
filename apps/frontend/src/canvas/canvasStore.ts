@@ -1,12 +1,20 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+
+// ✅ 修正导入 1: 从 NodeInterfaces 导入类型
 import {
   ElectrochemicalNode,
   NodeType,
-  WorkstationType,
+  WorkstationType
+} from '../types/NodeInterfaces';
+
+// ✅ 修正导入 2: 从 NodeUtilities 显式导入逻辑函数
+// 确保这里指向的是我们刚刚修改过、包含 LocalStorage 逻辑的文件
+import {
   createDefaultNodeDataWithWorkstation,
   getNodeConfigByWorkstation
-} from '../types/nodes';
+} from '../types/NodeUtilities';
+
 import { Position } from './LayoutConfig';
 import { useWorkflowStore } from '../workflow/index';
 
@@ -69,11 +77,16 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     setCanvasSize: (width, height) => set({ canvasSize: { width, height } }),
 
     addNode: (type, selectedWorkstation, index) => {
-      const { nodes, canvasSize, connections } = get();
+      const { nodes, connections } = get();
+      
+      // 1. 获取静态配置用于基础属性 (Input/Output/Style)
       const config = getNodeConfigByWorkstation(type, selectedWorkstation);
       if (!config) return;
 
       const targetIndex = (index !== undefined && index >= 0 && index <= nodes.length) ? index : nodes.length;
+
+      // 2. ✅ 核心修复：调用 NodeUtilities 中的函数创建 data
+      // 这个函数内部会执行 getEffectiveDefaultParameters(type) 读取 LocalStorage
       const nodeData = createDefaultNodeDataWithWorkstation(type, selectedWorkstation);
 
       const newNode: ElectrochemicalNode = {
@@ -82,7 +95,7 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
         name: config.name,
         category: config.category,
         position: { x: 0, y: 0 },
-        data: nodeData,
+        data: nodeData, // 应用包含用户默认值的 data
         status: 'ready',
         input: config.input,
         output: config.output,
@@ -115,7 +128,8 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     },
 
     moveNode: (nodeId, newPosition) => {
-      return; // 布局由 useUnifiedLayout 自动处理
+      // 布局由 useUnifiedLayout 自动处理，此处留空或用于手动微调
+      return; 
     },
 
     selectNode: (node) => set({ selectedNode: node }),
@@ -137,7 +151,6 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     },
 
     setNodes: (nodes) => {
-      // 简洁的更新，不再有冗长的日志
       set({ nodes: nodes, validationError: validateNodes(nodes) });
     },
 
