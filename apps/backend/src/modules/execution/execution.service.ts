@@ -34,6 +34,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   readonly dependencies = [];
   private readonly logger = new Logger(ExecutionService.name);
 
+  // 1. 【新增】生成一个随机身份证 ID
+  private readonly _debugInstanceId = Math.random().toString(36).slice(2, 7).toUpperCase();
+
   private _globalStateRaw: ExecutionSnapshot = {
     status: 'idle',
     workflowId: null,
@@ -76,6 +79,8 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     @Inject(forwardRef(() => WorkflowGateway))
     private readonly workflowGateway: WorkflowGateway,
   ) {
+    // 2. 【新增】构造时大声喊出自己的 ID
+    this.logger.warn(`🚨🚨🚨 ExecutionService CREATED! ID: [${this._debugInstanceId}] 🚨🚨🚨`);
     this.setupDeviceEventListeners();
   }
 
@@ -164,12 +169,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const snapshot = this.getExecutionSnapshot();
     this.logger.log(`[handleRawStreamData] AFTER query - Status: ${snapshot.status}, ExecutionId: ${snapshot.executionId}, StepIndex: ${snapshot.currentStep?.index}`);
 
+    // 如果状态不对，打印是谁在报错
     if (snapshot.status !== 'running') {
-      this.logger.warn(`[handleRawStreamData] Filtered: status is not running (${snapshot.status})`);
+      this.logger.warn(`[Instance: ${this._debugInstanceId}] ❌ Filtered: status is ${snapshot.status} (I expected 'running')`);
       return;
     }
     if (!snapshot.executionId || !snapshot.currentStep) {
-      this.logger.warn(`[handleRawStreamData] Filtered: missing executionId or currentStep`);
+      this.logger.warn(`[Instance: ${this._debugInstanceId}] ❌ Filtered: missing executionId or currentStep`);
       return;
     }
 
@@ -190,6 +196,8 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private updateState(partial: Partial<ExecutionSnapshot>) {
+    this.logger.log(`[Instance: ${this._debugInstanceId}] updateState CALLED. Setting status to: ${partial.status || 'unchanged'}`);
+
     this.logger.log(`[updateState] ENTER - this instanceof ExecutionService: ${this instanceof ExecutionService}`);
 
     // 关键：验证this._globalStateRaw是否存在
