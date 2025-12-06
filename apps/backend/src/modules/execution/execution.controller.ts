@@ -54,6 +54,7 @@ export class ExecutionController {
   @Post('reset')
   @HttpCode(HttpStatus.OK)
   async resetExecution() {
+    console.log(`[ExecutionController:resetExecution] - Request received`);
     const result = await this.executionService.resetExecution();
     // ✅ 修复：Service 返回 { success, error }，这里适配一下
     if (!result.success) {

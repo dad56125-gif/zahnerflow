@@ -112,10 +112,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   async resetExecution() {
+    this.logger.log(`[resetExecution] CALLED - CurrentStatus=${this._globalState.status}, ExecutionId=${this._globalState.executionId}`);
+
     if (this._globalState.status === 'running') {
+      this.logger.warn(`[resetExecution] REJECTED - Cannot reset while running`);
       return { success: false, error: 'Cannot reset while running' };
     }
-    
+
     // 重置状态
     this.updateState({
       status: 'idle',
@@ -125,7 +128,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       error: null,
       duration: 0
     });
-    
+
+    this.logger.log(`[resetExecution] SUCCESS - State reset to idle`);
+
     // 通知前端重置节点状态
     this.eventBus.emit('execution.nodes.reset', { targetStatus: 'ready' });
     this.workflowGateway.broadcast('nodesReset', { targetStatus: 'ready' });
