@@ -144,8 +144,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private handleRawStreamData(rawData: { t: number; v: number; i: number }) {
-    // 添加调试日志
-    this.logger.log(`[handleRawStreamData] Status: ${this._globalState.status}, ExecutionId: ${this._globalState.executionId}, StepIndex: ${this._globalState.currentStep?.index}, NodeId: ${this._globalState.currentStep?.nodeId}`);
+    this.logger.log(`[handleRawStreamData] TRIGGERED - ExecutionService=${this.constructor.name}, Status: ${this._globalState.status}, ExecutionId: ${this._globalState.executionId}, StepIndex: ${this._globalState.currentStep?.index}, NodeId: ${this._globalState.currentStep?.nodeId}`);
 
     if (this._globalState.status !== 'running') {
       this.logger.warn(`[handleRawStreamData] Filtered: status is not running (${this._globalState.status})`);
@@ -181,8 +180,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // ==========================================
 
   async executeWorkflow(workflowId: string | null, nodes?: any[]): Promise<ExecutionResult> {
+    this.logger.log(`[executeWorkflow] START - workflowId=${workflowId}, ExecutionService=${this.constructor.name}`);
+
     let finalWorkflowId = workflowId;
-    
+
     if (!workflowId) {
       if (!nodes || nodes.length === 0) {
         throw new Error('Cannot create workflow: nodes array is required when workflowId is null');
