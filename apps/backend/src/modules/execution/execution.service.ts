@@ -30,16 +30,16 @@ export interface ExecutionSnapshot {
 @Injectable()
 export class ExecutionService implements IExecutionModule, OnModuleInit {
   readonly name = 'execution';
-  readonly version = '3.2.1'; // Fix missing methods
+  readonly version = '3.2.2'; // 版本号微升
   readonly dependencies = [];
   private readonly logger = new Logger(ExecutionService.name);
 
-  // 1. 【新增】生成一个随机身份证 ID
-  private readonly _debugInstanceId = Math.random().toString(36).slice(2, 7).toUpperCase();
-
-  // 1. 【修改】把 _globalStateRaw 改成静态的 (static)
-  // 这样无论你是访问 Proxy 还是 Target，大家读写的都是这唯一的一份内存
-  private static _globalStateStorage: ExecutionSnapshot = {
+  // =================================================================
+  // 核心状态存储 (STATIC)
+  // 必须使用 static 以防止 NestJS 的 Circular Dependency 导致的 Proxy 分身问题
+  // =================================================================
+  
+  private static _state: ExecutionSnapshot = {
     status: 'idle',
     workflowId: null,
     executionId: null,
@@ -50,17 +50,18 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     timestamp: new Date()
   };
 
-  // 4. 【新增】为了方便代码不改动太多，加一个 helper getter
-  private get state(): ExecutionSnapshot {
-    return ExecutionService._globalStateStorage;
-  }
-
-  private executionContexts = new Map<string, {
+  // 【关键优化】Context 也必须是静态的，否则不同实例间会丢失 ExecutionId 对应的 Workflow 信息
+  private static _contexts = new Map<string, {
     workflowId: string;
     executionId: string;
     startTime: Date;
     workflowTimestamp: string;
   }>();
+
+  // 内部便捷访问器 (Read-only)
+  private get state(): ExecutionSnapshot {
+    return ExecutionService._state;
+  }
 
   constructor(
     protected readonly zahnerService: ZahnerZenniumService,
@@ -75,79 +76,12 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     @Inject(forwardRef(() => WorkflowGateway))
     private readonly workflowGateway: WorkflowGateway,
   ) {
-    // 2. 【新增】构造时大声喊出自己的 ID
-    this.logger.warn(`🚨🚨🚨 ExecutionService CREATED! ID: [${this._debugInstanceId}] 🚨🚨🚨`);
     this.setupDeviceEventListeners();
   }
 
   async onModuleInit() {
     this.initDbTables();
     this.eventBus.emit('module.initialized', { moduleName: 'execution', version: this.version });
-  }
-
-  // ==========================================
-  // [修复] 缺失的辅助方法
-  // ==========================================
-
-  getAllExecutions(): ExecutionStatus[] {
-    try {
-      // 从 SQLite 获取最近的 50 条记录
-      const rows = this.db.prepare(`
-        SELECT id, workflow_id, status, start_time, end_time, error 
-        FROM executions 
-        ORDER BY start_time DESC 
-        LIMIT 50
-      `).all() as any[];
-
-      return rows.map(row => ({
-        executionId: row.id,
-        workflowId: row.workflow_id,
-        status: row.status,
-        startTime: new Date(row.start_time),
-        endTime: row.end_time ? new Date(row.end_time) : undefined,
-        error: row.error
-      })) as any; 
-    } catch (e) {
-      this.logger.error(`Failed to get executions: ${e}`);
-      return [];
-    }
-  }
-
-  getLoadedHookRules(): any[] {
-    // 如果你有 hooks 表则查询，否则返回空
-    try {
-      const rows = this.db.prepare(`SELECT * FROM hooks WHERE enabled = 1`).all();
-      return rows.map((r: any) => r.rule_json ? JSON.parse(r.rule_json) : r);
-    } catch (e) {
-      return [];
-    }
-  }
-
-  async resetExecution() {
-    this.logger.log(`[resetExecution] CALLED - CurrentStatus=${this.state.status}, ExecutionId=${this.state.executionId}`);
-
-    if (this.state.status === 'running') {
-      this.logger.warn(`[resetExecution] REJECTED - Cannot reset while running`);
-      return { success: false, error: 'Cannot reset while running' };
-    }
-
-    // 重置状态
-    this.updateState({
-      status: 'idle',
-      workflowId: null,
-      executionId: null,
-      currentStep: null,
-      error: null,
-      duration: 0
-    });
-
-    this.logger.log(`[resetExecution] SUCCESS - State reset to idle`);
-
-    // 通知前端重置节点状态
-    this.eventBus.emit('execution.nodes.reset', { targetStatus: 'ready' });
-    this.workflowGateway.broadcast('nodesReset', { targetStatus: 'ready' });
-
-    return { success: true };
   }
 
   // ==========================================
@@ -161,64 +95,48 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private async handleRawStreamData(rawData: { t: number; v: number; i: number }) {
-    this.logger.log(`[handleRawStreamData] TRIGGER - About to query state`);
-    const snapshot = this.getExecutionSnapshot();
-    this.logger.log(`[handleRawStreamData] AFTER query - Status: ${snapshot.status}, ExecutionId: ${snapshot.executionId}, StepIndex: ${snapshot.currentStep?.index}`);
+    // 移除不必要的 debug 日志，只在必要时读取状态
+    const snapshot = this.state; 
 
-    // 如果状态不对，打印是谁在报错
-    if (snapshot.status !== 'running') {
-      this.logger.warn(`[Instance: ${this._debugInstanceId}] ❌ Filtered: status is ${snapshot.status} (I expected 'running')`);
-      return;
-    }
-    if (!snapshot.executionId || !snapshot.currentStep) {
-      this.logger.warn(`[Instance: ${this._debugInstanceId}] ❌ Filtered: missing executionId or currentStep`);
+    // 快速过滤，减少日志噪音
+    if (snapshot.status !== 'running' || !snapshot.executionId || !snapshot.currentStep) {
       return;
     }
 
-    const enrichedPayload = {
+    // 广播数据
+    this.workflowGateway.broadcast('measurementData', {
       executionId: snapshot.executionId,
       stepIndex: snapshot.currentStep.index,
       nodeId: snapshot.currentStep.nodeId,
       data: rawData
-    };
-
-    this.logger.log(`[handleRawStreamData] Broadcasting: stepIndex=${enrichedPayload.stepIndex}, nodeId=${enrichedPayload.nodeId}`);
-    this.workflowGateway.broadcast('measurementData', enrichedPayload);
+    });
   }
 
+  /**
+   * 获取当前状态快照（返回副本以防止外部修改）
+   */
   getExecutionSnapshot(): ExecutionSnapshot {
-    // 从静态变量读取
-    const snapshot = { ...ExecutionService._globalStateStorage };
-    this.logger.log(`[getExecutionSnapshot] CALLED - Status: ${snapshot.status}, ExecutionId: ${snapshot.executionId}, StepIndex: ${snapshot.currentStep?.index}`);
-    return snapshot;
+    return { ...ExecutionService._state };
   }
 
+  /**
+   * 统一状态更新方法
+   * 所有的状态变更必须通过此方法，确保 EventBus 触发
+   */
   private updateState(partial: Partial<ExecutionSnapshot>) {
-    // 使用静态变量
-    const currentState = ExecutionService._globalStateStorage;
-
-    const oldStatus = currentState.status;
-    const oldExecutionId = currentState.executionId;
-    const oldStepIndex = currentState.currentStep?.index;
-
-    this.logger.log(`[Instance: ${this._debugInstanceId}] updateState CALLED. Setting status to: ${partial.status || 'unchanged'}`);
-    this.logger.log(`[updateState] BEFORE - Status: ${oldStatus}, ExecutionId: ${oldExecutionId}, StepIndex: ${oldStepIndex}`);
-    this.logger.log(`[updateState] PARTIAL - ${JSON.stringify(partial)}`);
-
-    // 直接修改静态对象上的属性
-    Object.assign(currentState, {
-        ...partial,
-        timestamp: new Date()
+    // 直接合并到静态对象
+    Object.assign(ExecutionService._state, {
+      ...partial,
+      timestamp: new Date()
     });
 
-    const newStatus = currentState.status;
-    const newExecutionId = currentState.executionId;
-    const newStepIndex = currentState.currentStep?.index;
-
-    this.logger.log(`[updateState] AFTER - Status: ${newStatus}, ExecutionId: ${newExecutionId}, StepIndex: ${newStepIndex}`);
+    // 仅打印关键状态变更，减少日志刷屏
+    if (partial.status) {
+      this.logger.log(`[Status Change] -> ${partial.status} (ExecID: ${ExecutionService._state.executionId})`);
+    }
 
     // 发送事件
-    this.eventBus.emit('execution.state.changed', currentState);
+    this.eventBus.emit('execution.state.changed', ExecutionService._state);
   }
 
   // ==========================================
@@ -226,13 +144,14 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // ==========================================
 
   async executeWorkflow(workflowId: string | null, nodes?: any[]): Promise<ExecutionResult> {
-    this.logger.log(`[executeWorkflow] START - workflowId=${workflowId}, ExecutionService=${this.constructor.name}`);
+    this.logger.log(`[executeWorkflow] START - workflowId=${workflowId}`);
 
     let finalWorkflowId = workflowId;
 
+    // 处理自动运行模式（无 WorkflowId）
     if (!workflowId) {
       if (!nodes || nodes.length === 0) {
-        throw new Error('Cannot create workflow: nodes array is required when workflowId is null');
+        throw new Error('Nodes array is required when workflowId is null');
       }
       const newWorkflow = await this.workflowService.createWorkflow({
         name: `AutoRun_${new Date().toISOString()}`,
@@ -244,16 +163,19 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const startTime = new Date();
     
-    this.executionContexts.set(executionId, {
+    // 【修改】使用静态 Map 存储上下文
+    ExecutionService._contexts.set(executionId, {
       workflowId: finalWorkflowId!,
       executionId,
       startTime,
       workflowTimestamp: this.generateTimestamp()
     });
 
+    // 写入数据库
     this.db.prepare(`INSERT INTO executions (id, workflow_id, status, start_time) VALUES (?, ?, 'running', ?)`)
       .run(executionId, finalWorkflowId, startTime.toISOString());
 
+    // 更新全局状态
     this.updateState({
       status: 'running',
       workflowId: finalWorkflowId,
@@ -267,38 +189,41 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     try {
       const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
+      
+      // 更新总步数
       this.updateState({
         currentStep: { ...this.state.currentStep!, total: workflow.nodes.length }
       });
 
       const results = await this.executeNodes(executionId, workflow.nodes);
-
       const endTime = new Date();
-      const duration = endTime.getTime() - startTime.getTime();
-      this.finishExecution(executionId, 'success', endTime, duration);
+      
+      this.finishExecution(executionId, 'success', endTime, endTime.getTime() - startTime.getTime());
       
       return { executionId, workflowId: finalWorkflowId!, status: 'success', startTime, endTime, results };
 
     } catch (error: any) {
       const endTime = new Date();
-      const duration = endTime.getTime() - startTime.getTime();
       const errorMsg = error.message || String(error);
 
       this.logger.error(`[Execution Failed] ID: ${executionId}, Reason: ${errorMsg}`);
-      this.finishExecution(executionId, 'failed', endTime, duration, errorMsg);
+      this.finishExecution(executionId, 'failed', endTime, endTime.getTime() - startTime.getTime(), errorMsg);
       
       return { executionId, workflowId: finalWorkflowId!, status: 'failed', startTime, endTime, error: errorMsg, results: [] };
     } finally {
-      this.executionContexts.delete(executionId);
+      // 【修改】清理静态 Map
+      ExecutionService._contexts.delete(executionId);
     }
   }
 
+  // ... executeNodes 和 dispatchNodeLogic 逻辑保持不变，它们会自动使用 updateState ...
+
   private async executeNodes(executionId: string, originalNodes: WorkflowNode[]): Promise<any[]> {
-    const queue: any[] = originalNodes.map(n => ({ ...n }));
+    const queue = originalNodes; // 没必要深拷贝，只读操作
     const completedResults: any[] = [];
     
-    let ip = 0;
-    while (ip < queue.length) {
+    for (let ip = 0; ip < queue.length; ip++) {
+      // 检查状态
       if (this.state.status === 'cancelled') throw new Error('Execution cancelled by user');
       if (this.state.status === 'paused') await this.waitForResume();
 
@@ -324,10 +249,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         this.emitNodeEvent('failed', executionId, node, { error: enhancedError });
         throw new Error(enhancedError); 
       }
-      
-      ip++;
     }
-
     return completedResults;
   }
 
@@ -335,10 +257,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const { type, config } = node;
     const params = config || {}; 
 
-    try {
-      switch (type) {
+    // 这里保留原来的 switch case 逻辑
+    switch (type) {
         case 'startup': await this.zahnerService.startup(params); break;
         case 'shutdown': await this.zahnerService.shutdown(); break;
+        case 'delay': await this.executeDelay(params.duration || 1); break;
         
         case 'change_temperature': 
           await this.furnaceService.autoTemperatureControl({
@@ -359,26 +282,23 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
           }, node.id, executionId);
           break;
 
-        case 'delay':
-          await this.executeDelay(params.duration || 1);
-          break;
-
         default:
           if (this.isMeasurementNodeType(type) || type === 'measurement') {
             const measType = type === 'measurement' ? params.measurement_type : type;
             await this.executeMeasurement(executionId, node, measType);
           }
-      }
-    } catch (error: any) {
-      throw error; 
     }
   }
 
   private async executeMeasurement(executionId: string, node: WorkflowNode, type: string) {
-    const workflowId = this.executionContexts.get(executionId)?.workflowId || 'unknown';
-    const workflow = await this.workflowService.getWorkflow(workflowId);
+    // 【修改】从静态 Map 获取 context
+    const context = ExecutionService._contexts.get(executionId);
+    const workflowId = context?.workflowId || 'unknown';
+    const timestamp = context?.workflowTimestamp;
     
+    const workflow = await this.workflowService.getWorkflow(workflowId);
     const projectConfig = this.filesService.getProjectConfig(workflow.ownerName, workflow.name, workflow.individualName);
+    
     const outputPath = this.filesService.buildOutputPath({
       base_path: projectConfig?.base_path,
       project_name: workflow.name,
@@ -386,13 +306,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       test_type: projectConfig?.test_type,
       measurement_type: type,
       workflow_id: workflowId,
-      workflow_timestamp: this.executionContexts.get(executionId)?.workflowTimestamp
+      workflow_timestamp: timestamp
     });
 
-    const params = { ...node.config, output_path: outputPath };
-    
-    // 执行测量，Python 会负责 WS 流
-    await this.zahnerService.performMeasurement(type, params, node.id, executionId);
+    await this.zahnerService.performMeasurement(type, { ...node.config, output_path: outputPath }, node.id, executionId);
   }
 
   private finishExecution(id: string, status: 'success' | 'failed', endTime: Date, duration: number, error?: string) {
@@ -400,34 +317,36 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     this.db.prepare(`UPDATE executions SET status = ?, end_time = ?, duration = ?, error = ? WHERE id = ?`)
       .run(finalStatus, endTime.toISOString(), duration, error || null, id);
     
-    const wfId = this.executionContexts.get(id)?.workflowId || 'unknown';
-    this.emitWorkflowEvent(finalStatus, id, wfId, { error, duration });
+    // 【修改】从静态 Map 获取 workflowId
+    const wfId = ExecutionService._contexts.get(id)?.workflowId || 'unknown';
     
+    this.emitWorkflowEvent(finalStatus, id, wfId, { error, duration });
     this.updateState({ status: finalStatus, duration, error: error || null, currentStep: null });
   }
 
-  private initDbTables() {
-    this.db.prepare(`
-      CREATE TABLE IF NOT EXISTS executions (
-        id TEXT PRIMARY KEY,
-        workflow_id TEXT,
-        status TEXT,
-        start_time TEXT,
-        end_time TEXT,
-        duration INTEGER,
-        error TEXT,
-        logs_json TEXT
-      )
-    `).run();
-    // 确保 hooks 表存在，即使是空的
-    this.db.prepare(`
-      CREATE TABLE IF NOT EXISTS hooks (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        enabled INTEGER,
-        rule_json TEXT
-      )
-    `).run();
+  // ==========================================
+  // Utility Methods
+  // ==========================================
+
+  async resetExecution() {
+    if (this.state.status === 'running') {
+      this.logger.warn(`[resetExecution] REJECTED - Cannot reset while running`);
+      return { success: false, error: 'Cannot reset while running' };
+    }
+
+    this.updateState({
+      status: 'idle',
+      workflowId: null,
+      executionId: null,
+      currentStep: null,
+      error: null,
+      duration: 0
+    });
+
+    this.logger.log(`[resetExecution] State reset to idle`);
+    this.eventBus.emit('execution.nodes.reset', { targetStatus: 'ready' });
+    this.workflowGateway.broadcast('nodesReset', { targetStatus: 'ready' });
+    return { success: true };
   }
 
   private async executeDelay(seconds: number) {
@@ -436,29 +355,45 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private async waitForResume() {
+    // 简单轮询等待
     while (this.state.status === 'paused') {
       await new Promise(r => setTimeout(r, 500));
     }
   }
 
+  // 辅助方法保持不变
+  getAllExecutions(): ExecutionStatus[] {
+    try {
+      const rows = this.db.prepare(`SELECT id, workflow_id, status, start_time, end_time, error FROM executions ORDER BY start_time DESC LIMIT 50`).all() as any[];
+      return rows.map(row => ({
+        executionId: row.id,
+        workflowId: row.workflow_id,
+        status: row.status,
+        startTime: new Date(row.start_time),
+        endTime: row.end_time ? new Date(row.end_time) : undefined,
+        error: row.error
+      })) as any; 
+    } catch (e) { return []; }
+  }
+
+  getLoadedHookRules(): any[] {
+    try { return this.db.prepare(`SELECT * FROM hooks WHERE enabled = 1`).all().map((r: any) => r.rule_json ? JSON.parse(r.rule_json) : r); } catch (e) { return []; }
+  }
+
+  private initDbTables() {
+    this.db.prepare(`CREATE TABLE IF NOT EXISTS executions (id TEXT PRIMARY KEY, workflow_id TEXT, status TEXT, start_time TEXT, end_time TEXT, duration INTEGER, error TEXT, logs_json TEXT)`).run();
+    this.db.prepare(`CREATE TABLE IF NOT EXISTS hooks (id TEXT PRIMARY KEY, name TEXT, enabled INTEGER, rule_json TEXT)`).run();
+  }
+
   private isMeasurementNodeType(t: string): boolean {
     return ['eis_potentiostatic', 'ocp', 'ocp_measurement', 'voltage_ramp', 'current_ramp', 'chronoamperometry'].some(k => t.includes(k));
   }
-
   private generateTimestamp() { return new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); }
-
-  private emitWorkflowEvent(type: string, eid: string, wfid: string, extra?: any) { 
-    this.eventBus.emit(`workflow.${type}`, { executionId: eid, workflowId: wfid, timestamp: new Date(), ...extra });
-  }
-  private emitNodeEvent(type: string, eid: string, node: any, extra?: any) { 
-    this.eventBus.emit(`node.${type}`, { nodeId: node.id, executionId: eid, nodeType: node.type, timestamp: new Date(), ...extra });
-  }
-  
+  private emitWorkflowEvent(type: string, eid: string, wfid: string, extra?: any) { this.eventBus.emit(`workflow.${type}`, { executionId: eid, workflowId: wfid, timestamp: new Date(), ...extra }); }
+  private emitNodeEvent(type: string, eid: string, node: any, extra?: any) { this.eventBus.emit(`node.${type}`, { nodeId: node.id, executionId: eid, nodeType: node.type, timestamp: new Date(), ...extra }); }
   async pauseExecution(id: string) { this.updateState({ status: 'paused' }); }
   async resumeExecution(id: string) { this.updateState({ status: 'running' }); }
   async cancelExecution(id: string) { this.updateState({ status: 'cancelled' }); }
-  async getExecutionStatus(id: string): Promise<ExecutionStatus> {
-      return { executionId: id, workflowId: '', status: 'unknown', startTime: new Date() } as any; 
-  }
+  async getExecutionStatus(id: string): Promise<ExecutionStatus> { return { executionId: id, workflowId: '', status: 'unknown', startTime: new Date() } as any; }
   getStatus() { return { state: 'running', health: 'healthy', lastCheck: new Date() } as any; }
 }
