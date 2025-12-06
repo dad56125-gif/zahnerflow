@@ -208,8 +208,9 @@ async def execute_measurement(req: MeasureRequest):
     # 获取用于流式传输的回调函数
     stream_cb = get_stream_callback()
 
-    print(f"[API] Request: {m_type}")
-    print(f"[API] Parameters: {raw_params}")
+    # 【日志】设备层 API 接收的测量参数
+    print(f"[设备层 Zahner] 接收测量参数 - 测量类型: {m_type}")
+    print(f"[设备层 Zahner] 原始参数: {raw_params}")
 
     # ====================================================
     # 适配器层 1: 默认值配置表
@@ -262,6 +263,10 @@ async def execute_measurement(req: MeasureRequest):
     if m_type in DEFAULTS:
         final_params.update(DEFAULTS[m_type])
     final_params.update(raw_params)  # 用户传入的参数优先级最高
+
+    # 【日志】适配器处理后的最终参数
+    print(f"[设备层 Zahner] 最终参数 - 测量类型: {m_type}")
+    print(f"[设备层 Zahner] 最终参数字典: {final_params}")
 
     # ====================================================
     # 适配器层 3: 类型转换和简单验证

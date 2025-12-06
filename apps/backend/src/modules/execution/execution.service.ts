@@ -144,6 +144,14 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // ==========================================
 
   async executeWorkflow(workflowId: string | null, nodes?: any[]): Promise<ExecutionResult> {
+    // 【日志】前端传递的节点列表
+    if (nodes) {
+      this.logger.log(`[ExecutionService] 前端传递的节点列表 - 数量: ${nodes.length}`);
+      nodes.forEach((node, index) => {
+        this.logger.log(`[前端节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
+      });
+    }
+
     this.logger.log(`[executeWorkflow] START - workflowId=${workflowId}`);
 
     let finalWorkflowId = workflowId;

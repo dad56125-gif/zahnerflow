@@ -153,6 +153,12 @@ export const useExecutionStore = create<ExecutionState>()(
         lastSnapshot: null, // ✅ 初始化为空
 
         startExecution: async (workflowId, nodes) => {
+          // 【日志】前端传递的节点列表 - 记录完整信息
+          console.log(`[前端执行] 前端传递节点列表 - 数量: ${nodes.length}`);
+          nodes.forEach((node, index) => {
+            console.log(`[前端节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
+          });
+
           // 初始化状态
           set({
             isRunning: true,

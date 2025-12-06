@@ -33,6 +33,12 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
   // --- 核心方法：创建工作流 ---
   async createWorkflow(data: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workflow> {
+    // 【日志】WorkflowService 创建工作流 - 记录节点信息
+    this.logger.log(`[WorkflowService] 创建工作流 - 节点数量: ${data.nodes.length}`);
+    data.nodes.forEach((node, index) => {
+      this.logger.log(`[WorkflowService节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
+    });
+
     // 1. 校验
     const validation = this.validateWorkflow(data);
     if (!validation.valid) {
@@ -41,12 +47,18 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
     // 2. ID 生成 (Workflow ID & Node IDs)
     const id = this.generateWorkflowId();
-    
+
     // 处理节点 ID：如果是临时 ID (temp_) 则重新生成，否则保留
     const processedNodes = data.nodes.map(node => ({
       ...node,
       id: (!node.id || node.id.startsWith('temp_')) ? this.generateNodeId() : node.id
     }));
+
+    // 【日志】处理后的节点信息
+    this.logger.log(`[WorkflowService] 处理后节点列表 - ID: ${id}`);
+    processedNodes.forEach((node, index) => {
+      this.logger.log(`[WorkflowService处理后] 索引: ${index}, ID: ${node.id}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
+    });
 
     // 3. 构建完整对象
     const workflow: Workflow = {
@@ -60,7 +72,7 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     // 4. 保存
     this.workflows.set(id, workflow);
     await this.workflowStorage.saveWorkflow(workflow);
-    
+
     this.logger.log(`Created workflow ${id} with ${workflow.nodes.length} nodes`);
     return workflow;
   }

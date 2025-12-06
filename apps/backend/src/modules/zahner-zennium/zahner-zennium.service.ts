@@ -207,16 +207,25 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   async performMeasurement(measurementType: string, parameters: Record<string, any>, nodeId?: string, executionId?: string): Promise<any> {
     if (!this.connected) throw new Error('Zahner device not connected');
 
+    // 【日志】设备层 API 接收的测量参数
+    this.logger.log(`[设备层 Zahner] 测量参数 - 类型: ${measurementType}, 节点ID: ${nodeId}, 执行ID: ${executionId}`);
+    this.logger.log(`[设备层 Zahner] 原始参数: ${JSON.stringify(parameters)}`);
+
     this.updateStatus(true, true);
     this.eventBus.emit('measurement.started', { type: measurementType, nodeId, executionId });
 
     try {
       this.log('enableLog', `Sending measurement: type=${measurementType}, params=${JSON.stringify(parameters)}`);
+
+      // 【日志】发送到 Python 设备 API 的参数
+      const pythonParams = {
+        measurement_type: measurementType,
+        parameters: parameters,
+      };
+      this.logger.log(`[设备层 Zahner] 发送到 Python API: ${JSON.stringify(pythonParams)}`);
+
       const response = await firstValueFrom(
-        this.httpService.post(`${this.endpoint}/measure`, {
-          measurement_type: measurementType,
-          parameters: parameters,
-        }, { timeout: this.timeoutMs })
+        this.httpService.post(`${this.endpoint}/measure`, pythonParams, { timeout: this.timeoutMs })
       );
 
       const result = response.data;
@@ -230,7 +239,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       this.eventBus.emit('measurement.failed', { type: measurementType, error: errMsg, nodeId });
       throw new Error(`Measurement Failed: ${errMsg}`);
     } finally {
-      this.updateStatus(true, false); 
+      this.updateStatus(true, false);
     }
   }
 
