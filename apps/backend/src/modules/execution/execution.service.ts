@@ -176,7 +176,21 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private updateState(partial: Partial<ExecutionSnapshot>) {
+    const oldStatus = this._globalState.status;
+    const oldExecutionId = this._globalState.executionId;
+    const oldStepIndex = this._globalState.currentStep?.index;
+
+    this.logger.log(`[updateState] BEFORE - Status: ${oldStatus}, ExecutionId: ${oldExecutionId}, StepIndex: ${oldStepIndex}`);
+    this.logger.log(`[updateState] PARTIAL - ${JSON.stringify(partial)}`);
+
     this._globalState = { ...this._globalState, ...partial, timestamp: new Date() };
+
+    const newStatus = this._globalState.status;
+    const newExecutionId = this._globalState.executionId;
+    const newStepIndex = this._globalState.currentStep?.index;
+
+    this.logger.log(`[updateState] AFTER - Status: ${newStatus}, ExecutionId: ${newExecutionId}, StepIndex: ${newStepIndex}`);
+
     this.eventBus.emit('execution.state.changed', this._globalState);
   }
 
