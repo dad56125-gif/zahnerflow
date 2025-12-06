@@ -148,22 +148,24 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     });
   }
 
-  private handleRawStreamData(rawData: { t: number; v: number; i: number }) {
-    this.logger.log(`[handleRawStreamData] TRIGGERED - ExecutionService=${this.constructor.name}, Status: ${this._globalState.status}, ExecutionId: ${this._globalState.executionId}, StepIndex: ${this._globalState.currentStep?.index}, NodeId: ${this._globalState.currentStep?.nodeId}`);
+  private async handleRawStreamData(rawData: { t: number; v: number; i: number }) {
+    this.logger.log(`[handleRawStreamData] TRIGGER - About to query state`);
+    const snapshot = this.getExecutionSnapshot();
+    this.logger.log(`[handleRawStreamData] AFTER query - Status: ${snapshot.status}, ExecutionId: ${snapshot.executionId}, StepIndex: ${snapshot.currentStep?.index}`);
 
-    if (this._globalState.status !== 'running') {
-      this.logger.warn(`[handleRawStreamData] Filtered: status is not running (${this._globalState.status})`);
+    if (snapshot.status !== 'running') {
+      this.logger.warn(`[handleRawStreamData] Filtered: status is not running (${snapshot.status})`);
       return;
     }
-    if (!this._globalState.executionId || !this._globalState.currentStep) {
+    if (!snapshot.executionId || !snapshot.currentStep) {
       this.logger.warn(`[handleRawStreamData] Filtered: missing executionId or currentStep`);
       return;
     }
 
     const enrichedPayload = {
-      executionId: this._globalState.executionId,
-      stepIndex: this._globalState.currentStep.index,
-      nodeId: this._globalState.currentStep.nodeId,
+      executionId: snapshot.executionId,
+      stepIndex: snapshot.currentStep.index,
+      nodeId: snapshot.currentStep.nodeId,
       data: rawData
     };
 
@@ -172,6 +174,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   getExecutionSnapshot(): ExecutionSnapshot {
+    this.logger.log(`[getExecutionSnapshot] CALLED - Status: ${this._globalState.status}, ExecutionId: ${this._globalState.executionId}, StepIndex: ${this._globalState.currentStep?.index}`);
     return { ...this._globalState };
   }
 
