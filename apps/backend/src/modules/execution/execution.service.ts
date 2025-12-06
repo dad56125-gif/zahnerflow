@@ -37,7 +37,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // 1. 【新增】生成一个随机身份证 ID
   private readonly _debugInstanceId = Math.random().toString(36).slice(2, 7).toUpperCase();
 
-  private _globalStateRaw: ExecutionSnapshot = {
+  // 1. 【修改】把 _globalStateRaw 改成静态的 (static)
+  // 这样无论你是访问 Proxy 还是 Target，大家读写的都是这唯一的一份内存
+  private static _globalStateStorage: ExecutionSnapshot = {
     status: 'idle',
     workflowId: null,
     executionId: null,
@@ -48,15 +50,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     timestamp: new Date()
   };
 
-  // 使用getter/setter拦截所有访问
-  private get _globalState(): ExecutionSnapshot {
-    return this._globalStateRaw;
-  }
-
-  private set _globalState(value: ExecutionSnapshot) {
-    this.logger.error(`[_globalState SETTER] DIRECT ASSIGNMENT DETECTED!`);
-    this.logger.error(`[_globalState SETTER] Current stack: ${new Error().stack}`);
-    this._globalStateRaw = value;
+  // 4. 【新增】为了方便代码不改动太多，加一个 helper getter
+  private get state(): ExecutionSnapshot {
+    return ExecutionService._globalStateStorage;
   }
 
   private executionContexts = new Map<string, {
@@ -128,9 +124,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   async resetExecution() {
-    this.logger.log(`[resetExecution] CALLED - CurrentStatus=${this._globalState.status}, ExecutionId=${this._globalState.executionId}`);
+    this.logger.log(`[resetExecution] CALLED - CurrentStatus=${this.state.status}, ExecutionId=${this.state.executionId}`);
 
-    if (this._globalState.status === 'running') {
+    if (this.state.status === 'running') {
       this.logger.warn(`[resetExecution] REJECTED - Cannot reset while running`);
       return { success: false, error: 'Cannot reset while running' };
     }
@@ -191,44 +187,38 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   getExecutionSnapshot(): ExecutionSnapshot {
-    this.logger.log(`[getExecutionSnapshot] CALLED - Status: ${this._globalState.status}, ExecutionId: ${this._globalState.executionId}, StepIndex: ${this._globalState.currentStep?.index}`);
-    return { ...this._globalState };
+    // 从静态变量读取
+    const snapshot = { ...ExecutionService._globalStateStorage };
+    this.logger.log(`[getExecutionSnapshot] CALLED - Status: ${snapshot.status}, ExecutionId: ${snapshot.executionId}, StepIndex: ${snapshot.currentStep?.index}`);
+    return snapshot;
   }
 
   private updateState(partial: Partial<ExecutionSnapshot>) {
+    // 使用静态变量
+    const currentState = ExecutionService._globalStateStorage;
+
+    const oldStatus = currentState.status;
+    const oldExecutionId = currentState.executionId;
+    const oldStepIndex = currentState.currentStep?.index;
+
     this.logger.log(`[Instance: ${this._debugInstanceId}] updateState CALLED. Setting status to: ${partial.status || 'unchanged'}`);
-
-    this.logger.log(`[updateState] ENTER - this instanceof ExecutionService: ${this instanceof ExecutionService}`);
-
-    // 关键：验证this._globalStateRaw是否存在
-    this.logger.log(`[updateState] this._globalStateRaw exists: ${!!(this as any)._globalStateRaw}`);
-    this.logger.log(`[updateState] this._globalStateRaw === undefined? ${(this as any)._globalStateRaw === undefined}`);
-
-    // 验证getter是否工作
-    this.logger.log(`[updateState] Accessing this._globalState: Status=${this._globalState.status}`);
-
-    if (!(this as any)._globalStateRaw) {
-      this.logger.error(`[updateState] CRITICAL: this._globalStateRaw is undefined! this=${this}, constructor=${this.constructor.name}`);
-      this.logger.error(`[updateState] Full this object: ${JSON.stringify(this, null, 2)}`);
-    }
-
-    const oldStatus = this._globalState.status;
-    const oldExecutionId = this._globalState.executionId;
-    const oldStepIndex = this._globalState.currentStep?.index;
-
     this.logger.log(`[updateState] BEFORE - Status: ${oldStatus}, ExecutionId: ${oldExecutionId}, StepIndex: ${oldStepIndex}`);
     this.logger.log(`[updateState] PARTIAL - ${JSON.stringify(partial)}`);
 
-    this.logger.log(`[updateState] About to call setter manually with: ${JSON.stringify({ ...this._globalState, ...partial, timestamp: new Date() })}`);
-    this._globalState = { ...this._globalState, ...partial, timestamp: new Date() };
+    // 直接修改静态对象上的属性
+    Object.assign(currentState, {
+        ...partial,
+        timestamp: new Date()
+    });
 
-    const newStatus = this._globalState.status;
-    const newExecutionId = this._globalState.executionId;
-    const newStepIndex = this._globalState.currentStep?.index;
+    const newStatus = currentState.status;
+    const newExecutionId = currentState.executionId;
+    const newStepIndex = currentState.currentStep?.index;
 
     this.logger.log(`[updateState] AFTER - Status: ${newStatus}, ExecutionId: ${newExecutionId}, StepIndex: ${newStepIndex}`);
 
-    this.eventBus.emit('execution.state.changed', this._globalState);
+    // 发送事件
+    this.eventBus.emit('execution.state.changed', currentState);
   }
 
   // ==========================================
@@ -278,7 +268,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     try {
       const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
       this.updateState({
-        currentStep: { ...this._globalState.currentStep!, total: workflow.nodes.length }
+        currentStep: { ...this.state.currentStep!, total: workflow.nodes.length }
       });
 
       const results = await this.executeNodes(executionId, workflow.nodes);
@@ -307,10 +297,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const queue: any[] = originalNodes.map(n => ({ ...n }));
     const completedResults: any[] = [];
     
-    let ip = 0; 
+    let ip = 0;
     while (ip < queue.length) {
-      if (this._globalState.status === 'cancelled') throw new Error('Execution cancelled by user');
-      if (this._globalState.status === 'paused') await this.waitForResume();
+      if (this.state.status === 'cancelled') throw new Error('Execution cancelled by user');
+      if (this.state.status === 'paused') await this.waitForResume();
 
       const node = queue[ip];
       
@@ -446,7 +436,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private async waitForResume() {
-    while (this._globalState.status === 'paused') {
+    while (this.state.status === 'paused') {
       await new Promise(r => setTimeout(r, 500));
     }
   }
