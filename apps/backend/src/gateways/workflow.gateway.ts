@@ -52,20 +52,21 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     private readonly executionService: ExecutionService,
   ) {
     WorkflowGateway.instances++;
+    console.log(`[WorkflowGateway:constructor] - Instance #${WorkflowGateway.instances} created`);
   }
 
   afterInit(server: Server) {
-    this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', 'WebSocket Gateway initialized');
+    console.log(`[WorkflowGateway:afterInit] - WebSocket Gateway initialized`);
 
     // --- 【关键】监听系统状态变更，广播给所有客户端 ---
     this.eventBus.on('execution.state.changed').subscribe((event) => {
-      // event.data 就是 ExecutionSnapshot
+      console.log(`[WorkflowGateway:eventBus] execution.state.changed received - Status: ${event.data.status}`);
       this.broadcastSystemSnapshot(event.data);
     });
 
     // --- 【新增】监听节点重置事件，广播给所有客户端 ---
     this.eventBus.on('execution.nodes.reset').subscribe((event) => {
-      this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Broadcasting node reset: ${event.data.targetStatus}`);
+      console.log(`[WorkflowGateway:eventBus] execution.nodes.reset received - TargetStatus: ${event.data.targetStatus}`);
       this.broadcastNodesReset(event.data);
     });
 
@@ -92,9 +93,11 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       connectedClients: this.connectedClients.size,
     });
 
-    // --- 【关键】连接建立后，立即推送当前的“唯一真理” ---
+    // --- 【关键】连接建立后，立即推送当前的"唯一真理" ---
     try {
+      console.log(`[WorkflowGateway:handleConnection] Getting snapshot for client ${client.id}`);
       const currentSnapshot = this.executionService.getExecutionSnapshot();
+      console.log(`[WorkflowGateway:handleConnection] Snapshot: Status=${currentSnapshot.status}, ExecutionId=${currentSnapshot.executionId}`);
       client.emit('systemStateSnapshot', currentSnapshot);
       this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Sent initial snapshot to ${client.id} (Status: ${currentSnapshot.status})`);
     } catch (error) {
