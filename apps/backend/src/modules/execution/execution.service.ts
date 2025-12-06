@@ -191,7 +191,18 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private updateState(partial: Partial<ExecutionSnapshot>) {
     this.logger.log(`[updateState] ENTER - this instanceof ExecutionService: ${this instanceof ExecutionService}`);
-    this.logger.log(`[updateState] this._globalState === this._globalStateRaw? ${this._globalState === (this as any)._globalStateRaw}`);
+
+    // 关键：验证this._globalStateRaw是否存在
+    this.logger.log(`[updateState] this._globalStateRaw exists: ${!!(this as any)._globalStateRaw}`);
+    this.logger.log(`[updateState] this._globalStateRaw === undefined? ${(this as any)._globalStateRaw === undefined}`);
+
+    // 验证getter是否工作
+    this.logger.log(`[updateState] Accessing this._globalState: Status=${this._globalState.status}`);
+
+    if (!(this as any)._globalStateRaw) {
+      this.logger.error(`[updateState] CRITICAL: this._globalStateRaw is undefined! this=${this}, constructor=${this.constructor.name}`);
+      this.logger.error(`[updateState] Full this object: ${JSON.stringify(this, null, 2)}`);
+    }
 
     const oldStatus = this._globalState.status;
     const oldExecutionId = this._globalState.executionId;
