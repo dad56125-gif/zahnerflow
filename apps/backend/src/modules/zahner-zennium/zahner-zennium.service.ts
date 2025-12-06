@@ -207,10 +207,11 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   async performMeasurement(measurementType: string, parameters: Record<string, any>, nodeId?: string, executionId?: string): Promise<any> {
     if (!this.connected) throw new Error('Zahner device not connected');
 
-    this.updateStatus(true, true); 
+    this.updateStatus(true, true);
     this.eventBus.emit('measurement.started', { type: measurementType, nodeId, executionId });
 
     try {
+      this.log('enableLog', `Sending measurement: type=${measurementType}, params=${JSON.stringify(parameters)}`);
       const response = await firstValueFrom(
         this.httpService.post(`${this.endpoint}/measure`, {
           measurement_type: measurementType,

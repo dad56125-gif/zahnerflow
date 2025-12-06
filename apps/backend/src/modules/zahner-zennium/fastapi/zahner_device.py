@@ -4,6 +4,9 @@
 import asyncio
 import json
 import time
+import statistics
+import csv
+import os
 from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Body
@@ -133,6 +136,32 @@ class MeasureRequest(BaseModel):
     parameters: Dict[str, Any] = {}
 
 # ==========================================
+# 辅助函数：计算CSV文件的统计信息
+# ==========================================
+def calculate_stats(file_path: str) -> Dict[str, Any]:
+    """读取CSV文件并计算统计信息"""
+    vals = []
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # 尝试获取 current 或 potential
+                val = row.get('current') or row.get('potential')
+                if val:
+                    vals.append(float(val))
+        if not vals:
+            return {}
+        return {
+            "avg": statistics.mean(vals),
+            "min": min(vals),
+            "max": max(vals),
+            "count": len(vals)
+        }
+    except Exception as e:
+        print(f"[Stats] Error calculating stats: {e}")
+        return {}
+
+# ==========================================
 # 5. API 路由
 # ==========================================
 
@@ -166,30 +195,106 @@ def disconnect_device():
 @app.post("/measure")
 async def execute_measurement(req: MeasureRequest):
     """
-    统一测量入口：
-    1. 解析类型
-    2. 获取设备实例
-    3. 准备 WS 回调
-    4. 将阻塞操作扔到线程池 (run_in_threadpool)
+    统一测量入口（适配器模式）：
+    1. 参数清洗和默认值填充
+    2. 类型转换和验证
+    3. 调用 Logic 层
+    4. 结果增强（统计信息等）
     """
     wrapper = device_manager.get_wrapper()
     m_type = req.measurement_type
-    params = req.parameters
-    
+    raw_params = req.parameters  # 原始参数字典
+
     # 获取用于流式传输的回调函数
     stream_cb = get_stream_callback()
-    
+
     print(f"[API] Request: {m_type}")
+    print(f"[API] Parameters: {raw_params}")
+
+    # ====================================================
+    # 适配器层 1: 默认值配置表
+    # ====================================================
+    DEFAULTS = {
+        "common": {
+            "output_path": "c:/zahner_data",
+            "filename": "measurement",
+            "measurement_duration": 60.0,
+            "sampling_interval": 1.0
+        },
+        "chronoamperometry": {
+            "polarization_voltage": 1.0,  # 恢复为 1.0V
+            "min_current": -1.0,
+            "max_current": 1.0
+        },
+        "chronopotentiometry": {
+            "polarization_current": 0.01,  # 恢复为 10mA
+            "min_voltage": -4.0,
+            "max_voltage": 4.0
+        },
+        "voltage_ramp": {
+            "start_voltage": 0.0,
+            "end_voltage": 1.0,
+            "scan_rate": 0.01
+        },
+        "current_ramp": {
+            "start_current": 0.0,
+            "end_current": 0.01,
+            "scan_rate": 0.0001
+        },
+        "eis_potentiostatic": {
+            "potential": 0.0,
+            "start_frequency": 100000.0,
+            "end_frequency": 0.1,
+            "points_per_decade": 10
+        },
+        "eis_galvanostatic": {
+            "current": 0.01,
+            "start_frequency": 100000.0,
+            "end_frequency": 0.1,
+            "points_per_decade": 10
+        }
+    }
+
+    # ====================================================
+    # 适配器层 2: 参数合并（用户 > 特定类型 > 通用）
+    # ====================================================
+    final_params = DEFAULTS["common"].copy()
+    if m_type in DEFAULTS:
+        final_params.update(DEFAULTS[m_type])
+    final_params.update(raw_params)  # 用户传入的参数优先级最高
+
+    # ====================================================
+    # 适配器层 3: 类型转换和简单验证
+    # ====================================================
+    for k, v in final_params.items():
+        if k in [
+            "polarization_voltage", "polarization_current",
+            "measurement_duration", "sampling_interval",
+            "min_current", "max_current", "min_voltage", "max_voltage",
+            "start_voltage", "end_voltage", "scan_rate",
+            "start_current", "end_current", "potential", "current",
+            "start_frequency", "end_frequency"
+        ]:
+            try:
+                final_params[k] = float(v)
+            except (ValueError, TypeError):
+                print(f"[Adapter] Warning: Could not convert {k} to float, keeping original value")
+
+        if k in ["points_per_decade"]:
+            try:
+                final_params[k] = int(v)
+            except (ValueError, TypeError):
+                print(f"[Adapter] Warning: Could not convert {k} to int, keeping original value")
 
     try:
-        # ==========================================
-        # 核心调度逻辑：将 API 请求映射到 Logic 函数
-        # ==========================================
-        
+        # ====================================================
+        # 核心调度逻辑：将适配后的参数映射到 Logic 函数
+        # ====================================================
+
         if m_type == "ocp" or m_type == "open_circuit_potential" or m_type == "ocp_measurement":
             result = await run_in_threadpool(
-                logic.measure_ocp, 
-                wrapper, params, stream_cb
+                logic.measure_ocp,
+                wrapper, final_params, stream_cb
             )
 
         # ------------------------------------------
@@ -198,12 +303,12 @@ async def execute_measurement(req: MeasureRequest):
         elif m_type == "chronoamperometry":
             result = await run_in_threadpool(
                 logic.measure_chrono,
-                wrapper, params, "potentiostatic", stream_cb
+                wrapper, final_params, "potentiostatic", stream_cb
             )
         elif m_type == "chronopotentiometry":
             result = await run_in_threadpool(
                 logic.measure_chrono,
-                wrapper, params, "galvanostatic", stream_cb
+                wrapper, final_params, "galvanostatic", stream_cb
             )
 
         # ------------------------------------------
@@ -212,12 +317,12 @@ async def execute_measurement(req: MeasureRequest):
         elif m_type in ["voltage_ramp", "lsv", "linear_sweep_voltammetry"]:
             result = await run_in_threadpool(
                 logic.measure_ramp,
-                wrapper, params, "potentiostatic", stream_cb
+                wrapper, final_params, "potentiostatic", stream_cb
             )
         elif m_type == "current_ramp":
             result = await run_in_threadpool(
                 logic.measure_ramp,
-                wrapper, params, "galvanostatic", stream_cb
+                wrapper, final_params, "galvanostatic", stream_cb
             )
 
         # ------------------------------------------
@@ -226,16 +331,26 @@ async def execute_measurement(req: MeasureRequest):
         elif m_type == "eis_potentiostatic":
             result = await run_in_threadpool(
                 logic.measure_eis,
-                wrapper, params, "potentiostatic"
+                wrapper, final_params, "potentiostatic"
             )
         elif m_type == "eis_galvanostatic":
             result = await run_in_threadpool(
                 logic.measure_eis,
-                wrapper, params, "galvanostatic"
+                wrapper, final_params, "galvanostatic"
             )
 
         else:
             raise HTTPException(status_code=400, detail=f"Unknown measurement type: {m_type}")
+
+        # ====================================================
+        # 适配器层 4: 结果增强（Result Enrichment）
+        # ====================================================
+        # 如果结果包含输出文件，计算统计信息
+        if isinstance(result, dict) and "output_file" in result and os.path.exists(result["output_file"]):
+            stats = await run_in_threadpool(calculate_stats, result["output_file"])
+            if stats:
+                result["statistics"] = stats
+                print(f"[Adapter] Statistics calculated and added to result")
 
         return {"status": "success", "result": result}
 
