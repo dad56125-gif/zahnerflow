@@ -34,7 +34,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   readonly dependencies = [];
   private readonly logger = new Logger(ExecutionService.name);
 
-  private _globalState: ExecutionSnapshot = {
+  private _globalStateRaw: ExecutionSnapshot = {
     status: 'idle',
     workflowId: null,
     executionId: null,
@@ -44,6 +44,17 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     error: null,
     timestamp: new Date()
   };
+
+  // 使用getter/setter拦截所有访问
+  private get _globalState(): ExecutionSnapshot {
+    return this._globalStateRaw;
+  }
+
+  private set _globalState(value: ExecutionSnapshot) {
+    this.logger.error(`[_globalState SETTER] DIRECT ASSIGNMENT DETECTED!`);
+    this.logger.error(`[_globalState SETTER] Current stack: ${new Error().stack}`);
+    this._globalStateRaw = value;
+  }
 
   private executionContexts = new Map<string, {
     workflowId: string;
@@ -179,6 +190,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private updateState(partial: Partial<ExecutionSnapshot>) {
+    this.logger.log(`[updateState] ENTER - this instanceof ExecutionService: ${this instanceof ExecutionService}`);
+    this.logger.log(`[updateState] this._globalState === this._globalStateRaw? ${this._globalState === (this as any)._globalStateRaw}`);
+
     const oldStatus = this._globalState.status;
     const oldExecutionId = this._globalState.executionId;
     const oldStepIndex = this._globalState.currentStep?.index;
@@ -186,6 +200,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     this.logger.log(`[updateState] BEFORE - Status: ${oldStatus}, ExecutionId: ${oldExecutionId}, StepIndex: ${oldStepIndex}`);
     this.logger.log(`[updateState] PARTIAL - ${JSON.stringify(partial)}`);
 
+    this.logger.log(`[updateState] About to call setter manually with: ${JSON.stringify({ ...this._globalState, ...partial, timestamp: new Date() })}`);
     this._globalState = { ...this._globalState, ...partial, timestamp: new Date() };
 
     const newStatus = this._globalState.status;
