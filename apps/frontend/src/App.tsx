@@ -12,6 +12,7 @@ import { setupAutoGlassEffect } from './shared/glassEffect';
 import { useCanvasStore } from './canvas/canvasStore'; // 修正 store 路径
 import { useWorkflowStore, useExecutionStore } from './workflow';
 import { workflowWebSocketService } from './workflow/websocket.service';
+import { clearMeasurementCache } from './hooks/useMeasurementStream';
 
 import { MFCModal } from './modules/mfc';
 import { useFurnace, DeviceModal } from './modules/furnace';
@@ -136,6 +137,11 @@ const ZahnerFlowApp: React.FC = () => {
   const resetFlow = async () => {
     try {
       console.log('[App] 重置工作流执行状态...');
+
+      // 清空测量数据缓存
+      clearMeasurementCache();
+      console.log('[App] 已清空测量数据缓存');
+
       const response = await fetch('/api/executions/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

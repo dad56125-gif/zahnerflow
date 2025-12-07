@@ -197,11 +197,23 @@ export const NodeChart: React.FC<NodeChartProps> = ({
     });
   }, [consumeBuffer, hasData]);
 
+  // --- 3. 清理逻辑 (核心修改) ---
   useEffect(() => {
+    // 🔥 核心修改：如果不判断，executionId 变成 null (停止) 时图表会被清空。
+    // 我们加上这个判断：只有当 activeExecutionId 存在（说明开始了新的一轮）时，才清空画布。
+    if (!activeExecutionId) {
+      // ID 为 null，说明流程结束或重置。
+      // 我们什么都不做，让图表保持最后一帧的样子 (固化显示)。
+      return;
+    }
+
+    // 只有当确认为"新的一轮运行"时，才重置本地图表
+    console.log(`[NodeChart] 新运行开始，重置图表 (Node ${nodeIndex})`);
     historyRef.current = { voltage: [], current: [] };
     setHasData(false);
     chartInstance.current?.setOption({ series: [{ data: [] }, { data: [] }] });
-  }, [activeExecutionId]);
+
+  }, [activeExecutionId]); // 依赖项不变
 
   const getStatusTag = () => {
     if (isPending) return <span style={{color: '#faad14'}}>⏳ 等待</span>;

@@ -7,6 +7,9 @@ import { workflowWebSocketService } from '../workflow/websocket.service';
 // key: nodeIndex, value: 数据点数组
 const GlobalMeasurementCache = new Map<number, RawStreamData[]>();
 
+// 🔥 新增：记录上一次的运行ID，用来判断是否开启了新的一轮
+let lastExecutionId: string | null = null;
+
 // --- 全局监听器 ---
 type DataHandler = (payload: EnrichedStreamData) => void;
 const listeners = new Set<DataHandler>();
@@ -32,9 +35,10 @@ const setupGlobalListener = () => {
   isGlobalListenerSetup = true;
 };
 
-// 导出清空缓存的方法（可选，用于重置工作流时）
+// 导出清空缓存的方法（给重置按钮用）
 export const clearMeasurementCache = () => {
   GlobalMeasurementCache.clear();
+  lastExecutionId = null;
 };
 
 interface UseMeasurementStreamProps {
@@ -47,6 +51,14 @@ export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasur
   const dataBufferRef = useRef<RawStreamData[]>([]);
   const [tick, setTick] = useState(0);
   const isReceiving = useRef(false);
+
+  // 🔥🔥🔥 核心修改：智能清空缓存逻辑 🔥🔥🔥
+  // 每次组件渲染时检查：如果 activeExecutionId 变了，且是一个新的非空值 -> 说明新一轮开始了
+  if (activeExecutionId && activeExecutionId !== lastExecutionId) {
+    console.log('[Stream] 检测到新一轮运行，自动清空全局缓存');
+    GlobalMeasurementCache.clear(); // 清空历史数据
+    lastExecutionId = activeExecutionId; // 更新记录
+  }
 
   useEffect(() => {
     setupGlobalListener();
