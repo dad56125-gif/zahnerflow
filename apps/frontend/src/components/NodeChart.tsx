@@ -4,10 +4,9 @@ import { useMeasurementStream } from '../hooks/useMeasurementStream';
 import { ExecutionSnapshot } from '../types/Interfaces';
 
 interface NodeChartProps {
-  nodeIndex: number;       // 我是第几个节点？(从 props 传入)
-  nodeId: string;
-  nodeConfig: any;         // 节点配置 (如 title, type)
-  systemState: ExecutionSnapshot | null; // ✅ 允许为 null
+  nodeIndex: number;
+  nodeConfig: any;
+  systemState: ExecutionSnapshot | null;
 }
 
 export const NodeChart: React.FC<NodeChartProps> = ({
@@ -17,142 +16,117 @@ export const NodeChart: React.FC<NodeChartProps> = ({
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
+  // 使用 Ref 存储历史数据，这样即使组件重渲染数据也不会丢
   const fullHistoryRef = useRef<{name: string, value: [number, number]}[]>([]);
-
-  // ✅ 新增：控制是否显示图表的状态
+  
+  // 状态标记
   const [hasData, setHasData] = useState(false);
 
   const activeExecutionId = systemState?.executionId || null;
+  
+  // 计算当前节点状态
+  const currentStepIndex = systemState?.currentStep?.index ?? -1;
+  const isPending = currentStepIndex < nodeIndex;   // 还没轮到我
+  const isRunning = currentStepIndex === nodeIndex && systemState?.status === 'running'; // 正在跑
+  const isCompleted = currentStepIndex > nodeIndex; // 我已经跑完了 (固化状态)
 
-  const { consumeBuffer, isReceiving } = useMeasurementStream({
+  // 挂载 Hook
+  const { consumeBuffer } = useMeasurementStream({
     nodeIndex,
     activeExecutionId
   });
 
-  // 1. 初始化与销毁 (仅当 hasData 为 true 时才真正初始化图表)
+  // 1. 初始化 ECharts
   useEffect(() => {
-    if (!hasData || !chartRef.current) return;
-
+    if (!chartRef.current) return;
+    
     if (!chartInstance.current) {
-        chartInstance.current = echarts.init(chartRef.current);
-        const option = {
-          title: { text: nodeConfig.name || 'Real-time Measurement', left: 'center' },
-          tooltip: { trigger: 'axis' },
-          grid: { left: 40, right: 20, top: 40, bottom: 30 }, // 调整边距适应小窗口
-          xAxis: { type: 'value', name: 't(s)', splitLine: { show: false } },
-          yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { type: 'dashed' } } },
-          series: [{
-            name: 'Data',
-            type: 'line',
-            showSymbol: false,
-            data: fullHistoryRef.current // 初始化时加载已有数据
-          }],
-          animation: false
-        };
-        chartInstance.current.setOption(option);
+      chartInstance.current = echarts.init(chartRef.current);
+      chartInstance.current.setOption({
+        title: { text: nodeConfig.name, left: 'center', textStyle: { fontSize: 14 } },
+        tooltip: { trigger: 'axis' },
+        animation: false, // 关闭动画以提高实时性能
+        grid: { top: 40, bottom: 30, left: 50, right: 20 },
+        xAxis: { type: 'value', splitLine: { show: false } },
+        yAxis: { type: 'value' },
+        series: [{
+          type: 'line',
+          showSymbol: false,
+          data: []
+        }]
+      });
     }
 
     const resizeHandler = () => chartInstance.current?.resize();
     window.addEventListener('resize', resizeHandler);
+    return () => window.removeEventListener('resize', resizeHandler);
+  }, []);
 
-    return () => {
-      window.removeEventListener('resize', resizeHandler);
-      // 注意：这里不 dispose，因为 hasData 变化可能会频繁触发卸载，
-      // 可以在组件彻底卸载时 dispose，或者用 useRef 缓存 instance
-    };
-  }, [hasData]); // 依赖 hasData
-
-  // 2. 清空逻辑
+  // 2. 只有当 activeExecutionId 彻底改变（新的一轮测试）时才清空
   useEffect(() => {
     fullHistoryRef.current = [];
-    setHasData(false); // 重置状态
-    chartInstance.current?.clear();
+    setHasData(false);
+    chartInstance.current?.setOption({ series: [{ data: [] }] });
   }, [activeExecutionId]);
 
-  // 3. 数据驱动逻辑
+  // 3. 数据消费循环
   useEffect(() => {
+    // 从 Hook 获取新数据
     const chunk = consumeBuffer();
+    
+    // 如果没有新数据（因为还没轮到我，或者我已经跑完了），直接返回
     if (chunk.length === 0) return;
 
-    // ✅ 一旦有数据进来，标记为有数据
     if (!hasData) setHasData(true);
 
+    // 转换数据格式
     const newPoints = chunk.map(p => ({
       name: p.t.toString(),
       value: [p.t, p.i] as [number, number]
     }));
 
+    // 追加到历史记录
     fullHistoryRef.current.push(...newPoints);
 
-    // 只有当图表实例存在时才更新
-    if (chartInstance.current) {
-        chartInstance.current.setOption({
-            series: [{ data: fullHistoryRef.current }]
-        });
-    }
-  }, [consumeBuffer, hasData]); // 依赖 consumeBuffer (tick)
+    // 更新图表
+    chartInstance.current?.setOption({
+      series: [{ data: fullHistoryRef.current }]
+    });
+    
+  }, [consumeBuffer, hasData]); // consumeBuffer 变化意味着有新 tick
 
-  // ✅ 计算当前状态：是否该节点正在运行
-  const isRunning = systemState?.status === 'running' && systemState?.currentStep?.index === nodeIndex;
+  // --- 渲染逻辑 ---
 
-  // ✅ 渲染空状态的辅助函数
-  const renderEmptyState = () => {
-    let message = "等待执行...";
-    let subMessage = "数据将在测量开始后显示";
-    let icon = "⏳";
-
-    if (systemState?.status === 'running') {
-        if (systemState.currentStep && systemState.currentStep.index < nodeIndex) {
-            message = "等待中";
-            subMessage = `当前步骤: ${systemState.currentStep.index + 1}, 本节点: ${nodeIndex + 1}`;
-        } else if (systemState.currentStep && systemState.currentStep.index > nodeIndex) {
-             message = "已完成";
-             subMessage = "无数据记录或数据已清除";
-             icon = "🏁";
-        } else {
-            message = "正在初始化设备...";
-            icon = "🔌";
-        }
-    }
-
-    return (
-        <div style={{
-            height: '300px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#999',
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            borderRadius: '8px',
-            border: isRunning ? '2px dashed #52c41a' : '2px dashed #444'
-        }}>
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{icon}</div>
-            <div style={{ fontWeight: 500 }}>{message}</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>{subMessage}</div>
-        </div>
-    );
+  // 状态标签颜色
+  const getStatusTag = () => {
+    if (isPending) return <span style={{color: '#faad14'}}>⏳ 等待执行</span>;
+    if (isRunning) return <span style={{color: '#52c41a', fontWeight: 'bold'}}>▶ 正在测量...</span>;
+    if (isCompleted) return <span style={{color: '#1890ff'}}>✅ 已完成 (数据固化)</span>;
+    return null;
   };
 
   return (
-    <div style={{ padding: '8px 0' }}>
-      <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontWeight: 500, fontSize: '14px' }}>实时数据监控</span>
-        {isRunning && <span className="tag-running" style={{ color: '#52c41a', fontSize: '12px' }}>● 接收中</span>}
+    <div style={{ border: '1px solid #eee', borderRadius: 8, padding: 12, marginBottom: 12, background: '#fff' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+        <strong>步骤 {nodeIndex + 1}: {nodeConfig.name}</strong>
+        <div style={{ fontSize: 12 }}>{getStatusTag()}</div>
       </div>
 
-      {/* ✅ 条件渲染：有数据才显示 Canvas，否则显示空状态 */}
-      {hasData ? (
-        <div
-            ref={chartRef}
-            style={{
-                width: '100%',
-                height: '300px',
-                border: isRunning ? '1px solid #52c41a' : '1px solid transparent',
-                borderRadius: '8px'
-            }}
-        />
-      ) : renderEmptyState()}
+      <div 
+        ref={chartRef} 
+        style={{ 
+          height: 250, 
+          width: '100%',
+          // 如果是等待状态且没数据，可以给一点透明度
+          opacity: (isPending && !hasData) ? 0.5 : 1 
+        }} 
+      />
+      
+      {!hasData && isPending && (
+        <div style={{ textAlign: 'center', color: '#999', marginTop: -150, paddingBottom: 100 }}>
+          暂无数据
+        </div>
+      )}
     </div>
   );
 };
