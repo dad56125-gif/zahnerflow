@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { executionService } from './workflowService';
 import { workflowWebSocketService } from './websocket.service';
-import { ExecutionSnapshot } from '../types/module-interfaces';
+import { ExecutionSnapshot } from '../types/Interfaces';
 
 interface ExecutionState {
   isRunning: boolean;

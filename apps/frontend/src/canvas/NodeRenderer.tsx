@@ -1,19 +1,20 @@
+// --- START OF FILE apps/frontend/src/components/canvas/NodeRenderer.tsx ---
+
 import React, { memo, useCallback, useMemo } from 'react';
-import { ElectrochemicalNode, getNodeConfig } from '../types/nodes';
+// 移除旧的 ElectrochemicalNode，引入通用类型或直接定义
+import { DisplayNode } from '../../hooks/useUnifiedLayout';
 
 export interface NodeRendererProps {
-  node: ElectrochemicalNode & {
+  // 接收统一布局生成的节点对象
+  node: DisplayNode & {
     layoutMeta?: {
       index: number;
       row: number;
       col: number;
       isLeftToRight: boolean;
-      isFirstInRow: boolean;
-      isLastInRow: boolean;
       isInOddRow: boolean;
       width: number;
       columns: number;
-      zoomLevel?: number;
       [key: string]: any;
     };
   };
@@ -21,11 +22,13 @@ export interface NodeRendererProps {
   isSelected?: boolean;
   isConnecting?: boolean;
   connectionStart?: string | null;
-  onNodeClick?: (node: ElectrochemicalNode) => void;
-  onNodeDoubleClick?: (node: ElectrochemicalNode) => void;
-  onNodeContextMenu?: (node: ElectrochemicalNode, event: React.MouseEvent) => void;
-  onNodeDragStart?: (node: ElectrochemicalNode, event: React.DragEvent) => void;
-  onNodeDragEnd?: (node: ElectrochemicalNode, event: React.DragEvent) => void;
+  
+  // 事件回调 (参数类型改为 DisplayNode)
+  onNodeClick?: (node: DisplayNode) => void;
+  onNodeDoubleClick?: (node: DisplayNode) => void;
+  onNodeContextMenu?: (node: DisplayNode, event: React.MouseEvent) => void;
+  onNodeDragStart?: (node: DisplayNode, event: React.DragEvent) => void;
+  onNodeDragEnd?: (node: DisplayNode, event: React.DragEvent) => void;
 }
 
 /**
@@ -43,10 +46,12 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   onNodeDragStart,
   onNodeDragEnd
 }) => {
-  const config = getNodeConfig(node.type);
-  const displayName = config.name;
-  const icon = config.icon;
-  const remountKey = (node.data as any)?._force_reset_key || 'initial';
+  // 1. 直接从注入的数据中读取显示属性
+  const displayName = node.data.label || node.type;
+  const icon = node.data.icon || '📦';
+  const nodeType = node.data._nodeType; // 原始类型
+  const params = node.data; // 参数即本身 (扁平化)
+
   const [isDragOver, setIsDragOver] = React.useState(false);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -79,6 +84,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     }
   }, [node.id, index, onNodeDragEnd]);
 
+  // 拖放视觉反馈逻辑保持不变
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -97,27 +103,28 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     (e.currentTarget as HTMLElement).style.opacity = '1';
   }, []);
 
+  // 样式计算
   const nodeStyle = useMemo(() => {
-    const style = {
+    return {
       position: 'absolute' as const,
       left: node.position.x,
       top: node.position.y,
-      width: node.style.width || 140,
-      height: node.style.height || 60,
+      width: (node as any).style?.width || 180,  // 从注入的style取
+      height: (node as any).style?.height || 60,
       cursor: 'grab',
     };
-    return style;
-  }, [node.position.x, node.position.y, node.style.width, node.style.height, node.layoutMeta?.zoomLevel]);
+  }, [node.position.x, node.position.y]);
 
+  // 状态样式
   const nodeClassName = useMemo(() =>
-    `node glass status-${node.status} ${
+    `node glass status-idle ${ // TODO: 绑定真实状态
       isSelected ? 'selected' : ''
     } ${
       isConnecting ? 'connecting' : ''
     } ${
       isDragOver ? 'drag-over' : ''
     }`,
-    [node.status, isSelected, isConnecting, isDragOver]
+    [isSelected, isConnecting, isDragOver]
   );
 
   return (
@@ -133,7 +140,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      key={`${node.id}-${remountKey}`}
+      key={node.id}
     >
       <div className="node-index-badge">
         [{index}]
@@ -148,210 +155,55 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           {displayName}
         </div>
 
-        {/* change_temperature节点的特殊显示 */}
-        {node.type === 'change_temperature' && (
+        {/* --- 参数显示区域 (适配扁平化的 params) --- */}
+
+        {nodeType === 'change_temperature' && (
           <div className="eis-parameters">
-            {node.data.parameters?.current_temperature && node.data.parameters?.target_temperature ? (
-              <>
-                <div className="eis-current">
-                  温度：{Math.round(node.data.parameters.current_temperature)}→{Math.round(node.data.parameters.target_temperature)}°C
-                </div>
-                {node.data.parameters?.calculated_duration && (
-                  <div className="eis-frequency">
-                    时间：{node.data.parameters.calculated_duration}分钟
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="eis-current">
-                温度：{Math.round(node.data.parameters?.target_temperature || 25)}°C
-              </div>
-            )}
+            <div className="eis-current">
+              温度：{Math.round(params.target_temperature || 25)}°C
+            </div>
           </div>
         )}
 
-        {/* change_gas_flow节点的特殊显示 */}
-        {node.type === 'change_gas_flow' && (
+        {nodeType === 'change_gas_flow' && (
           <div className="eis-parameters">
-            {node.data.parameters?.current_flow_rate !== undefined && node.data.parameters?.target_flow_rate ? (
-              <>
-                <div className="eis-current">
-                  流量：{node.data.parameters.current_flow_rate.toFixed(1)}→{node.data.parameters.target_flow_rate.toFixed(1)} sccm
-                </div>
-                <div className="eis-frequency">
-                  地址{node.data.parameters.device_address} ({node.data.parameters.gas_type})
-                </div>
-              </>
-            ) : (
-              <div className="eis-current">
-                流量：{(node.data.parameters?.target_flow_rate || 0).toFixed(1)} sccm
-              </div>
-            )}
+            <div className="eis-current">
+              流量：{(params.target_flow_rate || 0).toFixed(1)} sccm
+            </div>
+            <div className="eis-frequency">
+              ({params.gas_type || 'N2'})
+            </div>
           </div>
         )}
 
-        {/* eis_galvanostatic节点的特殊显示 */}
-        {node.type === 'eis_galvanostatic' && (
+        {nodeType === 'eis_galvanostatic' && (
           <div className="eis-parameters">
-            {node.data.parameters?.eis_current && node.data.parameters?.eis_amplitude ? (
-              <>
-                <div className="eis-current">
-                  直流：{node.data.parameters.eis_current}A
-                </div>
-                <div className="eis-frequency">
-                  扰动：{node.data.parameters.eis_amplitude}A
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
+             <div className="eis-current">
+               直流：{params.eis_current}A
+             </div>
+             <div className="eis-frequency">
+               扰动：{params.eis_amplitude}A
+             </div>
           </div>
         )}
 
-        {/* eis_potentiostatic节点的特殊显示 */}
-        {node.type === 'eis_potentiostatic' && (
+        {nodeType === 'eis_potentiostatic' && (
           <div className="eis-parameters">
-            {node.data.parameters?.eis_potential && node.data.parameters?.eis_amplitude ? (
-              <>
-                <div className="eis-current">
-                  直流：{node.data.parameters.eis_potential}V
-                </div>
-                <div className="eis-frequency">
-                  扰动：{node.data.parameters.eis_amplitude}V
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
+            <div className="eis-current">
+              直流：{params.eis_potential}V
+            </div>
+            <div className="eis-frequency">
+              扰动：{params.eis_amplitude}V
+            </div>
           </div>
         )}
-
-        {/* ocp_measurement节点的特殊显示 */}
-        {node.type === 'ocp_measurement' && (
+        
+        {/* 其他类型节点的简单参数展示 */}
+        {nodeType === 'wait_delay' && (
           <div className="eis-parameters">
-            {node.data.parameters?.measurement_duration ? (
-              <>
-                <div className="eis-current">
-                  时间：{node.data.parameters.measurement_duration}s
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* chronoamperometry节点的特殊显示 */}
-        {node.type === 'chronoamperometry' && (
-          <div className="eis-parameters">
-            {node.data.parameters?.polarization_voltage && node.data.parameters?.measurement_duration ? (
-              <>
-                <div className="eis-current">
-                  直流：{node.data.parameters.polarization_voltage}V
-                </div>
-                <div className="eis-frequency">
-                  时间：{node.data.parameters.measurement_duration}s
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* chronopotentiometry节点的特殊显示 */}
-        {node.type === 'chronopotentiometry' && (
-          <div className="eis-parameters">
-            {node.data.parameters?.polarization_current && node.data.parameters?.measurement_duration ? (
-              <>
-                <div className="eis-current">
-                  直流：{Math.round(node.data.parameters.polarization_current * 1000)}mA
-                </div>
-                <div className="eis-frequency">
-                  时间：{node.data.parameters.measurement_duration}s
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* voltage_ramp节点的特殊显示 */}
-        {node.type === 'voltage_ramp' && (
-          <div className="eis-parameters">
-            {node.data.parameters?.start_voltage !== undefined && node.data.parameters?.end_voltage !== undefined ? (
-              <>
-                <div className="eis-current">
-                  范围：{node.data.parameters.start_voltage}→{node.data.parameters.end_voltage}V
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* current_ramp节点的特殊显示 */}
-        {node.type === 'current_ramp' && (
-          <div className="eis-parameters">
-            {node.data.parameters?.start_current !== undefined && node.data.parameters?.end_current !== undefined ? (
-              <>
-                <div className="eis-current">
-                  范围：{Math.round(node.data.parameters.start_current * 1000)}→{Math.round(node.data.parameters.end_current * 1000)}mA
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* lsv_measurement节点的特殊显示 */}
-        {node.type === 'lsv_measurement' && (
-          <div className="eis-parameters">
-            {node.data.parameters?.start_voltage !== undefined && node.data.parameters?.end_voltage !== undefined ? (
-              <>
-                <div className="eis-current">
-                  范围：{node.data.parameters.start_voltage}→{node.data.parameters.end_voltage}V
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* wait_delay节点的特殊显示 */}
-        {node.type === 'wait_delay' && (
-          <div className="eis-parameters">
-            {node.data.parameters?.duration ? (
-              <>
-                <div className="eis-current">
-                  时间：{node.data.parameters.duration}s
-                </div>
-              </>
-            ) : (
-              <div className="eis-empty">
-                --
-              </div>
-            )}
+            <div className="eis-current">
+              时间：{params.duration}s
+            </div>
           </div>
         )}
       </div>
@@ -359,23 +211,20 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       {isSelected && (
         <div className="node-selection-border" />
       )}
-
+      
+      {/* 连接指示器预留 */}
       {isConnecting && connectionStart === node.id && (
-        <div className="connection-start-indicator">
-          🔗
-        </div>
+         <div className="connection-start-indicator">🔗</div>
       )}
     </div>
   );
-}, (prevProps, nextProps) => {
-  // 🎯 优化比较逻辑：包括 onNodeDragEnd 的检查，防止闭包过期的额外保障
+}, (prev, next) => {
   return (
-    prevProps.node.id === nextProps.node.id &&
-    prevProps.node.status === nextProps.node.status &&
-    prevProps.isSelected === nextProps.isSelected &&
-    prevProps.isConnecting === nextProps.isConnecting &&
-    prevProps.connectionStart === nextProps.connectionStart &&
-    prevProps.onNodeDragEnd === nextProps.onNodeDragEnd && // 👈 关键：检查事件处理函数是否变化
-    JSON.stringify(prevProps.node.data) === JSON.stringify(nextProps.node.data)
+    prev.node.id === next.node.id &&
+    prev.isSelected === next.isSelected &&
+    prev.isConnecting === next.isConnecting &&
+    JSON.stringify(prev.node.data) === JSON.stringify(next.node.data) &&
+    prev.node.position.x === next.node.position.x &&
+    prev.node.position.y === next.node.position.y
   );
 });

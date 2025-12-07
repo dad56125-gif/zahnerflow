@@ -5,7 +5,7 @@ import {
   NodeStatusUpdate,
   NodesResetEvent,
   NotificationMessage
-} from '../types/module-interfaces'; // ✅ 统一引用
+} from '../types/Interfaces'; // ✅ 统一引用
 import { getWsUrl } from '../config/env.config';
 
 export class WorkflowWebSocketService {

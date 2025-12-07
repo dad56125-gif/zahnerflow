@@ -1,33 +1,35 @@
-// --- START OF FILE PropertyPanel.tsx ---
+// --- START OF FILE apps/frontend/src/components/PropertyPanel.tsx ---
 
-import React, { useState, useEffect, useMemo } from 'react'; // ✅ 新增 useMemo, useEffect
-import { ElectrochemicalNode, WorkstationType } from '../types/NodeInterfaces';
-// ✅ 引入 store 获取节点列表
-import { useCanvasStore } from '../workflow';
+import React, { useState, useEffect, useMemo } from 'react';
+import { WorkstationType, WorkflowNode, NodeType } from '../types/Interfaces'; // 引入新类型
+import { useCanvasStore } from '../canvas/canvasStore'; // 修正 store 路径
 import { useMfc } from '../modules/mfc';
 import { NodeChart } from './NodeChart';
-// ✅ 引入统一的 SystemState Hook
+// 确保 useSystemState 来自正确的执行 Store
 import { useSystemState } from '../workflow/executionStore';
 
-// ✅ 修改：从 NodeUtilities 导入存储逻辑
+// 导入工具函数
 import {
-    getEffectiveDefaultParameters,
-    saveEffectiveDefaultParameters
+  getEffectiveDefaultParameters,
+  saveEffectiveDefaultParameters
 } from '../types/NodeUtilities';
 
 import {
-    getParameterLabel,
-    getHiddenParameters
+  getParameterLabel,
+  getHiddenParameters
 } from './propertyConfig';
 import {
-    StandardInput,
-    EnumInput,
-    TemperatureInput,
-    GasFlowInput
+  StandardInput,
+  EnumInput,
+  TemperatureInput,
+  GasFlowInput
 } from './PropertyInputs';
 
-// ✅ 定义哪些节点类型支持图表显示
-const MEASUREMENT_NODE_TYPES = [
+// 静态配置（用于获取节点显示名称）
+import { NODE_CONFIGS } from '../types/NodeConfiguration';
+
+// 定义哪些节点类型支持图表显示
+const MEASUREMENT_NODE_TYPES: NodeType[] = [
   'eis_potentiostatic',
   'eis_galvanostatic',
   'ocp_measurement',
@@ -36,7 +38,6 @@ const MEASUREMENT_NODE_TYPES = [
   'voltage_ramp',
   'current_ramp',
   'lsv_measurement'
-  // 如果 change_temperature 有实时温度曲线，也可以加进去，否则移除
 ];
 
 interface PropertyPanelProps {
@@ -45,22 +46,23 @@ interface PropertyPanelProps {
 
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
   ({ selectedWorkstation }, ref) => {
-    // ✅ 获取 nodes 列表用于计算 index
-    const { selectedNode: node, updateNode, nodes } = useCanvasStore();
+    // 1. 从 Store 获取选中节点
+    // 使用 selectedNodeId 从 nodes 数组中查找，确保数据是最新的
+    const { nodes, selectedNodeId, updateNodeConfig } = useCanvasStore();
+    const node = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
 
-    // ✅ 获取实时系统状态
+    // 2. 获取实时系统状态
     const systemState = useSystemState();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
-    // 强制刷新触发器（当保存默认值后触发重渲染）
-    const [_, setRefreshTrigger] = useState(0);
+    const [_, setRefreshTrigger] = useState(0); // 强制刷新触发器
     const [mfcState] = useMfc();
 
-    // ✅ 新增：判断当前节点是否支持图表
+    // 3. 判断图表支持
     const supportsChart = useMemo(() => {
         return node && MEASUREMENT_NODE_TYPES.includes(node.type);
     }, [node]);
 
-    // ✅ 新增：当节点切换时，如果新节点不支持图表且当前停留在图表页，强制切回 basic
+    // 自动切回 basic tab
     useEffect(() => {
         if (!supportsChart && activeTab === 'chart') {
             setActiveTab('basic');
@@ -121,50 +123,39 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       );
     }
 
-    const updateNodeData = (updates: Partial<ElectrochemicalNode['data']>) => {
-      updateNode({
-        ...node,
-        data: {
-          ...node.data,
-          ...updates,
-          updatedAt: new Date(),
-        },
-      });
-    };
+    // 获取静态配置名称
+    const nodeName = NODE_CONFIGS[node.type]?.name || node.type;
 
-    const updateParameters = (newParams: Record<string, any>) => {
-      updateNodeData({ parameters: newParams });
-    };
-
+    // 参数更新逻辑：直接操作 config 对象
     const handleParamChange = (key: string, value: any) => {
-        const currentParams = node.data.parameters || {};
+        const currentConfig = node.config || {};
 
         if (key === 'device_selection' && node.type === 'change_gas_flow') {
             const [address, gasType] = (value as string).split(':');
             const device = mfcState.availableDevices.find(d => d.address === Number(address) && d.gas_type === gasType);
-            updateParameters({
-                ...currentParams,
+            updateNodeConfig(node.id, {
+                ...currentConfig,
                 device_selection: value,
                 device_address: Number(address),
                 gas_type: gasType,
                 max_flow_sccm: device?.max_flow_sccm || 200
             });
         } else {
-            updateParameters({ ...currentParams, [key]: value });
+            updateNodeConfig(node.id, { ...currentConfig, [key]: value });
         }
     };
 
     const saveDefaults = () => {
-        if (!node.data.parameters) return;
-        // 使用从 NodeUtilities 导入的函数
-        saveEffectiveDefaultParameters(node.type, node.data.parameters);
+        if (!node.config) return;
+        saveEffectiveDefaultParameters(node.type, node.config);
         setRefreshTrigger(prev => prev + 1);
     };
 
     const isDefault = () => {
         const defaults = getEffectiveDefaultParameters(node.type);
-        const current = node.data.parameters || {};
+        const current = node.config || {};
         for (const k in defaults) {
+            // 忽略运行时动态参数
             if (['current_temperature', 'calculated_duration'].includes(k)) continue;
             if (String(current[k]) !== String(defaults[k])) return false;
         }
@@ -172,52 +163,35 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
     };
 
     const hasBackendSupport = () => {
-      if (!selectedWorkstation) return false;
-      if (selectedWorkstation === 'zahner-zennium') {
-        return [
-          'startup',
-          'shutdown',
-          'eis_potentiostatic',
-          'eis_galvanostatic',
-          'ocp_measurement',
-          'chronoamperometry',
-          'chronopotentiometry',
-          'voltage_ramp',
-          'current_ramp',
-          'lsv_measurement',
-        ].includes(node.type);
-      }
-      if (node.type === 'change_temperature') return true;
-      if (node.type === 'change_gas_flow') return true;
-      return false;
+      // 简单判断，所有测量节点和设备控制节点通常都有后端支持
+      return true; 
     };
 
     const renderBasicProperties = () => (
       <div className="properties-section">
         <h3 className="section-title">基本属性</h3>
         <div className="property-group">
-          <label className="property-label">描述</label>
-          <textarea
-            value={node.data.description || ''}
-            onChange={(e) => updateNodeData({ description: e.target.value })}
-            className="textarea glass"
-            placeholder="输入节点描述"
-            rows={3}
-          />
+          {/* 这里如果需要支持用户自定义节点名称，可以修改 node.name (如果在 Interface 中定义了) */}
+          {/* 目前 WorkflowNode 结构里没有 name 字段，若有需求可添加 */}
+          <label className="property-label">类型</label>
+          <div className="property-value-static">{nodeName}</div>
+        </div>
+        <div className="property-group">
+          <label className="property-label">ID</label>
+          <div className="property-value-static text-xs text-gray-400">{node.id}</div>
         </div>
         <div className="property-group">
           <label className="property-label">节点状态</label>
           <div className="status-indicator glass">
             <span className={`status-dot ${hasBackendSupport() ? 'status-ready' : 'status-error'}`} />
             <span className="status-text">{hasBackendSupport() ? '有效' : '无效'}</span>
-            <span className="status-subtitle">{hasBackendSupport() ? '有后端支持' : '无后端支持'}</span>
           </div>
         </div>
       </div>
     );
 
     const renderParameterField = (key: string, defaultValue: any) => {
-        const currentValue = (node.data.parameters || {})[key];
+        const currentValue = (node.config || {})[key];
         const props = {
             paramKey: key,
             value: currentValue,
@@ -228,10 +202,8 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
         if (node.type === 'change_temperature') return <TemperatureInput {...props} />;
         if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.availableDevices} />;
-        // 使用 propertyConfig 中的配置来判断是否为枚举
-        // 注意：这里需要一个更健壮的判断方式，或直接复用 propertyConfig 的 enumValues
-        // 简单起见，这里复用 propertyConfig.tsx 中的 enumValues 键检查
-        // 由于 enumValues 没在这里导入，使用硬编码检查或导入它
+        
+        // 枚举判断逻辑
         const isEnum = [
             'eis_scan_direction', 'eis_scan_strategy', 'start_voltage_reference',
             'end_voltage_reference', 'scanDirection', 'scanStrategy', 
@@ -296,7 +268,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
         <div className="property-panel-header">
           <h3 className="bar-header-title">
             <span className="property-panel-text">属性</span>
-            <span className="property-panel-subtitle">{node.name}</span>
+            <span className="property-panel-subtitle">{nodeName}</span>
           </h3>
         </div>
         <div className="property-panel-content">
@@ -315,7 +287,6 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 <span className="btn-icon">⚙️</span><span className="btn-text">参数</span>
               </button>
 
-              {/* ✅ 修改：条件渲染图表按钮 */}
               {supportsChart && (
                 <button
                     className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'chart' ? 'btn-primary' : 'btn-secondary'}`}
@@ -325,18 +296,16 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
                 </button>
               )}
             </div>
-                      {/* Content Rendering */}
+
             {activeTab === 'basic' && renderBasicProperties()}
             {activeTab === 'parameters' && renderParameters()}
 
-            {/* ✅ 修改：确保只有支持且选中时才渲染 */}
             {activeTab === 'chart' && supportsChart && node && (
               <NodeChart
                 nodeId={node.id}
-                // ✅ 传入真实的索引
-                nodeIndex={nodes.findIndex(n => n.id === node.id) === -1 ? 0 : nodes.findIndex(n => n.id === node.id)}
-                nodeConfig={node.data}
-                // ✅ 传入真实的系统状态
+                nodeIndex={nodes.findIndex(n => n.id === node.id)}
+                // 适配 NodeChart：它可能还在期望 parameters 字段，我们传入 config
+                nodeConfig={{ parameters: node.config } as any}
                 systemState={systemState}
               />
             )}

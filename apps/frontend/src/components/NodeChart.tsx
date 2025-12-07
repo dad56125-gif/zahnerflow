@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 import { useMeasurementStream } from '../hooks/useMeasurementStream';
-import { ExecutionSnapshot } from '../types/module-interfaces';
+import { ExecutionSnapshot } from '../types/Interfaces';
 
 interface NodeChartProps {
   nodeIndex: number;       // 我是第几个节点？(从 props 传入)

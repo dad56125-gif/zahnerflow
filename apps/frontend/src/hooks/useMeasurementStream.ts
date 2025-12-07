@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { EnrichedStreamData, ExecutionSnapshot, RawStreamData } from '../types/module-interfaces';
+import { EnrichedStreamData, ExecutionSnapshot, RawStreamData } from '../types/Interfaces';
 import { workflowWebSocketService } from '../workflow/websocket.service';
 
 interface UseMeasurementStreamProps {

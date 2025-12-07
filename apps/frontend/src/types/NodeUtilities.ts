@@ -1,24 +1,23 @@
-import { NodeType, NodeConfig, NodeData, NodeCategory, WorkstationType, ElectrochemicalNode } from './NodeInterfaces';
+// --- START OF FILE apps/frontend/src/utils/NodeUtilities.ts ---
+
+import { NodeType, NodeConfig, NodeCategory, WorkflowNode, WorkstationType } from './Interfaces';
 import { NODE_CONFIGS, NODE_CATEGORY_NAMES, ZAHNER_NODE_CONFIGS, NODE_GROUPS, ZAHNER_NODE_GROUPS } from './NodeConfiguration';
 
 // --- 1. 存储相关的常量与逻辑 ---
 const STORAGE_KEY_PREFIX = 'zahner_workflow_defaults_';
 
 /**
- * [关键修复] 获取生效的默认参数
- * 逻辑：先获取静态配置 -> 再尝试读取 LocalStorage 中的用户自定义配置 -> 合并返回
+ * 获取生效的默认参数
+ * 逻辑：静态配置 -> 合并 LocalStorage 用户偏好
  */
 export function getEffectiveDefaultParameters(type: NodeType): Record<string, any> {
-  // 1. 获取静态配置 (NodeConfiguration.ts)
   const config = getNodeConfig(type);
   const staticDefaults = config.defaultParameters || {};
 
   try {
-    // 2. 获取用户保存的自定义默认值 (LocalStorage)
     const savedDefaultsJson = localStorage.getItem(`${STORAGE_KEY_PREFIX}${type}`);
     if (savedDefaultsJson) {
       const savedDefaults = JSON.parse(savedDefaultsJson);
-      // 3. 合并：用户配置覆盖静态配置
       return { ...staticDefaults, ...savedDefaults };
     }
   } catch (e) {
@@ -30,20 +29,13 @@ export function getEffectiveDefaultParameters(type: NodeType): Record<string, an
 
 /**
  * 保存自定义默认参数到 LocalStorage
- * 用于 PropertyPanel 中点击"设为默认"按钮
  */
 export function saveEffectiveDefaultParameters(type: NodeType, params: Record<string, any>) {
   try {
-    // 过滤掉运行时参数，只保存配置参数
     const paramsToSave = { ...params };
     const runtimeKeys = [
-      'current_temperature', 
-      'calculated_duration', 
-      'current_flow_rate',
-      'device_address', 
-      'gas_type', 
-      'max_flow_sccm', 
-      'stabilization_time'
+      'current_temperature', 'calculated_duration', 'current_flow_rate',
+      'device_address', 'gas_type', 'max_flow_sccm', 'stabilization_time'
     ];
     runtimeKeys.forEach(k => delete paramsToSave[k]);
 
@@ -56,7 +48,7 @@ export function saveEffectiveDefaultParameters(type: NodeType, params: Record<st
 
 // --- 2. 配置获取逻辑 ---
 
-// 获取节点配置
+// 通用配置获取
 export function getNodeConfig(type: NodeType): NodeConfig {
   const config = NODE_CONFIGS[type];
   if (!config) {
@@ -66,56 +58,7 @@ export function getNodeConfig(type: NodeType): NodeConfig {
   return config;
 }
 
-// 获取分类名称
-export function getNodeCategoryName(category: NodeCategory): string {
-  return NODE_CATEGORY_NAMES[category];
-}
-
-// --- 3. [关键] 节点创建逻辑 ---
-
-/**
- * 创建默认节点数据
- * 必须使用 getEffectiveDefaultParameters 而不是直接读取 config
- */
-export function createDefaultNodeData(type: NodeType): NodeData {
-  const config = getNodeConfig(type);
-  
-  // ✅ 核心修复：此处调用上面的函数获取包含用户偏好的参数
-  const parameters = getEffectiveDefaultParameters(type);
-
-  return {
-    name: config.name,
-    description: config.description,
-    parameters: parameters, // 使用合并后的参数
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-}
-
-/**
- * 带工作站上下文的节点创建 (如果你的项目使用了这个函数)
- */
-export function createDefaultNodeDataWithWorkstation(
-  type: NodeType, 
-  workstation: WorkstationType | null
-): ElectrochemicalNode['data'] {
-  const config = getNodeConfigByWorkstation(type, workstation || 'zahner-zennium');
-  
-  // ✅ 核心修复：此处同样调用获取生效参数的函数
-  const parameters = getEffectiveDefaultParameters(type);
-
-  return {
-    name: config.name,
-    description: config.description,
-    parameters: parameters, // 使用合并后的参数
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-}
-
-// --- 4. 辅助逻辑 ---
-
-// 根据工作站获取配置
+// [UI兼容] 根据工作站获取配置 (目前指向同一组配置)
 export function getNodeConfigByWorkstation(type: string, workstation: WorkstationType): NodeConfig {
   if (workstation === 'zahner-zennium') {
     return ZAHNER_NODE_CONFIGS[type as NodeType] || NODE_CONFIGS[type as NodeType];
@@ -123,7 +66,7 @@ export function getNodeConfigByWorkstation(type: string, workstation: Workstatio
   return NODE_CONFIGS[type as NodeType];
 }
 
-// 根据工作站获取分组
+// [UI兼容] 根据工作站获取分组列表 (侧边栏使用)
 export function getNodeGroupsByWorkstation(workstation: WorkstationType): Record<NodeCategory, string[]> {
   if (workstation === 'zahner-zennium') {
     return ZAHNER_NODE_GROUPS;
@@ -131,12 +74,38 @@ export function getNodeGroupsByWorkstation(workstation: WorkstationType): Record
   return NODE_GROUPS;
 }
 
-// 验证连接
-export function validateNodeConnection(sourceType: NodeType, targetType: NodeType): boolean {
-  const sourceConfig = getNodeConfig(sourceType);
-  const targetConfig = getNodeConfig(targetType);
-  
-  return sourceConfig.output.dataType === 'flow' ||
-         targetConfig.input.dataType === 'flow' ||
-         sourceConfig.output.dataType === targetConfig.input.dataType;
+export function getNodeCategoryName(category: NodeCategory): string {
+  return NODE_CATEGORY_NAMES[category];
+}
+
+// --- 3. 节点创建逻辑 (重构核心) ---
+
+/**
+ * 创建新的工作流节点 (WorkflowNode)
+ * 作用：生成唯一ID，加载合并后的默认参数，返回标准结构
+ */
+export function createWorkflowNode(type: NodeType): WorkflowNode {
+  // 生成简易 UUID
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID 
+    ? crypto.randomUUID() 
+    : `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+  const config = getEffectiveDefaultParameters(type);
+
+  return {
+    id,
+    type,
+    config
+  };
+}
+
+/**
+ * [UI兼容] 兼容旧接口的创建函数
+ * 即使 UI 传入了 workstation，我们也调用标准的 createWorkflowNode
+ */
+export function createDefaultNodeDataWithWorkstation(
+  type: NodeType, 
+  workstation: WorkstationType | null
+): WorkflowNode {
+  return createWorkflowNode(type);
 }

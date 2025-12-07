@@ -1,4 +1,4 @@
-import { NodeType, NodeConfig, NodeCategory } from './NodeInterfaces';
+import { NodeType, NodeConfig, NodeCategory } from './Interfaces';
 
 // 分组名称映射
 export const NODE_CATEGORY_NAMES: Record<NodeCategory, string> = {
@@ -16,27 +16,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'device',
     description: '启动电化学工作站程序 (FastAPI)',
     icon: '🚀',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #4CAF50, #45a049)',
-      borderColor: '#45a049',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '🚀'
-    },
     defaultParameters: {
       host: 'localhost'
     }
@@ -48,27 +27,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'device',
     description: '停止电化学工作站程序',
     icon: '🛑',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #f44336, #d32f2f)',
-      borderColor: '#d32f2f',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '🛑'
-    }
+    defaultParameters: {}
   },
 
   change_temperature: {
@@ -77,27 +36,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'device',
     description: 'Furnace自动温度控制节点',
     icon: '🌡️',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #FF6B35, #F4511E)',
-      borderColor: '#F4511E',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '🌡️'
-    },
     defaultParameters: {
       target_temperature: 25,
       rate: 5.0,
@@ -114,27 +52,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'device',
     description: 'MFC气体流量控制节点',
     icon: '💨',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #2196F3, #1976D2)',
-      borderColor: '#1976D2',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '💨'
-    },
     defaultParameters: {
       device_selection: '1:N2',
       device_address: 1,
@@ -153,27 +70,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '恒电位电化学阻抗谱测量 (FastAPI)',
     icon: '📊',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'EIS数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-      borderColor: '#7B1FA2',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '📊'
-    },
     defaultParameters: {
       eis_lower_frequency: 0.2,
       eis_upper_frequency: 100000,
@@ -196,27 +92,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '恒电流电化学阻抗谱测量 (FastAPI)',
     icon: '📊',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'EIS数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-      borderColor: '#7B1FA2',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '📊'
-    },
     defaultParameters: {
       eis_lower_frequency: 0.05,
       eis_upper_frequency: 300000,
@@ -238,27 +113,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '开路电位测量 (FastAPI)',
     icon: '🔋',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'OCP数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #FF9800, #F57C00)',
-      borderColor: '#F57C00',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '🔋'
-    },
     defaultParameters: {
       measurement_duration: 60.0,
       sampling_interval: 1.0
@@ -271,27 +125,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '计时安培法测量 (FastAPI)',
     icon: '⏱️',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'CA数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #2196F3, #1976D2)',
-      borderColor: '#1976D2',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '⏱️'
-    },
     defaultParameters: {
       polarization_voltage: 1.0,
       measurement_duration: 60.0,
@@ -307,27 +140,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '计时电位法测量 (FastAPI)',
     icon: '⏰',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'CP数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #00BCD4, #0097A7)',
-      borderColor: '#0097A7',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '⏰'
-    },
     defaultParameters: {
       polarization_current: 10e-3,
       measurement_duration: 60.0,
@@ -343,27 +155,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '电压斜坡测量 (线性扫描伏安法)',
     icon: '📈',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'LSV数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #4CAF50, #388E3C)',
-      borderColor: '#388E3C',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '📈'
-    },
     defaultParameters: {
       start_voltage: -0.5,
       start_voltage_reference: 'absolute',
@@ -382,27 +173,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '电流斜坡测量 (电位动态扫描)',
     icon: '📉',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: '电流扫描数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #FF5722, #D84315)',
-      borderColor: '#D84315',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '📉'
-    },
     defaultParameters: {
       start_current: -10e-3,
       end_current: 10e-3,
@@ -419,27 +189,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'basic_measurement',
     description: '线性扫描伏安法测量 (LSV)',
     icon: '🔬',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'data',
-      description: 'LSV数据输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #795548, #5D4037)',
-      borderColor: '#5D4037',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '🔬'
-    },
     defaultParameters: {
       start_voltage: -0.5,
       end_voltage: 0.8,
@@ -458,27 +207,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'flow_control',
     description: '定义循环参数和开始位置',
     icon: '🔄',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #FF9800, #F57C00)',
-      borderColor: '#F57C00',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '🔄'
-    },
     defaultParameters: {
       loop_count: 1,
       loop_variable: 'i',
@@ -493,27 +221,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'flow_control',
     description: '标记循环结束位置',
     icon: '⏹️',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #F44336, #D32F2F)',
-      borderColor: '#D32F2F',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '⏹️'
-    },
     defaultParameters: {}
   },
 
@@ -523,27 +230,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     category: 'flow_control',
     description: '在工作流执行过程中插入指定时间的等待',
     icon: '⏱️',
-    input: {
-      id: 'input',
-      name: '输入',
-      dataType: 'flow',
-      description: '流程输入'
-    },
-    output: {
-      id: 'output',
-      name: '输出',
-      dataType: 'flow',
-      description: '流程输出'
-    },
-    style: {
-      width: 140,
-      height: 60,
-      background: 'linear-gradient(135deg, #FF9800, #F57C00)',
-      borderColor: '#F57C00',
-      borderRadius: '8px',
-      textColor: '#ffffff',
-      icon: '⏱️'
-    },
     defaultParameters: {
       duration: 1.0,
       description: '',
@@ -569,6 +255,6 @@ export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {
   flow_control: ['loop_start', 'loop_end', 'wait_delay']
 };
 
-// Zahner 特有配置 (目前直接复用通用配置，未来可在此扩展)
+// Zahner 特有配置 (复用通用配置)
 export const ZAHNER_NODE_CONFIGS = { ...NODE_CONFIGS };
 export const ZAHNER_NODE_GROUPS = { ...NODE_GROUPS };
