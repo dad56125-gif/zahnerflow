@@ -30,46 +30,59 @@ export const NodeChart: React.FC<NodeChartProps> = ({
   const isRunning = currentStepIndex === nodeIndex && systemState?.status === 'running'; // 正在跑
   const isCompleted = currentStepIndex > nodeIndex; // 我已经跑完了 (固化状态)
 
-  // 挂载 Hook
-  const { consumeBuffer } = useMeasurementStream({
+  // 1. 获取 getFullHistory 方法
+  const { consumeBuffer, getFullHistory } = useMeasurementStream({
     nodeIndex,
     activeExecutionId
   });
 
-  // 1. 初始化 ECharts
+  // --- 初始化逻辑 ---
   useEffect(() => {
     if (!chartRef.current) return;
-    
+
+    // 初始化 ECharts 实例
     if (!chartInstance.current) {
       chartInstance.current = echarts.init(chartRef.current);
       chartInstance.current.setOption({
-        title: { text: nodeConfig.name, left: 'center', textStyle: { fontSize: 14 } },
+        title: { text: nodeConfig.name, left: 'center' },
         tooltip: { trigger: 'axis' },
-        animation: false, // 关闭动画以提高实时性能
-        grid: { top: 40, bottom: 30, left: 50, right: 20 },
         xAxis: { type: 'value', splitLine: { show: false } },
         yAxis: { type: 'value' },
-        series: [{
-          type: 'line',
-          showSymbol: false,
-          data: []
-        }]
+        series: [{ type: 'line', showSymbol: false, data: [] }]
+      });
+    }
+
+    // 🔥🔥🔥 核心修改：组件挂载时，立即恢复历史数据！🔥🔥🔥
+    // 这就是你要的"不扔掉"：数据从全局缓存里取回来，重新画上去。
+    const history = getFullHistory();
+    if (history.length > 0) {
+      setHasData(true);
+      const restoredPoints = history.map(p => ({
+        name: p.t.toString(),
+        value: [p.t, p.i] as [number, number]
+      }));
+
+      fullHistoryRef.current = restoredPoints;
+
+      // 立即渲染"最后一帧"
+      chartInstance.current.setOption({
+        series: [{ data: restoredPoints }]
       });
     }
 
     const resizeHandler = () => chartInstance.current?.resize();
     window.addEventListener('resize', resizeHandler);
-    return () => window.removeEventListener('resize', resizeHandler);
-  }, []);
 
-  // 2. 只有当 activeExecutionId 彻底改变（新的一轮测试）时才清空
-  useEffect(() => {
-    fullHistoryRef.current = [];
-    setHasData(false);
-    chartInstance.current?.setOption({ series: [{ data: [] }] });
-  }, [activeExecutionId]);
+    return () => {
+      window.removeEventListener('resize', resizeHandler);
+      // 组件卸载时，我们销毁 ECharts 实例来释放内存，
+      // 但数据已经在 useMeasurementStream 的 GlobalCache 里安全保存了。
+      chartInstance.current?.dispose();
+      chartInstance.current = null;
+    };
+  }, []); // 依赖空数组，只在挂载时运行一次
 
-  // 3. 数据消费循环
+  // --- 实时更新逻辑 (保持不变) ---
   useEffect(() => {
     // 从 Hook 获取新数据
     const chunk = consumeBuffer();

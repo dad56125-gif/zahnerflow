@@ -2,26 +2,39 @@ import { useEffect, useRef, useState } from 'react';
 import { EnrichedStreamData, RawStreamData } from '../types/Interfaces';
 import { workflowWebSocketService } from '../workflow/websocket.service';
 
-// --- 全局广播系统 ---
-// 1. 定义回调类型
-type DataHandler = (payload: EnrichedStreamData) => void;
+// --- 🔥 1. 全局数据仓库 (核心修改) ---
+// 用来永久存储每个节点对应的历史数据
+// key: nodeIndex, value: 数据点数组
+const GlobalMeasurementCache = new Map<number, RawStreamData[]>();
 
-// 2. 使用 Set 存储所有挂载组件的监听函数 (Fan-out 模式)
+// --- 全局监听器 ---
+type DataHandler = (payload: EnrichedStreamData) => void;
 const listeners = new Set<DataHandler>();
 let isGlobalListenerSetup = false;
 
-// 3. 建立唯一的 WebSocket 连接
 const setupGlobalListener = () => {
   if (isGlobalListenerSetup) return;
 
   workflowWebSocketService.connect();
 
   workflowWebSocketService.onMeasurementData((payload) => {
-    // 收到数据后，群发给所有注册的组件
+    // 🔥 2. 无论有没有组件在看，先存入全局仓库！
+    // 这样当你回头看 Node 1 时，数据都在这里等着你
+    if (!GlobalMeasurementCache.has(payload.stepIndex)) {
+      GlobalMeasurementCache.set(payload.stepIndex, []);
+    }
+    GlobalMeasurementCache.get(payload.stepIndex)?.push(payload.data);
+
+    // 然后再分发给活跃的组件
     listeners.forEach((handler) => handler(payload));
   });
 
   isGlobalListenerSetup = true;
+};
+
+// 导出清空缓存的方法（可选，用于重置工作流时）
+export const clearMeasurementCache = () => {
+  GlobalMeasurementCache.clear();
 };
 
 interface UseMeasurementStreamProps {
@@ -30,47 +43,35 @@ interface UseMeasurementStreamProps {
 }
 
 export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasurementStreamProps) => {
+  // 本地缓冲区 (仅用于平滑动画)
   const dataBufferRef = useRef<RawStreamData[]>([]);
-  const [tick, setTick] = useState(0); // 用于触发重绘
+  const [tick, setTick] = useState(0);
   const isReceiving = useRef(false);
 
   useEffect(() => {
-    // 确保 WebSocket 已连接
     setupGlobalListener();
 
-    // 定义当前组件的“过滤器”逻辑
     const handleData: DataHandler = (payload) => {
-      // 1. 必须是当前的运行 ID
+      // 校验 executionId 和 stepIndex
       if (payload.executionId !== activeExecutionId) return;
-
-      // 2. 核心逻辑：只有 stepIndex 等于我的 nodeIndex 才接收！
-      // - 如果我是 Node 0，现在 payload.stepIndex 是 0 -> 接收 (更新)
-      // - 如果我是 Node 0，现在 payload.stepIndex 变成了 1 -> 忽略 (固化/冻结)
       if (payload.stepIndex !== nodeIndex) {
         isReceiving.current = false;
-        return; 
+        return;
       }
 
-      // 3. 匹配成功，存入缓冲
       isReceiving.current = true;
+      // 存入本地 buffer 用于触发 UI 刷新
       dataBufferRef.current.push(payload.data);
     };
 
-    // 注册监听
     listeners.add(handleData);
-
-    // 卸载时取消监听
-    return () => {
-      listeners.delete(handleData);
-    };
+    return () => { listeners.delete(handleData); };
   }, [nodeIndex, activeExecutionId]);
 
-  // 动画帧循环：只有当 buffer 里有数据时才触发 React 更新
+  // 动画帧循环
   useEffect(() => {
     let frameId: number;
     const loop = () => {
-      // 只有 buffer 有数据才 setTick，这保证了当数据流向下一个节点后，
-      // 当前节点因为收不到数据，buffer 为空，不再 setTick，也就不再重绘 -> 达到“固化”效果
       if (dataBufferRef.current.length > 0) {
         setTick(t => t + 1);
       }
@@ -86,8 +87,15 @@ export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasur
     return chunk;
   };
 
+  // 🔥 3. 新增：提供获取完整历史数据的方法
+  // 组件挂载时调用它，瞬间恢复之前的图像
+  const getFullHistory = () => {
+    return GlobalMeasurementCache.get(nodeIndex) || [];
+  };
+
   return {
     consumeBuffer,
+    getFullHistory, // 导出这个新方法
     isReceiving: isReceiving.current
   };
 };

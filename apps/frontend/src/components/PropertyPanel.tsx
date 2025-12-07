@@ -302,9 +302,9 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
             {activeTab === 'chart' && supportsChart && node && (
               <NodeChart
+                key={nodes.findIndex(n => n.id === node.id)} // 必须加 key
                 nodeIndex={nodes.findIndex(n => n.id === node.id)}
-                // 适配 NodeChart：它可能还在期望 parameters 字段，我们传入 config
-                nodeConfig={{ parameters: node.config } as any}
+                nodeConfig={{ name: nodeName, ...node.config } as any}
                 systemState={systemState}
               />
             )}
