@@ -16,128 +16,239 @@ export const NodeChart: React.FC<NodeChartProps> = ({
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
-  // 使用 Ref 存储历史数据，这样即使组件重渲染数据也不会丢
-  const fullHistoryRef = useRef<{name: string, value: [number, number]}[]>([]);
   
-  // 状态标记
+  const historyRef = useRef<{
+    voltage: [number, number][];
+    current: [number, number][];
+  }>({ voltage: [], current: [] });
+  
   const [hasData, setHasData] = useState(false);
-
   const activeExecutionId = systemState?.executionId || null;
-  
-  // 计算当前节点状态
-  const currentStepIndex = systemState?.currentStep?.index ?? -1;
-  const isPending = currentStepIndex < nodeIndex;   // 还没轮到我
-  const isRunning = currentStepIndex === nodeIndex && systemState?.status === 'running'; // 正在跑
-  const isCompleted = currentStepIndex > nodeIndex; // 我已经跑完了 (固化状态)
 
-  // 1. 获取 getFullHistory 方法
+  const currentStepIndex = systemState?.currentStep?.index ?? -1;
+  const isPending = currentStepIndex < nodeIndex;
+  const isRunning = currentStepIndex === nodeIndex && systemState?.status === 'running';
+
   const { consumeBuffer, getFullHistory } = useMeasurementStream({
     nodeIndex,
     activeExecutionId
   });
 
-  // --- 初始化逻辑 ---
+  const formatPrecision = (value: number) => {
+    if (value === 0) return '0';
+    if (Math.abs(value) < 0.001 || Math.abs(value) > 1000) {
+      return value.toExponential(1); // 科学计数法保留1位小数，节省空间
+    }
+    return value.toFixed(2); // 常规数值保留2位小数
+  };
+
   useEffect(() => {
     if (!chartRef.current) return;
-
-    // 初始化 ECharts 实例
+    
     if (!chartInstance.current) {
       chartInstance.current = echarts.init(chartRef.current);
-      chartInstance.current.setOption({
-        title: { text: nodeConfig.name, left: 'center' },
-        tooltip: { trigger: 'axis' },
-        xAxis: { type: 'value', splitLine: { show: false } },
-        yAxis: { type: 'value' },
-        series: [{ type: 'line', showSymbol: false, data: [] }]
-      });
+
+      const option = {
+        tooltip: { 
+          trigger: 'axis',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          borderColor: '#777',
+          textStyle: { color: '#fff', fontSize: 12 },
+          formatter: (params: any[]) => {
+            if (!params.length) return '';
+            const t = params[0].value[0]; 
+            let html = `T: ${parseFloat(t).toFixed(2)}s<br/>`;
+            params.forEach(p => {
+              const unit = p.seriesName === 'Voltage' ? 'V' : 'A';
+              const color = p.color;
+              html += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:8px;height:8px;background-color:${color};"></span>`;
+              html += `${p.seriesName}: ${formatPrecision(p.value[1])}${unit}<br/>`;
+            });
+            return html;
+          }
+        },
+        animation: false,
+        
+        // 🔥 修复点 1：Grid 调整
+        grid: { 
+          top: 35,     // 顶部增加空间，防止 V/A 单位遮挡数值
+          bottom: 25, 
+          left: 5,     // 保持紧凑
+          right: 5,
+          containLabel: true // 保持自动计算，确保文字显示全
+        },
+
+        xAxis: { 
+          type: 'value', 
+          splitLine: { show: false },
+          axisLabel: { color: '#888', fontSize: 10 },
+          axisLine: { lineStyle: { color: '#444' } } // 底部轴线颜色变深一点
+        },
+
+        yAxis: [
+          {
+            type: 'value',
+            name: 'V', 
+            position: 'left',
+            scale: true,
+            // 🔥 修复点 2：显示左侧轴线
+            axisLine: { 
+              show: true,  // ✅ 开启轴线
+              lineStyle: { color: '#40a9ff' } // 蓝色轴线
+            },
+            axisLabel: { 
+              color: '#40a9ff', 
+              fontSize: 10, 
+              formatter: formatPrecision,
+              margin: 4 // 文字离线的距离
+            },
+            nameTextStyle: { 
+              color: '#40a9ff', 
+              fontWeight: 'bold',
+              align: 'left', // 单位名称靠左对齐
+              padding: [0, 0, 0, -5] 
+            },
+            splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(64, 169, 255, 0.15)' } }
+          },
+          {
+            type: 'value',
+            name: 'A',
+            position: 'right',
+            scale: true,
+            // 🔥 修复点 3：显示右侧轴线
+            axisLine: { 
+              show: true,  // ✅ 开启轴线
+              lineStyle: { color: '#fa8c16' } // 橙色轴线
+            },
+            axisLabel: { 
+              color: '#fa8c16', 
+              fontSize: 10, 
+              formatter: formatPrecision,
+              margin: 4
+            },
+            nameTextStyle: { 
+              color: '#fa8c16', 
+              fontWeight: 'bold',
+              align: 'right', // 单位名称靠右对齐
+              padding: [0, 0, 0, 5] 
+            },
+            splitLine: { show: false }
+          }
+        ],
+
+        series: [
+          {
+            name: 'Voltage',
+            type: 'line',
+            yAxisIndex: 0,
+            showSymbol: false,
+            itemStyle: { color: '#40a9ff' },
+            data: []
+          },
+          {
+            name: 'Current',
+            type: 'line',
+            yAxisIndex: 1,
+            showSymbol: false,
+            itemStyle: { color: '#fa8c16' },
+            data: []
+          }
+        ]
+      };
+      
+      chartInstance.current.setOption(option);
     }
 
-    // 🔥🔥🔥 核心修改：组件挂载时，立即恢复历史数据！🔥🔥🔥
-    // 这就是你要的"不扔掉"：数据从全局缓存里取回来，重新画上去。
+    // ... (历史数据恢复代码保持不变)
     const history = getFullHistory();
     if (history.length > 0) {
       setHasData(true);
-      const restoredPoints = history.map(p => ({
-        name: p.t.toString(),
-        value: [p.t, p.i] as [number, number]
-      }));
-
-      fullHistoryRef.current = restoredPoints;
-
-      // 立即渲染"最后一帧"
+      const vData = history.map(p => [p.t, p.v] as [number, number]);
+      const iData = history.map(p => [p.t, p.i] as [number, number]);
+      historyRef.current = { voltage: vData, current: iData };
       chartInstance.current.setOption({
-        series: [{ data: restoredPoints }]
+        series: [{ data: vData }, { data: iData }]
       });
     }
 
     const resizeHandler = () => chartInstance.current?.resize();
     window.addEventListener('resize', resizeHandler);
-
     return () => {
       window.removeEventListener('resize', resizeHandler);
-      // 组件卸载时，我们销毁 ECharts 实例来释放内存，
-      // 但数据已经在 useMeasurementStream 的 GlobalCache 里安全保存了。
       chartInstance.current?.dispose();
       chartInstance.current = null;
     };
-  }, []); // 依赖空数组，只在挂载时运行一次
+  }, []);
 
-  // --- 实时更新逻辑 (保持不变) ---
+  // ... (useEffects 保持不变) ...
   useEffect(() => {
-    // 从 Hook 获取新数据
     const chunk = consumeBuffer();
-    
-    // 如果没有新数据（因为还没轮到我，或者我已经跑完了），直接返回
     if (chunk.length === 0) return;
-
     if (!hasData) setHasData(true);
-
-    // 转换数据格式
-    const newPoints = chunk.map(p => ({
-      name: p.t.toString(),
-      value: [p.t, p.i] as [number, number]
-    }));
-
-    // 追加到历史记录
-    fullHistoryRef.current.push(...newPoints);
-
-    // 更新图表
+    const newV = chunk.map(p => [p.t, p.v] as [number, number]);
+    const newI = chunk.map(p => [p.t, p.i] as [number, number]);
+    historyRef.current.voltage.push(...newV);
+    historyRef.current.current.push(...newI);
     chartInstance.current?.setOption({
-      series: [{ data: fullHistoryRef.current }]
+      series: [
+        { data: historyRef.current.voltage },
+        { data: historyRef.current.current }
+      ]
     });
-    
-  }, [consumeBuffer, hasData]); // consumeBuffer 变化意味着有新 tick
+  }, [consumeBuffer, hasData]);
 
-  // --- 渲染逻辑 ---
+  useEffect(() => {
+    historyRef.current = { voltage: [], current: [] };
+    setHasData(false);
+    chartInstance.current?.setOption({ series: [{ data: [] }, { data: [] }] });
+  }, [activeExecutionId]);
 
-  // 状态标签颜色
   const getStatusTag = () => {
-    if (isPending) return <span style={{color: '#faad14'}}>⏳ 等待执行</span>;
-    if (isRunning) return <span style={{color: '#52c41a', fontWeight: 'bold'}}>▶ 正在测量...</span>;
-    if (isCompleted) return <span style={{color: '#1890ff'}}>✅ 已完成 (数据固化)</span>;
+    if (isPending) return <span style={{color: '#faad14'}}>⏳ 等待</span>;
+    if (isRunning) return <span style={{color: '#52c41a', fontWeight: 'bold'}}>▶ 测量中</span>;
+    if (currentStepIndex > nodeIndex) return <span style={{color: '#1890ff'}}>✅ 完成</span>;
     return null;
   };
 
   return (
-    <div style={{ border: '1px solid #eee', borderRadius: 8, padding: 12, marginBottom: 12, background: '#fff' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <strong>步骤 {nodeIndex + 1}: {nodeConfig.name}</strong>
+    <div 
+      className="glass"
+      style={{ 
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: 8, 
+        padding: '10px 8px',
+        marginBottom: 12, 
+        background: 'rgba(255, 255, 255, 0.02)',
+        color: '#eee',
+        position: 'relative'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, padding: '0 4px' }}>
+        <strong style={{ color: '#fff', fontSize: '13px' }}>步骤{nodeIndex + 1}: {nodeConfig.name}</strong>
         <div style={{ fontSize: 12 }}>{getStatusTag()}</div>
       </div>
 
       <div 
         ref={chartRef} 
         style={{ 
-          height: 250, 
+          height: 220, 
           width: '100%',
-          // 如果是等待状态且没数据，可以给一点透明度
           opacity: (isPending && !hasData) ? 0.5 : 1 
         }} 
       />
       
       {!hasData && isPending && (
-        <div style={{ textAlign: 'center', color: '#999', marginTop: -150, paddingBottom: 100 }}>
-          暂无数据
+        <div style={{ 
+          textAlign: 'center', 
+          color: 'rgba(255, 255, 255, 0.3)',
+          position: 'absolute',
+          top: '55%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          fontSize: '12px'
+        }}>
+          等待数据...
         </div>
       )}
     </div>
