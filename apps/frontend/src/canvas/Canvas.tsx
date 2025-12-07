@@ -1,5 +1,6 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ElectrochemicalNode, WorkstationType, NodeType } from '../types/nodes';
+// 导入新的类型
+import { NodeType, WorkstationType } from '../types/Interfaces';
 import { useCanvasStore } from './canvasStore';
 import { NodeRenderer } from './NodeRenderer';
 import { ComputedConnectionLines } from './ComputedConnectionLines';
@@ -7,8 +8,8 @@ import { Toolbar } from '../components/Toolbar';
 import { LoopBoundary } from './LoopBoundary';
 import { WorkflowManagerUI } from '../workflow/WorkflowManagerUI';
 import { WorkflowIdDisplay } from '../workflow/WorkflowIdDisplay';
-import { useUnifiedLayout } from './useUnifiedLayout';
-import { useSimpleLoopDetection, type SimpleLoopInfo } from './useSimpleLoopDetection';
+import { useUnifiedLayout, DisplayNode } from './useUnifiedLayout';
+import { useSimpleLoopDetection, SimpleLoopInfo } from './useSimpleLoopDetection';
 
 interface CanvasProps {
   zoomLevel: number;
@@ -47,32 +48,31 @@ export const Canvas: React.FC<CanvasProps> = ({
   onResetFlow,
   onLoopDetected
 }) => {
-    const {
-    nodes,
-    selectedNode,
+  // 1. 从 Store 获取纯数据和 Actions
+  const {
+    nodes, // WorkflowNode[]
+    selectedNodeId,
     canvasSize,
     setCanvasSize,
     selectNode,
-    setNodes,
+    setNodes, // 用于重排序
     addNode,
+    reorderNode // 假设你在 Store 中实现了这个 Action
   } = useCanvasStore();
 
-  // 使用统一布局hook生成计算属性的位置和连接线
+  // 2. 生成渲染视图 (View Model)
   const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useUnifiedLayout(
-    nodes,
+    nodes, // 显式传入，触发更新
     {
       zoomAware: true,
       minColumns: 2,
       maxColumns: 8,
       minNodeWidth: 140,
       containerPadding: 50,
-      startOffset: { 
-        x: 50, 
-        // 目标视觉距离 (140px) / 缩放比例
-        // 这样无论怎么缩放，节点距离屏幕顶部的"视觉距离"永远锁死在 140px
-        // 就像被钉在那个位置一样，不会因为缩小而上移，也不会因为放大而下移
-        y: 100 / zoomLevel 
-      } 
+      startOffset: {
+        x: 50,
+        y: 100 / zoomLevel
+      }
     },
     canvasSize.width,
     zoomLevel
@@ -88,7 +88,11 @@ export const Canvas: React.FC<CanvasProps> = ({
   const [canvasOffsetY, setCanvasOffsetY] = useState(0);
   const dragStartScrollY = useRef(0);
 
-  // 循环系统状态
+  // 3. 循环检测 (传入渲染节点，需要提取原始类型)
+  // 适配：SimpleLoopDetection 需要知道类型是 'loop_start' 等
+  // 我们传入 layoutNodes，它们的 data._nodeType 存储了原始类型
+  // 但为了兼容旧Hook，我们需要构造一个兼容对象或修改 Hook
+  // 这里选择传入 raw nodes 给 Hook
   const detectedLoops = useSimpleLoopDetection(nodes);
 
   // 循环检测回调
@@ -139,36 +143,25 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [canvasSize.width, nodes.length, zoomLevel]);
 
-  // 拖放处理（从工具栏拖入）
+  // 从 Toolbar 拖入添加
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const nodeType = e.dataTransfer.getData('nodeType') as NodeType;
-
-    if (nodeType && canvasRef.current && selectedWorkstation) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const dropX = (e.clientX - rect.left) / zoomLevel;
-      const dropY = (e.clientY - rect.top) / zoomLevel;
-
-      // 使用统一布局的实际列数和调整后尺寸进行估算
-      const estimatedColumns = actualColumns || 4;
-      const estimatedRow = Math.floor(dropY / ((adjustedDimensions?.nodeHeight || 60) + (adjustedDimensions?.spacing || 40)));
-      const estimatedCol = Math.floor(dropX / ((adjustedDimensions?.nodeWidth || 200) + (adjustedDimensions?.spacing || 40)));
-      const estimatedIndex = Math.min(estimatedRow * estimatedColumns + estimatedCol, nodes.length);
-
-      addNode(nodeType, selectedWorkstation, estimatedIndex);
+    if (nodeType) {
+        addNode(nodeType); // 默认添加到末尾，如需插入特定位置需计算索引
     }
-  }, [canvasSize.width, nodes, zoomLevel, selectedWorkstation, addNode, actualColumns, adjustedDimensions]);
+  }, [addNode]);
 
   // 节点交互事件
-  const handleNodeClick = useCallback((node: ElectrochemicalNode) => {
-    selectNode(node);
+  const handleNodeClick = useCallback((node) => {
+    selectNode(node.id);
   }, [selectNode]);
 
-  const handleNodeDoubleClick = useCallback((_node: ElectrochemicalNode) => {
+  const handleNodeDoubleClick = useCallback((_node) => {
     // 预留双击扩展槽位
   }, []);
 
-  const handleNodeContextMenu = useCallback((node: ElectrochemicalNode, event: React.MouseEvent) => {
+  const handleNodeContextMenu = useCallback((node, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -179,7 +172,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [nodes, setNodes]);
 
-  const handleNodeDragStartEnhanced = useCallback((node: ElectrochemicalNode, event: React.DragEvent) => {
+  const handleNodeDragStartEnhanced = useCallback((node, event: React.DragEvent) => {
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('nodeId', node.id);
     if (event.currentTarget instanceof HTMLElement) {
@@ -187,48 +180,52 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, []);
 
-  // 🔥 核心修复：解决拖拽导致节点丢失的问题
-  const handleNodeDragEndEnhanced = useCallback((draggedNode: ElectrochemicalNode, event: React.DragEvent) => {
+  // 节点拖拽重排序逻辑 (核心修改)
+  const handleNodeDragEndEnhanced = useCallback((draggedNode: DisplayNode, event: React.DragEvent) => {
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.style.opacity = '1';
     }
 
-    // ✅ 关键点：直接从 Store 获取最新的节点列表，而不是依赖闭包中的 nodes
-    // 这避免了因 NodeRenderer Memoization 导致闭包过期而引用旧数据的问题
     const currentNodes = useCanvasStore.getState().nodes;
-
     const target = event.target as HTMLElement;
     const canvasRect = target.closest('.canvas-container')?.getBoundingClientRect();
-
     if (!canvasRect) return;
 
-    // 计算相对于画布的鼠标位置
     const mousePosition = {
       x: event.clientX - canvasRect.left,
       y: event.clientY - canvasRect.top
     };
 
-    // 找到被拖拽节点的当前索引
-    const fromIndex = currentNodes.findIndex(n => n.id === draggedNode.id);
-    if (fromIndex === -1) return;
+    // 简单估算目标索引 (基于网格)
+    const colWidth = (adjustedDimensions.nodeWidth + adjustedDimensions.spacing);
+    const rowHeight = (adjustedDimensions.nodeHeight + adjustedDimensions.spacing);
 
-    // 根据鼠标位置计算目标索引
-    const { calculateNodeIndex } = useCanvasStore.getState();
-    const canvasWidth = canvasSize.width;
-    const rawTargetIndex = calculateNodeIndex(mousePosition, canvasWidth, currentNodes.length);
-    const toIndex = Math.min(
-      Math.max(0, rawTargetIndex),
-      currentNodes.length - 1
-    );
+    // 考虑 Canvas 偏移和缩放
+    const effectiveX = (mousePosition.x) / zoomLevel;
+    // 简化处理，实际应该反算 layout 逻辑，这里做一个简单的网格映射近似
+    const estCol = Math.floor((effectiveX - 50) / colWidth);
+    const estRow = Math.floor(((mousePosition.y / zoomLevel) - 100/zoomLevel) / rowHeight);
 
-    // 如果不是同一个索引，重新排序数组
-    if (fromIndex !== toIndex) {
-      const newNodes = [...currentNodes];
-      const [movedNode] = newNodes.splice(fromIndex, 1);
-      newNodes.splice(toIndex, 0, movedNode);
-      setNodes(newNodes);
+    // 需要知道当前是几列
+    const cols = actualColumns;
+    // 蛇形布局索引反算
+    let targetIndex = -1;
+    if (estRow >= 0 && estCol >= 0 && estCol < cols) {
+       const isLeftToRight = estRow % 2 === 0;
+       const visualCol = isLeftToRight ? estCol : (cols - 1 - estCol);
+       targetIndex = estRow * cols + visualCol;
     }
-  }, [canvasSize.width, setNodes]); // 移除 'nodes' 依赖
+
+    const fromIndex = currentNodes.findIndex(n => n.id === draggedNode.id);
+
+    if (targetIndex !== -1 && fromIndex !== -1 && targetIndex !== fromIndex) {
+        // 调用 Store 进行重排序
+        // 修正越界
+        targetIndex = Math.min(Math.max(0, targetIndex), currentNodes.length - 1);
+
+        reorderNode(fromIndex, targetIndex);
+    }
+  }, [actualColumns, adjustedDimensions, zoomLevel, reorderNode]);
 
   // Y轴拖动逻辑
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -375,7 +372,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               key={nodeKey}
               node={node}
               index={index}
-              isSelected={selectedNode?.id === node.id}
+              isSelected={selectedNodeId === node.id}
               isConnecting={false}
               onNodeClick={handleNodeClick}
               onNodeDoubleClick={handleNodeDoubleClick}

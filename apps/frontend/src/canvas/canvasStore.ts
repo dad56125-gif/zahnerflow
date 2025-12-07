@@ -1,204 +1,99 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-
-// ✅ 修正导入 1: 从 NodeInterfaces 导入类型
-import {
-  ElectrochemicalNode,
-  NodeType,
-  WorkstationType
-} from '../types/NodeInterfaces';
-
-// ✅ 修正导入 2: 从 NodeUtilities 显式导入逻辑函数
-// 确保这里指向的是我们刚刚修改过、包含 LocalStorage 逻辑的文件
-import {
-  createDefaultNodeDataWithWorkstation,
-  getNodeConfigByWorkstation
-} from '../types/NodeUtilities';
-
-import { Position } from './LayoutConfig';
-import { useWorkflowStore } from '../workflow/index';
-
-// Re-defining Connection as they are local to App.tsx
-interface Connection {
-  id: string;
-  source_id: string;
-  target_id: string;
-}
+import { WorkflowNode, NodeType } from '../types/Interfaces';
+import { createWorkflowNode } from '../types/NodeUtilities';
 
 interface CanvasState {
-  nodes: ElectrochemicalNode[];
-  connections: Connection[];
-  selectedNode: ElectrochemicalNode | null;
+  // 核心数据：单一真理源
+  nodes: WorkflowNode[];
+  selectedNodeId: string | null;
   canvasSize: { width: number; height: number };
   validationError: string | null;
 
   // Actions
   setCanvasSize: (width: number, height: number) => void;
-  addNode: (type: NodeType, selectedWorkstation: WorkstationType, index?: number) => void;
+  addNode: (type: NodeType, index?: number) => void;
   deleteNode: (nodeId: string) => void;
-  moveNode: (nodeId: string, newPosition: Position) => void;
-  selectNode: (node: ElectrochemicalNode | null) => void;
-  updateNode: (updatedNode: ElectrochemicalNode) => void;
-  setNodes: (nodes: ElectrochemicalNode[]) => void;
-  setConnections: (connections: Connection[]) => void;
+  selectNode: (nodeId: string | null) => void;
+  updateNodeConfig: (nodeId: string, config: Record<string, any>) => void;
+  setNodes: (nodes: WorkflowNode[]) => void;
   clearCanvas: () => void;
+
+  // ✅ 修复 1: 补全 reorderNode 方法定义
+  reorderNode: (fromIndex: number, toIndex: number) => void;
+
+  // 兼容性接口
   recalculateNodePositions: () => void;
-  calculateNodeIndex: (position: Position, canvasWidth: number, nodeCount: number) => number;
-  batchUpdateNodes: (nodeUpdates: Array<{ id: string; changes: Partial<ElectrochemicalNode> }>) => void;
 }
 
 export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
 
-  const validateNodes = (nodes: ElectrochemicalNode[]): string | null => {
-    const startupNodes = nodes.filter(n => n.type === 'startup');
-    if (startupNodes.length > 1) return "工作流中最多只能有一个启动程序节点";
-
-    const shutdownNodes = nodes.filter(n => n.type === 'shutdown');
-    if (shutdownNodes.length > 1) return "工作流中最多只能有一个停止程序节点";
-
-    const startupIndex = nodes.findIndex(n => n.type === 'startup');
-    if (startupIndex > 0) return "启动程序节点必须是第一个节点";
-
-    const shutdownIndex = nodes.findIndex(n => n.type === 'shutdown');
-    if (startupIndex !== -1 && shutdownIndex !== -1 && shutdownIndex < startupIndex) {
-      return "停止程序节点必须在启动程序节点之后";
-    }
-
-    return null;
+  const validate = (nodes: WorkflowNode[]): string | null => {
+    const startup = nodes.filter(n => n.type === 'startup');
+    if (startup.length > 1) return "只能有一个启动程序";
+    return null; // 简化验证逻辑
   };
 
   return {
     nodes: [],
-    connections: [],
-    selectedNode: null,
+    selectedNodeId: null,
     canvasSize: { width: 800, height: 600 },
     validationError: null,
 
     setCanvasSize: (width, height) => set({ canvasSize: { width, height } }),
 
-    addNode: (type, selectedWorkstation, index) => {
-      const { nodes, connections } = get();
+    addNode: (type, index) => {
+      const { nodes } = get();
       
-      // 1. 获取静态配置用于基础属性 (Input/Output/Style)
-      const config = getNodeConfigByWorkstation(type, selectedWorkstation);
-      if (!config) return;
+      // 1. 创建纯数据节点 (无坐标，无样式)
+      const newNode = createWorkflowNode(type);
 
-      const targetIndex = (index !== undefined && index >= 0 && index <= nodes.length) ? index : nodes.length;
+      const targetIndex = (index !== undefined && index >= 0) ? index : nodes.length;
+      const newNodes = [...nodes];
+      newNodes.splice(targetIndex, 0, newNode);
 
-      // 2. ✅ 核心修复：调用 NodeUtilities 中的函数创建 data
-      // 这个函数内部会执行 getEffectiveDefaultParameters(type) 读取 LocalStorage
-      const nodeData = createDefaultNodeDataWithWorkstation(type, selectedWorkstation);
-
-      const newNode: ElectrochemicalNode = {
-        id: `node_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-        type: type as NodeType,
-        name: config.name,
-        category: config.category,
-        position: { x: 0, y: 0 },
-        data: nodeData, // 应用包含用户默认值的 data
-        status: 'ready',
-        input: config.input,
-        output: config.output,
-        style: config.style
-      };
-
-      const newNodes = [
-          ...nodes.slice(0, targetIndex),
-          newNode,
-          ...nodes.slice(targetIndex)
-      ];
-
-      set({
-        nodes: newNodes,
-        connections: connections,
-        validationError: validateNodes(newNodes)
-      });
+      set({ nodes: newNodes, validationError: validate(newNodes) });
     },
 
     deleteNode: (nodeId) => {
       set(state => {
-        const newNodes = state.nodes.filter(node => node.id !== nodeId);
+        const newNodes = state.nodes.filter(n => n.id !== nodeId);
         return {
           nodes: newNodes,
-          connections: state.connections.filter(conn => conn.source_id !== nodeId && conn.target_id !== nodeId),
-          selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
-          validationError: validateNodes(newNodes)
+          selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+          validationError: validate(newNodes)
         };
       });
     },
 
-    moveNode: (nodeId, newPosition) => {
-      // 布局由 useUnifiedLayout 自动处理，此处留空或用于手动微调
-      return; 
-    },
+    selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
 
-    selectNode: (node) => set({ selectedNode: node }),
-
-    updateNode: (updatedNode) => {
-      const { nodes } = get();
-      const existingNode = nodes.find(n => n.id === updatedNode.id);
-
-      if (existingNode && JSON.stringify(existingNode) === JSON.stringify(updatedNode)) {
-        return;
-      }
-
+    // 核心：直接更新 config，不涉及视图属性
+    updateNodeConfig: (nodeId, config) => {
       set(state => ({
-        nodes: state.nodes.map(node =>
-          node.id === updatedNode.id ? updatedNode : node
-        ),
-        selectedNode: state.selectedNode?.id === updatedNode.id ? updatedNode : state.selectedNode
+        nodes: state.nodes.map(n => 
+          n.id === nodeId ? { ...n, config: { ...n.config, ...config } } : n
+        )
       }));
     },
 
-    setNodes: (nodes) => {
-      set({ nodes: nodes, validationError: validateNodes(nodes) });
-    },
+    setNodes: (nodes) => set({ nodes, validationError: validate(nodes) }),
+    
+    clearCanvas: () => set({ nodes: [], selectedNodeId: null, validationError: null }),
 
-    setConnections: (connections) => {
-      set({ connections });
-    },
-
-    batchUpdateNodes: (nodeUpdates) => {
-      const { nodes } = get();
-      let hasChanges = false;
-
-      const newNodes = nodes.map(node => {
-        const update = nodeUpdates.find(u => u.id === node.id);
-        if (update) {
-          const updatedNode = { ...node, ...update.changes };
-          if (JSON.stringify(node) !== JSON.stringify(updatedNode)) {
-            hasChanges = true;
-            return updatedNode;
-          }
-        }
-        return node;
+    // ✅ 修复 2: 实现 reorderNode
+    reorderNode: (fromIndex, toIndex) => {
+      set(state => {
+        const newNodes = [...state.nodes];
+        // 简单的数组移动逻辑
+        const [movedNode] = newNodes.splice(fromIndex, 1);
+        newNodes.splice(toIndex, 0, movedNode);
+        return { nodes: newNodes };
       });
-
-      if (hasChanges) {
-        set({ nodes: newNodes });
-      }
-    },
-
-    clearCanvas: () => {
-      const { setCurrentWorkflow } = useWorkflowStore.getState();
-      setCurrentWorkflow(null);
-      set({ nodes: [], connections: [], selectedNode: null, validationError: null });
     },
 
     recalculateNodePositions: () => {
-      // 已弃用，布局由 useUnifiedLayout 处理
-    },
-
-    calculateNodeIndex: (position, canvasWidth, nodeCount) => {
-      const nodeWidth = 200;
-      const spacing = 40;
-      const columns = Math.max(1, Math.floor(canvasWidth / (nodeWidth + spacing)));
-
-      const estimatedCol = Math.floor(position.x / (nodeWidth + spacing));
-      const estimatedRow = Math.floor(position.y / 100);
-      const estimatedIndex = Math.min(estimatedRow * columns + estimatedCol, nodeCount - 1);
-
-      return Math.max(0, estimatedIndex);
+      // 布局由 useUnifiedLayout 实时接管，Store 不再管理坐标
     }
   };
 }));

@@ -1,7 +1,7 @@
 import React from 'react';
-import { NodeCategory, WorkstationType, getNodeConfigByWorkstation, getNodeCategoryName } from '../types/nodes';
+import { NodeCategory, WorkstationType,  } from '../types/Interfaces';
 import { useCanvasStore } from '../canvas/canvasStore';
-
+import {getNodeConfigByWorkstation, getNodeCategoryName} from '../types/NodeUtilities'
 interface SidebarProps {
   activePanel: 'nodes';
   onPanelChange: (panel: 'nodes') => void;
@@ -23,7 +23,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
         alert('工作流中已存在一个停止程序节点');
         return;
       }
-      addNode(nodeType as any, selectedWorkstation);
+      addNode(nodeType as any);
     }
   };
 
