@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { WorkstationType, WorkflowNode, NodeType } from '../types/Interfaces'; // 引入新类型
 import { useCanvasStore } from '../canvas/canvasStore'; // 修正 store 路径
 import { useMfc } from '../modules/mfc';
-import { NodeChart } from './NodeChart';
+import { DataViewer } from './DataViewer';
 // 确保 useSystemState 来自正确的执行 Store
 import { useSystemState } from '../workflow/executionStore';
 
@@ -59,52 +59,52 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
     // 3. 判断图表支持
     const supportsChart = useMemo(() => {
-        return node && MEASUREMENT_NODE_TYPES.includes(node.type);
+      return node && MEASUREMENT_NODE_TYPES.includes(node.type);
     }, [node]);
 
     // 自动切回 basic tab
     useEffect(() => {
-        if (!supportsChart && activeTab === 'chart') {
-            setActiveTab('basic');
-        }
+      if (!supportsChart && activeTab === 'chart') {
+        setActiveTab('basic');
+      }
     }, [supportsChart, activeTab]);
 
     // Dropdown 状态管理
     const [dropdownState, setDropdownState] = useState<{
-        activeId: string | null;
-        hidingId: string | null;
-        positions: Record<string, any>;
+      activeId: string | null;
+      hidingId: string | null;
+      positions: Record<string, any>;
     }>({
-        activeId: null,
-        hidingId: null,
-        positions: {}
+      activeId: null,
+      hidingId: null,
+      positions: {}
     });
 
     const handleOpenDropdown = (id: string, event: React.MouseEvent) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setDropdownState(prev => ({
-            ...prev,
-            activeId: id,
-            positions: {
-                ...prev.positions,
-                [id]: { top: rect.bottom + 4, left: rect.left, width: rect.width, id }
-            }
-        }));
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDropdownState(prev => ({
+        ...prev,
+        activeId: id,
+        positions: {
+          ...prev.positions,
+          [id]: { top: rect.bottom + 4, left: rect.left, width: rect.width, id }
+        }
+      }));
     };
 
     const handleCloseDropdown = (id: string) => {
-        setDropdownState(prev => ({ ...prev, hidingId: id }));
-        setTimeout(() => {
-            setDropdownState(prev => ({ ...prev, activeId: null, hidingId: null }));
-        }, 250);
+      setDropdownState(prev => ({ ...prev, hidingId: id }));
+      setTimeout(() => {
+        setDropdownState(prev => ({ ...prev, activeId: null, hidingId: null }));
+      }, 250);
     };
 
     const dropdownContext = {
-        isOpen: !!dropdownState.activeId,
-        isHiding: !!dropdownState.hidingId,
-        position: dropdownState.activeId ? dropdownState.positions[dropdownState.activeId] : null,
-        open: handleOpenDropdown,
-        close: handleCloseDropdown
+      isOpen: !!dropdownState.activeId,
+      isHiding: !!dropdownState.hidingId,
+      position: dropdownState.activeId ? dropdownState.positions[dropdownState.activeId] : null,
+      open: handleOpenDropdown,
+      close: handleCloseDropdown
     };
 
     if (!node) {
@@ -128,43 +128,43 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
     // 参数更新逻辑：直接操作 config 对象
     const handleParamChange = (key: string, value: any) => {
-        const currentConfig = node.config || {};
+      const currentConfig = node.config || {};
 
-        if (key === 'device_selection' && node.type === 'change_gas_flow') {
-            const [address, gasType] = (value as string).split(':');
-            const device = mfcState.availableDevices.find(d => d.address === Number(address) && d.gas_type === gasType);
-            updateNodeConfig(node.id, {
-                ...currentConfig,
-                device_selection: value,
-                device_address: Number(address),
-                gas_type: gasType,
-                max_flow_sccm: device?.max_flow_sccm || 200
-            });
-        } else {
-            updateNodeConfig(node.id, { ...currentConfig, [key]: value });
-        }
+      if (key === 'device_selection' && node.type === 'change_gas_flow') {
+        const [address, gasType] = (value as string).split(':');
+        const device = mfcState.availableDevices.find(d => d.address === Number(address) && d.gas_type === gasType);
+        updateNodeConfig(node.id, {
+          ...currentConfig,
+          device_selection: value,
+          device_address: Number(address),
+          gas_type: gasType,
+          max_flow_sccm: device?.max_flow_sccm || 200
+        });
+      } else {
+        updateNodeConfig(node.id, { ...currentConfig, [key]: value });
+      }
     };
 
     const saveDefaults = () => {
-        if (!node.config) return;
-        saveEffectiveDefaultParameters(node.type, node.config);
-        setRefreshTrigger(prev => prev + 1);
+      if (!node.config) return;
+      saveEffectiveDefaultParameters(node.type, node.config);
+      setRefreshTrigger(prev => prev + 1);
     };
 
     const isDefault = () => {
-        const defaults = getEffectiveDefaultParameters(node.type);
-        const current = node.config || {};
-        for (const k in defaults) {
-            // 忽略运行时动态参数
-            if (['current_temperature', 'calculated_duration'].includes(k)) continue;
-            if (String(current[k]) !== String(defaults[k])) return false;
-        }
-        return true;
+      const defaults = getEffectiveDefaultParameters(node.type);
+      const current = node.config || {};
+      for (const k in defaults) {
+        // 忽略运行时动态参数
+        if (['current_temperature', 'calculated_duration'].includes(k)) continue;
+        if (String(current[k]) !== String(defaults[k])) return false;
+      }
+      return true;
     };
 
     const hasBackendSupport = () => {
       // 简单判断，所有测量节点和设备控制节点通常都有后端支持
-      return true; 
+      return true;
     };
 
     const renderBasicProperties = () => (
@@ -191,76 +191,76 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
     );
 
     const renderParameterField = (key: string, defaultValue: any) => {
-        const currentValue = (node.config || {})[key];
-        const props = {
-            paramKey: key,
-            value: currentValue,
-            defaultValue,
-            onChange: handleParamChange,
-            dropdownState: dropdownContext
-        };
+      const currentValue = (node.config || {})[key];
+      const props = {
+        paramKey: key,
+        value: currentValue,
+        defaultValue,
+        onChange: handleParamChange,
+        dropdownState: dropdownContext
+      };
 
-        if (node.type === 'change_temperature') return <TemperatureInput {...props} />;
-        if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.availableDevices} />;
-        
-        // 枚举判断逻辑
-        const isEnum = [
-            'eis_scan_direction', 'eis_scan_strategy', 'start_voltage_reference',
-            'end_voltage_reference', 'scanDirection', 'scanStrategy', 
-            'potentiostatMode', 'fileNaming'
-        ].includes(key);
+      if (node.type === 'change_temperature') return <TemperatureInput {...props} />;
+      if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.availableDevices} />;
 
-        if (isEnum || typeof defaultValue === 'boolean') {
-            return <EnumInput {...props} />;
-        }
-        if (typeof defaultValue === 'number') return <StandardInput {...props} type="number" />;
-        return <StandardInput {...props} />;
+      // 枚举判断逻辑
+      const isEnum = [
+        'eis_scan_direction', 'eis_scan_strategy', 'start_voltage_reference',
+        'end_voltage_reference', 'scanDirection', 'scanStrategy',
+        'potentiostatMode', 'fileNaming'
+      ].includes(key);
+
+      if (isEnum || typeof defaultValue === 'boolean') {
+        return <EnumInput {...props} />;
+      }
+      if (typeof defaultValue === 'number') return <StandardInput {...props} type="number" />;
+      return <StandardInput {...props} />;
     };
 
     const renderParameters = () => {
-        const effectiveDefaults = getEffectiveDefaultParameters(node.type);
-        const hiddenParams = getHiddenParameters(node.type);
-        const visibleParams = Object.entries(effectiveDefaults).filter(([k]) => !hiddenParams.includes(k));
+      const effectiveDefaults = getEffectiveDefaultParameters(node.type);
+      const hiddenParams = getHiddenParameters(node.type);
+      const visibleParams = Object.entries(effectiveDefaults).filter(([k]) => !hiddenParams.includes(k));
 
-        if (!effectiveDefaults || Object.keys(effectiveDefaults).length === 0) {
-            return (
-                <div className="empty-state">
-                    <div className="empty-icon">⚙️</div>
-                    <div className="empty-text">该节点类型暂无参数配置</div>
-                </div>
-            );
-        }
-
+      if (!effectiveDefaults || Object.keys(effectiveDefaults).length === 0) {
         return (
-            <div className="properties-section">
-                <div className="kit_row">
-                    <div className="kit_row_left">
-                        <h3 className="section-title">参数</h3>
-                    </div>
-                    <div className="kit_row_right">
-                        <button
-                            onClick={saveDefaults}
-                            disabled={isDefault()}
-                            className={`btn btn_base btn_layout btn_style_common btn_mini glass ${isDefault() ? 'btn_primary' : 'btn_secondary'}`}
-                            title={isDefault() ? "当前参数已是工作流默认配置" : "将当前参数保存为工作流默认配置"}
-                        >
-                            <span className="btn-icon">{isDefault() ? '✅' : '💾'}</span>
-                            <span className="btn-text">
-                                {isDefault() ? '当前工作流默认' : '设为工作流默认'}
-                            </span>
-                        </button>
-                    </div>
-                </div>
-                {visibleParams.map(([key, defVal]) => (
-                    <div key={key} className="property-group">
-                        <label className="property-label">{getParameterLabel(key, node.type)}</label>
-                        <div className="property-value">
-                            {renderParameterField(key, defVal)}
-                        </div>
-                    </div>
-                ))}
-            </div>
+          <div className="empty-state">
+            <div className="empty-icon">⚙️</div>
+            <div className="empty-text">该节点类型暂无参数配置</div>
+          </div>
         );
+      }
+
+      return (
+        <div className="properties-section">
+          <div className="kit_row">
+            <div className="kit_row_left">
+              <h3 className="section-title">参数</h3>
+            </div>
+            <div className="kit_row_right">
+              <button
+                onClick={saveDefaults}
+                disabled={isDefault()}
+                className={`btn btn_base btn_layout btn_style_common btn_mini glass ${isDefault() ? 'btn_primary' : 'btn_secondary'}`}
+                title={isDefault() ? "当前参数已是工作流默认配置" : "将当前参数保存为工作流默认配置"}
+              >
+                <span className="btn-icon">{isDefault() ? '✅' : '💾'}</span>
+                <span className="btn-text">
+                  {isDefault() ? '当前工作流默认' : '设为工作流默认'}
+                </span>
+              </button>
+            </div>
+          </div>
+          {visibleParams.map(([key, defVal]) => (
+            <div key={key} className="property-group">
+              <label className="property-label">{getParameterLabel(key, node.type)}</label>
+              <div className="property-value">
+                {renderParameterField(key, defVal)}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
     };
 
     return (
@@ -289,10 +289,10 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
               {supportsChart && (
                 <button
-                    className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'chart' ? 'btn_primary' : 'btn_secondary'}`}
-                    onClick={() => setActiveTab('chart')}
+                  className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'chart' ? 'btn_primary' : 'btn_secondary'}`}
+                  onClick={() => setActiveTab('chart')}
                 >
-                    <span className="btn-icon">📈</span><span className="btn-text">图表</span>
+                  <span className="btn-icon">📊</span><span className="btn-text">数据</span>
                 </button>
               )}
             </div>
@@ -301,11 +301,16 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
             {activeTab === 'parameters' && renderParameters()}
 
             {activeTab === 'chart' && supportsChart && node && (
-              <NodeChart
-                key={nodes.findIndex(n => n.id === node.id)} // 必须加 key
-                nodeIndex={nodes.findIndex(n => n.id === node.id)}
-                nodeConfig={{ name: nodeName, ...node.config } as any}
-                systemState={systemState}
+              <DataViewer
+                isVisible={true}
+                selectedNode={{
+                  id: node.id,
+                  type: node.type,
+                  name: nodeName,
+                  data: { results: node.config, updatedAt: new Date().toISOString() },
+                  status: systemState?.currentStep?.nodeId === node.id ? 'running' : 'ready'
+                }}
+                showChart={false}
               />
             )}
           </div>

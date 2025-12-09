@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 interface DataViewerProps {
   isVisible: boolean;
   selectedNode: any; // TODO: 定义具体类型
+  showChart?: boolean; // 是否显示图表选项卡，默认 true
 }
 
 interface ChartData {
@@ -12,7 +13,7 @@ interface ChartData {
   labels?: string[];
 }
 
-export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode }) => {
+export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode, showChart = true }) => {
   const [activeTab, setActiveTab] = useState<'raw' | 'processed' | 'chart'>('raw');
   const [chartData, setChartData] = useState<ChartData | null>(null);
 
@@ -228,19 +229,21 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
           处理结果
         </button>
 
-        <button
-          className={`data-tab ${activeTab === 'chart' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chart')}
-        >
-          图表
-        </button>
+        {showChart && (
+          <button
+            className={`data-tab ${activeTab === 'chart' ? 'active' : ''}`}
+            onClick={() => setActiveTab('chart')}
+          >
+            图表
+          </button>
+        )}
       </div>
 
       {/* 内容区域 */}
       <div className="data-content-area">
         {activeTab === 'raw' && renderRawData()}
         {activeTab === 'processed' && renderProcessedData()}
-        {activeTab === 'chart' && renderChart()}
+        {activeTab === 'chart' && showChart && renderChart()}
       </div>
     </div>
   );

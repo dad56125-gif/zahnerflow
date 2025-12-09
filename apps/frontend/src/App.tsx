@@ -6,12 +6,14 @@ import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
 import { PropertyPanel } from './components/PropertyPanel';
 import { StatusBar } from './components/StatusBar';
+import { ChartModal } from './components/ChartModal';
 import { Canvas } from './canvas/Canvas';
 import { setupAutoGlassEffect } from './shared/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
 
 import { useCanvasStore } from './canvas/canvasStore';
 import { useWorkflowStore, useExecutionStore } from './workflow';
+import { useSystemState } from './workflow/executionStore';
 import { workflowWebSocketService } from './workflow/websocket.service';
 import { clearMeasurementCache } from './hooks/useMeasurementStream';
 
@@ -52,6 +54,10 @@ const AppContent: React.FC = () => {
   const [showWorkflowManager, setShowWorkflowManager] = useState(false);
   const [showFilePathManager, setShowFilePathManager] = useState(false);
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
+  const [showChartModal, setShowChartModal] = useState(false);
+
+  // 获取实时系统状态
+  const systemState = useSystemState();
 
   // 派生状态：是否出错
   const hasError = !!executionError;
@@ -258,6 +264,16 @@ const AppContent: React.FC = () => {
         isNotificationPanelOpen={isNotificationPanelOpen}
         setIsNotificationPanelOpen={setIsNotificationPanelOpen}
         detectedLoops={detectedLoops}
+        systemState={systemState}
+        onProgressBarClick={() => setShowChartModal(true)}
+      />
+
+      {/* 图表 Modal */}
+      <ChartModal
+        isOpen={showChartModal}
+        onClose={() => setShowChartModal(false)}
+        systemState={systemState}
+        nodes={nodes}
       />
     </div>
   );

@@ -3,7 +3,7 @@
  * 从 Canvas.tsx 提取的缩放按钮 UI
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 
 export interface ZoomControlsProps {
     zoomLevel: number;
@@ -28,9 +28,15 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
     minZoom = 0.6,
     maxZoom = 1.2
 }) => {
+    // 悬停状态
+    const [isZoomHovered, setIsZoomHovered] = useState(false);
+
     // 浮点数容差处理
     const isAtMinZoom = zoomLevel <= minZoom + 0.001;
     const isAtMaxZoom = zoomLevel >= maxZoom - 0.001;
+
+    // 格式化缩放百分比
+    const zoomPercent = `${Math.round(zoomLevel * 100)}%`;
 
     return (
         <div className="zoom-controls">
@@ -55,12 +61,19 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
                 ➖
             </button>
 
+            {/* 缩放百分比 / 重置按钮（悬停切换） */}
             <button
-                className="btn_zoom"
+                className="btn_zoom btn_zoom_reset"
                 onClick={onResetZoom}
+                onMouseEnter={() => setIsZoomHovered(true)}
+                onMouseLeave={() => setIsZoomHovered(false)}
                 title="重置缩放"
+                style={{
+                    minWidth: '48px',
+                    transition: 'all 0.2s ease'
+                }}
             >
-                🎯
+                {isZoomHovered ? '🎯' : zoomPercent}
             </button>
 
             <button
