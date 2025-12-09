@@ -2,7 +2,8 @@
 
 import React, { memo, useCallback, useMemo } from 'react';
 // 移除旧的 ElectrochemicalNode，引入通用类型或直接定义
-import { DisplayNode } from './useUnifiedLayout';
+import { DisplayNode } from './useLayout';
+import { NodeParameterDisplay } from './NodeParameterDisplay';
 
 export interface NodeRendererProps {
   // 接收统一布局生成的节点对象
@@ -22,7 +23,7 @@ export interface NodeRendererProps {
   isSelected?: boolean;
   isConnecting?: boolean;
   connectionStart?: string | null;
-  
+
   // 事件回调 (参数类型改为 DisplayNode)
   onNodeClick?: (node: DisplayNode) => void;
   onNodeDoubleClick?: (node: DisplayNode) => void;
@@ -118,11 +119,9 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   // 状态样式
   const nodeClassName = useMemo(() =>
     `node glass status-idle ${ // TODO: 绑定真实状态
-      isSelected ? 'selected' : ''
-    } ${
-      isConnecting ? 'connecting' : ''
-    } ${
-      isDragOver ? 'drag-over' : ''
+    isSelected ? 'selected' : ''
+    } ${isConnecting ? 'connecting' : ''
+    } ${isDragOver ? 'drag-over' : ''
     }`,
     [isSelected, isConnecting, isDragOver]
   );
@@ -155,66 +154,17 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
           {displayName}
         </div>
 
-        {/* --- 参数显示区域 (适配扁平化的 params) --- */}
-
-        {nodeType === 'change_temperature' && (
-          <div className="eis-parameters">
-            <div className="eis-current">
-              温度：{Math.round(params.target_temperature || 25)}°C
-            </div>
-          </div>
-        )}
-
-        {nodeType === 'change_gas_flow' && (
-          <div className="eis-parameters">
-            <div className="eis-current">
-              流量：{(params.target_flow_rate || 0).toFixed(1)} sccm
-            </div>
-            <div className="eis-frequency">
-              ({params.gas_type || 'N2'})
-            </div>
-          </div>
-        )}
-
-        {nodeType === 'eis_galvanostatic' && (
-          <div className="eis-parameters">
-             <div className="eis-current">
-               直流：{params.eis_current}A
-             </div>
-             <div className="eis-frequency">
-               扰动：{params.eis_amplitude}A
-             </div>
-          </div>
-        )}
-
-        {nodeType === 'eis_potentiostatic' && (
-          <div className="eis-parameters">
-            <div className="eis-current">
-              直流：{params.eis_potential}V
-            </div>
-            <div className="eis-frequency">
-              扰动：{params.eis_amplitude}V
-            </div>
-          </div>
-        )}
-        
-        {/* 其他类型节点的简单参数展示 */}
-        {nodeType === 'wait_delay' && (
-          <div className="eis-parameters">
-            <div className="eis-current">
-              时间：{params.duration}s
-            </div>
-          </div>
-        )}
+        {/* --- 参数显示区域 (数据驱动) --- */}
+        <NodeParameterDisplay nodeType={nodeType} params={params} />
       </div>
 
       {isSelected && (
         <div className="node-selection-border" />
       )}
-      
+
       {/* 连接指示器预留 */}
       {isConnecting && connectionStart === node.id && (
-         <div className="connection-start-indicator">🔗</div>
+        <div className="connection-start-indicator">🔗</div>
       )}
     </div>
   );

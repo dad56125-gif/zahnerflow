@@ -3,7 +3,7 @@ import { WorkstationType } from '../types/nodes';
 import { useCanvasStore } from '../canvas/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
 import { FilePathConfig } from '../shared/UserContext';
-import './FilePathManagerUI.css';
+
 
 interface ToolbarProps {
   onRunFlow: () => void;
@@ -118,9 +118,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="flex items-center gap_sm">
           <div className="flex gap_xs">
             <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass btn-primary ${
-                buttonStates.fileOperationsDisabled ? 'disabled' : ''
-              }`}
+              className={`btn_base btn_layout btn_style_common btn_mini glass btn-primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''
+                }`}
               onClick={clearCanvas}
               title="新建流程"
               disabled={buttonStates.fileOperationsDisabled}
@@ -133,61 +132,57 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* 中间：文件路径管理 (保持不变) */}
         <div className="flex items-center gap_sm">
-            {onToggleFilePathManager && (
-              <button
-                className={`btn_base btn_layout btn_style_common btn_mini glass ${
-                  buttonStates.filePathDisabled ? 'disabled' : (showFilePathManager ? 'btn-primary' : 'btn-secondary')
+          {onToggleFilePathManager && (
+            <button
+              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.filePathDisabled ? 'disabled' : (showFilePathManager ? 'btn-primary' : 'btn-secondary')
                 }`}
-                onClick={onToggleFilePathManager}
-                title={showFilePathManager ? "关闭文件路径管理" : "打开文件路径管理"}
-                disabled={buttonStates.filePathDisabled}
-              >
-                <span className="btn-icon">📁</span>
-                <span className="btn-text">文件路径</span>
-              </button>
-            )}
+              onClick={onToggleFilePathManager}
+              title={showFilePathManager ? "关闭文件路径管理" : "打开文件路径管理"}
+              disabled={buttonStates.filePathDisabled}
+            >
+              <span className="btn-icon">📁</span>
+              <span className="btn-text">文件路径</span>
+            </button>
+          )}
         </div>
 
         {/* 右侧：运行和设置 */}
         <div className="flex items-center gap_sm">
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass btn-primary ${
-                buttonStates.runButtonDisabled ? 'disabled' : ''
+          <button
+            className={`btn_base btn_layout btn_style_common btn_mini glass btn-primary ${buttonStates.runButtonDisabled ? 'disabled' : ''
               }`}
-              onClick={onRunFlow}
-              title="运行流程 (F5)"
-              disabled={buttonStates.runButtonDisabled}
-            >
-              <span className="btn-icon">▶️</span>
-              <span className="btn-text">{buttonStates.runButtonText}</span>
-            </button>
+            onClick={onRunFlow}
+            title="运行流程 (F5)"
+            disabled={buttonStates.runButtonDisabled}
+          >
+            <span className="btn-icon">▶️</span>
+            <span className="btn-text">{buttonStates.runButtonText}</span>
+          </button>
 
-            {/* --- ✅ 修复点：动态绑定点击事件 --- */}
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.stopButtonVariant} ${
-                buttonStates.stopButtonDisabled ? 'disabled' : ''
+          {/* --- ✅ 修复点：动态绑定点击事件 --- */}
+          <button
+            className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.stopButtonVariant} ${buttonStates.stopButtonDisabled ? 'disabled' : ''
               }`}
-              onClick={handleStopOrReset} 
-              title={buttonStates.stopButtonText === '重置' ? "重置系统" : "停止运行"}
-              disabled={buttonStates.stopButtonDisabled}
-            >
-              <span className="btn-icon">{buttonStates.stopButtonText === '重置' ? '🔄' : '⏹️'}</span>
-              <span className="btn-text">{buttonStates.stopButtonText}</span>
-            </button>
+            onClick={handleStopOrReset}
+            title={buttonStates.stopButtonText === '重置' ? "重置系统" : "停止运行"}
+            disabled={buttonStates.stopButtonDisabled}
+          >
+            <span className="btn-icon">{buttonStates.stopButtonText === '重置' ? '🔄' : '⏹️'}</span>
+            <span className="btn-text">{buttonStates.stopButtonText}</span>
+          </button>
 
-            {onToggleWorkflowManager && (
-              <button
-                className={`btn_base btn_layout btn_style_common btn_mini glass ${
-                  buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn-primary' : 'btn-secondary')
+          {onToggleWorkflowManager && (
+            <button
+              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn-primary' : 'btn-secondary')
                 }`}
-                onClick={onToggleWorkflowManager}
-                title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
-                disabled={buttonStates.workflowDisabled}
-              >
-                <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
-                <span className="btn-text">工作流</span>
-              </button>
-            )}
+              onClick={onToggleWorkflowManager}
+              title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
+              disabled={buttonStates.workflowDisabled}
+            >
+              <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
+              <span className="btn-text">工作流</span>
+            </button>
+          )}
         </div>
       </div>
 

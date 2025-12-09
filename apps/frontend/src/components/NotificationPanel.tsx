@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Portal } from './common/Portal';
+import { Portal } from './Portal';
 
 interface Notification {
   id: string;
@@ -32,12 +32,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
           timestamp: new Date(notification.timestamp),
           source: notification.source || 'system'
         };
-        
+
         setNotifications(prev => [formattedNotification, ...prev]);
       };
 
       window.addEventListener('notification', handleNotification as EventListener);
-      
+
       return () => {
         window.removeEventListener('notification', handleNotification as EventListener);
       };
@@ -110,43 +110,43 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
           </div>
 
           <div className="notification-panel-content">
-              {notifications.length === 0 ? (
-                <div className="notification-empty">
-                  <div className="notification-empty-icon">📭</div>
-                  <div className="notification-empty-text">暂无通知</div>
-                </div>
-              ) : (
-                notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="notification-item"
-                  >
-                    <div className="notification-icon" style={{ color: getNotificationColor(notification.type) }}>
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="notification-content">
-                      <div className="notification-title">{notification.title}</div>
-                      <div className="notification-message">{notification.message}</div>
-                      <div className="notification-time">
-                        {notification.timestamp.toLocaleTimeString()}
-                      </div>
-                      <div className="notification-source">
-                        来源: {notification.source}
-                      </div>
-                    </div>
-                    <button
-                      className="notification-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNotification(notification.id);
-                      }}
-                      title="删除"
-                    >
-                      ✕
-                    </button>
+            {notifications.length === 0 ? (
+              <div className="notification-empty">
+                <div className="notification-empty-icon">📭</div>
+                <div className="notification-empty-text">暂无通知</div>
+              </div>
+            ) : (
+              notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className="notification-item"
+                >
+                  <div className="notification-icon" style={{ color: getNotificationColor(notification.type) }}>
+                    {getNotificationIcon(notification.type)}
                   </div>
-                ))
-              )}
+                  <div className="notification-content">
+                    <div className="notification-title">{notification.title}</div>
+                    <div className="notification-message">{notification.message}</div>
+                    <div className="notification-time">
+                      {notification.timestamp.toLocaleTimeString()}
+                    </div>
+                    <div className="notification-source">
+                      来源: {notification.source}
+                    </div>
+                  </div>
+                  <button
+                    className="notification-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNotification(notification.id);
+                    }}
+                    title="删除"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

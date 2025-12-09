@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Portal } from '../../components/common/Portal';
+import { Portal } from '../../components/Portal';
 import type { FurnaceState, FurnaceControls } from './useFurnace';
 import { StatusPanel } from './StatusPanel';
 import { ProgramEditor } from './ProgramEditor';
@@ -226,28 +226,28 @@ function RecordingTab() {
       </div>
       <div className="card_body">
         {loading ? (<div className="text-secondary">正在加载数据...</div>) :
-         samples.length === 0 ? (<div className="text-secondary">暂无数据</div>) :
-         <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
-           <table className="data-table">
-             <thead><tr>
-               <th>序号</th><th>记录时间</th><th>实际温度</th><th>设定温度</th><th>输出功率</th>
-               <th>设备状态</th><th>程序段</th><th>段内时间</th><th>段设定时间</th>
-             </tr></thead>
-             <tbody>
-               {samples.map((sample, idx) => (
-                 <tr key={sample.timestamp}>
-                   <td>{idx + 1}</td>
-                   <td>{formatTime(sample.timestamp)}</td>
-                   <td>{sample.pv.toFixed(1)}°C</td>
-                   <td>{sample.sv.toFixed(1)}°C</td>
-                   <td>{sample.mv.toFixed(1)}%</td>
-                   <td>{mapStatusCode(sample.status_code)}</td>
-                   <td>-</td><td>-</td><td>-</td>
-                 </tr>
-               ))}
-             </tbody>
-           </table>
-         </div>
+          samples.length === 0 ? (<div className="text-secondary">暂无数据</div>) :
+            <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
+              <table className="data-table">
+                <thead><tr>
+                  <th>序号</th><th>记录时间</th><th>实际温度</th><th>设定温度</th><th>输出功率</th>
+                  <th>设备状态</th><th>程序段</th><th>段内时间</th><th>段设定时间</th>
+                </tr></thead>
+                <tbody>
+                  {samples.map((sample, idx) => (
+                    <tr key={sample.timestamp}>
+                      <td>{idx + 1}</td>
+                      <td>{formatTime(sample.timestamp)}</td>
+                      <td>{sample.pv.toFixed(1)}°C</td>
+                      <td>{sample.sv.toFixed(1)}°C</td>
+                      <td>{sample.mv.toFixed(1)}%</td>
+                      <td>{mapStatusCode(sample.status_code)}</td>
+                      <td>-</td><td>-</td><td>-</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
         }
       </div>
     </div>
@@ -259,7 +259,7 @@ function RecordingTab() {
 function HistoryTab() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [samples, setSamples] = useState<Array<{timestamp: string; pv: number; sv: number; mv: number; status_code?: number}>>([]);
+  const [samples, setSamples] = useState<Array<{ timestamp: string; pv: number; sv: number; mv: number; status_code?: number }>>([]);
   const [loading, setLoading] = useState(false);
 
   const mapStatusCode = (code: number): string => {
@@ -298,15 +298,15 @@ function HistoryTab() {
   };
 
   const enrichWithEvents = (
-    sampleData: Array<{timestamp: string; pv: number; sv: number; mv: number; status_code?: number}>,
-    events: Array<{timestamp: string; status_code: number}>
-  ): Array<{timestamp: string; pv: number; sv: number; mv: number; status_code?: number}> => {
+    sampleData: Array<{ timestamp: string; pv: number; sv: number; mv: number; status_code?: number }>,
+    events: Array<{ timestamp: string; status_code: number }>
+  ): Array<{ timestamp: string; pv: number; sv: number; mv: number; status_code?: number }> => {
     const sortedEvents = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     return sampleData.map(sample => {
       const nearestEvent = sortedEvents.filter(e => new Date(e.timestamp).getTime() <= new Date(sample.timestamp).getTime()).reduce((nearest, current) => {
         if (!nearest) return current;
         return (new Date(sample.timestamp).getTime() - new Date(current.timestamp).getTime()) <
-               (new Date(sample.timestamp).getTime() - new Date(nearest.timestamp).getTime()) ? current : nearest;
+          (new Date(sample.timestamp).getTime() - new Date(nearest.timestamp).getTime()) ? current : nearest;
       }, sortedEvents[0]);
       return { ...sample, status_code: nearestEvent?.status_code };
     });

@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { UserSelector } from './UserSelector';
 import { useUser } from '../shared/UserContext';
-import { Portal } from './common/Portal';
-import './UserSelector.css';
+import { Portal } from './Portal';
+
 
 interface Workstation {
   id: string;
@@ -28,7 +28,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
   const workstationDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
-  
+
   // 处理动画结束事件
   useEffect(() => {
     if (!isWorkstationHiding) return;
@@ -126,106 +126,106 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
   return (
     <div className="top-navbar glass">
       <div className="flex items-center gap_sm flex-1">
+        <div className="flex items-center gap_sm">
+          <div className="logo">
+            <span className="logo-text">ZahnerFlow</span>
+          </div>
           <div className="flex items-center gap_sm">
-            <div className="logo">
-              <span className="logo-text">ZahnerFlow</span>
-            </div>
-            <div className="flex items-center gap_sm">
-              <span className="app-version">v2.0.0</span>
-              <span className="separator">|</span>
-              <span className="app-status">就绪</span>
-            </div>
+            <span className="app-version">v2.0.0</span>
+            <span className="separator">|</span>
+            <span className="app-status">就绪</span>
+          </div>
 
-            {/* 用户选择器 - 位于"就绪"状态文字右侧 */}
-            <div className="user-section">
-              <UserSelector
-                currentUser={currentUser}
-                onUserChange={setCurrentUser}
-              />
-            </div>
+          {/* 用户选择器 - 位于"就绪"状态文字右侧 */}
+          <div className="user-section">
+            <UserSelector
+              currentUser={currentUser}
+              onUserChange={setCurrentUser}
+            />
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap_sm">
+      <div className="flex items-center gap_sm">
+        <div
+          className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
+          onClick={() => handleDeviceClick('furnace')}
+        >
+          <span className="btn-icon">🔥</span>
+          <span className="btn-text">管式炉</span>
+          <span className="device-status-indicator disconnected" />
+        </div>
+
+        <div
+          className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
+          onClick={() => handleDeviceClick('mfc')}
+        >
+          <span className="btn-icon">💧</span>
+          <span className="btn-text">流量计</span>
+          <span className="device-status-indicator disconnected" />
+        </div>
+
+        <div className="workstation-selector" ref={dropdownContainerRef}>
+          <button
+            ref={workstationButtonRef}
+            className="btn_base btn_layout btn_style_common btn_medium glass btn-primary"
+            onClick={handleToggleDropdown}
+          >
+            <span className="btn-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
+            <span className="btn-text">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
+            <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
+            <svg className={`dropdown-arrow ${isWorkstationDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+              <path
+                d="M -8 -3 L 0 5 L 8 -3"
+                fill="none"
+                stroke="rgba(255,255,255,0.8)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* 工作站下拉菜单 - 使用Portal渲染 */}
+        <Portal
+          isOpen={isWorkstationDropdownOpen || isWorkstationHiding} // ✅ 动画期间保持挂载
+          onClose={() => setIsWorkstationHiding(true)} // ✅ 点击外部启动关闭动画
+          pointerEvents="none"
+        >
           <div
-            className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
-            onClick={() => handleDeviceClick('furnace')}
+            ref={workstationDropdownRef}
+            className={`dropdown_base dropdown_workstation overlay_base ${isWorkstationHiding ? 'hiding' : 'show'}`}
+            style={{
+              top: `${workstationPosition.top}px`,
+              left: `${workstationPosition.left}px`,
+              width: `${workstationPosition.width}px`,
+              pointerEvents: 'auto' // ✅ 确保内部可点击
+            }}
           >
-            <span className="btn-icon">🔥</span>
-            <span className="btn-text">管式炉</span>
-            <span className="device-status-indicator disconnected" />
-          </div>
-
-          <div
-            className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
-            onClick={() => handleDeviceClick('mfc')}
-          >
-            <span className="btn-icon">💧</span>
-            <span className="btn-text">流量计</span>
-            <span className="device-status-indicator disconnected" />
-          </div>
-
-          <div className="workstation-selector" ref={dropdownContainerRef}>
-            <button
-              ref={workstationButtonRef}
-              className="btn_base btn_layout btn_style_common btn_medium glass btn-primary"
-              onClick={handleToggleDropdown}
-            >
-              <span className="btn-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>
-              <span className="btn-text">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
-              <span className={`workstation-status-indicator ${selectedWorkstation?.status || 'disconnected'}`} />
-              <svg className={`dropdown-arrow ${isWorkstationDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
-                <path
-                  d="M -8 -3 L 0 5 L 8 -3"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.8)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* 工作站下拉菜单 - 使用Portal渲染 */}
-          <Portal
-            isOpen={isWorkstationDropdownOpen || isWorkstationHiding} // ✅ 动画期间保持挂载
-            onClose={() => setIsWorkstationHiding(true)} // ✅ 点击外部启动关闭动画
-            pointerEvents="none"
-          >
-            <div
-              ref={workstationDropdownRef}
-              className={`dropdown_base dropdown_workstation overlay_base ${isWorkstationHiding ? 'hiding' : 'show'}`}
-              style={{
-                top: `${workstationPosition.top}px`,
-                left: `${workstationPosition.left}px`,
-                width: `${workstationPosition.width}px`,
-                pointerEvents: 'auto' // ✅ 确保内部可点击
-              }}
-            >
-              {workstations.map((workstation) => (
-                <div
-                  key={workstation.id}
-                  className={`dropdown_workstation_option ${workstation.status}`}
-                  onClick={() => handleWorkstationSelect(workstation)}
-                >
-                  <div className="dropdown_workstation_content">
-                    <div className="dropdown_workstation_icon">{workstation.icon}</div>
-                    <div className="dropdown_workstation_info">
-                      <div className="dropdown_workstation_name">{workstation.name}</div>
-                      <div className="dropdown_workstation_type">{workstation.type}</div>
-                    </div>
-                    <div className={`dropdown_workstation_status ${workstation.status}`}>
-                      <span className={`status_dot ${workstation.status}`} />
-                      <span className="status_text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
-                    </div>
+            {workstations.map((workstation) => (
+              <div
+                key={workstation.id}
+                className={`dropdown_workstation_option ${workstation.status}`}
+                onClick={() => handleWorkstationSelect(workstation)}
+              >
+                <div className="dropdown_workstation_content">
+                  <div className="dropdown_workstation_icon">{workstation.icon}</div>
+                  <div className="dropdown_workstation_info">
+                    <div className="dropdown_workstation_name">{workstation.name}</div>
+                    <div className="dropdown_workstation_type">{workstation.type}</div>
+                  </div>
+                  <div className={`dropdown_workstation_status ${workstation.status}`}>
+                    <span className={`status_dot ${workstation.status}`} />
+                    <span className="status_text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </Portal>
+              </div>
+            ))}
+          </div>
+        </Portal>
 
-        </div>
+      </div>
     </div>
   );
 };

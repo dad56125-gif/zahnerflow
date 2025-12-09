@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { Portal } from '../../components/common/Portal';
+import { Portal } from '../../components/Portal';
 import { useMfc } from './useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { MFCConnectionPanel } from './MFCConnectionPanel';
@@ -72,8 +72,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
             </span>
             <span className={`connection-state-indicator ${mfcState.connection_status}`}>
               ({mfcState.connection_status === 'connected' ? '设备已连接' :
-                 mfcState.connection_status === 'connecting' ? '连接中...' :
-                 mfcState.connection_status === 'error' ? '连接错误' : '未连接'})
+                mfcState.connection_status === 'connecting' ? '连接中...' :
+                  mfcState.connection_status === 'error' ? '连接错误' : '未连接'})
             </span>
             {mfcState.connection_status === 'connected' && (
               <button
@@ -173,7 +173,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                 <span className="last-update">
                   最后更新: {mfcState.lastUpdate?.toLocaleTimeString() || '--:--:--'}
                 </span>
-                  </div>
+              </div>
             </div>
           )}
 

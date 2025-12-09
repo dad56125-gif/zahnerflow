@@ -3,13 +3,15 @@
 import { NodeType, WorkstationType } from '../types/Interfaces';
 import { useCanvasStore } from './canvasStore';
 import { NodeRenderer } from './NodeRenderer';
-import { ComputedConnectionLines } from './ComputedConnectionLines';
+import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from '../components/Toolbar';
 import { LoopBoundary } from './LoopBoundary';
-import { WorkflowManagerUI } from '../workflow/WorkflowManagerUI';
+import { WorkflowManagerUI } from '../components/WorkflowManagerUI';
 import { WorkflowIdDisplay } from '../workflow/WorkflowIdDisplay';
-import { useUnifiedLayout, DisplayNode } from './useUnifiedLayout';
-import { useSimpleLoopDetection, SimpleLoopInfo } from './useSimpleLoopDetection';
+import { useLayout, DisplayNode } from './useLayout';
+import { useLoopDetection, SimpleLoopInfo } from './useLoopDetection';
+import { useCanvasDrag } from './useCanvasDrag';
+import { ZoomControls } from './ZoomControls';
 
 interface CanvasProps {
   zoomLevel: number;
@@ -61,7 +63,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   } = useCanvasStore();
 
   // 2. 生成渲染视图 (View Model)
-  const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useUnifiedLayout(
+  const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useLayout(
     nodes, // 显式传入，触发更新
     {
       zoomAware: true,
@@ -81,19 +83,17 @@ export const Canvas: React.FC<CanvasProps> = ({
   const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutStable, setLayoutStable] = useState(true);
 
-  // Y轴拖动相关状态
-  const [isDragEnabled, setIsDragEnabled] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartY, setDragStartY] = useState(0);
-  const [canvasOffsetY, setCanvasOffsetY] = useState(0);
-  const dragStartScrollY = useRef(0);
+  // 使用拖动 Hook
+  const {
+    isDragEnabled,
+    isDragging,
+    canvasOffsetY,
+    toggleDragMode,
+    handleMouseDown
+  } = useCanvasDrag();
 
-  // 3. 循环检测 (传入渲染节点，需要提取原始类型)
-  // 适配：SimpleLoopDetection 需要知道类型是 'loop_start' 等
-  // 我们传入 layoutNodes，它们的 data._nodeType 存储了原始类型
-  // 但为了兼容旧Hook，我们需要构造一个兼容对象或修改 Hook
-  // 这里选择传入 raw nodes 给 Hook
-  const detectedLoops = useSimpleLoopDetection(nodes);
+  // 3. 循环检测
+  const detectedLoops = useLoopDetection(nodes);
 
   // 循环检测回调
   useEffect(() => {
@@ -102,13 +102,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     }
   }, [detectedLoops, onLoopDetected]);
 
-  // 拖动切换处理
-  const toggleDragMode = useCallback(() => {
-    setIsDragEnabled(prev => {
-      if (prev) setCanvasOffsetY(0); // 关闭时重置偏移
-      return !prev;
-    });
-  }, []);
+  // 拖动切换处理已移至 useCanvasDrag hook
 
   // Canvas 尺寸监听（防抖）
   useEffect(() => {
@@ -148,7 +142,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     e.preventDefault();
     const nodeType = e.dataTransfer.getData('nodeType') as NodeType;
     if (nodeType) {
-        addNode(nodeType); // 默认添加到末尾，如需插入特定位置需计算索引
+      addNode(nodeType); // 默认添加到末尾，如需插入特定位置需计算索引
     }
   }, [addNode]);
 
@@ -167,8 +161,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // 简化的删除确认
     if (window.confirm(`确定要删除节点 "${node.name}" 吗？`)) {
-        const newNodes = nodes.filter(n => n.id !== node.id);
-        setNodes(newNodes);
+      const newNodes = nodes.filter(n => n.id !== node.id);
+      setNodes(newNodes);
     }
   }, [nodes, setNodes]);
 
@@ -204,66 +198,32 @@ export const Canvas: React.FC<CanvasProps> = ({
     const effectiveX = (mousePosition.x) / zoomLevel;
     // 简化处理，实际应该反算 layout 逻辑，这里做一个简单的网格映射近似
     const estCol = Math.floor((effectiveX - 50) / colWidth);
-    const estRow = Math.floor(((mousePosition.y / zoomLevel) - 100/zoomLevel) / rowHeight);
+    const estRow = Math.floor(((mousePosition.y / zoomLevel) - 100 / zoomLevel) / rowHeight);
 
     // 需要知道当前是几列
     const cols = actualColumns;
     // 蛇形布局索引反算
     let targetIndex = -1;
     if (estRow >= 0 && estCol >= 0 && estCol < cols) {
-       const isLeftToRight = estRow % 2 === 0;
-       const visualCol = isLeftToRight ? estCol : (cols - 1 - estCol);
-       targetIndex = estRow * cols + visualCol;
+      const isLeftToRight = estRow % 2 === 0;
+      const visualCol = isLeftToRight ? estCol : (cols - 1 - estCol);
+      targetIndex = estRow * cols + visualCol;
     }
 
     const fromIndex = currentNodes.findIndex(n => n.id === draggedNode.id);
 
     if (targetIndex !== -1 && fromIndex !== -1 && targetIndex !== fromIndex) {
-        // 调用 Store 进行重排序
-        // 修正越界
-        targetIndex = Math.min(Math.max(0, targetIndex), currentNodes.length - 1);
+      // 调用 Store 进行重排序
+      // 修正越界
+      targetIndex = Math.min(Math.max(0, targetIndex), currentNodes.length - 1);
 
-        reorderNode(fromIndex, targetIndex);
+      reorderNode(fromIndex, targetIndex);
     }
   }, [actualColumns, adjustedDimensions, zoomLevel, reorderNode]);
 
-  // Y轴拖动逻辑
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!isDragEnabled || e.button !== 0) return;
+  // Y轴拖动逻辑已移至 useCanvasDrag hook
 
-    const target = e.target as HTMLElement;
-    if (target.closest('.node') || target.closest('.zoom-controls') || target.closest('.toolbar')) {
-      return;
-    }
 
-    setIsDragging(true);
-    setDragStartY(e.clientY);
-    dragStartScrollY.current = canvasOffsetY;
-    e.preventDefault();
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging) return;
-    const deltaY = e.clientY - dragStartY;
-    setCanvasOffsetY(dragStartScrollY.current + deltaY);
-  }, [isDragging, dragStartY]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  
   return (
     <div
       className="canvas-container glass"
@@ -292,39 +252,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       )}
 
       {/* 缩放控制区域 */}
-      <div className="zoom-controls">
-        <button
-          className={`btn-zoom btn-drag-toggle ${isDragEnabled ? 'active' : ''}`}
-          onClick={toggleDragMode}
-          title={isDragEnabled ? "关闭拖动模式" : "开启拖动模式"}
-        >
-          ✋
-        </button>
-
-        {/* 🔥 修改：达到 0.6 时禁用缩小按钮 */}
-        <button
-          className="btn-zoom"
-          onClick={onZoomOut}
-          title="缩小"
-          disabled={zoomLevel <= 0.601} // 加一点点容差处理浮点数精度
-          style={{ opacity: zoomLevel <= 0.601 ? 0.5 : 1, cursor: zoomLevel <= 0.601 ? 'not-allowed' : 'pointer' }}
-        >
-          ➖
-        </button>
-
-        <button className="btn-zoom" onClick={onResetZoom} title="重置缩放">🎯</button>
-
-        {/* 🔥 修改：达到 1.2 时禁用放大按钮 */}
-        <button
-          className="btn-zoom"
-          onClick={onZoomIn}
-          title="放大"
-          disabled={zoomLevel >= 1.199} // 加一点点容差
-          style={{ opacity: zoomLevel >= 1.199 ? 0.5 : 1, cursor: zoomLevel >= 1.199 ? 'not-allowed' : 'pointer' }}
-        >
-          ➕
-        </button>
-      </div>
+      <ZoomControls
+        zoomLevel={zoomLevel}
+        onZoomIn={onZoomIn}
+        onZoomOut={onZoomOut}
+        onResetZoom={onResetZoom}
+        isDragEnabled={isDragEnabled}
+        onToggleDrag={toggleDragMode}
+      />
 
       {/* 可缩放画布内容 */}
       <div
@@ -345,7 +280,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         }}
         onMouseDown={handleMouseDown}
       >
-        <ComputedConnectionLines
+        <ConnectionLines
           layoutEdges={layoutEdges}
           layoutStable={layoutStable}
           zoomLevel={zoomLevel}

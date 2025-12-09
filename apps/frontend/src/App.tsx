@@ -17,7 +17,7 @@ import { clearMeasurementCache } from './hooks/useMeasurementStream';
 import { MFCModal } from './modules/mfc';
 import { useFurnace, DeviceModal } from './modules/furnace';
 import { UserProvider, useUser } from './shared/UserContext';
-import type { SimpleLoopInfo } from './canvas/useSimpleLoopDetection';
+import type { SimpleLoopInfo } from './canvas/useLoopDetection';
 
 // 内部应用内容组件（在 UserProvider 内部，可以使用 useUser）
 const AppContent: React.FC = () => {

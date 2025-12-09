@@ -2,7 +2,7 @@ import React from 'react';
 import { NotificationPanel } from './NotificationPanel';
 import { useCanvasStore } from '../canvas/canvasStore'; // 修正 Store 路径
 import { NODE_CONFIGS } from '../types/NodeConfiguration'; // 引入配置以获取节点显示名称
-import type { SimpleLoopInfo } from '../canvas/useSimpleLoopDetection'; // 修正 Hooks 路径
+import type { SimpleLoopInfo } from '../canvas/useLoopDetection'; // 修正 Hooks 路径
 
 interface StatusBarProps {
   zoomLevel: number;
@@ -21,7 +21,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 }) => {
   // ✅ 修复 1: 移除 connections, 使用 selectedNodeId
   const { nodes, selectedNodeId } = useCanvasStore();
-  
+
   // ✅ 修复 2: 动态派生选中节点信息
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
   // 获取静态显示名称
@@ -40,11 +40,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
     if (isRunning) {
       return '流程运行中...';
     }
-    
+
     if (selectedNode) {
       return `已选择: ${displayName}`;
     }
-    
+
     return '就绪';
   };
 
@@ -53,7 +53,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       {/* 左侧：状态信息 */}
       <div className="status-left">
         {/* 运行状态 */}
-        <div 
+        <div
           className="status-item notification-trigger"
           onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
           title="点击打开通知面板"
@@ -104,7 +104,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <div className="status-item">
           <span className="memory-label">内存:</span>
           <span className="memory-value glass">
-            {typeof performance !== 'undefined' && (performance as any).memory 
+            {typeof performance !== 'undefined' && (performance as any).memory
               ? Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024) + 'MB'
               : 'N/A'}
           </span>
@@ -121,9 +121,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           {new Date().toLocaleTimeString()}
         </div>
       </div>
-      
+
       {/* 通知面板 */}
-      <NotificationPanel 
+      <NotificationPanel
         isOpen={isNotificationPanelOpen}
         onClose={() => setIsNotificationPanelOpen(false)}
       />

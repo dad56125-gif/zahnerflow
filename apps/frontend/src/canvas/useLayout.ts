@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useCanvasStore } from './canvasStore';
 // 注意：请确保路径与你实际文件结构一致
-import { NODE_CONFIGS } from '../types/NodeConfiguration'; 
+import { NODE_CONFIGS } from '../types/NodeConfiguration';
 import {
   LayoutConfig,
   ComputedEdge,
@@ -70,7 +70,7 @@ function generateConnectionLines(
 
     const currentRow = current.layoutMeta.row;
     const nextRow = next.layoutMeta.row;
-    
+
     // 蛇形布局特征
     const rowIsLeftToRight = currentRow % 2 === 0;
 
@@ -84,14 +84,14 @@ function generateConnectionLines(
     if (currentRow === nextRow) {
       connectionType = 'straight';
       if (rowIsLeftToRight) {
-        sourceX = current.position.x + nodeWidth; 
-        sourceDir = 1; 
-        targetX = next.position.x;                
+        sourceX = current.position.x + nodeWidth;
+        sourceDir = 1;
+        targetX = next.position.x;
         targetDir = -1;
       } else {
-        sourceX = current.position.x;             
-        sourceDir = -1; 
-        targetX = next.position.x + nodeWidth;    
+        sourceX = current.position.x;
+        sourceDir = -1;
+        targetX = next.position.x + nodeWidth;
         targetDir = 1;
       }
     }
@@ -99,14 +99,14 @@ function generateConnectionLines(
     else {
       connectionType = 'smoothstep';
       if (rowIsLeftToRight) {
-        sourceX = current.position.x + nodeWidth; 
+        sourceX = current.position.x + nodeWidth;
         sourceDir = 1;
-        targetX = next.position.x + nodeWidth;    
+        targetX = next.position.x + nodeWidth;
         targetDir = 1;
       } else {
-        sourceX = current.position.x;             
+        sourceX = current.position.x;
         sourceDir = -1;
-        targetX = next.position.x;                
+        targetX = next.position.x;
         targetDir = -1;
       }
     }
@@ -188,7 +188,7 @@ function calculateLayout(
 
     const row = Math.floor(index / actualColumns);
     const colIndex = index % actualColumns;
-    
+
     const isLeftToRight = row % 2 === 0;
     const gridCol = isLeftToRight ? colIndex : (actualColumns - 1) - colIndex;
 
@@ -203,7 +203,7 @@ function calculateLayout(
     return {
       id: node.id,
       type: 'custom', // 统一指向自定义组件
-      
+
       // 注入视图属性 (兼容 React Flow data 结构)
       data: {
         ...node.config,
@@ -212,16 +212,16 @@ function calculateLayout(
         _nodeType: node.type, // 供组件逻辑判断
         isSelected: node.id === selectedNodeId
       },
-      
+
       // 注入坐标
       position: newPosition,
-      
+
       // 注入样式尺寸
       style: {
         width: baseNodeWidth,
         height: baseNodeHeight
       },
-      
+
       // 锁定
       draggable: false,
       connectable: false,
@@ -247,7 +247,7 @@ function calculateLayout(
     nodeHeight: baseNodeHeight,
     segmentLength: segmentLength
   };
-  
+
   const computedEdges = generateConnectionLines(nodesWithPosition, baseDimensions);
 
   return {
@@ -262,7 +262,7 @@ function calculateLayout(
 // 4. Hook 入口
 // =============================================================================
 
-export const useUnifiedLayout = (
+export const useLayout = (
   nodes?: any[], // 可选参数，如果没传就从 Store 取
   config?: Partial<LayoutConfig>,
   canvasWidth?: number,
@@ -272,7 +272,7 @@ export const useUnifiedLayout = (
   const storeNodes = useCanvasStore((state) => state.nodes);
   const storeCanvasSize = useCanvasStore((state) => state.canvasSize);
   const selectedNodeId = useCanvasStore((state) => state.selectedNodeId);
-  
+
   const targetNodes = nodes || storeNodes;
   const targetWidth = canvasWidth || storeCanvasSize.width;
 
@@ -285,9 +285,9 @@ export const useUnifiedLayout = (
   // 执行计算
   const result = useMemo(() => {
     return calculateLayout(
-      targetNodes, 
-      finalConfig, 
-      targetWidth, 
+      targetNodes,
+      finalConfig,
+      targetWidth,
       zoomLevel,
       selectedNodeId
     );

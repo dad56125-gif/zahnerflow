@@ -37,6 +37,12 @@
 /* === 11. 遗留组件（向后兼容） === */
 @import './_components_legacy.css';
 
+/* === 12. 文件路径管理器 === */
+@import './_file_path_manager.css';
+
+/* === 13. 用户选择器 === */
+@import './_user_selector.css';
+
 /* === 核心规则提醒 === */
 /*
 CSS架构重构完成：

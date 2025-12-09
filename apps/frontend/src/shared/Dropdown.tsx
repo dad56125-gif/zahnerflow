@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import Portal from '../components/Portal';
+import { Portal } from '../components/Portal';
 
 interface DropdownProps {
   isOpen: boolean;

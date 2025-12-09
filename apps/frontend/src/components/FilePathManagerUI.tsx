@@ -2,7 +2,8 @@
 import { api } from '../shared/api';
 import { useUser, FilePathConfig } from '../shared/UserContext';
 import { useOnClickOutside } from '../shared/useOnClickOutside';
-import Portal from '../components/Portal';
+import { useDropdownPosition } from '../shared/useDropdownPosition';
+import { Portal } from './Portal';
 
 interface FilePathManagerUIProps {
   onClose: () => void;
@@ -26,12 +27,17 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     individual_name?: string;
     general?: string;
   }>({});
-  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-  const [isProjectHiding, setIsProjectHiding] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
   const projectSelectRef = useRef<HTMLButtonElement>(null);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 使用提取的 dropdown hook
+  const projectDropdown = useDropdownPosition({
+    triggerRef: projectSelectRef,
+    dropdownRef: projectDropdownRef,
+    offset: 8,
+    minWidth: 280
+  });
 
   // 输入验证函数
   const validateBasePath = (path: string): boolean => {
@@ -57,61 +63,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   // 使用 useOnClickOutside 实现点击外部关闭
   useOnClickOutside(panelRef, onClose);
 
-  // 处理项目下拉菜单点击外部关闭
-  useEffect(() => {
-    if (!projectDropdownOpen && !isProjectHiding) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-
-      // 如果点击在项目选择器上，不关闭
-      if (projectSelectRef.current?.contains(target)) return;
-
-      // 如果点击在下拉菜单上，不关闭
-      if (projectDropdownRef.current?.contains(target)) return;
-
-      // 点击在其他地方，开始关闭动画
-      setIsProjectHiding(true);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [projectDropdownOpen, isProjectHiding]);
-
-  // 处理项目下拉菜单动画结束事件
-  useEffect(() => {
-    if (!isProjectHiding) return;
-
-    const dropdown = projectDropdownRef.current;
-    if (!dropdown) return;
-
-    let animationCompleted = false;
-    const fallbackTimer = setTimeout(() => {
-      if (!animationCompleted) {
-        setProjectDropdownOpen(false);
-        setIsProjectHiding(false);
-      }
-    }, 300);
-
-    const handleAnimationEnd = (e: AnimationEvent) => {
-      if (e.animationName === 'dropdownOut') {
-        animationCompleted = true;
-        clearTimeout(fallbackTimer);
-        setProjectDropdownOpen(false);
-        setIsProjectHiding(false);
-      }
-    };
-
-    const timer = setTimeout(() => {
-      dropdown.addEventListener('animationend', handleAnimationEnd);
-    }, 0);
-
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(fallbackTimer);
-      dropdown.removeEventListener('animationend', handleAnimationEnd);
-    };
-  }, [isProjectHiding]);
+  // 注意：下拉菜单的点击外部关闭和动画逻辑已由 useDropdownPosition hook 处理
 
   useEffect(() => {
     if (currentUser) {
@@ -132,36 +84,6 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
       console.error('Failed to load projects:', error);
     }
   };
-
-  // 计算项目下拉菜单位置
-  const updateProjectDropdownPosition = () => {
-    if (!projectSelectRef.current) return;
-
-    const selectRect = projectSelectRef.current.getBoundingClientRect();
-    setDropdownPosition({
-      top: selectRect.bottom + 8,
-      left: selectRect.left,
-      width: Math.max(280, selectRect.width)
-    });
-  };
-
-  // 打开项目下拉菜单时更新位置
-  useEffect(() => {
-    if (projectDropdownOpen) {
-      updateProjectDropdownPosition();
-
-      const handleResize = () => updateProjectDropdownPosition();
-      const handleScroll = () => updateProjectDropdownPosition();
-
-      window.addEventListener('resize', handleResize);
-      window.addEventListener('scroll', handleScroll, true);
-
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        window.removeEventListener('scroll', handleScroll, true);
-      };
-    }
-  }, [projectDropdownOpen]);
 
   // 实时错误检查
   useEffect(() => {
@@ -316,178 +238,173 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
             <button className="close-btn" onClick={onClose}>×</button>
           </div>
 
-        <div className="panel-content">
-          <div className="form-group">
-            <div className="kit_row">
-              <div className="kit_row_left">
-                <label htmlFor="base_path">基础路径:</label>
+          <div className="panel-content">
+            <div className="form-group">
+              <div className="kit_row">
+                <div className="kit_row_left">
+                  <label htmlFor="base_path">基础路径:</label>
+                </div>
+                <div className="kit_row_right">
+                  {fieldErrors.base_path && (
+                    <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                      {fieldErrors.base_path}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="kit_row_right">
-                {fieldErrors.base_path && (
-                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
-                    {fieldErrors.base_path}
-                  </span>
-                )}
+              <div className="path-input-group">
+                <input
+                  id="base_path"
+                  type="text"
+                  value={filePathConfig.base_path}
+                  onChange={(e) => {
+                    setFilePathConfig({ ...filePathConfig, base_path: e.target.value });
+                    // 清除该字段的错误
+                    if (fieldErrors.base_path) {
+                      setFieldErrors(prev => ({ ...prev, base_path: undefined }));
+                    }
+                  }}
+                  placeholder="选择或输入基础路径"
+                />
+                <button
+                  type="button"
+                  className="browse-btn"
+                  onClick={handleBrowseDirectory}
+                  disabled={loading}
+                  title="打开系统文件夹选择器"
+                  style={{
+                    cursor: loading ? 'wait' : 'pointer',
+                    opacity: loading ? 0.7 : 1
+                  }}
+                >
+                  {loading ? '⏳' : '📁'}
+                </button>
               </div>
             </div>
-            <div className="path-input-group">
-              <input
-                id="base_path"
-                type="text"
-                value={filePathConfig.base_path}
-                onChange={(e) => {
-                  setFilePathConfig({ ...filePathConfig, base_path: e.target.value });
-                  // 清除该字段的错误
-                  if (fieldErrors.base_path) {
-                    setFieldErrors(prev => ({ ...prev, base_path: undefined }));
-                  }
-                }}
-                placeholder="选择或输入基础路径"
-              />
-              <button
-                type="button"
-                className="browse-btn"
-                onClick={handleBrowseDirectory}
-                disabled={loading}
-                title="打开系统文件夹选择器"
-                style={{
-                  cursor: loading ? 'wait' : 'pointer',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                {loading ? '⏳' : '📁'}
-              </button>
-            </div>
-          </div>
 
-          <div className="form-group">
-            <div className="kit_row">
-              <div className="kit_row_left">
-                <label htmlFor="project_select">项目名</label>
+            <div className="form-group">
+              <div className="kit_row">
+                <div className="kit_row_left">
+                  <label htmlFor="project_select">项目名</label>
+                </div>
+                <div className="kit_row_right">
+                  {fieldErrors.project_name && (
+                    <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                      {fieldErrors.project_name}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="kit_row_right">
-                {fieldErrors.project_name && (
-                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
-                    {fieldErrors.project_name}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="project-input-group">
-              <button
-                ref={projectSelectRef}
-                type="button"
-                className="btn btn_secondary btn_small"
-                onClick={() => {
-                  if (projectDropdownOpen) {
-                    setProjectDropdownOpen(false);
-                    setIsProjectHiding(true);
-                  } else {
-                    setProjectDropdownOpen(true);
-                    if (!filePathConfig.project_name && projects.length === 0) {
+              <div className="project-input-group">
+                <button
+                  ref={projectSelectRef}
+                  type="button"
+                  className="btn btn_secondary btn_small"
+                  onClick={() => {
+                    projectDropdown.toggle();
+                    if (!projectDropdown.isOpen && !filePathConfig.project_name && projects.length === 0) {
                       loadProjects();
                     }
-                  }
-                }}
-              >
-                <span className="user-display">
-                  {filePathConfig.project_name || '选择已有项目...'}
-                </span>
-                <svg className={`dropdown-arrow ${projectDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
-                  <path
-                    d="M -8 -3 L 0 5 L 8 -3"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.8)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+                  }}
+                >
+                  <span className="user-display">
+                    {filePathConfig.project_name || '选择已有项目...'}
+                  </span>
+                  <svg className={`dropdown-arrow ${projectDropdown.isOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+                    <path
+                      d="M -8 -3 L 0 5 L 8 -3"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.8)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <input
+                  type="text"
+                  value={filePathConfig.project_name}
+                  onChange={(e) => {
+                    setFilePathConfig({ ...filePathConfig, project_name: e.target.value });
+                    // 清除该字段的错误
+                    if (fieldErrors.project_name) {
+                      setFieldErrors(prev => ({ ...prev, project_name: undefined }));
+                    }
+                  }}
+                  placeholder="或输入新项目名"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <div className="kit_row">
+                <div className="kit_row_left">
+                  <label htmlFor="individual_name">样品编号:</label>
+                </div>
+                <div className="kit_row_right">
+                  {fieldErrors.individual_name && (
+                    <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                      {fieldErrors.individual_name}
+                    </span>
+                  )}
+                </div>
+              </div>
               <input
+                id="individual_name"
                 type="text"
-                value={filePathConfig.project_name}
+                value={filePathConfig.individual_name}
                 onChange={(e) => {
-                  setFilePathConfig({ ...filePathConfig, project_name: e.target.value });
+                  setFilePathConfig({ ...filePathConfig, individual_name: e.target.value });
                   // 清除该字段的错误
-                  if (fieldErrors.project_name) {
-                    setFieldErrors(prev => ({ ...prev, project_name: undefined }));
+                  if (fieldErrors.individual_name) {
+                    setFieldErrors(prev => ({ ...prev, individual_name: undefined }));
                   }
                 }}
-                placeholder="或输入新项目名"
+                placeholder="输入样品编号（可选）"
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <div className="kit_row">
-              <div className="kit_row_left">
-                <label htmlFor="individual_name">样品编号:</label>
+            <div className="form-group">
+              <div className="kit_row">
+                <div className="kit_row_left">
+                  <label>当前保存路径:</label>
+                </div>
+                <div className="kit_row_right">
+                  {!filePathConfig.project_name.trim() ? (
+                    <span className="field-error" style={{ color: 'var(--color-warning)', fontSize: 'var(--size-xs)' }}>
+                      未设置项目名，使用默认保存路径
+                    </span>
+                  ) : ((filePathConfig.base_path && !validateBasePath(filePathConfig.base_path)) ||
+                    (filePathConfig.individual_name && !validateIndividualName(filePathConfig.individual_name))) && (
+                    <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
+                      配置错误，使用默认保存路径
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="kit_row_right">
-                {fieldErrors.individual_name && (
-                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
-                    {fieldErrors.individual_name}
-                  </span>
-                )}
+              <div className="path-preview">
+                {previewPath}
               </div>
             </div>
-            <input
-              id="individual_name"
-              type="text"
-              value={filePathConfig.individual_name}
-              onChange={(e) => {
-                setFilePathConfig({ ...filePathConfig, individual_name: e.target.value });
-                // 清除该字段的错误
-                if (fieldErrors.individual_name) {
-                  setFieldErrors(prev => ({ ...prev, individual_name: undefined }));
-                }
-              }}
-              placeholder="输入样品编号（可选）"
-            />
-          </div>
 
-          <div className="form-group">
-            <div className="kit_row">
-              <div className="kit_row_left">
-                <label>当前保存路径:</label>
+            {fieldErrors.general && (
+              <div className="error-message">
+                {fieldErrors.general}
               </div>
-              <div className="kit_row_right">
-                {!filePathConfig.project_name.trim() ? (
-                  <span className="field-error" style={{ color: 'var(--color-warning)', fontSize: 'var(--size-xs)' }}>
-                    未设置项目名，使用默认保存路径
-                  </span>
-                ) : ((filePathConfig.base_path && !validateBasePath(filePathConfig.base_path)) ||
-                       (filePathConfig.individual_name && !validateIndividualName(filePathConfig.individual_name))) && (
-                  <span className="field-error" style={{ color: 'var(--color-danger)', fontSize: 'var(--size-xs)' }}>
-                    配置错误，使用默认保存路径
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="path-preview">
-              {previewPath}
-            </div>
+            )}
           </div>
-
-          {fieldErrors.general && (
-            <div className="error-message">
-              {fieldErrors.general}
-            </div>
-          )}
         </div>
-      </div>
 
         {/* 项目下拉菜单 - 使用Portal渲染到body下 */}
         <Portal>
-          {(projectDropdownOpen || isProjectHiding) && (
+          {(projectDropdown.isOpen || projectDropdown.isHiding) && (
             <div
               ref={projectDropdownRef}
-              className={`dropdown_base overlay_base ${isProjectHiding ? 'hiding' : 'show'}`}
+              className={`dropdown_base overlay_base ${projectDropdown.isHiding ? 'hiding' : 'show'}`}
               style={{
-                top: `${dropdownPosition.top}px`,
-                left: `${dropdownPosition.left}px`,
-                width: `${dropdownPosition.width}px`
+                top: `${projectDropdown.position.top}px`,
+                left: `${projectDropdown.position.left}px`,
+                width: `${projectDropdown.position.width}px`
               } as React.CSSProperties}
             >
               <div className="dropdown_list">
@@ -498,7 +415,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
                       className={`dropdown_option ${project === filePathConfig.project_name ? 'selected' : ''}`}
                       onClick={() => {
                         setFilePathConfig({ ...filePathConfig, project_name: project });
-                        setIsProjectHiding(true);
+                        projectDropdown.startClose();
                       }}
                     >
                       {project}

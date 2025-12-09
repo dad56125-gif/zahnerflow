@@ -51,7 +51,7 @@ function padSegment(
   };
 }
 
-export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = ({
+export const ConnectionLines: React.FC<ComputedConnectionLinesProps> = ({
   layoutEdges,
   layoutStable = true,
   zoomLevel = 1.0
@@ -139,7 +139,7 @@ export const ComputedConnectionLines: React.FC<ComputedConnectionLinesProps> = (
       // 稍微做一点点缩进以免盖住节点边框 (使用 padSegment 逻辑，这里简化演示)
       const dx = targetPosition.x - sourcePosition.x;
       const dy = targetPosition.y - sourcePosition.y;
-      const length = Math.sqrt(dx*dx + dy*dy);
+      const length = Math.sqrt(dx * dx + dy * dy);
       // 简单的缩进计算
       const startGap = 0;
       const endGap = 10 * (zoomLevel || 1); // 留给箭头的空间

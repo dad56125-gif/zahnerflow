@@ -5,9 +5,8 @@
 
 import React, { useMemo } from 'react';
 import * as clipper from 'clipper-lib';
-import { SimpleLoopInfo } from './useSimpleLoopDetection';
-import { useNodeChangeDetection } from './useNodeChangeDetection';
-import { DisplayNode } from './useUnifiedLayout';
+import { SimpleLoopInfo } from './useLoopDetection';
+import { DisplayNode } from './useLayout';
 
 // =============================================================================
 // PART 1: Clipper 算法 (优化版)
@@ -108,7 +107,6 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   className = '',
   style = {}
 }) => {
-  const updateTrigger = useNodeChangeDetection(nodes);
 
   // 优化 1: 提取关键数据指纹，避免无关节点更新导致重算
   // 我们只关心在这个循环里的节点 ID，以及它们的位置
@@ -177,7 +175,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
       if (node) innerNodes.push(node);
     });
     return innerNodes;
-  }, [nodes, loop.nodeIds, updateTrigger]);
+  }, [nodes, loop.nodeIds]);
 
   // 优化 2: 简化路径点计算 (不再生成 segments，直接生成点序列)
   const pathPoints = useMemo(() => {
