@@ -54,9 +54,11 @@ export interface ExecutionSnapshot {
     total: number;
   } | null;
   startTime: Date | null;
+  endTime?: Date;  // 新增：执行结束时间
   duration: number;
   error: string | null;
   timestamp: Date;
+  results?: Record<string, any>[];  // 新增：节点执行结果
 }
 
 // ==========================================
@@ -83,26 +85,19 @@ export interface Workflow {
 }
 
 // ==========================================
-// 3. 执行结果定义 (Execution)
+// 3. 执行状态定义 (Execution)
 // ==========================================
 
-export interface ExecutionBase {
+export interface ExecutionStatus {
   executionId: string;
   workflowId: string;
   status: RunState;
   startTime: Date;
   endTime?: Date;
   error?: string;
-}
-
-export interface ExecutionStatus extends ExecutionBase {
   currentNode?: string;
   completedNodes?: string[];
   progress?: number;
-}
-
-export interface ExecutionResult extends ExecutionBase {
-  results?: Record<string, any>[];
 }
 
 // ==========================================
@@ -147,7 +142,7 @@ export interface IModuleInterface {
 
 export interface IExecutionModule extends IModuleInterface {
   // 支持直接传入 nodes 进行执行（Create-if-Null 模式）
-  executeWorkflow(workflowId: string | null, nodes?: WorkflowNode[]): Promise<ExecutionResult>;
+  executeWorkflow(workflowId: string | null, nodes?: WorkflowNode[]): Promise<ExecutionSnapshot>;
   pauseExecution(executionId: string): Promise<void>;
   resumeExecution(executionId: string): Promise<void>;
   cancelExecution(executionId: string): Promise<void>;
@@ -157,7 +152,7 @@ export interface IExecutionModule extends IModuleInterface {
 export interface IWorkflowModule extends IModuleInterface {
   // 创建只需要核心数据，ID和时间由后端生成
   createWorkflow(data: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workflow>;
-  
+
   updateWorkflow(id: string, data: Partial<Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Workflow>;
   deleteWorkflow(id: string): Promise<void>;
   getWorkflow(id: string): Promise<Workflow>;

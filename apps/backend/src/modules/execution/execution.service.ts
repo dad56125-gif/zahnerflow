@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, Inject, forwardRef, Logger } from '@nestjs/common';
-import { IExecutionModule, ExecutionResult, ExecutionStatus, WorkflowNode } from '../../interfaces/module-interfaces';
+import { IExecutionModule, ExecutionStatus, WorkflowNode, ExecutionSnapshot as IExecutionSnapshot } from '../../interfaces/module-interfaces';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ZahnerZenniumService } from '../zahner-zennium/zahner-zennium.service';
 import { FurnaceService } from '../furnace/furnace.service';
@@ -22,9 +22,11 @@ export interface ExecutionSnapshot {
     total: number;
   } | null;
   startTime: Date | null;
+  endTime?: Date;  // 新增
   duration: number;
   error: string | null;
   timestamp: Date;
+  results?: Record<string, any>[];  // 新增
 }
 
 @Injectable()
@@ -38,7 +40,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // 核心状态存储 (STATIC)
   // 必须使用 static 以防止 NestJS 的 Circular Dependency 导致的 Proxy 分身问题
   // =================================================================
-  
+
   private static _state: ExecutionSnapshot = {
     status: 'idle',
     workflowId: null,
@@ -96,7 +98,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private async handleRawStreamData(rawData: { t: number; v: number; i: number }) {
     // 移除不必要的 debug 日志，只在必要时读取状态
-    const snapshot = this.state; 
+    const snapshot = this.state;
 
     // 快速过滤，减少日志噪音
     if (snapshot.status !== 'running' || !snapshot.executionId || !snapshot.currentStep) {
@@ -143,7 +145,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // Workflow Execution
   // ==========================================
 
-  async executeWorkflow(workflowId: string | null, nodes?: any[]): Promise<ExecutionResult> {
+  async executeWorkflow(workflowId: string | null, nodes?: any[]): Promise<ExecutionSnapshot> {
     // 【日志】前端传递的节点列表
     if (nodes) {
       this.logger.log(`[ExecutionService] 前端传递的节点列表 - 数量: ${nodes.length}`);
@@ -170,7 +172,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const startTime = new Date();
-    
+
     // 【修改】使用静态 Map 存储上下文
     ExecutionService._contexts.set(executionId, {
       workflowId: finalWorkflowId!,
@@ -197,7 +199,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     try {
       const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
-      
+
       // 更新总步数
       this.updateState({
         currentStep: { ...this.state.currentStep!, total: workflow.nodes.length }
@@ -205,19 +207,23 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
       const results = await this.executeNodes(executionId, workflow.nodes);
       const endTime = new Date();
-      
-      this.finishExecution(executionId, 'success', endTime, endTime.getTime() - startTime.getTime());
-      
-      return { executionId, workflowId: finalWorkflowId!, status: 'success', startTime, endTime, results };
+      const duration = endTime.getTime() - startTime.getTime();
+
+      this.finishExecution(executionId, 'success', endTime, duration);
+
+      // 返回完整的 ExecutionSnapshot
+      return this.getExecutionSnapshot();
 
     } catch (error: any) {
       const endTime = new Date();
       const errorMsg = error.message || String(error);
+      const duration = endTime.getTime() - startTime.getTime();
 
       this.logger.error(`[Execution Failed] ID: ${executionId}, Reason: ${errorMsg}`);
-      this.finishExecution(executionId, 'failed', endTime, endTime.getTime() - startTime.getTime(), errorMsg);
-      
-      return { executionId, workflowId: finalWorkflowId!, status: 'failed', startTime, endTime, error: errorMsg, results: [] };
+      this.finishExecution(executionId, 'failed', endTime, duration, errorMsg);
+
+      // 返回完整的 ExecutionSnapshot
+      return this.getExecutionSnapshot();
     } finally {
       // 【修改】清理静态 Map
       ExecutionService._contexts.delete(executionId);
@@ -229,25 +235,25 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   private async executeNodes(executionId: string, originalNodes: WorkflowNode[]): Promise<any[]> {
     const queue = originalNodes; // 没必要深拷贝，只读操作
     const completedResults: any[] = [];
-    
+
     for (let ip = 0; ip < queue.length; ip++) {
       // 检查状态
       if (this.state.status === 'cancelled') throw new Error('Execution cancelled by user');
       if (this.state.status === 'paused') await this.waitForResume();
 
       const node = queue[ip];
-      
+
       this.updateState({
         currentStep: {
           nodeId: node.id,
           nodeType: node.type,
-          index: ip, 
+          index: ip,
           total: queue.length
         }
       });
 
       this.emitNodeEvent('started', executionId, node);
-      
+
       try {
         await this.dispatchNodeLogic(executionId, node);
         completedResults.push({ id: node.id, status: 'success' });
@@ -255,7 +261,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       } catch (e: any) {
         const enhancedError = `Node [${node.type}] Failed: ${e.message}`;
         this.emitNodeEvent('failed', executionId, node, { error: enhancedError });
-        throw new Error(enhancedError); 
+        throw new Error(enhancedError);
       }
     }
     return completedResults;
@@ -263,38 +269,38 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private async dispatchNodeLogic(executionId: string, node: WorkflowNode): Promise<void> {
     const { type, config } = node;
-    const params = config || {}; 
+    const params = config || {};
 
     // 这里保留原来的 switch case 逻辑
     switch (type) {
-        case 'startup': await this.zahnerService.startup(params); break;
-        case 'shutdown': await this.zahnerService.shutdown(); break;
-        case 'delay': await this.executeDelay(params.duration || 1); break;
-        
-        case 'change_temperature': 
-          await this.furnaceService.autoTemperatureControl({
-            target_temperature: params.target_temperature,
-            rate: params.rate,
-            tolerance: 5, stabilization_time: 30
-          }, node.id, executionId);
-          break;
+      case 'startup': await this.zahnerService.startup(params); break;
+      case 'shutdown': await this.zahnerService.shutdown(); break;
+      case 'delay': await this.executeDelay(params.duration || 1); break;
 
-        case 'change_gas_flow':
-          if (!params.device_selection) throw new Error('Missing device_selection');
-          const [addr, gas] = params.device_selection.split(':');
-          await this.mfcService.setFlowRateControl({
-            device_address: parseInt(addr, 10),
-            gas_type: gas,
-            target_flow_rate: params.target_flow_rate,
-            stabilization_time: 10
-          }, node.id, executionId);
-          break;
+      case 'change_temperature':
+        await this.furnaceService.autoTemperatureControl({
+          target_temperature: params.target_temperature,
+          rate: params.rate,
+          tolerance: 5, stabilization_time: 30
+        }, node.id, executionId);
+        break;
 
-        default:
-          if (this.isMeasurementNodeType(type) || type === 'measurement') {
-            const measType = type === 'measurement' ? params.measurement_type : type;
-            await this.executeMeasurement(executionId, node, measType);
-          }
+      case 'change_gas_flow':
+        if (!params.device_selection) throw new Error('Missing device_selection');
+        const [addr, gas] = params.device_selection.split(':');
+        await this.mfcService.setFlowRateControl({
+          device_address: parseInt(addr, 10),
+          gas_type: gas,
+          target_flow_rate: params.target_flow_rate,
+          stabilization_time: 10
+        }, node.id, executionId);
+        break;
+
+      default:
+        if (this.isMeasurementNodeType(type) || type === 'measurement') {
+          const measType = type === 'measurement' ? params.measurement_type : type;
+          await this.executeMeasurement(executionId, node, measType);
+        }
     }
   }
 
@@ -303,10 +309,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const context = ExecutionService._contexts.get(executionId);
     const workflowId = context?.workflowId || 'unknown';
     const timestamp = context?.workflowTimestamp;
-    
+
     const workflow = await this.workflowService.getWorkflow(workflowId);
     const projectConfig = this.filesService.getProjectConfig(workflow.ownerName, workflow.name, workflow.individualName);
-    
+
     const outputPath = this.filesService.buildOutputPath({
       base_path: projectConfig?.base_path,
       project_name: workflow.name,
@@ -324,12 +330,12 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const finalStatus = status === 'success' ? 'completed' : 'failed';
     this.db.prepare(`UPDATE executions SET status = ?, end_time = ?, duration = ?, error = ? WHERE id = ?`)
       .run(finalStatus, endTime.toISOString(), duration, error || null, id);
-    
+
     // 【修改】从静态 Map 获取 workflowId
     const wfId = ExecutionService._contexts.get(id)?.workflowId || 'unknown';
-    
+
     this.emitWorkflowEvent(finalStatus, id, wfId, { error, duration });
-    this.updateState({ status: finalStatus, duration, error: error || null, currentStep: null });
+    this.updateState({ status: finalStatus, endTime, duration, error: error || null, currentStep: null });
   }
 
   // ==========================================
@@ -380,7 +386,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         startTime: new Date(row.start_time),
         endTime: row.end_time ? new Date(row.end_time) : undefined,
         error: row.error
-      })) as any; 
+      })) as any;
     } catch (e) { return []; }
   }
 

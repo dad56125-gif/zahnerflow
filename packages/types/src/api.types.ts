@@ -103,17 +103,15 @@ export interface Execution {
   endTime?: Date;
   currentNode?: string;
   completedNodes: string[];
-  results?: ExecutionResult;
+  results?: {
+    success: boolean;
+    data?: any;
+    error?: string;
+    duration?: number;
+  };
 }
 
 export type ExecutionStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed';
-
-export interface ExecutionResult {
-  success: boolean;
-  data?: any;
-  error?: string;
-  duration?: number;
-}
 
 // 用户相关类型
 export interface User {

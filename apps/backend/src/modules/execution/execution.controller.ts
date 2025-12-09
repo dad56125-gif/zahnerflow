@@ -1,17 +1,17 @@
 ﻿import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ExecutionService } from './execution.service';
-import { ExecutionResult, ExecutionStatus } from '../../interfaces/module-interfaces';
+import { ExecutionService, ExecutionSnapshot } from './execution.service';
+import { ExecutionStatus } from '../../interfaces/module-interfaces';
 import { Logger } from '@nestjs/common';
 
 @Controller('api/executions')
 export class ExecutionController {
   private readonly logger = new Logger(ExecutionController.name);
 
-  constructor(private readonly executionService: ExecutionService) {}
+  constructor(private readonly executionService: ExecutionService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createExecution(@Body() body: { workflowId: string | null; nodes?: any[] }): Promise<ExecutionResult> {
+  async createExecution(@Body() body: { workflowId: string | null; nodes?: any[] }): Promise<ExecutionSnapshot> {
     // 【日志】Controller 层接收的节点列表
     if (body.nodes) {
       this.logger.log(`[Controller] 接收前端节点列表 - 数量: ${body.nodes.length}`);
@@ -69,7 +69,7 @@ export class ExecutionController {
     const result = await this.executionService.resetExecution();
     // ✅ 修复：Service 返回 { success, error }，这里适配一下
     if (!result.success) {
-       throw new Error(result.error || 'Reset failed');
+      throw new Error(result.error || 'Reset failed');
     }
     return {
       success: true,

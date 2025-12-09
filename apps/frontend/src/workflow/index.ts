@@ -17,6 +17,16 @@ export { WorkflowManager } from './WorkflowManager';
 export { WorkflowManagerUI } from '../components/WorkflowManagerUI';
 export { WorkflowIdDisplay } from '../components/WorkflowIdDisplay';
 
-// 5. 导出 Types (类型定义)
+// 5. 导出 Timeline Calculator (时间线计算)
+export {
+    TimelineCalculator,
+    estimateWorkflowDuration,
+    estimateWorkflowSeconds,
+    formatDuration,
+    estimateNodeTime
+} from './timelineCalculator';
+export type { TimelineState, TimelineDisplay, NodeTimeInfo } from './timelineCalculator';
+
+// 6. 导出 Types (类型定义)
 // 注意：如果 types 都在 @zahnerflow/types 中，这里可能不需要导出太多本地类型
 export type { WorkflowManagerUIProps } from '../components/WorkflowManagerUI';

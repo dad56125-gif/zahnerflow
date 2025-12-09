@@ -66,18 +66,11 @@ export interface ExecutionSnapshot {
     total: number;
   } | null;
   startTime: string | null;
+  endTime?: string;  // 新增：执行结束时间
   duration: number;
   error: string | null;
   timestamp: string;
-}
-
-export interface ExecutionResult {
-  executionId: string;
-  workflowId: string;
-  status: string;
-  startTime: string;
-  endTime?: string;
-  results?: any[];
+  results?: any[];  // 新增：节点执行结果
 }
 
 // ==================== 6. WebSocket 消息载体 (Notifications) ====================
