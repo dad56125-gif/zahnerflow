@@ -5538,12 +5538,24 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-.status-left,
+.status-left {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space);
+  gap: var(--space);
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  justify-content: flex-start;
+}
+
 .status-right {
   display: flex;
   align-items: center;
   padding: 0 var(--space);
   gap: var(--space);
+  width: var(--property-w);
+  min-width: var(--property-w);
+  justify-content: flex-end;
 }
 
 .status-center {
