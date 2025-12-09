@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
-import { WorkstationType,Workflow } from './types/Interfaces'; // 修正导入路径
-import { getNodeGroupsByWorkstation } from './types/NodeUtilities'; // 修正导入路径
+import { WorkstationType, Workflow } from './types/Interfaces';
+import { getNodeGroupsByWorkstation } from './types/NodeUtilities';
 
 import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
@@ -9,33 +9,34 @@ import { StatusBar } from './components/StatusBar';
 import { Canvas } from './canvas/Canvas';
 import { setupAutoGlassEffect } from './shared/glassEffect';
 
-import { useCanvasStore } from './canvas/canvasStore'; // 修正 store 路径
+import { useCanvasStore } from './canvas/canvasStore';
 import { useWorkflowStore, useExecutionStore } from './workflow';
 import { workflowWebSocketService } from './workflow/websocket.service';
 import { clearMeasurementCache } from './hooks/useMeasurementStream';
 
 import { MFCModal } from './modules/mfc';
 import { useFurnace, DeviceModal } from './modules/furnace';
-import { UserProvider } from './shared/UserContext';
-import type { SimpleLoopInfo } from './canvas/useSimpleLoopDetection'; // 修正 hook 路径
+import { UserProvider, useUser } from './shared/UserContext';
+import type { SimpleLoopInfo } from './canvas/useSimpleLoopDetection';
 
-const ZahnerFlowApp: React.FC = () => {
+// 内部应用内容组件（在 UserProvider 内部，可以使用 useUser）
+const AppContent: React.FC = () => {
+  // 用户上下文
+  const { currentUser, filePathConfig } = useUser();
+
   // Canvas Store
-  const {
-    nodes,
-    // setNodes, // 暂时不需要手动 setNodes，除非有特定逻辑
-  } = useCanvasStore();
+  const { nodes } = useCanvasStore();
 
   // Workflow Store
   const { currentWorkflow, setCurrentWorkflow } = useWorkflowStore();
 
   // Execution Store
-  const { 
-    isRunning, 
-    error: executionError, 
-    startExecution, 
-    stopExecution, 
-    resetExecutionState 
+  const {
+    isRunning,
+    error: executionError,
+    startExecution,
+    stopExecution,
+    resetExecutionState
   } = useExecutionStore();
 
   // 本地 UI 状态
@@ -87,33 +88,26 @@ const ZahnerFlowApp: React.FC = () => {
   }, []);
 
   // --- 执行控制逻辑 ---
-
   const runFlow = async () => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation) {
-        setIsNotificationPanelOpen(true);
-        return;
+      setIsNotificationPanelOpen(true);
+      return;
     }
     try {
-      // Create if Null 模式
       const workflowId = currentWorkflow?.id || null;
-
-      // 使用 store action 启动执行 (nodes 已经是 WorkflowNode[] 格式，直接传)
       await startExecution(workflowId, nodes);
 
-      // 获取更新后的 ID
       const newWorkflowId = useExecutionStore.getState().workflowId;
 
       if (newWorkflowId && !currentWorkflow?.id) {
-        // 构造完整的 Workflow 对象
+        // 构造简化的 Workflow 对象（遵循前端类型规范）
         const newWorkflow: Workflow = {
           id: newWorkflowId,
           name: '新建工作流',
           nodes: nodes,
-          project_name: 'default', // 可选字段
-          status: 'running',       // 可选字段
-          // ✅ 补全缺失的必填字段
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          // 可选字段：从用户上下文获取（如果存在）
+          ...(currentUser && { ownerName: currentUser }),
+          ...(filePathConfig.project_name && { project_name: filePathConfig.project_name }),
         };
 
         setCurrentWorkflow(newWorkflow);
@@ -137,8 +131,6 @@ const ZahnerFlowApp: React.FC = () => {
   const resetFlow = async () => {
     try {
       console.log('[App] 重置工作流执行状态...');
-
-      // 清空测量数据缓存
       clearMeasurementCache();
       console.log('[App] 已清空测量数据缓存');
 
@@ -162,16 +154,15 @@ const ZahnerFlowApp: React.FC = () => {
   // 包装回调
   const handleRunFlow = useCallback(async () => {
     await runFlow();
-  }, [nodes, isRunning, selectedWorkstation, currentWorkflow, startExecution, setCurrentWorkflow]);
+  }, [nodes, isRunning, selectedWorkstation, currentWorkflow, startExecution, setCurrentWorkflow, currentUser, filePathConfig]);
 
   const handleStopFlow = useCallback(stopFlow, [isRunning, stopExecution]);
-  
+
   // 缩放限制常量
   const MIN_ZOOM = 0.6;
   const MAX_ZOOM = 1.2;
   const ZOOM_STEP = 0.1;
 
-  // 缩放控制
   const handleZoomIn = useCallback(() => {
     setZoomLevel((prev) => {
       const next = prev + ZOOM_STEP;
@@ -193,87 +184,89 @@ const ZahnerFlowApp: React.FC = () => {
   }, []);
 
   return (
-    <>
-      <UserProvider>
-        <div className="app-root">
-          <TopNavbar
-            fixedDevice={fixedDevice}
-            onDeviceClick={(d) => setFixedDevice(d)}
-            onWorkstationSelect={handleWorkstationSelect}
-          />
+    <div className="app-root">
+      <TopNavbar
+        fixedDevice={fixedDevice}
+        onDeviceClick={(d) => setFixedDevice(d)}
+        onWorkstationSelect={handleWorkstationSelect}
+      />
 
-          {/* 主要内容区域：三区域布局 */}
-          <div className="leftbar-area">
-            <Sidebar
-              activePanel={activePanel}
-              onPanelChange={setActivePanel}
-              nodeGroups={workstationNodeGroups}
-              selectedWorkstation={selectedWorkstation}
+      <div className="leftbar-area">
+        <Sidebar
+          activePanel={activePanel}
+          onPanelChange={setActivePanel}
+          nodeGroups={workstationNodeGroups}
+          selectedWorkstation={selectedWorkstation}
+        />
+      </div>
+
+      <div className="canvas-area">
+        <Canvas
+          zoomLevel={zoomLevel}
+          selectedWorkstation={selectedWorkstation}
+          isRunning={isRunning}
+          hasError={hasError}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
+          showWorkflowManager={showWorkflowManager}
+          onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
+          showFilePathManager={showFilePathManager}
+          onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
+          onFilePathSave={handleFilePathSave}
+          onRunFlow={handleRunFlow}
+          onStopFlow={handleStopFlow}
+          onResetFlow={resetFlow}
+          onLoopDetected={handleLoopDetected}
+        />
+      </div>
+
+      <div className="right-area">
+        <PropertyPanel selectedWorkstation={selectedWorkstation} />
+      </div>
+
+      {fixedDevice && (
+        <div className="layout-overlay align-to-L align-to-canvas-top">
+          {fixedDevice === 'mfc' ? (
+            <MFCModal
+              on_close={() => setFixedDevice(null)}
+              modal_top={0}
+              modal_left={0}
+              modal_width={500}
+              modal_height={400}
             />
-          </div>
-
-          <div className="canvas-area">
-            <Canvas
-              zoomLevel={zoomLevel}
-              selectedWorkstation={selectedWorkstation}
-              isRunning={isRunning} 
-              hasError={hasError}   
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onResetZoom={handleResetZoom}
-              showWorkflowManager={showWorkflowManager}
-              onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
-              showFilePathManager={showFilePathManager}
-              onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
-              onFilePathSave={handleFilePathSave}
-              onRunFlow={handleRunFlow}
-              onStopFlow={handleStopFlow}
-              onResetFlow={resetFlow}
-              onLoopDetected={handleLoopDetected}
+          ) : (
+            <DeviceModal
+              device={fixedDevice}
+              onClose={() => setFixedDevice(null)}
+              modalTop={0}
+              modalLeft={0}
+              modalWidth={500}
+              modalHeight={400}
+              furnaceState={furnaceState}
+              furnaceControls={furnaceControls}
             />
-          </div>
-
-          <div className="right-area">
-            <PropertyPanel selectedWorkstation={selectedWorkstation} />
-          </div>
-
-          {/* 浮层：设备模态框 */}
-          {fixedDevice && (
-            <div className="layout-overlay align-to-L align-to-canvas-top">
-              {fixedDevice === 'mfc' ? (
-                <MFCModal
-                  on_close={() => setFixedDevice(null)}
-                  modal_top={0}
-                  modal_left={0}
-                  modal_width={500}
-                  modal_height={400}
-                />
-              ) : (
-                <DeviceModal
-                  device={fixedDevice}
-                  onClose={() => setFixedDevice(null)}
-                  modalTop={0}
-                  modalLeft={0}
-                  modalWidth={500}
-                  modalHeight={400}
-                  furnaceState={furnaceState}
-                  furnaceControls={furnaceControls}
-                />
-              )}
-            </div>
           )}
-
-          {/* 集成到grid系统的状态栏 */}
-          <StatusBar
-            zoomLevel={zoomLevel}
-            isRunning={isRunning}
-            isNotificationPanelOpen={isNotificationPanelOpen}
-            setIsNotificationPanelOpen={setIsNotificationPanelOpen}
-            detectedLoops={detectedLoops}
-          />
         </div>
-      </UserProvider>
-    </>
+      )}
+
+      <StatusBar
+        zoomLevel={zoomLevel}
+        isRunning={isRunning}
+        isNotificationPanelOpen={isNotificationPanelOpen}
+        setIsNotificationPanelOpen={setIsNotificationPanelOpen}
+        detectedLoops={detectedLoops}
+      />
+    </div>
+  );
+};
+
+// 根组件：提供 UserProvider 包装
+const ZahnerFlowApp: React.FC = () => {
+  return (
+    <UserProvider>
+      <AppContent />
+    </UserProvider>
   );
 };
 

@@ -45,9 +45,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
 }) => {
   const {
     nodes,
-    connections,
     setNodes,
-    setConnections
   } = useCanvasStore();
 
   const { setCurrentWorkflow } = useWorkflowStore();
@@ -322,60 +320,22 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
         return {
           id: node.id,
           type: node.type,
-          name: node.name,
-          category: getNodeTypeCategory(node.type),
-          position: node.position,
-          style: { width: 140, height: 60 },
-          status: node.status || 'ready', // 优先使用原有status，否则默认为ready
-          data: {
-            name: node.name,
-            description: isOldVersion ? `Node: ${node.type}` : (node.data?.description || `Node: ${node.type}`),
-            parameters: parameters, // 使用清理后的参数
-            createdAt: isOldVersion ? new Date() : (node.data?.createdAt ? new Date(node.data.createdAt) : new Date()),
-            updatedAt: isOldVersion ? new Date() : (node.data?.updatedAt ? new Date(node.data.updatedAt) : new Date())
-          },
-          input: {
-            id: `${node.id}_input`,
-            name: 'Input',
-            dataType: 'flow' as const
-          },
-          output: {
-            id: `${node.id}_output`,
-            name: 'Output',
-            dataType: 'flow' as const
-          }
+          config: parameters, // 简化：参数直接放入 config
         };
       }) || [];
 
-      const formattedConnections = workflowDefinition.edges?.map((edge: any) => ({
-        id: edge.id,
-        source_id: edge.source,
-        target_id: edge.target
-      })) || [];
-
       console.log('Converted nodes:', convertedNodes);
-      console.log('Formatted connections:', formattedConnections);
 
-      // 应用加载的工作流
+      // 应用加载的工作流（简化版，不再处理 connections）
       setNodes(convertedNodes);
-      setConnections(formattedConnections);
 
-      // 同步更新WorkflowStore状态
+      // 同步更新WorkflowStore状态（简化版）
       setCurrentWorkflow({
         id: workflow.id,
         name: workflow.name,
-        createdAt: new Date(workflow.created_at),
-        updatedAt: new Date(workflow.created_at),
-        workstation: 'zahner-zennium', // 添加缺失的workstation字段
-        status: 'active', // 添加缺失的status字段
-        // 构建完整的工作流对象（不再包含edges）
-        definition: {
-          nodes: convertedNodes,
-          id: workflow.id,
-          name: workflow.name,
-          version: 1.0
-        },
-        ownerName: workflow.project_name || '默认项目'
+        nodes: convertedNodes,
+        ownerName: workflow.project_name || '默认项目',
+        project_name: workflow.project_name,
       });
       // 注意：移除setCurrentEditingWorkflowId调用
 
@@ -412,11 +372,10 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     setDeletingItemId(null);
   };
 
-  // 获取工作流统计
+  // 获取工作流统计（简化版，不再统计 connections）
   const getWorkflowStats = () => {
     return {
       nodes: nodes.length,
-      connections: connections.length,
       loops: detectedLoops.length,
       lastModified: new Date().toLocaleString()
     };
@@ -439,7 +398,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
             <h3>工作流管理</h3>
             <div className="workflow-stats">
               <span>节点: {stats.nodes}</span>
-              <span>连接: {stats.connections}</span>
               <span>循环: {stats.loops}</span>
             </div>
           </div>
@@ -556,34 +514,34 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                           </div>
                         </div>
                         <div className="history-actions">
-                        <button
-                          onClick={() => showDeleteConfirm(item)}
-                          className="delete-user-btn"
-                          title="删除记录"
-                          style={{ display: deletingItemId === item.id ? 'none' : 'flex' }}
-                        >
-                          ×
-                        </button>
-                        {deletingItemId === item.id && (
-                          <div className="delete-confirm">
-                            <span className="delete-confirm-text">确认删除？</span>
-                            <button
-                              onClick={() => deleteHistoryWorkflow(item)}
-                              className="delete-confirm-btn confirm"
-                              title="确认删除"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              onClick={cancelDelete}
-                              className="delete-confirm-btn cancel"
-                              title="取消删除"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                          <button
+                            onClick={() => showDeleteConfirm(item)}
+                            className="delete-user-btn"
+                            title="删除记录"
+                            style={{ display: deletingItemId === item.id ? 'none' : 'flex' }}
+                          >
+                            ×
+                          </button>
+                          {deletingItemId === item.id && (
+                            <div className="delete-confirm">
+                              <span className="delete-confirm-text">确认删除？</span>
+                              <button
+                                onClick={() => deleteHistoryWorkflow(item)}
+                                className="delete-confirm-btn confirm"
+                                title="确认删除"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={cancelDelete}
+                                className="delete-confirm-btn cancel"
+                                title="取消删除"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -625,7 +583,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
             } as React.CSSProperties}
           >
             <div className="dropdown_list">
-                {projects.length > 0 ? (
+              {projects.length > 0 ? (
                 projects.map(project => (
                   <div
                     key={project}

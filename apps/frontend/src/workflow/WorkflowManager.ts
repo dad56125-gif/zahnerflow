@@ -6,7 +6,6 @@
  */
 
 import { WorkflowDefinition, WorkflowNode } from '@zahnerflow/types';
-import { NodeTypeType } from '@/services/nodes/nodeTypes';
 
 export class WorkflowManager {
   /**
@@ -14,6 +13,9 @@ export class WorkflowManager {
    */
   static createEmpty(): WorkflowDefinition {
     return {
+      id: '',
+      name: '',
+      version: 1,
       nodes: []
     };
   }
@@ -54,8 +56,9 @@ export class WorkflowManager {
         errors.push(`节点 ${i} 缺少类型`);
       }
 
-      if (!node.data) {
-        errors.push(`节点 ${i} 缺少数据`);
+      // data 是可选字段，不需要强制检查
+      if (!node.config && !node.data) {
+        warnings.push(`节点 ${i} 缺少配置数据`);
       }
     }
 

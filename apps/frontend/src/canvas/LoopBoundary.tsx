@@ -7,6 +7,7 @@ import React, { useMemo } from 'react';
 import * as clipper from 'clipper-lib';
 import { SimpleLoopInfo } from './useSimpleLoopDetection';
 import { useNodeChangeDetection } from './useNodeChangeDetection';
+import { DisplayNode } from './useUnifiedLayout';
 
 // =============================================================================
 // PART 1: Clipper 算法 (优化版)
@@ -72,14 +73,8 @@ function generateBeltPath(
 
 export interface LoopBoundaryProps {
   loop: SimpleLoopInfo;
-  // 🔥 核心修改：明确期望标准节点结构
-  nodes: Array<{
-    id: string;
-    position: { x: number; y: number }; // 必须有 position 对象
-    style?: { width?: number; height?: number };
-    layoutMeta?: { width?: number }; // 支持 layoutMeta
-    [key: string]: any;
-  }>;
+  // 使用布局系统生成的 DisplayNode（包含 position/style/layoutMeta）
+  nodes: DisplayNode[];
   zoomLevel?: number;
   canvasOffsetY?: number;
   className?: string;
@@ -113,9 +108,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   className = '',
   style = {}
 }) => {
-  const updateTrigger = useNodeChangeDetection(nodes, {
-    layout_stable: true
-  });
+  const updateTrigger = useNodeChangeDetection(nodes);
 
   // 优化 1: 提取关键数据指纹，避免无关节点更新导致重算
   // 我们只关心在这个循环里的节点 ID，以及它们的位置
@@ -134,8 +127,8 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     // 这样只有循环内的节点移动时，指纹才会变
     let fingerprint = '';
     for (let i = start; i <= end; i++) {
-        const n = nodes[i];
-        fingerprint += `${n.id}:${Math.round(n.position.x)}:${Math.round(n.position.y)}|`;
+      const n = nodes[i];
+      fingerprint += `${n.id}:${Math.round(n.position.x)}:${Math.round(n.position.y)}|`;
     }
     return fingerprint;
   }, [nodes, loop.startNodeId, loop.endNodeId]); // 依赖 nodes，但计算很快
@@ -211,9 +204,9 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
         // 这里的逻辑与原来 segments 的逻辑一致，只是变成了加点
         if (horizontalDistance < verticalDistance) {
-            finalPoints.push({ x: end.x, y: start.y });
+          finalPoints.push({ x: end.x, y: start.y });
         } else {
-            finalPoints.push({ x: start.x, y: end.y });
+          finalPoints.push({ x: start.x, y: end.y });
         }
       }
       finalPoints.push(end);
@@ -242,7 +235,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   const zIndex = Math.max(0, loop.level) + 1;
 
   // 计算文字位置 (取路径中间的点)
-  const labelPoint = pathPoints.length > 0 ? pathPoints[0] : {x:0, y:0};
+  const labelPoint = pathPoints.length > 0 ? pathPoints[0] : { x: 0, y: 0 };
 
   return (
     <svg
