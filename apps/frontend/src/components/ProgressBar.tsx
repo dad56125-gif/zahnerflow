@@ -17,7 +17,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     systemState,
     onClick
 }) => {
-    const nodes = useCanvasStore(state => state.nodes);
+    // 确保 nodes 始终为数组，防止 undefined 导致崩溃
+    const nodes = useCanvasStore(state => (state && state.nodes) ? state.nodes : []) || [];
 
     // 计算进度
     const currentIndex = systemState?.currentStep?.index ?? 0;

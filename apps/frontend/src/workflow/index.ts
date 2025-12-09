@@ -2,7 +2,7 @@
 
 // 1. 导出 Stores (状态管理)
 export { useWorkflowStore } from './workflowStore';
-export { useExecutionStore, useIsRunning, useNodeStatus, useExecutionError } from './executionStore';
+export { useExecutionStore, useIsRunning, useNodeStatus, useExecutionError, useSystemState } from './executionStore';
 export { useAppStore } from './appStore';
 
 // 2. 导出 Canvas Store (Re-export)

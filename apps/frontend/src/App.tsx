@@ -12,8 +12,7 @@ import { setupAutoGlassEffect } from './shared/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
 
 import { useCanvasStore } from './canvas/canvasStore';
-import { useWorkflowStore, useExecutionStore } from './workflow';
-import { useSystemState } from './workflow/executionStore';
+import { useWorkflowStore, useExecutionStore, useSystemState } from './workflow';
 import { workflowWebSocketService } from './workflow/websocket.service';
 import { clearMeasurementCache } from './hooks/useMeasurementStream';
 
