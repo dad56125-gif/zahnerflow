@@ -37,10 +37,6 @@ export interface Workflow {
   id: string;
   name: string;
   nodes: WorkflowNode[]; // 顺序即拓扑
-  createdAt: string;
-  updatedAt: string;
-  project_name?: string;
-  status?: string;
 }
 
 // ==================== 4. 物理/流数据 (Stream Data) ====================
