@@ -210,14 +210,30 @@ const ParticleBackground: React.FC = () => {
                 }
             });
 
-            animationFrameId = requestAnimationFrame(animate);
+            // Only request next frame if page is visible
+            if (!document.hidden) {
+                animationFrameId = requestAnimationFrame(animate);
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                // Resume animation loop if it stopped
+                cancelAnimationFrame(animationFrameId);
+                animate();
+            }
         };
 
         animate();
 
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             cancelAnimationFrame(animationFrameId);
         };
     }, []);
