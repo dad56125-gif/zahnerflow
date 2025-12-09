@@ -10,7 +10,7 @@ import { useCanvasStore } from '@/canvas/canvasStore';
 import { useLoopDetection } from '../canvas/useLoopDetection';
 import { useOnClickOutside } from '../shared/useOnClickOutside';
 import { useUser } from '../shared/UserContext';
-import Portal from '@/components/Portal';
+import { Portal } from './Portal';
 import { useWorkflowHistory } from './useWorkflowHistory';
 import { HistoryListItem } from './HistoryListItem';
 

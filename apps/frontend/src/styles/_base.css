@@ -272,3 +272,44 @@ a:hover { color: var(--color-info); text-decoration: underline; }
 .text-danger { color: var(--color-danger); }
 .text-info { color: var(--color-info); }
 .text-neutral { color: var(--color-neutral); } /* 新增 */
+/* === 玻璃态变体基类 (策略 B) === */
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  backdrop-filter: blur(var(--blur-panel));
+  box-shadow: var(--shadow-panel);
+  transition: var(--transition);
+}
+.glass-panel:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--shadow-panel-hover);
+}
+.glass-button {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-button);
+  backdrop-filter: blur(var(--blur-button));
+  box-shadow: var(--shadow-button);
+  transition: var(--transition);
+}
+.glass-button:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--shadow-button-hover);
+  transform: translateY(-1px);
+}
+.glass-input {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-input);
+  backdrop-filter: blur(var(--blur-button));
+  transition: var(--transition);
+}
+.glass-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
+}
+/* 悬浮提升工具类 */
+.hover-lift:hover { transform: translateY(-1px); }
+.hover-lift-lg:hover { transform: translateY(-2px); }

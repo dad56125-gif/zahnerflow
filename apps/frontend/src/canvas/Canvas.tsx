@@ -7,7 +7,7 @@ import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from '../components/Toolbar';
 import { LoopBoundary } from './LoopBoundary';
 import { WorkflowManagerUI } from '../components/WorkflowManagerUI';
-import { WorkflowIdDisplay } from '../workflow/WorkflowIdDisplay';
+import { WorkflowIdDisplay } from '../components/WorkflowIdDisplay';
 import { useLayout, DisplayNode } from './useLayout';
 import { useLoopDetection, SimpleLoopInfo } from './useLoopDetection';
 import { useCanvasDrag } from './useCanvasDrag';

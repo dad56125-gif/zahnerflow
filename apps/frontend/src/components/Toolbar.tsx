@@ -1,5 +1,4 @@
 import React from 'react';
-import { WorkstationType } from '../types/nodes';
 import { useCanvasStore } from '../canvas/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
 import { FilePathConfig } from '../shared/UserContext';
@@ -9,7 +8,7 @@ interface ToolbarProps {
   onRunFlow: () => void;
   onStopFlow: () => void;
   onResetFlow?: () => void;  // --- ✅ 确保传入此回调 ---
-  selectedWorkstation: WorkstationType | null;
+  selectedWorkstation: string | null;
   isRunning: boolean;
   hasError: boolean;
   onToggleWorkflowManager?: () => void;

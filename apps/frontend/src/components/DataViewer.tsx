@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ElectrochemicalNode } from '../types/nodes';
 
 
 interface DataViewerProps {
   isVisible: boolean;
-  selectedNode: ElectrochemicalNode | null;
+  selectedNode: any; // TODO: 定义具体类型
 }
 
 interface ChartData {
@@ -28,10 +27,10 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
         setChartData({ x: xData, y: yData });
       } else if (results.data && Array.isArray(results.data)) {
         // 如果是 { data: [...] } 格式
-        const xData = results.data.map((item: any, index: number) => 
+        const xData = results.data.map((item: any, index: number) =>
           item.x || item.time || index
         );
-        const yData = results.data.map((item: any) => 
+        const yData = results.data.map((item: any) =>
           item.y || item.value || item.current || item.potential || 0
         );
         setChartData({ x: xData, y: yData });
@@ -93,7 +92,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
     }
 
     const results = selectedNode.data.results;
-    
+
     return (
       <div className="processed-data-viewer">
         <div className="data-viewer-summary">
@@ -128,14 +127,14 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
     const maxValue = Math.max(...chartData.y);
     const minValue = Math.min(...chartData.y);
     const range = maxValue - minValue || 1;
-    
+
     const width = 300;
     const height = 200;
     const padding = 40;
-    
+
     const chartWidth = width - 2 * padding;
     const chartHeight = height - 2 * padding;
-    
+
     const points = chartData.y.map((value, index) => {
       const x = padding + (index / (chartData.y.length - 1)) * chartWidth;
       const y = padding + ((maxValue - value) / range) * chartHeight;
@@ -156,15 +155,15 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
             {/* 网格线 */}
             <defs>
               <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f0f0f0" strokeWidth="1"/>
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f0f0f0" strokeWidth="1" />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)" />
-            
+
             {/* 坐标轴 */}
-            <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#666" strokeWidth="2"/>
-            <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#666" strokeWidth="2"/>
-            
+            <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#666" strokeWidth="2" />
+            <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#666" strokeWidth="2" />
+
             {/* 数据线 */}
             <polyline
               points={points}
@@ -174,7 +173,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
               strokeLinejoin="round"
               strokeLinecap="round"
             />
-            
+
             {/* 数据点 */}
             {chartData.y.map((value, index) => {
               const x = padding + (index / (chartData.y.length - 1)) * chartWidth;
@@ -221,14 +220,14 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible, selectedNode 
         >
           原始数据
         </button>
-        
+
         <button
           className={`data-tab ${activeTab === 'processed' ? 'active' : ''}`}
           onClick={() => setActiveTab('processed')}
         >
           处理结果
         </button>
-        
+
         <button
           className={`data-tab ${activeTab === 'chart' ? 'active' : ''}`}
           onClick={() => setActiveTab('chart')}

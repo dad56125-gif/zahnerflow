@@ -15,7 +15,7 @@ export { workflowWebSocketService } from './websocket.service';
 // 4. 导出 Manager & UI (组件)
 export { WorkflowManager } from './WorkflowManager';
 export { WorkflowManagerUI } from '../components/WorkflowManagerUI';
-export { WorkflowIdDisplay } from './WorkflowIdDisplay';
+export { WorkflowIdDisplay } from '../components/WorkflowIdDisplay';
 
 // 5. 导出 Types (类型定义)
 // 注意：如果 types 都在 @zahnerflow/types 中，这里可能不需要导出太多本地类型

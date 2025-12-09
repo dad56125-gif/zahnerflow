@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useWorkflowStore } from './workflowStore';
+import { useWorkflowStore } from '../workflow/workflowStore';
 import { useOnClickOutside } from '../shared/useOnClickOutside';
 
 interface WorkflowIdDisplayProps {
