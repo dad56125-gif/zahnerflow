@@ -2,7 +2,7 @@
 
 import React, { memo, useCallback, useMemo } from 'react';
 // 移除旧的 ElectrochemicalNode，引入通用类型或直接定义
-import { DisplayNode } from '../../hooks/useUnifiedLayout';
+import { DisplayNode } from './useUnifiedLayout';
 
 export interface NodeRendererProps {
   // 接收统一布局生成的节点对象

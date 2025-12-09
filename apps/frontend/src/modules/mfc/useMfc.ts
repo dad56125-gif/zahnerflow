@@ -16,7 +16,7 @@ import {
   MfcConfig,
   DEFAULT_MFC_CONFIG,
 } from './mfcTypes';
-import { HistoryQueryParams, DeviceError, DeviceConnectionStatus } from '../../types/devices';
+import { HistoryQueryParams, DeviceError, DeviceConnectionStatus } from '../devices';
 
 export interface MfcState {
   devices: MfcDevice[];
@@ -79,7 +79,7 @@ export function useMfc(): [MfcState, MfcControls] {
 
   const setLoading = useCallback((isLoading: boolean) => updateState({ isLoading }), [updateState]);
   const clearError = useCallback(() => updateState({ error: null }), [updateState]);
-  
+
   const handleApiError = useCallback((error: any): void => {
     updateState({ error: error as DeviceError, isLoading: false, isScanning: false });
   }, [updateState]);
@@ -101,7 +101,7 @@ export function useMfc(): [MfcState, MfcControls] {
     try {
       setLoading(true);
       const devices = await MfcApi.getDevices();
-      
+
       const mfcDevices: MfcDevice[] = devices.map(device => ({
         ...device,
         flow_sccm: 0,
@@ -176,7 +176,7 @@ export function useMfc(): [MfcState, MfcControls] {
       updateState({ connection_status: 'connecting', selected_port: port });
 
       await MfcApi.connect(port, baudrate, timeout);
-      
+
       updateState({ connection_status: 'connected' });
       // 连接成功后自动尝试拉取一次设备（后端也会自动开始轮询）
       await refreshDevices();
@@ -196,7 +196,7 @@ export function useMfc(): [MfcState, MfcControls] {
     try {
       setLoading(true);
       await MfcApi.disconnect();
-      
+
       // 断开后重置所有状态，并刷新端口列表等待下一次连接
       updateState({
         connection_status: 'disconnected',
@@ -205,7 +205,7 @@ export function useMfc(): [MfcState, MfcControls] {
         availableDevices: [],
         deviceStatuses: new Map()
       });
-      
+
       await get_available_ports();
 
     } catch (error) {
@@ -228,11 +228,11 @@ export function useMfc(): [MfcState, MfcControls] {
       const scanParams = { ...params, port: params.port || state.selected_port };
       // 异步扫描，立即返回，设备通过 WS 推送
       const currentDevices = await MfcApi.scanDevices(scanParams);
-      
+
       updateState({ availableDevices: currentDevices });
       // 稍微延迟关闭扫描状态，提升体验
       setTimeout(() => updateState({ isScanning: false }), 1000);
-      
+
     } catch (error) {
       handleApiError(error);
       updateState({ isScanning: false });
@@ -267,7 +267,7 @@ export function useMfc(): [MfcState, MfcControls] {
     try {
       const finalParams = params || state.historyParams;
       const data = await MfcApi.getFlowHistory(address, finalParams);
-      
+
       const newMap = new Map(state.historyData);
       newMap.set(address, data);
       updateState({ historyData: newMap, historyParams: finalParams });
@@ -280,7 +280,7 @@ export function useMfc(): [MfcState, MfcControls] {
     try {
       const finalParams = params || state.historyParams;
       const dataMap = await MfcApi.getMultipleDevicesFlowHistory(addresses, finalParams);
-      
+
       const newMap = new Map(state.historyData);
       Object.entries(dataMap).forEach(([k, v]) => newMap.set(parseInt(k), v));
       updateState({ historyData: newMap, historyParams: finalParams });
@@ -356,8 +356,8 @@ export function useMfc(): [MfcState, MfcControls] {
   };
 
   // 供 WebSocket Service 调用的辅助更新
-  const updateSingleDeviceStatus = (address: number, data: any) => {}; 
-  const updateFlowData = (address: number, data: any) => {};
+  const updateSingleDeviceStatus = (address: number, data: any) => { };
+  const updateFlowData = (address: number, data: any) => { };
 
   // 导出控制方法
   const controls: MfcControls = {

@@ -1,13 +1,13 @@
 import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, ApplyPresetResult, FurnaceSample, HistoryQueryParams, FurnaceConnectRequest, FurnaceOperationResponse } from './furnaceTypes';
-import { DeviceError } from '../../types/devices';
+import { DeviceError } from '../devices';
 
 const API_BASE = '/api/devices/furnace';
 // ... apiRequest helper ...
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    // ... (standard implementation) ...
-    const res = await fetch(`${API_BASE}${endpoint}`, { headers: {'Content-Type': 'application/json'}, ...options });
-    if(!res.ok) throw await res.json();
-    return res.status === 204 ? null as T : res.json();
+  // ... (standard implementation) ...
+  const res = await fetch(`${API_BASE}${endpoint}`, { headers: { 'Content-Type': 'application/json' }, ...options });
+  if (!res.ok) throw await res.json();
+  return res.status === 204 ? null as T : res.json();
 }
 
 export class FurnaceApi {
@@ -24,11 +24,11 @@ export class FurnaceApi {
   static async deletePreset(n: string): Promise<void> { return apiRequest(`/presets/${encodeURIComponent(n)}`, { method: 'DELETE' }); }
   static async clonePreset(n: string, newN: string): Promise<FurnacePreset> { return apiRequest(`/presets/${encodeURIComponent(n)}/clone`, { method: 'POST', body: JSON.stringify({ newName: newN }) }); }
   static async applyPreset(n: string): Promise<ApplyPresetResult> { return apiRequest(`/presets/${encodeURIComponent(n)}/apply`, { method: 'POST' }); }
-  
+
   static async getTemperatureHistory(params: any = {}): Promise<FurnaceSample[]> {
-      const qs = new URLSearchParams(params).toString();
-      const raw = await apiRequest<any[]>(`/logs/temperature?${qs}`);
-      return raw.map(i => ({ timestamp: i.ts, temperature: i.pv, sv: i.sv, mv: i.mv }));
+    const qs = new URLSearchParams(params).toString();
+    const raw = await apiRequest<any[]>(`/logs/temperature?${qs}`);
+    return raw.map(i => ({ timestamp: i.ts, temperature: i.pv, sv: i.sv, mv: i.mv }));
   }
 
   // ========== 新架构查询接口（支持status_code） ==========

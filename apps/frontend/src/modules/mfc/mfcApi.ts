@@ -5,7 +5,7 @@
  */
 
 import { MfcDeviceInfo, MfcStatus, MfcSample, MfcSetpointRequest, MfcScanRequest } from './mfcTypes';
-import { HistoryQueryParams, DeviceError } from '../../types/devices';
+import { HistoryQueryParams, DeviceError } from '../devices';
 
 // API 基础URL
 const API_BASE = '/api/devices/mfc';

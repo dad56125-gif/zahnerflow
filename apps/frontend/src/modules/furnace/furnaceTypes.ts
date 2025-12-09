@@ -168,6 +168,6 @@ export interface TemperatureChartData {
 }
 
 // 导入通用类型
-import { DeviceError, LogEntry } from '../../types/devices';
+import { DeviceError, LogEntry } from '../devices';
 
 export type { DeviceError, LogEntry };
