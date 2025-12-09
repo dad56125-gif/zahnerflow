@@ -1,42 +1,130 @@
-import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, ApplyPresetResult, FurnaceSample, HistoryQueryParams, FurnaceConnectRequest, FurnaceOperationResponse } from './furnaceTypes';
-import { DeviceError } from '../devices';
+/**
+ * Furnace API 封装
+ * 
+ * 继承自 BaseDeviceApi，添加炉温控制器特定的端点
+ */
 
-const API_BASE = '/api/devices/furnace';
-// ... apiRequest helper ...
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // ... (standard implementation) ...
-  const res = await fetch(`${API_BASE}${endpoint}`, { headers: { 'Content-Type': 'application/json' }, ...options });
-  if (!res.ok) throw await res.json();
-  return res.status === 204 ? null as T : res.json();
-}
+import { BaseDeviceApi, HistoryQueryParams } from '../common';
+import {
+  FurnaceStatus,
+  ProgramSegment,
+  FurnacePresetMeta,
+  FurnacePreset,
+  CreatePresetRequest,
+  ApplyPresetResult,
+  FurnaceSampleWithTimestamp,
+  FurnaceConnectRequest,
+  FurnaceOperationResponse,
+} from './furnaceTypes';
 
-export class FurnaceApi {
-  static async getStatus(): Promise<FurnaceStatus> { return apiRequest('/status'); }
-  static async setSegment(segment: number): Promise<FurnaceOperationResponse> { return apiRequest('/segment/set', { method: 'POST', body: JSON.stringify({ segment }) }); }
+export class FurnaceApi extends BaseDeviceApi {
+  protected static API_BASE = '/api/devices/furnace';
 
-  static async getSegments(): Promise<ProgramSegment[]> { return apiRequest('/program/segments'); }
-  static async setSegments(segments: ProgramSegment[]): Promise<void> { return apiRequest('/program/segments', { method: 'POST', body: JSON.stringify({ segments }) }); }
+  // ==================== 设备连接 ====================
 
-  static async getPresets(): Promise<FurnacePresetMeta[]> { return apiRequest('/presets'); }
-  static async createPreset(p: CreatePresetRequest): Promise<FurnacePreset> { return apiRequest('/presets', { method: 'POST', body: JSON.stringify(p) }); }
-  static async getPreset(n: string): Promise<FurnacePreset> { return apiRequest(`/presets/${encodeURIComponent(n)}`); }
-  static async updatePreset(n: string, s: ProgramSegment[]): Promise<FurnacePreset> { return apiRequest(`/presets/${encodeURIComponent(n)}`, { method: 'PUT', body: JSON.stringify({ segments: s }) }); }
-  static async deletePreset(n: string): Promise<void> { return apiRequest(`/presets/${encodeURIComponent(n)}`, { method: 'DELETE' }); }
-  static async clonePreset(n: string, newN: string): Promise<FurnacePreset> { return apiRequest(`/presets/${encodeURIComponent(n)}/clone`, { method: 'POST', body: JSON.stringify({ newName: newN }) }); }
-  static async applyPreset(n: string): Promise<ApplyPresetResult> { return apiRequest(`/presets/${encodeURIComponent(n)}/apply`, { method: 'POST' }); }
-
-  static async getTemperatureHistory(params: any = {}): Promise<FurnaceSample[]> {
-    const qs = new URLSearchParams(params).toString();
-    const raw = await apiRequest<any[]>(`/logs/temperature?${qs}`);
-    return raw.map(i => ({ timestamp: i.ts, temperature: i.pv, sv: i.sv, mv: i.mv }));
+  static async connect(request: FurnaceConnectRequest): Promise<void> {
+    return this.request('/connect', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   }
 
-  // ========== 新架构查询接口（支持status_code） ==========
+  // ==================== 状态与控制 ====================
 
-  /**
-   * 查询采样数据（支持时间范围和降采样）
-   * 用于RecordingTab实时表格
-   */
+  static async getStatus(): Promise<FurnaceStatus> {
+    return this.request('/status');
+  }
+
+  static async setSegment(segment: number): Promise<FurnaceOperationResponse> {
+    return this.request('/segment/set', {
+      method: 'POST',
+      body: JSON.stringify({ segment }),
+    });
+  }
+
+  static async run(): Promise<void> {
+    return this.request('/run', { method: 'POST' });
+  }
+
+  static async pause(): Promise<void> {
+    return this.request('/pause', { method: 'POST' });
+  }
+
+  static async stop(): Promise<void> {
+    return this.request('/stop', { method: 'POST' });
+  }
+
+  // ==================== 程序段管理 ====================
+
+  static async getSegments(): Promise<ProgramSegment[]> {
+    return this.request('/program/segments');
+  }
+
+  static async setSegments(segments: ProgramSegment[]): Promise<void> {
+    return this.request('/program/segments', {
+      method: 'POST',
+      body: JSON.stringify({ segments }),
+    });
+  }
+
+  // ==================== 预设管理 ====================
+
+  static async getPresets(): Promise<FurnacePresetMeta[]> {
+    return this.request('/presets');
+  }
+
+  static async createPreset(preset: CreatePresetRequest): Promise<FurnacePreset> {
+    return this.request('/presets', {
+      method: 'POST',
+      body: JSON.stringify(preset),
+    });
+  }
+
+  static async getPreset(name: string): Promise<FurnacePreset> {
+    return this.request(`/presets/${encodeURIComponent(name)}`);
+  }
+
+  static async updatePreset(name: string, segments: ProgramSegment[]): Promise<FurnacePreset> {
+    return this.request(`/presets/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ segments }),
+    });
+  }
+
+  static async deletePreset(name: string): Promise<void> {
+    return this.request(`/presets/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  static async clonePreset(name: string, newName: string): Promise<FurnacePreset> {
+    return this.request(`/presets/${encodeURIComponent(name)}/clone`, {
+      method: 'POST',
+      body: JSON.stringify({ newName }),
+    });
+  }
+
+  static async applyPreset(name: string): Promise<ApplyPresetResult> {
+    return this.request(`/presets/${encodeURIComponent(name)}/apply`, {
+      method: 'POST',
+    });
+  }
+
+  // ==================== 历史数据 ====================
+
+  static async getTemperatureHistory(params: HistoryQueryParams = {}): Promise<FurnaceSampleWithTimestamp[]> {
+    const qs = this.buildQueryString(params as Record<string, unknown>);
+    const raw = await this.request<{ ts: string; pv: number; sv?: number; mv?: number }[]>(
+      `/logs/temperature?${qs}`
+    );
+    return raw.map((item) => ({
+      timestamp: item.ts,
+      temperature: item.pv,
+      sv: item.sv,
+      mv: item.mv,
+    }));
+  }
+
   static async queryFurnaceSamples(params: {
     from?: string;
     to?: string;
@@ -49,18 +137,10 @@ export class FurnaceApi {
     mv: number;
     status_code: number;
   }>> {
-    const qs = new URLSearchParams();
-    if (params.from) qs.append('from', params.from);
-    if (params.to) qs.append('to', params.to);
-    if (params.limit) qs.append('limit', params.limit.toString());
-    if (params.downsample) qs.append('downsample', params.downsample.toString());
-
-    return apiRequest(`/samples?${qs.toString()}`);
+    const qs = this.buildQueryString(params);
+    return this.request(`/samples?${qs}`);
   }
 
-  /**
-   * 查询事件数据（用于状态补全）
-   */
   static async getFurnaceEvents(params: {
     from?: string;
     to?: string;
@@ -70,18 +150,13 @@ export class FurnaceApi {
     segment: number;
     segment_time_set: number;
   }>> {
-    const qs = new URLSearchParams();
-    if (params.from) qs.append('from', params.from);
-    if (params.to) qs.append('to', params.to);
-
-    return apiRequest(`/events?${qs.toString()}`);
+    const qs = this.buildQueryString(params);
+    return this.request(`/events?${qs}`);
   }
 
-  static async getPorts(): Promise<string[]> { return apiRequest('/ports'); }
-  static async connect(r: FurnaceConnectRequest): Promise<void> { return apiRequest('/connect', { method: 'POST', body: JSON.stringify(r) }); }
-  static async disconnect(): Promise<void> { return apiRequest('/disconnect', { method: 'POST' }); }
-  static async run(): Promise<void> { return apiRequest('/run', { method: 'POST' }); }
-  static async pause(): Promise<void> { return apiRequest('/pause', { method: 'POST' }); }
-  static async stop(): Promise<void> { return apiRequest('/stop', { method: 'POST' }); }
-  static getDefaultHistoryParams() { return { limit: 1000 }; }
+  // ==================== 工具方法 ====================
+
+  static getDefaultHistoryParams(): { limit: number } {
+    return { limit: 1000 };
+  }
 }

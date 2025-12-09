@@ -3,11 +3,10 @@
  */
 
 // 从 @zahnerflow/types 导入基础类型
-export type {
-  ProgramSegment,
-  FurnacePreset,
-  FurnaceSample
-} from '@zahnerflow/types';
+import type { ProgramSegment, FurnacePreset, FurnaceSample } from '@zahnerflow/types';
+
+// 重导出基础类型
+export type { ProgramSegment, FurnacePreset, FurnaceSample };
 
 // 兼容性接口 - 使用 timestamp 而不是 ts
 export interface FurnaceSampleWithTimestamp {

@@ -14,7 +14,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
       {furnaceState.error && (
         <div className="error-banner">
           <span className="error-message">
-            错误: {furnaceState.error as string}
+            错误: {furnaceState.error?.message || '未知错误'}
           </span>
           <button
             className="btn_base btn_layout btn_style_common btn_small btn_secondary"
@@ -89,7 +89,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         </div>
         <div className="chart-content">
           <TemperatureChart
-            data={furnaceState.history_data}
+            data={furnaceState.history_data as any}
             is_loading={furnaceState.loading}
           />
         </div>

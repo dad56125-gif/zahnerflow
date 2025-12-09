@@ -1,10 +1,10 @@
 ﻿import React, { useEffect, useMemo, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { ECharts, EChartsOption } from 'echarts';
-import type { FurnaceSample } from './furnaceTypes';
+import type { FurnaceSampleWithTimestamp } from './furnaceTypes';
 
 interface TemperatureChartProps {
-  data: FurnaceSample[];
+  data: FurnaceSampleWithTimestamp[];
   is_loading?: boolean;
   on_refresh?: () => void;
 }
@@ -65,7 +65,7 @@ const base_option: EChartsOption = {
   ],
 };
 
-const normalize_samples = (samples: FurnaceSample[]): NormalizedSample[] => {
+const normalize_samples = (samples: FurnaceSampleWithTimestamp[]): NormalizedSample[] => {
   return samples
     .map((sample) => {
       const parsed_ts = typeof sample.timestamp === 'number' ? sample.timestamp : Date.parse(sample.timestamp as any);

@@ -4,7 +4,20 @@
  * 基于 @zahnerflow/types 扩展前端专用的设备状态和UI类型
  */
 
-// 重新导出 @zahnerflow/types 中的基础类型
+// 从 @zahnerflow/types 导入基础类型
+import type {
+  ProgramSegment,
+  FurnacePreset,
+  MfcDeviceInfo,
+  MfcStatus,
+  FurnaceSample,
+  MfcSample,
+  MeasurementType,
+  NodeState,
+  ExecutionState
+} from '@zahnerflow/types';
+
+// 重新导出基础类型
 export type {
   ProgramSegment,
   FurnacePreset,
@@ -13,9 +26,8 @@ export type {
   FurnaceSample,
   MfcSample,
   MeasurementType,
-  NodeState as NodeStatus,
-  ExecutionState as ExecutionStatus
-} from '@zahnerflow/types';
+};
+export type { NodeState as NodeStatus, ExecutionState as ExecutionStatus };
 
 // 程序段操作进度
 export interface SegmentProgress {

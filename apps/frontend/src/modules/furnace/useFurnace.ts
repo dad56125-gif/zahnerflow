@@ -1,18 +1,32 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+/**
+ * Furnace 状态管理 Hook
+ * 
+ * 提供炉温控制器的状态管理，包括连接、控制、预设、历史数据等功能
+ */
+
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { FurnaceApi } from './furnaceApi';
 import { furnaceWebSocketService, FurnaceStatusUpdate } from './furnaceWebSocket.service';
-import { FurnaceStatus, ProgramSegment, FurnacePresetMeta, FurnacePreset, CreatePresetRequest, FurnaceConnectRequest, HistoryQueryParams, SegmentProgress, LogEntry, ApplyPresetResult } from './furnaceTypes';
-import { DeviceError } from './furnaceTypes';
+import type { DeviceError, LogEntry, DeviceConnectionStatus, HistoryQueryParams } from '../common/types';
+import {
+  FurnaceStatus,
+  ProgramSegment,
+  FurnacePresetMeta,
+  FurnaceConnectRequest,
+  SegmentProgress,
+} from './furnaceTypes';
+
+// ==================== 状态类型 ====================
 
 export interface FurnaceState {
   device_status: FurnaceStatus | null;
-  connection_status: 'connected' | 'disconnected';
+  connection_status: DeviceConnectionStatus;
   segments: ProgramSegment[];
   presets: FurnacePresetMeta[];
-  history_data: any[];
+  history_data: Array<{ timestamp: string; temperature: number; sv?: number; mv?: number }>;
   history_params: HistoryQueryParams;
   loading: boolean;
-  error: string | null;
+  error: DeviceError | null;
   logs: LogEntry[];
   segment_progress: SegmentProgress | null;
 }
@@ -27,7 +41,7 @@ export interface FurnaceControls {
   get_segments: () => Promise<void>;
   set_segments: (segments: ProgramSegment[]) => Promise<void>;
   load_presets: () => Promise<void>;
-  create_preset: (preset: CreatePresetRequest) => Promise<void>;
+  create_preset: (preset: { name: string; segments: ProgramSegment[]; summary?: string }) => Promise<void>;
   update_preset: (name: string, segments: ProgramSegment[]) => Promise<void>;
   delete_preset: (name: string) => Promise<void>;
   clone_preset: (name: string, new_name: string) => Promise<void>;
@@ -40,116 +54,307 @@ export interface FurnaceControls {
   clear_logs: () => void;
 }
 
+// ==================== 初始状态 ====================
+
+const createInitialState = (): FurnaceState => ({
+  device_status: null,
+  connection_status: 'disconnected',
+  segments: [],
+  presets: [],
+  history_data: [],
+  history_params: { limit: 1000 },
+  loading: false,
+  error: null,
+  logs: [],
+  segment_progress: null,
+});
+
+// ==================== Hook 实现 ====================
+
 export function useFurnace(): [FurnaceState, FurnaceControls] {
-  const initial: FurnaceState = {
-    device_status: null, connection_status: 'disconnected', segments: [], presets: [],
-    history_data: [], history_params: { limit: 1000 }, loading: false, error: null, logs: [], segment_progress: null
-  };
-  const [state, set_state] = useState<FurnaceState>(initial);
-  const ws_conn = useRef(false);
-  const update = useCallback((u: Partial<FurnaceState>) => set_state(p => ({ ...p, ...u })), []);
-  
-  const add_log = useCallback((t: LogEntry['type'], m: string) => {
-    set_state(p => ({ ...p, logs: [{ id: Math.random().toString(), timestamp: new Date().toLocaleTimeString(), type: t, message: m }, ...p.logs].slice(0, 100) }));
+  const [state, setState] = useState<FurnaceState>(createInitialState);
+  const wsConnected = useRef(false);
+
+  // 状态更新辅助函数
+  const updateState = useCallback((updates: Partial<FurnaceState>) => {
+    setState((prev) => ({ ...prev, ...updates }));
   }, []);
-  
-  const handle_error = useCallback((e: any) => {
-    const m = e?.message || 'Error';
-    update({ error: m, loading: false, segment_progress: null });
-    add_log('error', m);
-  }, [update, add_log]);
 
-  const exec = useCallback(async (fn: () => Promise<any>, msg?: string, skipLoad = false) => {
-    try {
-      if(!skipLoad) update({ loading: true, error: null });
-      await fn();
-      if(msg) add_log('success', msg);
-    } catch (e) { handle_error(e); } 
-    finally { if(!skipLoad) update({ loading: false }); }
-  }, [handle_error, add_log, update]);
+  // 添加日志
+  const addLog = useCallback((type: LogEntry['type'], message: string) => {
+    setState((prev) => ({
+      ...prev,
+      logs: [
+        {
+          id: Math.random().toString(36).slice(2),
+          timestamp: new Date().toLocaleTimeString(),
+          type,
+          message,
+        },
+        ...prev.logs,
+      ].slice(0, 100),
+    }));
+  }, []);
 
-  // --- 批量读写（后端循环） ---
-  const get_segments = useCallback(async () => {
-    try {
-      update({ loading: true });
-      const segments = await FurnaceApi.getSegments();
-      update({ segments });
-      add_log('success', 'Read 27 segments');
-    } catch(e) { handle_error(e); }
-    finally { update({ loading: false }); }
-  }, [update, handle_error, add_log]);
+  // 错误处理
+  const handleError = useCallback(
+    (error: unknown) => {
+      const deviceError: DeviceError =
+        error && typeof error === 'object' && 'message' in error
+          ? (error as DeviceError)
+          : { code: 'UNKNOWN', message: String(error), status: 0 };
 
-  const set_segments = useCallback(async (segs: ProgramSegment[]) => {
-    try {
-      update({ loading: true });
-      await FurnaceApi.setSegments(segs);
-      update({ segments: segs });
-      add_log('success', `Wrote ${segs.length} segments`);
-    } catch(e) { handle_error(e); }
-    finally { update({ loading: false }); }
-  }, [update, handle_error, add_log]);
+      updateState({ error: deviceError, loading: false, segment_progress: null });
+      addLog('error', deviceError.message);
+    },
+    [updateState, addLog]
+  );
 
-  // --- 其他控制 ---
-  const connect = (c: FurnaceConnectRequest) => exec(async () => { await FurnaceApi.connect(c); update({connection_status:'connected'}); ensure_ws(); }, `Connected to ${c.port}`);
-  const disconnect = () => exec(async () => { await FurnaceApi.disconnect(); update({connection_status:'disconnected', device_status:null}); }, 'Disconnected');
-  
-  // ... 其他方法与之前相同，略微缩写 ...
-  const ensure_ws = () => { if(!ws_conn.current) { furnaceWebSocketService.connect(); ws_conn.current=true; furnaceWebSocketService.onStatusUpdate(d => update({device_status: d.status, connection_status: d.connection_state.status as any})); furnaceWebSocketService.onSamplingData(d => set_state(p => ({...p, history_data: [...p.history_data, {timestamp: d.timestamp, temperature: d.temperature, sv: d.sv, mv: d.mv}].slice(-500)}))); furnaceWebSocketService.onConnected(() => furnaceWebSocketService.subscribeToFurnace()); } };
+  // 执行异步操作
+  const execute = useCallback(
+    async <T>(fn: () => Promise<T>, successMessage?: string, skipLoading = false): Promise<void> => {
+      try {
+        if (!skipLoading) updateState({ loading: true, error: null });
+        await fn();
+        if (successMessage) addLog('success', successMessage);
+      } catch (error) {
+        handleError(error);
+      } finally {
+        if (!skipLoading) updateState({ loading: false });
+      }
+    },
+    [updateState, handleError, addLog]
+  );
 
-  const controls: FurnaceControls = {
-    get_segments,
-    set_segments,
-    connect,
-    disconnect,
-    set_segment: (s) => exec(() => FurnaceApi.setSegment(s), `Segment ${s}`),
-    run: () => exec(() => FurnaceApi.run(), 'Run'),
-    pause: () => exec(() => FurnaceApi.pause(), 'Pause'),
-    stop: () => exec(() => FurnaceApi.stop(), 'Stop'),
-    load_presets: () => exec(async () => update({presets: await FurnaceApi.getPresets()})),
-    create_preset: (p) => exec(async () => { await FurnaceApi.createPreset(p); update({presets: await FurnaceApi.getPresets()}); }),
-    update_preset: (n, s) => exec(async () => { await FurnaceApi.updatePreset(n, s); update({presets: await FurnaceApi.getPresets()}); }),
-    delete_preset: (n) => exec(async () => { await FurnaceApi.deletePreset(n); update({presets: await FurnaceApi.getPresets()}); }),
-    clone_preset: (n, nn) => exec(async () => { await FurnaceApi.clonePreset(n, nn); update({presets: await FurnaceApi.getPresets()}); }),
-    apply_preset: (n) => exec(() => FurnaceApi.applyPreset(n), `Applied ${n}`),
-    load_history_data: (p) => exec(async () => update({history_data: await FurnaceApi.getTemperatureHistory(p || state.history_params)})),
-    update_history_params: (p) => update({history_params: {...state.history_params, ...p}}),
-    reset: () => set_state(initial), clear_error: () => update({error: null}), add_log, clear_logs: () => update({logs: []})
-  };
+  // WebSocket 连接管理
+  const ensureWebSocket = useCallback(() => {
+    if (wsConnected.current) return;
 
-  useEffect(() => { controls.load_presets(); }, []);
-  useEffect(() => { if(state.connection_status === 'connected') controls.get_segments(); }, [state.connection_status]);
+    wsConnected.current = true;
+    furnaceWebSocketService.connect();
 
-  // WebSocket 进度监听
-  useEffect(() => {
+    furnaceWebSocketService.onStatusUpdate((update: FurnaceStatusUpdate) => {
+      updateState({
+        device_status: update.status,
+        connection_status: update.connection_state.status,
+      });
+    });
+
+    furnaceWebSocketService.onSamplingData((data) => {
+      setState((prev) => ({
+        ...prev,
+        history_data: [
+          ...prev.history_data,
+          { timestamp: data.timestamp, temperature: data.temperature, sv: data.sv, mv: data.mv },
+        ].slice(-500),
+      }));
+    });
+
+    furnaceWebSocketService.onConnected(() => {
+      furnaceWebSocketService.subscribe();
+    });
+
     furnaceWebSocketService.onReadProgress((data) => {
-      update({
+      updateState({
         segment_progress: {
           active: true,
           type: 'read',
           progress: data.progress,
-          message: data.message || `读取中... ${data.progress}%`
-        }
+          message: data.message || `读取中... ${data.progress}%`,
+        },
       });
     });
 
     furnaceWebSocketService.onWriteProgress((data) => {
-      update({
+      updateState({
         segment_progress: {
           active: true,
           type: 'write',
           progress: data.progress,
-          message: data.message || `写入中... ${data.progress}%`
-        }
+          message: data.message || `写入中... ${data.progress}%`,
+        },
       });
     });
+  }, [updateState]);
 
+  // ==================== 程序段操作 ====================
+
+  const get_segments = useCallback(async () => {
+    await execute(async () => {
+      const segments = await FurnaceApi.getSegments();
+      updateState({ segments });
+    }, 'Read 27 segments');
+  }, [execute, updateState]);
+
+  const set_segments = useCallback(
+    async (segments: ProgramSegment[]) => {
+      await execute(async () => {
+        await FurnaceApi.setSegments(segments);
+        updateState({ segments });
+      }, `Wrote ${segments.length} segments`);
+    },
+    [execute, updateState]
+  );
+
+  // ==================== 连接控制 ====================
+
+  const connect = useCallback(
+    async (config: FurnaceConnectRequest) => {
+      await execute(async () => {
+        await FurnaceApi.connect(config);
+        updateState({ connection_status: 'connected' });
+        ensureWebSocket();
+      }, `Connected to ${config.port}`);
+    },
+    [execute, updateState, ensureWebSocket]
+  );
+
+  const disconnect = useCallback(async () => {
+    await execute(async () => {
+      await FurnaceApi.disconnect();
+      updateState({ connection_status: 'disconnected', device_status: null });
+    }, 'Disconnected');
+  }, [execute, updateState]);
+
+  // ==================== 设备控制 ====================
+
+  const set_segment = useCallback(
+    async (segment: number) => {
+      await execute(() => FurnaceApi.setSegment(segment), `Segment ${segment}`);
+    },
+    [execute]
+  );
+
+  const run = useCallback(async () => execute(() => FurnaceApi.run(), 'Run'), [execute]);
+  const pause = useCallback(async () => execute(() => FurnaceApi.pause(), 'Pause'), [execute]);
+  const stop = useCallback(async () => execute(() => FurnaceApi.stop(), 'Stop'), [execute]);
+
+  // ==================== 预设管理 ====================
+
+  const load_presets = useCallback(async () => {
+    await execute(async () => {
+      updateState({ presets: await FurnaceApi.getPresets() });
+    });
+  }, [execute, updateState]);
+
+  const create_preset = useCallback(
+    async (preset: { name: string; segments: ProgramSegment[]; summary?: string }) => {
+      await execute(async () => {
+        await FurnaceApi.createPreset(preset);
+        updateState({ presets: await FurnaceApi.getPresets() });
+      });
+    },
+    [execute, updateState]
+  );
+
+  const update_preset = useCallback(
+    async (name: string, segments: ProgramSegment[]) => {
+      await execute(async () => {
+        await FurnaceApi.updatePreset(name, segments);
+        updateState({ presets: await FurnaceApi.getPresets() });
+      });
+    },
+    [execute, updateState]
+  );
+
+  const delete_preset = useCallback(
+    async (name: string) => {
+      await execute(async () => {
+        await FurnaceApi.deletePreset(name);
+        updateState({ presets: await FurnaceApi.getPresets() });
+      });
+    },
+    [execute, updateState]
+  );
+
+  const clone_preset = useCallback(
+    async (name: string, new_name: string) => {
+      await execute(async () => {
+        await FurnaceApi.clonePreset(name, new_name);
+        updateState({ presets: await FurnaceApi.getPresets() });
+      });
+    },
+    [execute, updateState]
+  );
+
+  const apply_preset = useCallback(
+    async (name: string) => {
+      await execute(() => FurnaceApi.applyPreset(name), `Applied ${name}`);
+    },
+    [execute]
+  );
+
+  // ==================== 历史数据 ====================
+
+  const load_history_data = useCallback(
+    async (params?: HistoryQueryParams) => {
+      await execute(async () => {
+        const p = params || state.history_params;
+        updateState({ history_data: await FurnaceApi.getTemperatureHistory(p) });
+      });
+    },
+    [execute, updateState, state.history_params]
+  );
+
+  const update_history_params = useCallback(
+    (params: Partial<HistoryQueryParams>) => {
+      updateState({ history_params: { ...state.history_params, ...params } });
+    },
+    [updateState, state.history_params]
+  );
+
+  // ==================== 工具方法 ====================
+
+  const reset = useCallback(() => setState(createInitialState()), []);
+  const clear_error = useCallback(() => updateState({ error: null }), [updateState]);
+  const clear_logs = useCallback(() => updateState({ logs: [] }), [updateState]);
+
+  // ==================== Effects ====================
+
+  useEffect(() => {
+    load_presets();
+  }, [load_presets]);
+
+  useEffect(() => {
+    if (state.connection_status === 'connected') {
+      get_segments();
+    }
+  }, [state.connection_status, get_segments]);
+
+  useEffect(() => {
     return () => {
-      // cleanup if needed
+      if (wsConnected.current) {
+        furnaceWebSocketService.disconnect();
+      }
     };
-  }, [update]);
+  }, []);
 
-  useEffect(() => { return () => { if(ws_conn.current) furnaceWebSocketService.disconnect(); }; }, []);
+  // ==================== 导出 ====================
+
+  const controls: FurnaceControls = {
+    connect,
+    disconnect,
+    set_segment,
+    run,
+    pause,
+    stop,
+    get_segments,
+    set_segments,
+    load_presets,
+    create_preset,
+    update_preset,
+    delete_preset,
+    clone_preset,
+    apply_preset,
+    load_history_data,
+    update_history_params,
+    reset,
+    clear_error,
+    add_log: addLog,
+    clear_logs,
+  };
 
   return [state, controls];
 }
+
 export default useFurnace;
