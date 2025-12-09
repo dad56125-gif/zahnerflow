@@ -8,6 +8,7 @@ import { PropertyPanel } from './components/PropertyPanel';
 import { StatusBar } from './components/StatusBar';
 import { Canvas } from './canvas/Canvas';
 import { setupAutoGlassEffect } from './shared/glassEffect';
+import ParticleBackground from './components/ParticleBackground';
 
 import { useCanvasStore } from './canvas/canvasStore';
 import { useWorkflowStore, useExecutionStore } from './workflow';
@@ -185,6 +186,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="app-root">
+      <ParticleBackground />
       <TopNavbar
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}

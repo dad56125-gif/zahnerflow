@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { useUser } from '../shared/UserContext';
 import { Portal } from './Portal';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
@@ -80,7 +80,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 用户选择器按钮 - 使用统一按钮系统样式 */}
       <button
         ref={buttonRef}
-        className="btn_base btn_layout btn_style_common btn_medium glass btn-primary"
+        className="btn_base btn_layout btn_style_common btn_medium glass btn_primary"
         onClick={() => dropdown.toggle()}
       >
         <span className="btn-icon">👤</span>
@@ -197,7 +197,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
               )}
               <div className="dialog-buttons">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn_secondary"
                   onClick={() => {
                     setShowCreateDialog(false);
                     setNewUserName('');
@@ -207,7 +207,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                   取消
                 </button>
                 <button
-                  className="btn btn-primary"
+                  className="btn btn_primary"
                   onClick={handleCreateUser}
                   disabled={!newUserName.trim() || !!error}
                   title={
@@ -245,13 +245,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
               </p>
               <div className="dialog-buttons">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn_secondary"
                   onClick={cancelDeleteUser}
                 >
                   取消
                 </button>
                 <button
-                  className="btn btn-danger"
+                  className="btn btn_danger"
                   onClick={confirmDeleteUser}
                 >
                   删除用户

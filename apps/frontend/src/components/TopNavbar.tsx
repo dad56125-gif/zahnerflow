@@ -148,7 +148,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
 
       <div className="flex items-center gap_sm">
         <div
-          className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
+          className="btn_base btn_layout btn_style_common btn_medium glass btn_secondary"
           onClick={() => handleDeviceClick('furnace')}
         >
           <span className="btn-icon">🔥</span>
@@ -157,7 +157,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
         </div>
 
         <div
-          className="btn_base btn_layout btn_style_common btn_medium glass btn-secondary"
+          className="btn_base btn_layout btn_style_common btn_medium glass btn_secondary"
           onClick={() => handleDeviceClick('mfc')}
         >
           <span className="btn-icon">💧</span>
@@ -168,7 +168,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onWorkstationSelect, onDev
         <div className="workstation-selector" ref={dropdownContainerRef}>
           <button
             ref={workstationButtonRef}
-            className="btn_base btn_layout btn_style_common btn_medium glass btn-primary"
+            className="btn_base btn_layout btn_style_common btn_medium glass btn_primary"
             onClick={handleToggleDropdown}
           >
             <span className="btn-icon">{selectedWorkstation ? selectedWorkstation.icon : '🔬'}</span>

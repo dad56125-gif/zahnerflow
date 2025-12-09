@@ -1,4 +1,4 @@
-// --- START OF FILE apps/frontend/src/components/PropertyPanel.tsx ---
+﻿// --- START OF FILE apps/frontend/src/components/PropertyPanel.tsx ---
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { WorkstationType, WorkflowNode, NodeType } from '../types/Interfaces'; // 引入新类型
@@ -275,13 +275,13 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           <div className="property-content">
             <div className="property-tabs">
               <button
-                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'basic' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'basic' ? 'btn_primary' : 'btn_secondary'}`}
                 onClick={() => setActiveTab('basic')}
               >
                 <span className="btn-icon">📋</span><span className="btn-text">基本</span>
               </button>
               <button
-                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'parameters' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'parameters' ? 'btn_primary' : 'btn_secondary'}`}
                 onClick={() => setActiveTab('parameters')}
               >
                 <span className="btn-icon">⚙️</span><span className="btn-text">参数</span>
@@ -289,7 +289,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
               {supportsChart && (
                 <button
-                    className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'chart' ? 'btn-primary' : 'btn-secondary'}`}
+                    className={`btn_base btn_layout btn_style_common btn_small glass ${activeTab === 'chart' ? 'btn_primary' : 'btn_secondary'}`}
                     onClick={() => setActiveTab('chart')}
                 >
                     <span className="btn-icon">📈</span><span className="btn-text">图表</span>

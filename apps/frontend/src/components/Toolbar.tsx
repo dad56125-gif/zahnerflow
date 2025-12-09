@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useCanvasStore } from '../canvas/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
 import { FilePathConfig } from '../shared/UserContext';
@@ -117,7 +117,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="flex items-center gap_sm">
           <div className="flex gap_xs">
             <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass btn-primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''
+              className={`btn_base btn_layout btn_style_common btn_mini glass btn_primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''
                 }`}
               onClick={clearCanvas}
               title="新建流程"
@@ -133,7 +133,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="flex items-center gap_sm">
           {onToggleFilePathManager && (
             <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.filePathDisabled ? 'disabled' : (showFilePathManager ? 'btn-primary' : 'btn-secondary')
+              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.filePathDisabled ? 'disabled' : (showFilePathManager ? 'btn_primary' : 'btn_secondary')
                 }`}
               onClick={onToggleFilePathManager}
               title={showFilePathManager ? "关闭文件路径管理" : "打开文件路径管理"}
@@ -148,7 +148,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* 右侧：运行和设置 */}
         <div className="flex items-center gap_sm">
           <button
-            className={`btn_base btn_layout btn_style_common btn_mini glass btn-primary ${buttonStates.runButtonDisabled ? 'disabled' : ''
+            className={`btn_base btn_layout btn_style_common btn_mini glass btn_primary ${buttonStates.runButtonDisabled ? 'disabled' : ''
               }`}
             onClick={onRunFlow}
             title="运行流程 (F5)"
@@ -172,7 +172,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
           {onToggleWorkflowManager && (
             <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn-primary' : 'btn-secondary')
+              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn_primary' : 'btn_secondary')
                 }`}
               onClick={onToggleWorkflowManager}
               title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
