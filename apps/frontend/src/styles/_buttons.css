@@ -1,0 +1,270 @@
+/* === _buttons.css - 按钮组件样式 === */
+
+/* === 按钮基础类 === */
+
+/* 按钮行为基类 */
+.btn_base {
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    white-space: nowrap;
+}
+
+/* 按钮布局 */
+.btn_layout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+}
+
+/* 按钮通用样式 */
+.btn_style_common {
+    border: none;
+    font-weight: 500;
+    font-family: inherit;
+    line-height: 1;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* === 按钮尺寸 === */
+
+.btn_large {
+    gap: var(--size-md);
+    padding: var(--size-sm) var(--size-xl);
+    border-radius: var(--radius-panel);
+    font-size: var(--size-lg);
+    min-height: var(--size-4xl);
+}
+
+.btn_medium {
+    gap: var(--size-sm);
+    padding: var(--size-2xs) var(--size-lg);
+    border-radius: var(--radius-panel);
+    font-size: var(--size-md);
+    min-height: var(--size-3xl);
+}
+
+.btn_small {
+    gap: var(--size-xs);
+    padding: var(--size-3xs) var(--size-md);
+    border-radius: var(--radius-button);
+    font-size: var(--size-sm);
+    height: var(--size-2xl);
+    min-width: clamp(3.5rem, 5.5vw, 5rem);
+    flex-shrink: 0;
+}
+
+.btn_mini {
+    gap: var(--size-2xs);
+    padding: var(--size-2xs) var(--size-md);
+    border-radius: var(--radius-button);
+    font-size: var(--size-xs);
+    height: var(--size-xl);
+    min-width: var(--size-5xl);
+    flex-shrink: 0;
+}
+
+/* === 按钮状态 === */
+
+.btn_base:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn_base:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* === 按钮颜色变体 === */
+
+.btn_primary {
+    background: linear-gradient(135deg, var(--color-primary-bg), rgba(59, 130, 246, 0.05));
+    border: 1px solid var(--color-primary);
+    color: white;
+    box-shadow:
+        0 4px var(--effect-md) rgba(59, 130, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+    border-color: var(--color-info);
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px var(--effect-xl) rgba(59, 130, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.btn_secondary {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    backdrop-filter: blur(var(--blur-panel));
+    box-shadow:
+        0 4px var(--effect-md) var(--glass-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_secondary:hover:not(:disabled) {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px var(--effect-xl) rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.btn_success {
+    background: linear-gradient(135deg, var(--color-success-bg), rgba(16, 185, 129, 0.05));
+    border: 1px solid var(--color-success);
+    color: white;
+    box-shadow:
+        0 4px var(--effect-md) rgba(16, 185, 129, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_success:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08));
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px var(--effect-xl) rgba(16, 185, 129, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.btn_warning {
+    background: linear-gradient(135deg, var(--color-warning-bg), rgba(245, 158, 11, 0.05));
+    border: 1px solid var(--color-warning);
+    color: white;
+    box-shadow:
+        0 4px var(--effect-md) rgba(245, 158, 11, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_warning:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.08));
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px var(--effect-xl) rgba(245, 158, 11, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.btn_danger {
+    background: linear-gradient(135deg, var(--color-danger-bg), rgba(239, 68, 68, 0.05));
+    border: 1px solid var(--color-danger);
+    color: white;
+    box-shadow:
+        0 4px var(--effect-md) rgba(239, 68, 68, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08));
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px var(--effect-xl) rgba(239, 68, 68, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.btn_neutral {
+    background: linear-gradient(135deg, var(--color-neutral-bg), rgba(107, 114, 128, 0.05));
+    border: 1px solid var(--color-neutral);
+    color: white;
+    box-shadow:
+        0 4px var(--effect-md) rgba(107, 114, 128, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn_neutral:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.15), rgba(107, 114, 128, 0.08));
+    transform: translateY(-1px);
+    box-shadow:
+        0 8px var(--effect-xl) rgba(107, 114, 128, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* === 按钮修饰符 === */
+
+.btn_block {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.btn_outline {
+    background: transparent;
+    border: 1px solid currentColor;
+}
+
+.btn_outline:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* === 按钮加载状态 === */
+
+.btn_loading {
+    color: transparent;
+    pointer-events: none;
+}
+
+.btn_loading::after {
+    content: '';
+    position: absolute;
+    width: var(--size-lg);
+    height: var(--size-lg);
+    border: 2px solid white;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: loader_spin 0.8s linear infinite;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* === 按钮图标 === */
+
+.btn-icon-left {
+    display: inline-flex;
+    align-items: center;
+    margin-right: var(--size-2xs);
+}
+
+.btn-icon-right {
+    display: inline-flex;
+    align-items: center;
+    margin-left: var(--size-2xs);
+}
+
+/* === Legacy 兼容映射 === */
+
+.btn_sm {
+    gap: var(--size-3xs);
+    padding: var(--size-3xs) var(--size-md);
+    font-size: var(--size-sm);
+    min-height: var(--size-2xl);
+    border-radius: var(--radius-button);
+}
+
+.btn_lg {
+    padding: var(--size-sm) var(--size-xl);
+    font-size: var(--size-lg);
+    min-height: var(--size-4xl);
+    border-radius: var(--radius-panel);
+}
+
+/* 旧版 .btn 类兼容 */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
