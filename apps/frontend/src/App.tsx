@@ -11,10 +11,10 @@ import { Canvas } from './canvas/Canvas';
 import { setupAutoGlassEffect } from './shared/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
 
-import { useCanvasStore } from './canvas/canvasStore';
+import { useCanvasStore } from './state/canvasStore';
 import { useWorkflowStore, useExecutionStore, useSystemState } from './workflow';
 import { workflowWebSocketService } from './workflow/websocket.service';
-import { clearMeasurementCache } from './hooks/useMeasurementStream';
+// clearMeasurementCache 现在由 executionStore 的 nodesReset 监听统一处理
 
 import { MFCModal } from './modules/mfc';
 import { useFurnace, DeviceModal } from './modules/furnace';
@@ -37,8 +37,8 @@ const AppContent: React.FC = () => {
     isRunning,
     error: executionError,
     startExecution,
-    stopExecution,
-    resetExecutionState
+    stopExecution
+    // resetExecutionState 现在由 executionStore 的 nodesReset 监听统一处理
   } = useExecutionStore();
 
   // 本地 UI 状态
@@ -137,8 +137,8 @@ const AppContent: React.FC = () => {
   const resetFlow = async () => {
     try {
       console.log('[App] 重置工作流执行状态...');
-      clearMeasurementCache();
-      console.log('[App] 已清空测量数据缓存');
+      // 🔥 SSOT: 不再主动清空，完全依赖后端 WebSocket 广播 nodesReset 事件
+      // clearMeasurementCache() 和 resetExecutionState() 现在由 executionStore 的事件监听统一处理
 
       const response = await fetch('/api/executions/reset', {
         method: 'POST',
@@ -147,8 +147,8 @@ const AppContent: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('[App] 重置成功:', result.message);
-        resetExecutionState();
+        console.log('[App] 重置请求成功，等待 WebSocket nodesReset 事件:', result.message);
+        // ✅ 不再在此处主动调用 resetExecutionState()，依赖 WebSocket 事件
       } else {
         console.error('[App] 重置失败:', response.status, response.statusText);
       }

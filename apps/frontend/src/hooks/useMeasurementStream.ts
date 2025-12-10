@@ -20,6 +20,13 @@ const setupGlobalListener = () => {
 
   workflowWebSocketService.connect();
 
+  // 🔥 SSOT: 自己监听 nodesReset 事件，不再依赖 executionStateBridge 调用
+  workflowWebSocketService.onNodesReset((event) => {
+    console.log('[MeasurementStream] 收到 nodesReset 事件，清空缓存');
+    GlobalMeasurementCache.clear();
+    lastExecutionId = null;
+  });
+
   workflowWebSocketService.onMeasurementData((payload) => {
     // 🔥 2. 无论有没有组件在看，先存入全局仓库！
     // 这样当你回头看 Node 1 时，数据都在这里等着你
@@ -52,13 +59,8 @@ export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasur
   const [tick, setTick] = useState(0);
   const isReceiving = useRef(false);
 
-  // 🔥🔥🔥 核心修改：智能清空缓存逻辑 🔥🔥🔥
-  // 每次组件渲染时检查：如果 activeExecutionId 变了，且是一个新的非空值 -> 说明新一轮开始了
-  if (activeExecutionId && activeExecutionId !== lastExecutionId) {
-    console.log('[Stream] 检测到新一轮运行，自动清空全局缓存');
-    GlobalMeasurementCache.clear(); // 清空历史数据
-    lastExecutionId = activeExecutionId; // 更新记录
-  }
+  // 🔥 SSOT: 移除隐式清空逻辑，完全依赖 executionStore 监听 nodesReset 事件调用 clearMeasurementCache()
+  // 不再在渲染时判断 activeExecutionId 变化来清空缓存
 
   useEffect(() => {
     setupGlobalListener();

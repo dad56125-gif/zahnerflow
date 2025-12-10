@@ -1,7 +1,7 @@
 // --- START OF FILE apps/frontend/src/hooks/useUnifiedLayout.ts ---
 
 import { useMemo } from 'react';
-import { useCanvasStore } from './canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 // 注意：请确保路径与你实际文件结构一致
 import { NODE_CONFIGS } from '../types/NodeConfiguration';
 import {

@@ -1,7 +1,7 @@
 import React from 'react';
-import { NodeCategory, WorkstationType,  } from '../types/Interfaces';
-import { useCanvasStore } from '../canvas/canvasStore';
-import {getNodeConfigByWorkstation, getNodeCategoryName} from '../types/NodeUtilities'
+import { NodeCategory, WorkstationType, } from '../types/Interfaces';
+import { useCanvasStore } from '../state/canvasStore';
+import { getNodeConfigByWorkstation, getNodeCategoryName } from '../types/NodeUtilities'
 interface SidebarProps {
   activePanel: 'nodes';
   onPanelChange: (panel: 'nodes') => void;
@@ -80,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
                               e.dataTransfer.setData('nodeType', nodeType);
                               e.dataTransfer.effectAllowed = 'copy';
                               e.dataTransfer.dropEffect = 'copy';
-                            } catch {}
+                            } catch { }
                           }}
                           onClick={() => handleCreateNode(nodeType)}
                           title={config.description}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useCanvasStore } from '../canvas/canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 import { useSystemState } from '../workflow';
 import { useMeasurementStream } from '../hooks/useMeasurementStream';
 import { RawStreamData } from '../types/Interfaces';

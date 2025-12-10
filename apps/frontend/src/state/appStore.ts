@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { workflowWebSocketService } from './websocket.service';
+import { workflowWebSocketService } from '../workflow/websocket.service';
 
 interface AppState {
   sidebarOpen: boolean;
@@ -14,7 +14,7 @@ interface AppState {
     timestamp: string;
     read: boolean;
   }>;
-  
+
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleNotificationPanel: () => void;
@@ -39,7 +39,7 @@ export const useAppStore = create<AppState>()(
         setSidebarOpen: (open) => set({ sidebarOpen: open }),
         toggleNotificationPanel: () => set(state => ({ notificationPanelOpen: !state.notificationPanelOpen })),
         setNotificationPanelOpen: (open) => set({ notificationPanelOpen: open }),
-        
+
         setTheme: (theme) => {
           set({ theme });
           if (typeof document !== 'undefined') {

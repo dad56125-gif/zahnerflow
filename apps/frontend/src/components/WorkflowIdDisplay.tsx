@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useWorkflowStore } from '../workflow/workflowStore';
+import { useWorkflowStore } from '../workflow'; // 从 workflow 模块统一导入
 import { useOnClickOutside } from '../shared/useOnClickOutside';
 
 interface WorkflowIdDisplayProps {

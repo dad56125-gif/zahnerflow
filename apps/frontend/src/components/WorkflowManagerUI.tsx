@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useCanvasStore } from '@/canvas/canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 import { useLoopDetection } from '../canvas/useLoopDetection';
 import { useOnClickOutside } from '../shared/useOnClickOutside';
 import { useUser } from '../shared/UserContext';

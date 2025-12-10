@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { useCanvasStore } from '../canvas/canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
 import { FilePathConfig } from '../shared/UserContext';
 

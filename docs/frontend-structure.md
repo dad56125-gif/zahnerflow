@@ -16,9 +16,10 @@ src/
 ├── modules/                # 设备模块 (furnace, mfc, common)
 ├── services/               # API 服务层
 ├── shared/                 # 共享工具和上下文
+├── state/                  # 状态管理模块 ✅ (新增)
 ├── styles/                 # CSS 样式文件
 ├── types/                  # 类型定义
-└── workflow/               # 工作流管理
+└── workflow/               # 工作流服务和导出
 ```
 
 ---
@@ -76,19 +77,31 @@ src/
 
 ---
 
-## workflow/ - 工作流管理模块
+## state/ - 状态管理模块 (新增)
 
-管理工作流状态、执行和历史记录。
+统一存放所有 Zustand Store，遵循 SSOT (Single Source of Truth) 原则。
 
-| 文件 | 行数 | 功能说明 |
-|------|------|----------|
-| `executionStore.ts` | 248 | **执行状态管理**：Zustand store，管理执行ID、节点状态、WebSocket 监听 |
-| `workflowService.ts` | 195 | **API 服务**：工作流 CRUD、执行控制、模板管理的 HTTP 封装 |
-| `workflowStore.ts` | 112 | **工作流状态管理**：Zustand store，列表和当前工作流管理 |
-| `appStore.ts` | 93 | **全局应用状态**：侧边栏、通知、主题等 UI 状态 |
-| `WorkflowManager.ts` | 71 | **工作流工具类**：创建空工作流、验证配置 |
-| `websocket.service.ts` | 68 | **WebSocket 服务**：连接管理、事件监听、执行状态推送 |
-| `index.ts` | 22 | **模块入口**：统一导出所有 store、service |
+| 文件 | 功能说明 |
+|------|----------|
+| `index.ts` | **统一导出**：重新导出所有 Store |
+| `executionStateBridge.ts` | **执行状态桥**：WebSocket 事件监听、后端状态快照同步、SSOT 状态管理 |
+| `currentWorkflowStore.ts` | **当前工作流**：currentWorkflow 管理、工作流 CRUD |
+| `appStore.ts` | **全局应用状态**：侧边栏、通知、主题等 UI 状态 |
+| `canvasStore.ts` | **画布状态**：节点数组、选中状态、画布尺寸 |
+
+---
+
+## workflow/ - 工作流服务模块
+
+工作流相关的服务和工具类（Store 已移至 state/）。
+
+| 文件 | 功能说明 |
+|------|----------|
+| `index.ts` | **模块入口**：从 state/ 重新导出 Store，导出 Service |
+| `workflowService.ts` | **API 服务**：工作流 CRUD、执行控制的 HTTP 封装 |
+| `websocket.service.ts` | **WebSocket 服务**：连接管理、事件监听 |
+| `WorkflowManager.ts` | **工作流工具类**：创建空工作流、验证配置 |
+| `timelineCalculator.ts` | **时间线计算**：估算工作流执行时间 |
 
 ---
 

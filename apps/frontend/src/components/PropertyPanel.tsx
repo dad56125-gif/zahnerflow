@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { WorkstationType, WorkflowNode, NodeType } from '../types/Interfaces'; // 引入新类型
-import { useCanvasStore } from '../canvas/canvasStore'; // 修正 store 路径
+import { useCanvasStore } from '../state/canvasStore'; // 修正 store 路径
 import { useMfc } from '../modules/mfc';
 import { DataViewer } from './DataViewer';
 // 确保 useSystemState 来自正确的执行 Store
-import { useSystemState } from '../workflow/executionStore';
+import { useSystemState } from '../workflow'; // 从 workflow 模块统一导入
 
 // 导入工具函数
 import {

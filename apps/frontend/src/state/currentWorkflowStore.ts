@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 // 1. 引入新定义的 Workflow
-import { Workflow } from '../types/Interfaces'; 
-import { workflowService } from './workflowService';
+import { Workflow } from '../types/Interfaces';
+import { workflowService } from '../workflow/workflowService';
 
 interface WorkflowState {
   workflows: Workflow[];
@@ -44,7 +44,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           try {
             // 🚨 强制转换入参和出参
             const workflow = await workflowService.createWorkflow(data as any) as unknown as Workflow;
-            
+
             set(state => ({
               workflows: [...state.workflows, workflow],
               currentWorkflow: workflow,
@@ -60,17 +60,17 @@ export const useWorkflowStore = create<WorkflowState>()(
           set(state => {
             const isCurrent = state.currentWorkflow?.id === id;
             // 乐观更新
-            const updatedCurrent = isCurrent 
-              ? { ...state.currentWorkflow, ...data } as Workflow 
+            const updatedCurrent = isCurrent
+              ? { ...state.currentWorkflow, ...data } as Workflow
               : state.currentWorkflow;
-            
+
             return { currentWorkflow: updatedCurrent };
           });
 
           try {
             // 🚨 强制转换
             const workflow = await workflowService.updateWorkflow(id, data as any) as unknown as Workflow;
-            
+
             set(state => ({
               workflows: state.workflows.map(w => w.id === id ? workflow : w),
               currentWorkflow: state.currentWorkflow?.id === id ? workflow : state.currentWorkflow,

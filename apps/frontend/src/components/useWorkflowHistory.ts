@@ -5,8 +5,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../shared/api';
-import { useCanvasStore } from '@/canvas/canvasStore';
-import { useWorkflowStore } from '@/workflow';
+import { useCanvasStore } from '../state/canvasStore';
+import { useWorkflowStore } from '../workflow';
 
 // 工作流历史记录接口
 export interface WorkflowHistory {

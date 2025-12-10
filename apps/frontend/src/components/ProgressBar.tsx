@@ -6,7 +6,7 @@
 import React from 'react';
 import { ExecutionSnapshot } from '../types/Interfaces';
 import { formatDuration, estimateWorkflowSeconds } from '../workflow/timelineCalculator';
-import { useCanvasStore } from '../canvas/canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 
 interface ProgressBarProps {
     systemState: ExecutionSnapshot | null;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NotificationPanel } from './NotificationPanel';
 import { ProgressBar } from './ProgressBar';
-import { useCanvasStore } from '../canvas/canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 import { NODE_CONFIGS } from '../types/NodeConfiguration';
 import { ExecutionSnapshot } from '../types/Interfaces';
 import type { SimpleLoopInfo } from '../canvas/useLoopDetection';

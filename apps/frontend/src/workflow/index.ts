@@ -1,12 +1,12 @@
 // --- START OF FILE index.ts ---
 
-// 1. 导出 Stores (状态管理)
-export { useWorkflowStore } from './workflowStore';
-export { useExecutionStore, useIsRunning, useNodeStatus, useExecutionError, useSystemState } from './executionStore';
-export { useAppStore } from './appStore';
+// 1. 导出 Stores (状态管理) - 从 state/ 目录重新导出
+export { useWorkflowStore } from '../state/currentWorkflowStore';
+export { useExecutionStore, useIsRunning, useNodeStatus, useExecutionError, useSystemState } from '../state/executionStateBridge';
+export { useAppStore } from '../state/appStore';
 
 // 2. 导出 Canvas Store (Re-export)
-export { useCanvasStore } from '../canvas/canvasStore';
+export { useCanvasStore } from '../state/canvasStore';
 
 // 3. 导出 Services (业务逻辑)
 export { workflowService, executionService, templateService } from './workflowService';

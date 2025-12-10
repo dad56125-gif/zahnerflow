@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 // 导入新的类型
 import { NodeType, WorkstationType } from '../types/Interfaces';
-import { useCanvasStore } from './canvasStore';
+import { useCanvasStore } from '../state/canvasStore';
 import { NodeRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from '../components/Toolbar';
