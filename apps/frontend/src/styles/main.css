@@ -34,6 +34,7 @@
    ========================================================================== */
 
 @import './_buttons.css' layer(components);
+@import './_dropdown.css' layer(components);
 @import './_components.css' layer(components);
 
 /* ==========================================================================

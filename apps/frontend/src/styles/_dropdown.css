@@ -1,0 +1,204 @@
+/* === _dropdown.css - 下拉菜单组件样式 === */
+
+/* === 下拉菜单基础 === */
+.dropdown_base {
+    position: fixed;
+    z-index: var(--z-dropdown);
+    min-width: 280px;
+    max-height: 300px;
+
+    /* 玻璃态效果 */
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-panel));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px var(--glass-shadow);
+
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    pointer-events: none;
+
+    /* 性能优化 */
+    will-change: opacity, transform, backdrop-filter;
+}
+
+.dropdown_base.show {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+    animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.dropdown_base.hiding {
+    display: flex;
+    pointer-events: none;
+    animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* === 下拉菜单列表 === */
+.dropdown_list {
+    min-height: var(--btn-h, var(--size-3xl));
+    max-height: calc(var(--btn-h, var(--size-3xl)) * 5);
+    overflow-y: auto;
+    padding: var(--size-2xs) 0;
+}
+
+/* === 下拉菜单选项 === */
+.dropdown_option {
+    width: 100%;
+    padding: var(--size-2xs) var(--size-lg);
+    min-height: var(--btn-h, var(--size-3xl));
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    transition: var(--transition);
+    font-size: var(--text-body);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    cursor: pointer;
+    position: relative;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.dropdown_option:hover {
+    background: var(--glass-hover);
+    color: var(--text-primary);
+}
+
+.dropdown_option.selected {
+    background: var(--color-primary-bg);
+    border-left: 3px solid var(--color-primary);
+    color: var(--text-primary);
+}
+
+/* === 下拉菜单空状态 === */
+.dropdown_empty {
+    padding: var(--size-lg);
+    color: var(--text-secondary);
+    font-style: italic;
+    cursor: default;
+    user-select: none;
+    text-align: center;
+    font-size: var(--text-body);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* === 下拉菜单分隔符 === */
+.dropdown_separator {
+    height: 1px;
+    background: var(--glass-border);
+    margin: var(--size-3xs) 0;
+}
+
+/* === 工作站下拉菜单专用样式 === */
+.dropdown_base.dropdown_workstation {
+    min-width: 280px;
+    max-height: 400px;
+}
+
+/* 工作站下拉菜单选项 */
+.dropdown_workstation_option {
+    width: 100%;
+    padding: var(--size-2xs) var(--size-lg);
+    min-height: var(--btn-h, var(--size-3xl));
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    transition: var(--transition);
+    font-size: var(--text-body);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    cursor: pointer;
+    position: relative;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.dropdown_workstation_option:hover {
+    background: var(--glass-hover);
+    color: var(--text-primary);
+}
+
+.dropdown_workstation_option.connected {
+    border-left: 3px solid var(--color-success);
+}
+
+.dropdown_workstation_option.disconnected {
+    border-left: 3px solid var(--color-neutral);
+}
+
+/* 工作站选项内容布局 */
+.dropdown_workstation_content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: var(--size-sm);
+}
+
+.dropdown_workstation_icon {
+    width: var(--size-lg);
+    height: var(--size-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--size-lg);
+}
+
+.dropdown_workstation_info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-3xs);
+}
+
+.dropdown_workstation_name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dropdown_workstation_type {
+    font-size: var(--size-xs);
+    color: var(--text-secondary);
+}
+
+.dropdown_workstation_status {
+    display: flex;
+    align-items: center;
+    gap: var(--size-3xs);
+    font-size: var(--size-xs);
+}
+
+/* === 状态指示点 === */
+.status_dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-neutral);
+}
+
+.status_dot.connected {
+    background: var(--color-success);
+}
+
+.status_dot.disconnected {
+    background: var(--color-neutral);
+}
+
+.status_text {
+    color: var(--text-secondary);
+}
+
+/* === 下拉箭头 === */
+.dropdown-arrow {
+    transition: transform 0.2s ease;
+}
+
+.dropdown-arrow.rotated {
+    transform: rotate(180deg);
+}
