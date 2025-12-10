@@ -73,8 +73,8 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             const canvasHeight = window.innerHeight - canvasTop - (navbarH + 2 * space);
 
             setDimensions({
-                left: sidebarR,
-                width: propertyL - sidebarR,
+                left: 0, // Unused (handled by CSS)
+                width: 0, // Unused (handled by CSS)
                 top: canvasTop + (canvasHeight * 0.1), // 上方留 10% 空间
                 height: canvasHeight * 0.66 // 2/3 高度
             });
@@ -100,10 +100,29 @@ export const ChartModal: React.FC<ChartModalProps> = ({
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, onClose]);
 
-    if (!isOpen) return null;
+    // 动画状态管理
+    const [isRendered, setIsRendered] = useState(isOpen);
+    const [isHiding, setIsHiding] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setIsRendered(true);
+            setIsHiding(false);
+        } else if (isRendered) {
+            // 开始退出动画
+            setIsHiding(true);
+            const timer = setTimeout(() => {
+                setIsRendered(false);
+                setIsHiding(false);
+            }, 300); // 略大于动画时间 (0.25s)
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    if (!isRendered) return null;
 
     return (
-        <Portal isOpen={isOpen} onClose={onClose} pointerEvents="auto">
+        <Portal isOpen={true} onClose={onClose} pointerEvents="auto">
             {/* 背景遮罩 */}
             <div
                 className="chart-modal-backdrop"
@@ -111,9 +130,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                 style={{
                     position: 'fixed',
                     inset: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    backdropFilter: 'blur(4px)',
-                    WebkitBackdropFilter: 'blur(4px)',
+                    background: 'transparent',
                     zIndex: 'var(--z-modal, 200)'
                 }}
             />
@@ -121,53 +138,18 @@ export const ChartModal: React.FC<ChartModalProps> = ({
             {/* Modal 主体 */}
             <div
                 ref={modalRef}
-                className="chart-modal glass"
+                className={`chart-modal glass ${isHiding ? 'hiding' : 'show'}`}
                 onClick={(e) => e.stopPropagation()}
                 style={{
                     position: 'fixed',
-                    left: dimensions.left,
-                    top: dimensions.top,
-                    width: dimensions.width,
-                    height: dimensions.height,
+                    // left/width/top/height 由 CSS .chart-modal 控制
                     zIndex: 'calc(var(--z-modal, 200) + 1)',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
                 }}
             >
-                {/* 标题栏 */}
-                <div
-                    className="chart-modal-header"
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: 'var(--size-sm) var(--size-md)',
-                        borderBottom: '1px solid var(--glass-border)',
-                        flexShrink: 0
-                    }}
-                >
-                    <h3 style={{ margin: 0, fontSize: 'var(--size-lg)', color: 'var(--text-primary)' }}>
-                        📊 实时测量图表
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="chart-modal-close-btn"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--text-secondary)',
-                            fontSize: 'var(--size-lg)',
-                            cursor: 'pointer',
-                            padding: 'var(--size-2xs)',
-                            borderRadius: 'var(--radius-sm)',
-                            transition: 'var(--transition-fast)'
-                        }}
-                        title="关闭 (ESC)"
-                    >
-                        ✕
-                    </button>
-                </div>
+
 
                 {/* 图表内容区 */}
                 <div

@@ -5667,6 +5667,39 @@
 }
 
 /* === 图表 Modal 样式 === */
+.chart-modal {
+  /* 水平定位：精确对齐 Canvas 区域 */
+  /* Left = Padding(space) + Sidebar + Gap(space) = Sidebar + 2*space */
+  left: calc(var(--sidebar-w) + 2 * var(--space));
+  /* Right = Padding(space) + Property + Gap(space) = Property + 2*space */
+  right: calc(var(--property-w) + 2 * var(--space));
+  width: auto !important;
+  /* 覆盖可能得内联样式 */
+
+  /* 垂直定位：底部对齐 Canvas 底部，顶部留出一定空间 */
+  /* Bottom = Padding(space) + Status(navbar) + Gap(space) */
+  bottom: calc(var(--navbar-h) + 2 * var(--space));
+  /* Top = Canvas Top + Offset (30vh) -> Modal height approx 2/3 */
+  top: calc(var(--navbar-h) + 2 * var(--space) + 30vh);
+  height: auto !important;
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  /* 初始状态：透明，以便动画接管 */
+  opacity: 0;
+}
+
+.chart-modal.show {
+  animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.chart-modal.hiding {
+  animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
 .chart-modal-close-btn:hover {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.1);
