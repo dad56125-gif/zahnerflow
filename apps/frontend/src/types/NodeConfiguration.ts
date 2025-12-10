@@ -71,9 +71,9 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '恒电位电化学阻抗谱测量 (FastAPI)',
     icon: '📊',
     defaultParameters: {
-      eis_lower_frequency: 0.2,
-      eis_upper_frequency: 100000,
-      eis_start_frequency: 1000,
+      eis_lower_frequency: 0.1,
+      eis_upper_frequency: 300000,
+      eis_start_frequency: 0.1,
       enable_dc_bias: false,
       eis_potential: 0.0,
       eis_amplitude: 0.025,
@@ -81,7 +81,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       eis_upper_periods: 20,
       eis_lower_steps: 5,
       eis_upper_steps: 10,
-      eis_scan_direction: 'START_TO_MIN',
+      eis_scan_direction: 'START_TO_MAX',
       eis_scan_strategy: 'SINGLE_SINE'
     }
   },
