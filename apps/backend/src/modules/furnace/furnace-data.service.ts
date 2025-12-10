@@ -42,7 +42,7 @@ export class FurnaceDataService implements OnModuleInit {
   private lastFlushTime = Date.now();         // 上次刷新时间
   private readonly MAX_BUFFER_TIME = 10000;   // 最长缓冲时间（10秒）
 
-  constructor(private readonly db: DbService) {}
+  constructor(private readonly db: DbService) { }
 
   onModuleInit() {
     // 1. 初始化预设表 (JSON 存 segments)
@@ -159,7 +159,7 @@ export class FurnaceDataService implements OnModuleInit {
         INSERT INTO furnace_presets (name, segments_json, summary, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
       `).run(name, JSON.stringify(segments), summary || '', now, now);
-      
+
       return { name, segments, summary, createdAt: now, updatedAt: now } as any;
     } catch (e: any) {
       if (e.message.includes('UNIQUE constraint')) throw new HttpException('Preset name already exists', HttpStatus.CONFLICT);
@@ -210,7 +210,7 @@ export class FurnaceDataService implements OnModuleInit {
       return { changed: true, steps };
     } catch (err: any) {
       this.logger.warn(`Apply failed, rolling back: ${err?.message}`);
-      try { await setDeviceSegments(before); steps.push('Rolled back.'); } catch {}
+      try { await setDeviceSegments(before); steps.push('Rolled back.'); } catch { }
       throw new HttpException({ message: 'Apply failed', steps }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -264,7 +264,7 @@ export class FurnaceDataService implements OnModuleInit {
       const db: any = this.db;
       const insertMany = db.db.transaction((samples: any[]) => {
         const stmt = this.db.prepare(`
-          INSERT INTO furnace_metrics_recent
+          INSERT OR IGNORE INTO furnace_metrics_recent
           (timestamp, pv, sv, mv, status_code, segment, segment_time, segment_time_set)
           VALUES (?, ?, ?, ?, ?, 0, 0, 0)
         `);
@@ -369,7 +369,7 @@ export class FurnaceDataService implements OnModuleInit {
     const data = await this.queryFurnace(params.start_date, params.end_date, params.limit);
     return { data, total: data.length, params };
   }
-  
+
   // 导出和清理逻辑暂时不做复杂实现，预留接口
   async exportData(params: any) { return { download_url: '', filename: 'not_implemented' }; }
   async cleanupData(olderThanDays: number = 30) {
