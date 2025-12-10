@@ -63,11 +63,9 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   // 检测循环（使用简化版Hook）
   const detectedLoops = useLoopDetection(nodes);
 
-  // 使用useOnClickOutside Hook实现点击外部关闭
+  // 使用 useOnClickOutside 实现点击外部关闭
   useOnClickOutside(panelRef, () => {
-    if (onClose) {
-      onClose();
-    }
+    if (onClose) onClose();
   });
 
   // 项目下拉菜单点击外部关闭处理
@@ -170,15 +168,12 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   const stats = getWorkflowStats();
 
   return (
-    <Portal>
-      <div className="portal-overlay">
+    <Portal pointerEvents="auto">
+      <div className="workflow-manager-overlay">
         <div
           ref={panelRef}
-          className={`workflow-manager-ui glass ${className}`}
-          style={{
-            ...style,
-            background: 'rgba(0, 0, 0, 0.5)' // 覆盖玻璃态背景透明度为0.5
-          }}
+          className={`workflow-manager-ui ${className}`}
+          style={style}
         >
           <div className="manager-header">
             <h3>工作流管理</h3>

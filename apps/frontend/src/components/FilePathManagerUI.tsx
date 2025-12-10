@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../shared/api';
 import { useUser, FilePathConfig } from '../shared/UserContext';
-import { useOnClickOutside } from '../shared/useOnClickOutside';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
+import { useOnClickOutside } from '../shared/useOnClickOutside';
 import { Portal } from './Portal';
 
 interface FilePathManagerUIProps {
@@ -60,10 +60,10 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
     return validPattern.test(name);
   };
 
+
   // 使用 useOnClickOutside 实现点击外部关闭
   useOnClickOutside(panelRef, onClose);
 
-  // 注意：下拉菜单的点击外部关闭和动画逻辑已由 useDropdownPosition hook 处理
 
   useEffect(() => {
     if (currentUser) {
@@ -230,7 +230,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
   };
 
   return (
-    <Portal>
+    <Portal pointerEvents="auto">
       <div className="file-path-manager-overlay">
         <div ref={panelRef} className="file-path-manager-panel">
           <div className="panel-header">
@@ -394,41 +394,41 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
             )}
           </div>
         </div>
-
-        {/* 项目下拉菜单 - 使用Portal渲染到body下 */}
-        <Portal>
-          {(projectDropdown.isOpen || projectDropdown.isHiding) && (
-            <div
-              ref={projectDropdownRef}
-              className={`dropdown_base overlay_base ${projectDropdown.isHiding ? 'hiding' : 'show'}`}
-              style={{
-                top: `${projectDropdown.position.top}px`,
-                left: `${projectDropdown.position.left}px`,
-                width: `${projectDropdown.position.width}px`
-              } as React.CSSProperties}
-            >
-              <div className="dropdown_list">
-                {projects.length > 0 ? (
-                  projects.map(project => (
-                    <div
-                      key={project}
-                      className={`dropdown_option ${project === filePathConfig.project_name ? 'selected' : ''}`}
-                      onClick={() => {
-                        setFilePathConfig({ ...filePathConfig, project_name: project });
-                        projectDropdown.startClose();
-                      }}
-                    >
-                      {project}
-                    </div>
-                  ))
-                ) : (
-                  <div className="dropdown_empty">暂无项目</div>
-                )}
-              </div>
-            </div>
-          )}
-        </Portal>
       </div>
+
+      {/* 项目下拉菜单 - 使用Portal渲染到body下 */}
+      <Portal>
+        {(projectDropdown.isOpen || projectDropdown.isHiding) && (
+          <div
+            ref={projectDropdownRef}
+            className={`dropdown_base overlay_base ${projectDropdown.isHiding ? 'hiding' : 'show'}`}
+            style={{
+              top: `${projectDropdown.position.top}px`,
+              left: `${projectDropdown.position.left}px`,
+              width: `${projectDropdown.position.width}px`
+            } as React.CSSProperties}
+          >
+            <div className="dropdown_list">
+              {projects.length > 0 ? (
+                projects.map(project => (
+                  <div
+                    key={project}
+                    className={`dropdown_option ${project === filePathConfig.project_name ? 'selected' : ''}`}
+                    onClick={() => {
+                      setFilePathConfig({ ...filePathConfig, project_name: project });
+                      projectDropdown.startClose();
+                    }}
+                  >
+                    {project}
+                  </div>
+                ))
+              ) : (
+                <div className="dropdown_empty">暂无项目</div>
+              )}
+            </div>
+          </div>
+        )}
+      </Portal>
     </Portal>
   );
 };

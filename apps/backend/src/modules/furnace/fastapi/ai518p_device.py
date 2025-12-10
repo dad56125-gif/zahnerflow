@@ -135,7 +135,10 @@ class AI518PController:
         cs = self._checksum(code, value)
         cmd = bytes([addr, addr, 0x43, code, value & 0xFF, (value >> 8) & 0xFF, cs[0], cs[1]])
 
-        # 写入指令本身就会返回当前状态帧，我们直接利用它（或者调用 read_param 解析逻辑）
+        # 发送写入命令
+        self._send(cmd)
+        
+        # 写入后读取最新状态返回
         return self.read_param(code) 
 
 driver = AI518PController()
