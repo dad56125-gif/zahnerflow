@@ -2349,24 +2349,6 @@
 }
 
 
-/* === 节点端口占位符（为后续端口系统预留） === */
-.node-port-placeholder {
-  position: absolute;
-  width: clamp(8px, 1.5vw, 12px);
-  height: clamp(8px, 1.5vw, 12px);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  opacity: 0;
-  transition: var(--transition);
-  pointer-events: none;
-  z-index: 15;
-}
-
-.node:hover .node-port-placeholder {
-  opacity: 1;
-}
-
 /* === 节点选中边框 === */
 .node-selection-border {
   position: absolute;
