@@ -23,6 +23,7 @@ export interface NodeRendererProps {
   isSelected?: boolean;
   isConnecting?: boolean;
   connectionStart?: string | null;
+  nodeStatus?: string; // 节点执行状态: idle, running, completed, failed, paused, pending
 
   // 事件回调 (参数类型改为 DisplayNode)
   onNodeClick?: (node: DisplayNode) => void;
@@ -45,7 +46,8 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   onNodeDoubleClick,
   onNodeContextMenu,
   onNodeDragStart,
-  onNodeDragEnd
+  onNodeDragEnd,
+  nodeStatus = 'idle' // 默认状态
 }) => {
   // 1. 直接从注入的数据中读取显示属性
   const displayName = node.data.label || node.type;
@@ -116,15 +118,15 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     };
   }, [node.position.x, node.position.y]);
 
-  // 状态样式
-  const nodeClassName = useMemo(() =>
-    `node glass status-idle ${ // TODO: 绑定真实状态
-    isSelected ? 'selected' : ''
-    } ${isConnecting ? 'connecting' : ''
-    } ${isDragOver ? 'drag-over' : ''
-    }`,
-    [isSelected, isConnecting, isDragOver]
-  );
+  // 状态样式 - 使用真实节点状态
+  const nodeClassName = useMemo(() => {
+    // 状态映射: idle, run/running, completed, failed, paused… → status-xxx
+    const statusClass = `status-${nodeStatus === 'run' ? 'running' : nodeStatus}`;
+    return `node glass ${statusClass} ${isSelected ? 'selected' : ''
+      } ${isConnecting ? 'connecting' : ''
+      } ${isDragOver ? 'drag-over' : ''
+      }`.trim();
+  }, [nodeStatus, isSelected, isConnecting, isDragOver]);
 
   return (
     <div
@@ -173,6 +175,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     prev.node.id === next.node.id &&
     prev.isSelected === next.isSelected &&
     prev.isConnecting === next.isConnecting &&
+    prev.nodeStatus === next.nodeStatus && // 添加状态比较
     JSON.stringify(prev.node.data) === JSON.stringify(next.node.data) &&
     prev.node.position.x === next.node.position.x &&
     prev.node.position.y === next.node.position.y

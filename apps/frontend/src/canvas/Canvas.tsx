@@ -2,6 +2,7 @@
 // 导入新的类型
 import { NodeType, WorkstationType } from '../types/Interfaces';
 import { useCanvasStore } from '../state/canvasStore';
+import { useExecutionStore } from '../state/executionStateBridge'; // 新增：读取执行状态
 import { NodeRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from '../components/Toolbar';
@@ -61,6 +62,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     addNode,
     reorderNode // 假设你在 Store 中实现了这个 Action
   } = useCanvasStore();
+
+  // 🔥 新增：从执行状态桥读取节点状态
+  const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
 
   // 2. 生成渲染视图 (View Model)
   const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useLayout(
@@ -309,6 +313,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               index={index}
               isSelected={selectedNodeId === node.id}
               isConnecting={false}
+              nodeStatus={nodeStatuses[index] || 'idle'} // 🔥 传递真实节点状态
               onNodeClick={handleNodeClick}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodeContextMenu={handleNodeContextMenu}
