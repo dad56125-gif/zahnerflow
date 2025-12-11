@@ -5131,30 +5131,34 @@
   font-weight: 500;
 }
 
-.scanning-info {
-  margin-top: var(--size-sm);
+/* === MFC Header 扫描进度条（横线样式） === */
+.mfc-scan-progress-header {
   display: flex;
-  flex-direction: column;
-  gap: var(--size-xs);
+  align-items: center;
+  gap: var(--size-sm);
+  padding: var(--size-xs) var(--size-md);
+  background: rgba(59, 130, 246, 0.1);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-.scanning-info small {
-  color: var(--text-secondary);
-  font-size: var(--size-xs);
-}
-
-.scan-progress-bar {
-  width: 200px;
-  height: 6px;
+.mfc-scan-progress-bar {
+  flex: 1;
+  height: 4px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
-  margin: 0 auto;
 }
 
-.scan-progress-fill {
+.mfc-scan-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--color-primary), var(--color-success));
-  border-radius: 3px;
+  border-radius: 2px;
   transition: width 0.3s ease-out;
+}
+
+.mfc-scan-progress-text {
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }

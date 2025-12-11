@@ -31,10 +31,11 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   mfcState,
   mfcControls
 }) => {
-  // 在MFC模态框打开时才确保WebSocket连接
+  // 在MFC模态框打开时才确保WebSocket连接（仅执行一次）
   useEffect(() => {
     mfcControls.ensureConnection();
-  }, [mfcControls]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modal_top; void modal_left; void modal_width; void modal_height;
@@ -89,6 +90,21 @@ export const MFCModal: React.FC<MFCModalProps> = ({
           </div>
           <button className="modal_close" onClick={on_close}>×</button>
         </div>
+
+        {/* 扫描进度条 - 在header下方显示 */}
+        {mfcState.isScanning && mfcState.scanProgress && (
+          <div className="mfc-scan-progress-header">
+            <div className="mfc-scan-progress-bar">
+              <div
+                className="mfc-scan-progress-fill"
+                style={{ width: `${mfcState.scanProgress.percent}%` }}
+              />
+            </div>
+            <span className="mfc-scan-progress-text">
+              扫描中 {mfcState.scanProgress.percent}% | 地址 {mfcState.scanProgress.current} | 已发现 {mfcState.scanProgress.found_count} 个
+            </span>
+          </div>
+        )}
 
         {/* 主要内容区域 */}
         <div className="mfc-modal-content">
@@ -175,36 +191,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                 <span className="last-update">
                   最后更新: {mfcState.lastUpdate?.toLocaleTimeString() || '--:--:--'}
                 </span>
-              </div>
-            </div>
-          )}
-
-          {/* 扫描进度 */}
-          {mfcState.isScanning && (
-            <div className="scanning-overlay">
-              <div className="scanning-content">
-                <div className="loading-spinner" />
-                <p>正在扫描MFC设备...</p>
-                {mfcState.scanProgress && (
-                  <div className="scanning-info">
-                    <div className="scan-progress-bar">
-                      <div
-                        className="scan-progress-fill"
-                        style={{ width: `${mfcState.scanProgress.percent}%` }}
-                      />
-                    </div>
-                    <small>
-                      进度: {mfcState.scanProgress.percent}%
-                      | 当前地址: {mfcState.scanProgress.current}
-                      | 已发现: {mfcState.scanProgress.found_count} 个设备
-                    </small>
-                  </div>
-                )}
-                {!mfcState.scanProgress && (
-                  <div className="scanning-info">
-                    <small>扫描地址范围: 32-80</small>
-                  </div>
-                )}
               </div>
             </div>
           )}
