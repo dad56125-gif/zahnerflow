@@ -177,37 +177,47 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     return innerNodes;
   }, [nodes, loop.nodeIds]);
 
-  // 优化 2: 简化路径点计算 (不再生成 segments，直接生成点序列)
+  // 优化 2: 路径点计算 (蛇形布局适配)
   const pathPoints = useMemo(() => {
     if (completeLoopNodes.length < 2) return [];
 
-    const rawPoints = completeLoopNodes.map(node => getNodeCenterPoint(node));
     const finalPoints: Point[] = [];
 
-    // 添加第一个点
-    finalPoints.push(rawPoints[0]);
+    for (let i = 0; i < completeLoopNodes.length; i++) {
+      const node = completeLoopNodes[i];
+      const centerPoint = getNodeCenterPoint(node);
+      const nodeWidth = node.layoutMeta?.width ?? node.style?.width ?? 140;
+      const nodeHeight = node.style?.height ?? 60;
 
-    // 处理中间的折线逻辑 (L-Shape)
-    for (let i = 0; i < rawPoints.length - 1; i++) {
-      const start = rawPoints[i];
-      const end = rawPoints[i + 1];
+      // 添加当前节点中心
+      finalPoints.push(centerPoint);
 
-      // 判断是否需要拐弯 (阈值可以适当调大)
-      const isLShape = Math.abs(start.y - end.y) > 10 && Math.abs(start.x - end.x) > 10;
+      // 如果不是最后一个节点，检查是否需要转折
+      if (i < completeLoopNodes.length - 1) {
+        const nextNode = completeLoopNodes[i + 1];
+        const currentRow = node.layoutMeta?.row ?? 0;
+        const nextRow = nextNode.layoutMeta?.row ?? 0;
 
-      if (isLShape) {
-        // 简单的 L 型插值
-        const horizontalDistance = Math.abs(end.x - start.x);
-        const verticalDistance = Math.abs(end.y - start.y);
+        // 跨行转折：添加转折点
+        if (currentRow !== nextRow) {
+          const rowIsLeftToRight = currentRow % 2 === 0;
+          const nextCenterPoint = getNodeCenterPoint(nextNode);
+          const nextNodeWidth = nextNode.layoutMeta?.width ?? nextNode.style?.width ?? 140;
 
-        // 这里的逻辑与原来 segments 的逻辑一致，只是变成了加点
-        if (horizontalDistance < verticalDistance) {
-          finalPoints.push({ x: end.x, y: start.y });
-        } else {
-          finalPoints.push({ x: start.x, y: end.y });
+          // 根据蛇形方向决定转折点
+          if (rowIsLeftToRight) {
+            // 偶数行从左到右，在右侧转折
+            const turnX = Math.max(centerPoint.x + nodeWidth / 2, nextCenterPoint.x + nextNodeWidth / 2) + 20;
+            finalPoints.push({ x: turnX, y: centerPoint.y });
+            finalPoints.push({ x: turnX, y: nextCenterPoint.y });
+          } else {
+            // 奇数行从右到左，在左侧转折
+            const turnX = Math.min(centerPoint.x - nodeWidth / 2, nextCenterPoint.x - nextNodeWidth / 2) - 20;
+            finalPoints.push({ x: turnX, y: centerPoint.y });
+            finalPoints.push({ x: turnX, y: nextCenterPoint.y });
+          }
         }
       }
-      finalPoints.push(end);
     }
     return finalPoints;
   }, [completeLoopNodes]);
@@ -221,7 +231,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     // 而是只取第一个节点的高度做基准即可，无需放在循环里算
     const firstNode = completeLoopNodes[1] || nodes[0]; // 取真实的第一个节点
     const baseHeight = firstNode?.style?.height ?? 60;
-    const beltWidth = baseHeight * 1.15; // 稍微宽一点
+    const beltWidth = baseHeight * 1.5; // 增大边界宽度以完全包围节点
 
     // 🔥 调用优化后的 generateBeltPath
     return generateBeltPath(pathPoints, beltWidth);

@@ -168,8 +168,8 @@
 
     /* === 布局尺寸 === */
     --navbar-h: clamp(3rem, 2.5rem + 1vw, 4rem);
-    --sidebar-w: clamp(16rem, 20vw, 22rem);
-    --property-w: clamp(16rem, 20vw, 22rem);
+    --sidebar-w: clamp(18rem, 22vw, 24rem);
+    --property-w: clamp(18rem, 22vw, 24rem);
 
     /* === 复合过渡 === */
     --transition: all var(--duration-normal) var(--ease-in-out);
@@ -266,8 +266,8 @@
     :root {
         font-size: 12.8px;
         --space: var(--space-4);
-        --sidebar-w: clamp(12rem, 16vw, 16rem);
-        --property-w: clamp(12rem, 16vw, 16rem);
+        --sidebar-w: clamp(14rem, 18vw, 18rem);
+        --property-w: clamp(14rem, 18vw, 18rem);
     }
 }
 
@@ -276,8 +276,8 @@
     :root {
         font-size: 17px;
         --space: var(--space-5);
-        --sidebar-w: clamp(14rem, 18vw, 18rem);
-        --property-w: clamp(14rem, 18vw, 18rem);
+        --sidebar-w: clamp(16rem, 20vw, 20rem);
+        --property-w: clamp(16rem, 20vw, 20rem);
     }
 }
 
@@ -286,7 +286,7 @@
     :root {
         font-size: 18px;
         --space: var(--space-6);
-        --sidebar-w: clamp(16rem, 20vw, 22rem);
-        --property-w: clamp(16rem, 20vw, 22rem);
+        --sidebar-w: clamp(18rem, 22vw, 24rem);
+        --property-w: clamp(18rem, 22vw, 24rem);
     }
 }
