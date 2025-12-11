@@ -5290,6 +5290,14 @@
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: var(--size-sm);
+  /* 隐藏number input的spinner箭头 */
+  -moz-appearance: textfield;
+}
+
+.mfc-input::-webkit-outer-spin-button,
+.mfc-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .mfc-input:focus {
@@ -5438,20 +5446,20 @@
 .mfc-section {
   display: flex;
   flex-direction: column;
-  gap: var(--size-sm);
 }
 
 .mfc-section-title {
-  font-size: var(--size-sm);
+  font-size: var(--size-md);
   font-weight: 600;
   color: var(--color-success);
-  padding: var(--size-2xs) var(--size-sm);
+  padding: var(--size-xs) var(--size-sm);
   background: rgba(16, 185, 129, 0.1);
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   gap: var(--size-2xs);
   width: fit-content;
+  margin-bottom: var(--size-xs);
 }
 
 .mfc-section-title.mfc-section-idle {
