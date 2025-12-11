@@ -544,11 +544,11 @@
   align-items: center;
 }
 
-/* 公共：头部样�?(Modal & Notification) */
+/* 公共：头部样式 (Modal & Notification) */
 .modal_header,
 .notification-panel-header {
   justify-content: space-between;
-  padding: var(--size-xl);
+  padding: var(--size-sm) var(--size-xl);
   border-bottom: 1px solid var(--glass-border);
   background: rgba(0, 0, 0, 0.1);
 }
@@ -601,11 +601,47 @@
 
 .modal_title,
 .notification-panel-title {
-  font-size: var(--size-xl);
+  font-size: var(--size-lg);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: var(--size-2xs);
+}
+
+/* 通知数量角标 - 复用节点 index 角标风格 */
+.notification-badge {
+  background: rgba(255, 107, 107, 0.9);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  min-width: 16px;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 通知面板操作按钮 - 透明背景 */
+.notification-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--size-2xs);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  font-size: var(--size-md);
+}
+
+.notification-action-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .modal_close {
@@ -643,15 +679,25 @@
   left: var(--sidebar-l);
   width: var(--notification-panel-width);
   max-height: var(--notification-panel-max-height);
+  min-height: var(--notification-panel-min-height);
   border-radius: var(--radius-panel);
   z-index: var(--notification-panel-z-index);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: notification_slide_in var(--duration-normal) var(--ease-out);
   will-change: opacity, transform;
-  /* �?修复：显式开启鼠标事件，防止Portal的pointer-events: none穿�?*/
+  /* ✅ 修复：显式开启鼠标事件，防止Portal的pointer-events: none穿透 */
   pointer-events: auto;
+}
+
+/* 通知面板打开动画 */
+.notification-panel.show {
+  animation: dropdownIn 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* 通知面板关闭动画 */
+.notification-panel.hiding {
+  animation: dropdownOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 .notification-panel-content {
@@ -661,11 +707,14 @@
 }
 
 .notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-sm);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-button);
-  padding: var(--size-lg);
-  margin-bottom: var(--size-sm);
+  padding: var(--size-sm);
+  margin-bottom: var(--size-2xs);
   transition: var(--transition);
   cursor: pointer;
 }
@@ -673,12 +722,89 @@
 .notification-item:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--glass-border-hover);
-  transform: translateX(-2px);
 }
 
 .notification-item.unread {
   border-left: 3px solid var(--color-primary);
   background: var(--color-primary-bg);
+}
+
+/* 通知类型颜色变体 */
+.notification-item.type-success {
+  border-left: 3px solid var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.notification-item.type-error {
+  border-left: 3px solid var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.notification-item.type-info {
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.notification-item.type-warning {
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+/* 通知图标 */
+.notification-icon {
+  flex-shrink: 0;
+  font-size: var(--size-md);
+}
+
+/* 通知内容区 */
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.notification-message {
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-time {
+  font-size: var(--size-2xs);
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* 删除按钮 */
+.notification-delete-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  font-size: var(--size-xs);
+  opacity: 0.5;
+  transition: var(--transition);
+}
+
+.notification-item:hover .notification-delete-btn {
+  opacity: 1;
+}
+
+.notification-delete-btn:hover {
+  color: var(--color-danger);
 }
 
 /* === 工具提示组件 === */

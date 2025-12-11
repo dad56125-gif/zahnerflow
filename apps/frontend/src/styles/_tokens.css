@@ -207,6 +207,7 @@
     /* === 通知面板 === */
     --notification-panel-width: clamp(320px, 40vw, 500px);
     --notification-panel-max-height: clamp(400px, 60vh, 600px);
+    --notification-panel-min-height: clamp(200px, 60vh, 300px);
 
     /* ==========================================================================
      7. 状态映射 (State Mapping) - 设备/工作流复用功能色
@@ -254,47 +255,38 @@
 
 /* ==========================================================================
    响应式令牌覆盖 (Responsive Token Overrides)
+   简化为 3 个实用断点，覆盖主流使用场景：
+   - ≤1550px: 1080p@125%/150%, 2K@175% (紧凑模式)
+   - 1551-2000px: 1080p@100%, 2K@150%, 4K@200% (标准模式)
+   - >2000px: 2K@125%, 4K@150% (宽屏模式)
    ========================================================================== */
 
-@media (max-width: 1280px) {
+/* 紧凑模式: 1080p@125%/150%, 2K@175% */
+@media (max-width: 1550px) {
     :root {
-        font-size: 14px;
+        font-size: 12.8px;
         --space: var(--space-4);
+        --sidebar-w: clamp(12rem, 16vw, 16rem);
+        --property-w: clamp(12rem, 16vw, 16rem);
+    }
+}
+
+/* 标准模式: 1080p@100%, 2K@150%, 4K@200% */
+@media (min-width: 1551px) and (max-width: 2000px) {
+    :root {
+        font-size: 17px;
+        --space: var(--space-5);
         --sidebar-w: clamp(14rem, 18vw, 18rem);
         --property-w: clamp(14rem, 18vw, 18rem);
     }
 }
 
-@media (min-width: 1441px) {
-    :root {
-        font-size: 15px;
-    }
-}
-
-@media (min-width: 1921px) {
-    :root {
-        font-size: 17px;
-        --space: var(--space-6);
-        --sidebar-w: clamp(18rem, 22vw, 24rem);
-        --property-w: clamp(18rem, 22vw, 24rem);
-    }
-}
-
-@media (min-width: 2561px) {
+/* 宽屏模式: 2K@125%, 4K@150% */
+@media (min-width: 2001px) {
     :root {
         font-size: 18px;
-        --space: var(--space-8);
-        --sidebar-w: clamp(20rem, 24vw, 26rem);
-        --property-w: clamp(20rem, 24vw, 26rem);
-    }
-}
-
-@media (min-width: 3841px) {
-    :root {
-        font-size: 20px;
-        --space: var(--space-9);
-        --sidebar-w: clamp(24rem, 28vw, 32rem);
-        --property-w: clamp(24rem, 28vw, 32rem);
-        --radius: var(--radius-xl);
+        --space: var(--space-6);
+        --sidebar-w: clamp(16rem, 20vw, 22rem);
+        --property-w: clamp(16rem, 20vw, 22rem);
     }
 }

@@ -69,7 +69,8 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
                 onMouseLeave={() => setIsZoomHovered(false)}
                 title="重置缩放"
                 style={{
-                    minWidth: '48px',
+                    fontSize: '0.8rem',
+                    padding: '0 0.5rem',
                     transition: 'all 0.2s ease'
                 }}
             >
