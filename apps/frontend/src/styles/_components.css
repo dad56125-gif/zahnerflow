@@ -5437,7 +5437,6 @@
 .mfc-device-sections {
   display: flex;
   flex-direction: column;
-  gap: var(--size-lg);
   height: 100%;
   overflow-y: auto;
   padding: var(--size-md);
