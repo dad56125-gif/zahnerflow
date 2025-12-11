@@ -77,17 +77,24 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
                 return;
             }
 
-            const formattedWorkflows = workflows.map((workflow: any) => ({
-                id: workflow.id,
-                name: workflow.name,
-                filename: `${workflow.id}.json`,
-                filepath: `/api/workflows/${workflow.id}`,
-                project_name: workflow.individualName || workflow.ownerName || '默认项目',
-                created_at: workflow.createdAt,
-                node_count: workflow.definition?.nodes?.length || 0,
-                connection_count: workflow.definition?.edges?.length || 0,
-                loop_count: Math.floor((workflow.definition?.nodes?.length || 0) / 2)
-            }));
+            const formattedWorkflows = workflows.map((workflow: any) => {
+                // 工作流节点直接在 workflow.nodes 上，不在 definition 里
+                const nodes = workflow.nodes || [];
+                // 统计循环节点数量（loop_start 类型）
+                const loopCount = nodes.filter((n: any) => n.type === 'loop_start').length;
+
+                return {
+                    id: workflow.id,
+                    name: workflow.name,
+                    filename: `${workflow.id}.json`,
+                    filepath: `/api/workflows/${workflow.id}`,
+                    project_name: workflow.individualName || workflow.ownerName || '默认项目',
+                    created_at: workflow.createdAt,
+                    node_count: nodes.length,
+                    connection_count: Math.max(0, nodes.length - 1), // 线性工作流的连接数 = 节点数 - 1
+                    loop_count: loopCount
+                };
+            });
 
             const sortedWorkflows = formattedWorkflows.sort((a, b) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -115,44 +122,42 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
     const loadHistoryWorkflow = useCallback(async (workflow: WorkflowHistory) => {
         try {
             const response = await api.get(`/workflows/${workflow.id}`);
-            let workflowData = response;
+            const workflowData = response as any;
 
             if (!workflowData) {
                 throw new Error(`找不到工作流 "${workflow.name}"`);
             }
 
-            const workflowDefinition = (workflowData as any)?.data?.definition || (workflowData as any)?.definition || {};
+            // 后端返回的工作流数据中，节点直接在 workflowData.nodes 上
+            // 不需要通过 definition 访问
+            const sourceNodes = workflowData.nodes || [];
 
-            const convertedNodes = workflowDefinition.nodes?.map((node: any) => {
-                const isOldVersion = !node.data;
-                let parameters: Record<string, any> = {};
-                if (isOldVersion) {
-                    parameters = node.config?.parameters || {};
-                } else {
-                    parameters = node.data?.parameters || node.config?.parameters || {};
-                }
+            const convertedNodes = sourceNodes.map((node: any) => {
+                // 节点的 config 字段直接使用
+                let config: Record<string, any> = node.config || {};
 
-                if ('loop_id' in parameters) {
-                    delete parameters.loop_id;
+                // 清理不需要的字段
+                if ('loop_id' in config) {
+                    delete config.loop_id;
                 }
 
                 return {
                     id: node.id,
                     type: node.type,
-                    config: parameters,
+                    config: config,
                 };
-            }) || [];
+            });
 
             setNodes(convertedNodes);
             setCurrentWorkflow({
-                id: workflow.id,
-                name: workflow.name,
+                id: workflowData.id || workflow.id,
+                name: workflowData.name || workflow.name,
                 nodes: convertedNodes,
-                ownerName: workflow.project_name || '默认项目',
-                project_name: workflow.project_name,
+                ownerName: workflowData.ownerName || workflowData.individualName || workflow.project_name || '默认项目',
+                project_name: workflowData.individualName || workflowData.ownerName || workflow.project_name,
             });
 
-            console.log(`历史工作流 "${workflow.name}" 加载成功`);
+            console.log(`历史工作流 "${workflow.name}" 加载成功，共 ${convertedNodes.length} 个节点`);
 
         } catch (error) {
             console.error('加载历史工作流失败:', error);

@@ -2712,12 +2712,14 @@
 
 /* 工作流管理UI - 匹配 file-path-manager-panel 样式 */
 .workflow-manager-ui {
+  /* 与 file-path-manager-panel 统一样式 */
   background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(var(--blur-overlay));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  width: 600px;
+  width: 480px;
   max-width: 90vw;
-  max-height: calc(100vh - 200px);
+  max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2787,6 +2789,8 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--size-lg);
+  max-height: 500px;
+  /* 与 panel-content 保持一致 */
 }
 
 /* 历史记录列表 */
@@ -2796,40 +2800,65 @@
   gap: var(--size-sm);
 }
 
+/* 历史记录项 - 参考 notification-item 样式 */
 .history-item {
-  /* 组合card类，添加cursor */
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-button);
+  padding: var(--size-sm);
+  margin-bottom: var(--size-2xs);
+  transition: var(--transition);
   cursor: pointer;
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border-hover);
 }
 
 /* 历史记录信息 */
 .history-info {
   flex: 1;
+  min-width: 0;
 }
 
 .history-name {
   font-size: var(--size-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--size-3xs);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .history-id {
-  font-size: var(--size-xs);
+  font-size: var(--size-2xs);
   color: var(--text-muted);
   margin-left: var(--size-3xs);
+  font-weight: normal;
 }
 
-.history-project,
-.history-details,
-.history-time {
+.history-project {
   font-size: var(--size-xs);
   color: var(--text-secondary);
-  margin-bottom: var(--size-3xs);
+  margin-bottom: 2px;
 }
 
 .history-details {
   display: flex;
   gap: var(--size-sm);
+  font-size: var(--size-2xs);
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.history-time {
+  font-size: var(--size-2xs);
+  color: var(--text-muted);
 }
 
 /* 历史记录操作按钮 */
@@ -4296,41 +4325,42 @@
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* 面板头部 - 与 notification-panel-header 统一样式 */
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: var(--size-sm) var(--size-xl);
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .panel-header h2 {
-  margin: 0;
-  font-size: 18px;
+  font-size: var(--size-lg);
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
+/* 关闭按钮 - 与 notification-action-btn 统一样式 */
 .close-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 24px;
-  cursor: pointer;
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
-  padding: 0;
-  width: 32px;
-  height: 32px;
+  cursor: pointer;
+  padding: var(--size-2xs);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  font-size: var(--size-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur-sm));
-  transition: var(--transition);
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .panel-content {
@@ -4870,10 +4900,28 @@
   display: flex;
   align-items: center;
   padding: 0 var(--space);
-  gap: var(--space);
+  gap: var(--size-lg);
   width: var(--property-w);
   min-width: var(--property-w);
   justify-content: flex-end;
+}
+
+.stat-item {
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.stat-item strong {
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.stat-time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 .status-center {

@@ -25,25 +25,18 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
 }) => {
     return (
         <div
-            className="history-item card"
+            className="history-item"
             onDoubleClick={() => onLoad(item)}
             title="双击加载工作流"
         >
             <div className="history-info">
                 <div className="history-name">
                     {item.name}
-                    <span className="history-id">({item.id})</span>
-                </div>
-                <div className="history-project">
-                    项目: {item.project_name}
+                    <span className="history-id">{item.id}</span>
                 </div>
                 <div className="history-details">
                     <span>节点: {item.node_count || 0}</span>
-                    <span>连接: {item.connection_count || 0}</span>
                     <span>循环: {item.loop_count || 0}</span>
-                    {item.file_size && (
-                        <span>大小: {Math.round(item.file_size / 1024)}KB</span>
-                    )}
                 </div>
                 <div className="history-time">
                     {new Date(item.created_at).toLocaleString()}

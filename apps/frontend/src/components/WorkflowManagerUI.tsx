@@ -6,8 +6,6 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useCanvasStore } from '../state/canvasStore';
-import { useLoopDetection } from '../canvas/useLoopDetection';
 import { useOnClickOutside } from '../shared/useOnClickOutside';
 import { useUser } from '../shared/UserContext';
 import { Portal } from './Portal';
@@ -31,7 +29,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   style = {},
   onClose
 }) => {
-  const { nodes } = useCanvasStore();
   const { currentUser } = useUser();
   const [activeTab, setActiveTab] = useState<'templates' | 'history'>('history');
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -59,9 +56,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     selectedProject,
     activeTab
   });
-
-  // 检测循环（使用简化版Hook）
-  const detectedLoops = useLoopDetection(nodes);
 
   // 使用 useOnClickOutside 实现点击外部关闭
   useOnClickOutside(panelRef, () => {
@@ -154,19 +148,6 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     }
   }, [isProjectDropdownOpen]);
 
-
-
-  // 获取工作流统计（简化版，不再统计 connections）
-  const getWorkflowStats = () => {
-    return {
-      nodes: nodes.length,
-      loops: detectedLoops.length,
-      lastModified: new Date().toLocaleString()
-    };
-  };
-
-  const stats = getWorkflowStats();
-
   return (
     <Portal pointerEvents="auto">
       <div className="workflow-manager-overlay">
@@ -175,12 +156,9 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
           className={`workflow-manager-ui ${className}`}
           style={style}
         >
-          <div className="manager-header">
-            <h3>工作流管理</h3>
-            <div className="workflow-stats">
-              <span>节点: {stats.nodes}</span>
-              <span>循环: {stats.loops}</span>
-            </div>
+          <div className="panel-header">
+            <h2>工作流管理</h2>
+            <button className="close-btn" onClick={onClose} title="关闭">✕</button>
           </div>
 
           {/* 标签导航 */}

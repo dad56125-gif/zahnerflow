@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NotificationPanel } from './NotificationPanel';
 import { ProgressBar } from './ProgressBar';
 import { useCanvasStore } from '../state/canvasStore';
@@ -26,6 +26,17 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   onProgressBarClick
 }) => {
   const { nodes, selectedNodeId } = useCanvasStore();
+
+  // ✅ 实时时钟状态
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+
+  // ✅ 每秒更新时间
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 动态派生选中节点信息
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
@@ -83,22 +94,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         />
       </div>
 
-      {/* 右侧：统计信息（简化版） */}
+      {/* 右侧：统计信息 */}
       <div className="status-right">
-        <div className="status-item">
-          <span className="stat-label">节点:</span>
-          <span className="stat-value glass">{nodeCount}</span>
-        </div>
-
-        <div className="status-item">
-          <span className="stat-label">循环:</span>
-          <span className="stat-value glass">{loopCount}</span>
-        </div>
-
-        {/* 时间 */}
-        <div className="current-time glass">
-          {new Date().toLocaleTimeString()}
-        </div>
+        <span className="stat-item">节点: <strong>{nodeCount}</strong></span>
+        <span className="stat-item">循环: <strong>{loopCount}</strong></span>
+        <span className="stat-item stat-time">{currentTime}</span>
       </div>
 
       {/* 通知面板 */}

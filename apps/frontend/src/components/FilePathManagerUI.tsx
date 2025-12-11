@@ -235,7 +235,7 @@ export const FilePathManagerUI: React.FC<FilePathManagerUIProps> = ({
         <div ref={panelRef} className="file-path-manager-panel">
           <div className="panel-header">
             <h2>文件路径配置</h2>
-            <button className="close-btn" onClick={onClose}>×</button>
+            <button className="close-btn" onClick={onClose} title="关闭">✕</button>
           </div>
 
           <div className="panel-content">
