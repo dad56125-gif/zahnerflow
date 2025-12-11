@@ -2381,37 +2381,37 @@
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
-/* === 层级颜色区分 === */
+/* === 层级颜色区分 (1-4级: 青绿、天蓝、紫罗兰、玫红) === */
 .loop-boundary-svg.level-0 .loop-boundary-fill {
-  fill: rgba(255, 152, 0, 0.15);
+  fill: rgba(0, 230, 180, 0.2);
 }
 
 .loop-boundary-svg.level-0 .loop-boundary-border {
-  stroke: #FF9800;
+  stroke: #00E6B4;
 }
 
 .loop-boundary-svg.level-1 .loop-boundary-fill {
-  fill: rgba(76, 175, 80, 0.15);
+  fill: rgba(0, 180, 255, 0.2);
 }
 
 .loop-boundary-svg.level-1 .loop-boundary-border {
-  stroke: #4CAF50;
+  stroke: #00B4FF;
 }
 
 .loop-boundary-svg.level-2 .loop-boundary-fill {
-  fill: rgba(33, 150, 243, 0.15);
+  fill: rgba(138, 100, 255, 0.2);
 }
 
 .loop-boundary-svg.level-2 .loop-boundary-border {
-  stroke: #2196F3;
+  stroke: #8A64FF;
 }
 
 .loop-boundary-svg.level-3 .loop-boundary-fill {
-  fill: rgba(156, 39, 176, 0.15);
+  fill: rgba(255, 80, 180, 0.2);
 }
 
 .loop-boundary-svg.level-3 .loop-boundary-border {
-  stroke: #9C27B0;
+  stroke: #FF50B4;
 }
 
 /* === 循环运行时的动画 === */

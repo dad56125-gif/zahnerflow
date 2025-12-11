@@ -10,7 +10,7 @@ interface ParamDisplayConfig {
     label: string;
     key: string;
     unit?: string;
-    format?: (value: any) => string;
+    format?: (value: any, params?: Record<string, any>) => string;
     secondary?: {
         label: string;
         key: string;
@@ -50,6 +50,13 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
         label: '直流',
         key: 'eis_potential',
         unit: 'V',
+        // 特殊处理：如果 enable_dc_bias 为 false 且 eis_potential 为 0，显示 OCV
+        format: (v, params) => {
+            if (params && !params.enable_dc_bias && (v === 0 || v === undefined)) {
+                return 'OCV';
+            }
+            return `${v || 0}`;
+        },
         secondary: {
             label: '扰动',
             key: 'eis_amplitude',
@@ -68,26 +75,27 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
     },
     ocp_measurement: {
         label: '时长',
-        key: 'duration',
+        key: 'measurement_duration',
         unit: 's'
     },
     chronoamperometry: {
         label: '电压',
-        key: 'potential',
+        key: 'polarization_voltage',
         unit: 'V',
         secondary: {
             label: '时长',
-            key: 'duration',
+            key: 'measurement_duration',
             unit: 's'
         }
     },
     chronopotentiometry: {
         label: '电流',
-        key: 'current',
+        key: 'polarization_current',
         unit: 'A',
+        format: (v) => ((v || 0) * 1000).toFixed(1), // 转换为 mA
         secondary: {
             label: '时长',
-            key: 'duration',
+            key: 'measurement_duration',
             unit: 's'
         }
     }
@@ -109,7 +117,7 @@ export const NodeParameterDisplay: React.FC<NodeParameterDisplayProps> = ({
     const formatValue = (value: any, cfg: ParamDisplayConfig | ParamDisplayConfig['secondary']) => {
         if (!cfg) return '';
         const formatted = (cfg as ParamDisplayConfig).format
-            ? (cfg as ParamDisplayConfig).format!(value)
+            ? (cfg as ParamDisplayConfig).format!(value, params)
             : String(value ?? '');
         return cfg.unit ? `${formatted}${cfg.unit}` : formatted;
     };

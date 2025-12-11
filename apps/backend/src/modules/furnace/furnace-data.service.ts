@@ -304,7 +304,7 @@ export class FurnaceDataService implements OnModuleInit {
     segment_time_set?: number;
   }): Promise<void> {
     this.db.prepare(`
-      INSERT INTO furnace_events
+      INSERT OR REPLACE INTO furnace_events
       (timestamp, status_code, segment, segment_time_set)
       VALUES (?, ?, ?, ?)
     `).run(

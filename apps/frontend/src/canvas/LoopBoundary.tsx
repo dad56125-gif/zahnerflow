@@ -146,21 +146,33 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
     if (pathNodes.length === 0) return [];
 
-    // 重新构建虚拟头尾节点（保持原逻辑）
+    // 重新构建虚拟头尾节点（根据蛇形布局方向调整）
     const startNode = pathNodes[0];
     const endNode = pathNodes[pathNodes.length - 1];
     const sWidth = startNode.layoutMeta?.width ?? startNode.style?.width ?? 140;
     const eWidth = endNode.layoutMeta?.width ?? endNode.style?.width ?? 140;
 
+    // 根据行方向决定偏移方向
+    const startRowIsLeftToRight = (startNode.layoutMeta?.row ?? 0) % 2 === 0;
+    const endRowIsLeftToRight = (endNode.layoutMeta?.row ?? 0) % 2 === 0;
+
     const extendedStart = {
       ...startNode,
-      position: { ...startNode.position, x: startNode.position.x - sWidth / 3 },
+      // 偶数行从左到右：起点向左偏移；奇数行从右到左：起点向右偏移
+      position: {
+        ...startNode.position,
+        x: startNode.position.x + (startRowIsLeftToRight ? -(sWidth / 3 + 10) : (sWidth / 3 + 10))
+      },
       layoutMeta: { ...startNode.layoutMeta, width: sWidth }
     };
 
     const extendedEnd = {
       ...endNode,
-      position: { ...endNode.position, x: endNode.position.x + eWidth / 3 },
+      // 偶数行从左到右：终点向右偏移；奇数行从右到左：终点向左偏移
+      position: {
+        ...endNode.position,
+        x: endNode.position.x + (endRowIsLeftToRight ? (eWidth / 3 + 10) : -(eWidth / 3 + 10))
+      },
       layoutMeta: { ...endNode.layoutMeta, width: eWidth }
     };
 
@@ -231,7 +243,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     // 而是只取第一个节点的高度做基准即可，无需放在循环里算
     const firstNode = completeLoopNodes[1] || nodes[0]; // 取真实的第一个节点
     const baseHeight = firstNode?.style?.height ?? 60;
-    const beltWidth = baseHeight * 1.5; // 增大边界宽度以完全包围节点
+    const beltWidth = baseHeight * 1.15; // 恢复原来的宽度
 
     // 🔥 调用优化后的 generateBeltPath
     return generateBeltPath(pathPoints, beltWidth);
@@ -268,11 +280,15 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
           const firstNode = loopInnerNodes[0];
           const firstPoint = getNodeCenterPoint(firstNode);
 
+          // 根据级别选择文字颜色 (与边界颜色同步: 青绿、天蓝、紫罗兰、玫红)
+          const levelColors = ['#00E6B4', '#00B4FF', '#8A64FF', '#FF50B4'];
+          const textColor = levelColors[loop.level] || levelColors[0];
+
           return (
             <text
               x={firstPoint.x}
-              y={firstPoint.y - 50}
-              fill="#64B5F6"
+              y={firstPoint.y - 42}
+              fill={textColor}
               fontSize="12"
               fontWeight="600"
               fontFamily="system-ui, -apple-system, sans-serif"
