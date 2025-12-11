@@ -9,6 +9,7 @@ export { MFCModal } from './MFCModal';
 
 // Hooks
 export { useMfc } from './useMfc';
+export type { MfcState, MfcControls } from './useMfc';
 
 // API
 export { MfcApi } from './mfcApi';

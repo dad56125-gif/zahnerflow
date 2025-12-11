@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { WorkstationType, WorkflowNode, NodeType } from '../types/Interfaces'; // 引入新类型
 import { useCanvasStore } from '../state/canvasStore'; // 修正 store 路径
-import { useMfc } from '../modules/mfc';
+import type { MfcState } from '../modules/mfc';
 import { DataViewer } from './DataViewer';
 // 确保 useSystemState 来自正确的执行 Store
 import { useSystemState } from '../workflow'; // 从 workflow 模块统一导入
@@ -42,10 +42,11 @@ const MEASUREMENT_NODE_TYPES: NodeType[] = [
 
 interface PropertyPanelProps {
   selectedWorkstation: WorkstationType | null;
+  mfcState: MfcState;
 }
 
 export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps>(
-  ({ selectedWorkstation }, ref) => {
+  ({ selectedWorkstation, mfcState }, ref) => {
     // 1. 从 Store 获取选中节点
     // 使用 selectedNodeId 从 nodes 数组中查找，确保数据是最新的
     const { nodes, selectedNodeId, updateNodeConfig } = useCanvasStore();
@@ -55,7 +56,6 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
     const systemState = useSystemState();
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
     const [_, setRefreshTrigger] = useState(0); // 强制刷新触发器
-    const [mfcState] = useMfc();
 
     // 3. 判断图表支持
     const supportsChart = useMemo(() => {

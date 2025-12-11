@@ -231,7 +231,7 @@ const AppContent: React.FC = () => {
       </div>
 
       <div className="right-area">
-        <PropertyPanel selectedWorkstation={selectedWorkstation} />
+        <PropertyPanel selectedWorkstation={selectedWorkstation} mfcState={mfcState} />
       </div>
 
       {fixedDevice && (
