@@ -66,6 +66,18 @@ export interface MfcDeviceDiscovered {
   timestamp: string;
 }
 
+export interface MfcScanProgress {
+  type: 'scan_progress';
+  data: {
+    current: number;
+    start: number;
+    end: number;
+    percent: number;
+    found_count: number;
+  };
+  timestamp: string;
+}
+
 // ==================== 回调类型扩展 ====================
 
 interface MfcCallbacks extends BaseCallbacks {
@@ -74,6 +86,7 @@ interface MfcCallbacks extends BaseCallbacks {
   connectionUpdate: ((update: MfcConnectionUpdate) => void)[];
   deviceDiscovered: ((discovered: MfcDeviceDiscovered) => void)[];
   notification: ((notification: MfcNotification) => void)[];
+  scanProgress: ((progress: MfcScanProgress) => void)[];
 }
 
 // ==================== 服务实现 ====================
@@ -94,6 +107,7 @@ export class MfcWebSocketService extends BaseWebSocketService<MfcCallbacks> {
       connectionUpdate: [],
       deviceDiscovered: [],
       notification: [],
+      scanProgress: [],
     };
   }
 
@@ -147,6 +161,11 @@ export class MfcWebSocketService extends BaseWebSocketService<MfcCallbacks> {
       this.callbacks.notification.forEach(cb => cb(notification));
     });
 
+    // 扫描进度
+    socket.on('mfcScanProgress', (progress: MfcScanProgress) => {
+      this.callbacks.scanProgress.forEach(cb => cb(progress));
+    });
+
     // 错误
     socket.on('mfcError', (error: unknown) => {
       console.error('MFC error:', error);
@@ -174,6 +193,10 @@ export class MfcWebSocketService extends BaseWebSocketService<MfcCallbacks> {
 
   onNotification(callback: (notification: MfcNotification) => void): void {
     this.callbacks.notification.push(callback);
+  }
+
+  onScanProgress(callback: (progress: MfcScanProgress) => void): void {
+    this.callbacks.scanProgress.push(callback);
   }
 
   // ==================== 兼容性方法（旧API） ====================

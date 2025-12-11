@@ -16,7 +16,7 @@ import { useWorkflowStore, useExecutionStore, useSystemState } from './workflow'
 import { workflowWebSocketService } from './workflow/websocket.service';
 // clearMeasurementCache 现在由 executionStore 的 nodesReset 监听统一处理
 
-import { MFCModal } from './modules/mfc';
+import { MFCModal, useMfc } from './modules/mfc';
 import { useFurnace, DeviceModal } from './modules/furnace';
 import { UserProvider, useUser } from './shared/UserContext';
 import type { SimpleLoopInfo } from './canvas/useLoopDetection';
@@ -43,6 +43,7 @@ const AppContent: React.FC = () => {
 
   // 本地 UI 状态
   const [furnaceState, furnaceControls] = useFurnace();
+  const [mfcState, mfcControls] = useMfc();
   const [activePanel, setActivePanel] = useState<'nodes'>('nodes');
   const [selectedWorkstation, setSelectedWorkstation] = useState<WorkstationType | null>(null);
   const [workstationNodeGroups, setWorkstationNodeGroups] = useState<any>({} as any);
@@ -242,6 +243,8 @@ const AppContent: React.FC = () => {
               modal_left={0}
               modal_width={500}
               modal_height={400}
+              mfcState={mfcState}
+              mfcControls={mfcControls}
             />
           ) : (
             <DeviceModal

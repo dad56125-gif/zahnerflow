@@ -6,7 +6,7 @@
 
 import { useState, useCallback } from 'react';
 import { MfcApi } from './mfcApi';
-import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate } from './mfcWebSocket.service';
+import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate, MfcScanProgress } from './mfcWebSocket.service';
 import type { DeviceError, DeviceConnectionStatus, HistoryQueryParams, LogEntry } from '../common/types';
 import {
   MfcDeviceInfo,
@@ -34,6 +34,7 @@ export interface MfcState {
   pollCount: number;
   loading: boolean;
   logs: LogEntry[];
+  scanProgress: { current: number; start: number; end: number; percent: number; found_count: number } | null;
 }
 
 export interface MfcControls {
@@ -76,6 +77,7 @@ const createInitialState = (): MfcState => ({
   pollCount: 0,
   loading: false,
   logs: [],
+  scanProgress: null,
 });
 
 // ==================== Hook 实现 ====================
@@ -197,6 +199,12 @@ export function useMfc(): [MfcState, MfcControls] {
     if (!mfcWebSocketService.connected) {
       mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
       mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
+      mfcWebSocketService.onScanProgress((progress) => {
+        updateState({
+          scanProgress: progress.data,
+          isScanning: progress.data.percent < 100
+        });
+      });
       mfcWebSocketService.onConnected(() => mfcWebSocketService.subscribe());
       mfcWebSocketService.connect();
     }

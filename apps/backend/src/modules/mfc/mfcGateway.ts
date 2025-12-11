@@ -98,6 +98,21 @@ interface MfcDeviceDiscoveredMessage {
   timestamp: string;
 }
 
+/**
+ * MFC扫描进度消息
+ */
+interface MfcScanProgressMessage {
+  type: 'scan_progress';
+  data: {
+    current: number;
+    start: number;
+    end: number;
+    percent: number;
+    found_count: number;
+  };
+  timestamp: string;
+}
+
 @WebSocketGateway({
   cors: {
     origin: [
@@ -121,7 +136,7 @@ export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   constructor(
     @Inject(forwardRef(() => MfcService))
     private readonly mfcService: MfcService,
-  ) {}
+  ) { }
 
   afterInit(server: Server) {
     this.logger.log('MfcGateway', 'enableLog', 'MFC WebSocket Gateway initialized');
@@ -223,6 +238,11 @@ export class MfcGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   sendMfcConnectionUpdate(connectionUpdate: MfcConnectionUpdateMessage) {
     this.server.emit('mfcConnectionUpdate', connectionUpdate);
     this.logger.log('MfcGateway', 'enableLog', `Broadcasted MFC connection update: ${connectionUpdate.data.status}`);
+  }
+
+  sendMfcScanProgress(progressMessage: MfcScanProgressMessage) {
+    this.server.emit('mfcScanProgress', progressMessage);
+    // 不打印日志，避免刷屏
   }
 
   broadcastSystemStatus(systemStatus: any) {

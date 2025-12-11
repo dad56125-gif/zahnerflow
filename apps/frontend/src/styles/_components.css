@@ -5104,3 +5104,57 @@
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* === MFC 扫描覆盖层和进度条 === */
+.scanning-overlay,
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.scanning-content,
+.loading-content {
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.scanning-content p,
+.loading-content p {
+  margin: var(--size-sm) 0;
+  font-size: var(--size-md);
+  font-weight: 500;
+}
+
+.scanning-info {
+  margin-top: var(--size-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-xs);
+}
+
+.scanning-info small {
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+}
+
+.scan-progress-bar {
+  width: 200px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.scan-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+  border-radius: 3px;
+  transition: width 0.3s ease-out;
+}

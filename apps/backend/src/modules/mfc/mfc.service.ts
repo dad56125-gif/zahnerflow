@@ -67,7 +67,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   private connection_state: ConnectionState = ConnectionState.DISCONNECTED;
   private connection_info: any = null;
   private device_statuses = new Map<number, DeviceStatusInfo>();
-  
+
   // 轮询管理
   private polling_subscribers = new Set<string>();
   private polling_timer: NodeJS.Timeout | null = null;
@@ -95,11 +95,11 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     private readonly dataService: MfcDataService,
     private readonly errorHandler: MfcErrorHandlerService,
     private readonly gateway: MfcGateway,
-  ) {}
+  ) { }
 
   async onModuleInit(): Promise<void> {
     try {
-      await this.device.health().catch(() => {});
+      await this.device.health().catch(() => { });
     } catch (e) {
       // 忽略初始化错误
     }
@@ -166,7 +166,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Starting scan: ${start}-${end}`);
 
       // 异步执行扫描逻辑
-      this._performAsyncScan(start, end).catch(e => 
+      this._performAsyncScan(start, end).catch(e =>
         this.logger.error(`Scan failed: ${e.message}`)
       );
 
@@ -176,8 +176,23 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async _performAsyncScan(start: number, end: number): Promise<void> {
+    const total = end - start + 1;
     try {
       for (let address = start; address <= end; address++) {
+        // 广播扫描进度
+        const percent = Math.round(((address - start + 1) / total) * 100);
+        this.gateway.sendMfcScanProgress({
+          type: 'scan_progress',
+          data: {
+            current: address,
+            start,
+            end,
+            percent,
+            found_count: this.discovered.length
+          },
+          timestamp: new Date().toISOString()
+        });
+
         try {
           const result = await this.device.scan_single_address(address);
           if (result?.found && result.device) {
@@ -196,9 +211,16 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
             });
           }
         } catch (e) { /* 忽略单地址错误 */ }
-        
+
         await new Promise(r => setTimeout(r, 500));
       }
+
+      // 扫描完成，广播100%
+      this.gateway.sendMfcScanProgress({
+        type: 'scan_progress',
+        data: { current: end, start, end, percent: 100, found_count: this.discovered.length },
+        timestamp: new Date().toISOString()
+      });
 
       if (this.device_statuses.size > 0 && this.polling_subscribers.size > 0) {
         this.start_polling();
@@ -226,7 +248,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       gas_type: info.gas_type,
       max_flow_sccm: info.max_flow_sccm,
     });
-    
+
     return info;
   }
 
@@ -236,7 +258,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       this.connection_state = ConnectionState.CONNECTING;
 
       const result = await this.device.connect_device(params);
-      
+
       if (result.ok) {
         this.connection_state = ConnectionState.CONNECTED;
         this.connection_info = result;
@@ -245,7 +267,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           data: { status: 'connected', device_count: this.discovered.length, connection_id: result.connection_id },
           timestamp: new Date().toISOString(),
         });
-        
+
         if (this.polling_config.enabled && this.device_statuses.size > 0) {
           this.start_polling();
         }
@@ -261,7 +283,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     return this.errorHandler.handleDeviceConnection(async () => {
       this.set_device_busy('disconnect');
       this.stop_polling();
-      
+
       const result = await this.device.disconnect_device();
       this.connection_state = ConnectionState.DISCONNECTED;
       this.connection_info = null;
@@ -295,7 +317,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     return this.errorHandler.handleFlowControl(async () => {
       this.set_device_busy(`setpoint_${address}`);
       const result = await this.device.set_device_flow({ address, sccm });
-      
+
       if (result.ok) {
         const device = this.device_statuses.get(address);
         const old = device?.setpoint_sccm || 0;
@@ -312,14 +334,14 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   // ==================== 复杂业务逻辑 (Change Gas Flow Node) ====================
 
   async setFlowRateControl(
-    params: { 
-      device_address: number; 
-      gas_type: string; 
-      target_flow_rate: number; 
-      current_flow_rate?: number; 
-      stabilization_time?: number 
-    }, 
-    nodeId?: string, 
+    params: {
+      device_address: number;
+      gas_type: string;
+      target_flow_rate: number;
+      current_flow_rate?: number;
+      stabilization_time?: number
+    },
+    nodeId?: string,
     executionId?: string
   ): Promise<{
     success: boolean;
@@ -327,7 +349,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     error?: string; // 显式声明可能包含 error
   }> {
     const context = { operation: 'setFlowRateControl', ...params, nodeId };
-    
+
     try {
       return await this.errorHandler.handleFlowControl(async () => {
         if (this.connection_state !== ConnectionState.CONNECTED) throw new Error(`MFC未连接`);
@@ -356,7 +378,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         try {
           const status = await this.device.get_device_status(params.device_address);
           if (status?.flow_sccm !== undefined) finalFlow = status.flow_sccm;
-        } catch (e) {}
+        } catch (e) { }
 
         return {
           success: true,
@@ -379,10 +401,10 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
 
   private start_polling(): void {
     if (this.polling_timer) clearInterval(this.polling_timer);
-    
-    if (this.connection_state !== ConnectionState.CONNECTED || 
-        this.device_statuses.size === 0 || 
-        this.polling_subscribers.size === 0) {
+
+    if (this.connection_state !== ConnectionState.CONNECTED ||
+      this.device_statuses.size === 0 ||
+      this.polling_subscribers.size === 0) {
       return;
     }
 
@@ -392,7 +414,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         this.perform_polling().catch(e => this.logger.error(`Polling error: ${e.message}`));
       }
     }, this.polling_config.interval);
-    
+
     this.logger.log(`Started polling: ${this.device_statuses.size} devices`);
   }
 
@@ -417,13 +439,13 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           const res = await this.device.get_device_status(addr);
           if (res?.device_address !== undefined) this.update_device_status(res);
           if (addresses.indexOf(addr) < addresses.length - 1) await new Promise(r => setTimeout(r, 100));
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // 广播数据
       const now = new Date().toISOString();
       const devices = Array.from(this.device_statuses.values());
-      
+
       if (devices.length > 0) {
         // 状态更新
         this.gateway.sendMfcStatusUpdate({
@@ -452,7 +474,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           });
         });
       }
-      
+
       this.gateway.broadcastSystemStatus(this.dataService.getSystemOverview());
 
     } catch (error) {
@@ -487,7 +509,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
   }
 
   private set_device_busy(op: string) { this.device_busy = true; this.busy_operations.add(op); }
-  private clear_device_busy(op: string) { 
+  private clear_device_busy(op: string) {
     this.busy_operations.delete(op);
     if (this.busy_operations.size === 0) this.device_busy = false;
   }

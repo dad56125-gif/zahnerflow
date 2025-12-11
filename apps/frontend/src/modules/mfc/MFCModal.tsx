@@ -7,7 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { Portal } from '../../components/Portal';
-import { useMfc } from './useMfc';
+import type { MfcState, MfcControls } from './useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { MFCConnectionPanel } from './MFCConnectionPanel';
 import { mfcWebSocketService } from './mfcWebSocket.service';
@@ -18,6 +18,8 @@ interface MFCModalProps {
   modal_left: number;
   modal_width: number;
   modal_height: number;
+  mfcState: MfcState;
+  mfcControls: MfcControls;
 }
 
 export const MFCModal: React.FC<MFCModalProps> = ({
@@ -25,14 +27,14 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   modal_top,
   modal_left,
   modal_width,
-  modal_height
+  modal_height,
+  mfcState,
+  mfcControls
 }) => {
-  const [mfcState, mfcControls] = useMfc();
-
-  // 在MFC模态框打开时才建立WebSocket连接
+  // 在MFC模态框打开时才确保WebSocket连接
   useEffect(() => {
     mfcControls.ensureConnection();
-  }, []);
+  }, [mfcControls]);
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modal_top; void modal_left; void modal_width; void modal_height;
@@ -183,9 +185,26 @@ export const MFCModal: React.FC<MFCModalProps> = ({
               <div className="scanning-content">
                 <div className="loading-spinner" />
                 <p>正在扫描MFC设备...</p>
-                <div className="scanning-info">
-                  <small>扫描地址范围: 32-80</small>
-                </div>
+                {mfcState.scanProgress && (
+                  <div className="scanning-info">
+                    <div className="scan-progress-bar">
+                      <div
+                        className="scan-progress-fill"
+                        style={{ width: `${mfcState.scanProgress.percent}%` }}
+                      />
+                    </div>
+                    <small>
+                      进度: {mfcState.scanProgress.percent}%
+                      | 当前地址: {mfcState.scanProgress.current}
+                      | 已发现: {mfcState.scanProgress.found_count} 个设备
+                    </small>
+                  </div>
+                )}
+                {!mfcState.scanProgress && (
+                  <div className="scanning-info">
+                    <small>扫描地址范围: 32-80</small>
+                  </div>
+                )}
               </div>
             </div>
           )}
