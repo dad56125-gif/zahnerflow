@@ -5387,3 +5387,40 @@
   background: var(--bg-primary);
   color: var(--text-primary);
 }
+
+/* === MFC 空状态提示 === */
+.mfc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-xs);
+  padding: var(--size-xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.mfc-empty-icon {
+  font-size: 2.5rem;
+  opacity: 0.6;
+  margin-bottom: var(--size-xs);
+}
+
+.mfc-empty-state h4 {
+  margin: 0;
+  font-size: var(--size-md);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.mfc-empty-state p {
+  margin: 0;
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+}
+
+.mfc-empty-hint {
+  font-size: var(--size-xs);
+  color: var(--text-muted);
+  margin-top: var(--size-xs);
+}

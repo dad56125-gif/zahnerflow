@@ -137,14 +137,11 @@ export const MFCModal: React.FC<MFCModalProps> = ({
             <>
               {/* 设备列表 */}
               {mfcState.devices.length === 0 && !mfcState.isScanning && !mfcState.error ? (
-                <div className="no-devices">
-                  <div className="no-data">
-                    <h4>未发现MFC设备</h4>
-                    <p>正在扫描已连接端口上的设备...</p>
-                    <div className="connection-hint">
-                      <p>如果长时间未发现设备，请尝试重新连接</p>
-                    </div>
-                  </div>
+                <div className="mfc-empty-state">
+                  <div className="mfc-empty-icon">📡</div>
+                  <h4>未发现MFC设备</h4>
+                  <p>正在扫描端口设备...</p>
+                  <span className="mfc-empty-hint">长时间无响应请检查连接</span>
                 </div>
               ) : (
                 <div className="mfc-cards-container">
@@ -167,7 +164,14 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   onClick={() => mfcControls.scanDevices()}
                   disabled={mfcState.isScanning}
                 >
-                  {mfcState.isScanning ? '扫描中...' : '重新扫描设备'}
+                  {mfcState.isScanning ? '扫描中...' : '重新扫描'}
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => mfcControls.disconnect()}
+                  disabled={mfcState.isLoading || mfcState.isScanning}
+                >
+                  断开连接
                 </button>
               </div>
             </>
