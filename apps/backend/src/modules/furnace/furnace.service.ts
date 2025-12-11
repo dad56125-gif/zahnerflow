@@ -283,11 +283,12 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
 
       // 移除×10转换，统一传递用户格式给Python层处理
-      await this.device.setParameter(0x50, currentTemp);  // 段28温度（起始）
+      // 注意：Python端要求 value 为 int 类型，需要 Math.round 转换
+      await this.device.setParameter(0x50, Math.round(currentTemp));  // 段28温度（起始）
       await this.device.setParameter(0x51, calculatedDuration);  // 段28时间
-      await this.device.setParameter(0x52, targetTemp);  // 段29温度（目标）
+      await this.device.setParameter(0x52, Math.round(targetTemp));  // 段29温度（目标）
       await this.device.setParameter(0x53, 5001);  // 段29时间（5001分钟≈83小时）
-      await this.device.setParameter(0x54, targetTemp);  // 段30温度（必须设置，避免5001分钟后降温到未知值）
+      await this.device.setParameter(0x54, Math.round(targetTemp));  // 段30温度（必须设置）
       // 注意：段30时间（0x55）不需要设置，默认为0表示程序结束
       await this.device.setSegment(28);
 
