@@ -43,45 +43,38 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
 
   return (
     <div className="device-connection-section">
-      {/* === 未连接状态：显示端口选择面板 === */}
       {mfcState.connection_status !== 'connected' && (
-        <div className="device-connection-panel">
+        <div className="device-connection-panel" style={{ maxWidth: '300px', margin: '0 auto' }}>
           <div className="connection-header">
             <h4>MFC设备连接</h4>
             {mfcState.available_ports.length === 0 && !mfcState.isLoading && (
               <div className="status-message warning">
-                ⚠️ 未检测到可用端口，请检查物理连接
+                ⚠️ 未检测到可用端口
               </div>
             )}
           </div>
 
           <div className="control-group">
-            <div className="port-selector">
-              <select
-                value={selectedPort}
-                onChange={(e) => setSelectedPort(e.target.value)}
-                disabled={isConnecting || mfcState.available_ports.length === 0}
-                className="port-select"
-              >
-                <option value="">-- 请选择端口 --</option>
-                {mfcState.available_ports.map(port => (
-                  <option key={port} value={port}>{port}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedPort}
+              onChange={(e) => setSelectedPort(e.target.value)}
+              disabled={isConnecting || mfcState.available_ports.length === 0}
+              className="form-select"
+            >
+              <option value="">-- 选择端口 --</option>
+              {mfcState.available_ports.map(port => (
+                <option key={port} value={port}>{port}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="connection-actions">
-            <button
-              onClick={handleConnect}
-              // 只有当用户真正选了端口后，按钮才可用
-              disabled={isConnecting || !selectedPort}
-              className={`btn btn-primary btn-block ${isConnecting ? 'btn-loading' : ''}`}
-              style={{ marginTop: '10px', width: '100%' }}
-            >
-              {isConnecting ? '正在连接...' : '连接设备'}
-            </button>
-          </div>
+          <button
+            onClick={handleConnect}
+            disabled={isConnecting || !selectedPort}
+            className={`btn_base btn_layout btn_style_common btn_medium btn_primary btn_block ${isConnecting ? 'btn_loading' : ''}`}
+          >
+            {isConnecting ? '连接中...' : '连接设备'}
+          </button>
         </div>
       )}
 
@@ -129,7 +122,7 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
           </div>
 
           <div className="error-info">
-             <p>无法连接到设备，请检查端口占用情况。</p>
+            <p>无法连接到设备，请检查端口占用情况。</p>
           </div>
 
           <div className="connection-actions">

@@ -243,17 +243,22 @@ export function useMfc(): [MfcState, MfcControls] {
 
         await MfcApi.connect(port, baudrate, timeout);
         updateState({ connection_status: 'connected' });
-        await refreshDevices();
+
+        // 连接成功后自动扫描设备
+        updateState({ isScanning: true });
+        const devices = await MfcApi.scanDevices({ port });
+        updateState({ availableDevices: devices });
+        setTimeout(() => updateState({ isScanning: false }), 1000);
       } catch (error) {
         handleError(error);
-        updateState({ connection_status: 'error', selected_port: '' });
+        updateState({ connection_status: 'error', selected_port: '', isScanning: false });
         get_available_ports();
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [setLoading, clearError, handleError, updateState, refreshDevices, get_available_ports]
+    [setLoading, clearError, handleError, updateState, get_available_ports]
   );
 
   const disconnect = useCallback(async (): Promise<void> => {
