@@ -281,7 +281,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     switch (type) {
       case 'startup': await this.zahnerService.startup(params); break;
       case 'shutdown': await this.zahnerService.shutdown(); break;
-      case 'delay': await this.executeDelay(params.duration || 1); break;
+      case 'delay':
+      case 'wait_delay':
+        this.logger.log(`[wait_delay] params: ${JSON.stringify(params)}, duration: ${params.duration}`);
+        await this.executeDelay(params.duration || 1);
+        break;
 
       case 'change_temperature':
         const tempResult = await this.furnaceService.autoTemperatureControl({
