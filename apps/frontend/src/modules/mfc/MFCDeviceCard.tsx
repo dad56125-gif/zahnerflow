@@ -101,7 +101,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
       {/* 头部：地址 + 气体 + 最大流量 + 状态 */}
       <div className="mfc-card-head">
         <div className="mfc-card-title">
-          <span className="mfc-addr">#{device.address}</span>
+          <span className="mfc-addr">{device.address}</span>
           <span className="mfc-gas">{device.gas_type}</span>
           <span className="mfc-max">{device.max_flow_sccm} sccm</span>
         </div>

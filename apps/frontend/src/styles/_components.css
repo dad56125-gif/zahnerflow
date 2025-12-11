@@ -5247,13 +5247,14 @@
 .mfc-value-row {
   display: flex;
   align-items: baseline;
-  gap: var(--size-2xs);
+  gap: var(--size-3xs);
 }
 
 .mfc-label {
-  font-size: var(--size-xs);
+  font-size: var(--size-sm);
   color: var(--text-muted);
   width: 2.5rem;
+  flex-shrink: 0;
 }
 
 .mfc-flow {
@@ -5277,6 +5278,7 @@
   display: flex;
   gap: var(--size-2xs);
   margin-top: auto;
+  max-width: 10rem;
 }
 
 .mfc-input {
@@ -5349,6 +5351,6 @@
 }
 
 .mfc-bar-label {
-  font-size: var(--size-3xs);
-  color: var(--text-muted);
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
 }
