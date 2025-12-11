@@ -45,7 +45,7 @@ export class StateEventHandler {
       'device.connected': (e) => this.updateDevice(e, 'connected'),
       'device.disconnected': (e) => this.updateDevice(e, 'disconnected'),
       'device.error': (e) => this.updateDevice(e, 'error'),
-      
+
       // Query (响应前端的主动查询)
       'state.query.workflow': this.handleWorkflowQuery.bind(this),
     });
@@ -54,10 +54,10 @@ export class StateEventHandler {
   // --- Workflow Logic ---
   private handleWorkflowStarted(event: EventPayload) {
     const { executionId, workflowId } = event.data;
-    this.workflowStates.set(executionId, { 
-      status: 'running', 
-      workflowId, 
-      startTime: event.timestamp 
+    this.workflowStates.set(executionId, {
+      status: 'running',
+      workflowId,
+      startTime: event.timestamp
     });
     this.workflowGateway.sendExecutionUpdate(workflowId, executionId, 'running', 0);
   }
@@ -66,9 +66,9 @@ export class StateEventHandler {
     const { executionId, workflowId, success, duration } = event.data;
     const state = this.workflowStates.get(executionId);
     if (state) {
-        state.status = success ? 'completed' : 'finished';
-        state.endTime = event.timestamp;
-        state.duration = duration;
+      state.status = success ? 'completed' : 'finished';
+      state.endTime = event.timestamp;
+      state.duration = duration;
     }
     // ❌ 原来的 generateWorkflowTimeLog 已被移除，数据现在由 ExecutionService 存入 SQLite
     this.workflowGateway.sendExecutionUpdate(workflowId, executionId, success ? 'completed' : 'failed', 100);
@@ -78,35 +78,36 @@ export class StateEventHandler {
     const { executionId, workflowId, error } = event.data;
     const state = this.workflowStates.get(executionId);
     if (state) {
-        state.status = 'failed';
-        state.error = error;
-        state.endTime = event.timestamp;
+      state.status = 'failed';
+      state.error = error;
+      state.endTime = event.timestamp;
     }
     this.workflowGateway.sendExecutionUpdate(workflowId, executionId, 'failed', 100);
   }
 
   // --- Node Logic ---
   private handleNodeStarted(event: EventPayload) {
-    const { nodeId, workflowId, nodeType } = event.data;
+    const { nodeId, index } = event.data;
     this.nodeStates.set(nodeId, NodeStatus.RUNNING);
-    if (workflowId) {
-        this.workflowGateway.sendNodeStatusUpdate(workflowId, nodeId, NodeStatus.RUNNING, { nodeType });
+    // 广播给所有客户端，使用索引格式
+    if (index !== undefined) {
+      this.workflowGateway.broadcastNodeStatus(index, 'running');
     }
   }
 
   private handleNodeCompleted(event: EventPayload) {
-    const { nodeId, workflowId, result } = event.data;
+    const { nodeId, index, result } = event.data;
     this.nodeStates.set(nodeId, NodeStatus.COMPLETED);
-    if (workflowId) {
-        this.workflowGateway.sendNodeStatusUpdate(workflowId, nodeId, NodeStatus.COMPLETED, { result });
+    if (index !== undefined) {
+      this.workflowGateway.broadcastNodeStatus(index, 'completed', { result });
     }
   }
 
   private handleNodeFailed(event: EventPayload) {
-    const { nodeId, workflowId, error } = event.data;
+    const { nodeId, index, error } = event.data;
     this.nodeStates.set(nodeId, NodeStatus.FAILED);
-    if (workflowId) {
-        this.workflowGateway.sendNodeStatusUpdate(workflowId, nodeId, NodeStatus.FAILED, { error });
+    if (index !== undefined) {
+      this.workflowGateway.broadcastNodeStatus(index, 'failed', { error });
     }
   }
 
@@ -119,19 +120,19 @@ export class StateEventHandler {
 
   // --- Query Logic ---
   private handleWorkflowQuery(event: EventPayload) {
-      const { executionId } = event.data;
-      const state = this.workflowStates.get(executionId);
-      // 可以通过 EventBus 回复，或者 Controller 直接调用 getWorkflowState 方法
-      // 这里仅做逻辑占位
+    const { executionId } = event.data;
+    const state = this.workflowStates.get(executionId);
+    // 可以通过 EventBus 回复，或者 Controller 直接调用 getWorkflowState 方法
+    // 这里仅做逻辑占位
   }
 
   // Public Accessors (for Controller)
   getWorkflowState(executionId: string) { return this.workflowStates.get(executionId); }
   getAllStates() {
-      return {
-          nodes: Object.fromEntries(this.nodeStates),
-          workflows: Object.fromEntries(this.workflowStates),
-          devices: Object.fromEntries(this.deviceStates)
-      };
+    return {
+      nodes: Object.fromEntries(this.nodeStates),
+      workflows: Object.fromEntries(this.workflowStates),
+      devices: Object.fromEntries(this.deviceStates)
+    };
   }
 }

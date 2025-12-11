@@ -130,6 +130,16 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     this.consoleDisplayManager.log('WorkflowGateway', 'enableDebug', `Broadcasted nodes reset: ${resetEvent.targetStatus}`);
   }
 
+  // --- 【新增】节点状态广播方法（使用前端期望的简化格式）---
+  broadcastNodeStatus(index: number, status: string, data?: any) {
+    // 广播格式: { i: index, s: status, d?: data }
+    this.server.emit('nodeStatusUpdate', {
+      i: index,
+      s: status,
+      d: data
+    });
+  }
+
   handleDisconnect(client: Socket) {
     this.consoleDisplayManager.log('WorkflowGateway', 'enableLog', `Client disconnected: ${client.id}`);
     const clientInfo = this.connectedClients.get(client.id);
@@ -168,7 +178,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   // ... (保留旧的 sendNodeStatusUpdate 等方法以兼容尚未重构的前端部分，或用于详细日志显示) ...
-  
+
   sendNodeStatusUpdate(workflowId: string, nodeId: string, status: string, data?: any) {
     const message = {
       messageId: this.generateMessageId(),
@@ -214,12 +224,12 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   // ... (其余辅助方法保持原样) ...
-  
+
   sendDeviceStatusUpdate(deviceName: string, status: any) {
     const message = { messageId: this.generateMessageId(), deviceName, status, timestamp: new Date() };
     this.broadcast('deviceStatusUpdate', message);
   }
-  
+
   sendMeasurementData(workflowId: string, nodeId: string, data: any) {
     const message = { messageId: this.generateMessageId(), workflowId, nodeId, data, timestamp: new Date() };
     this.sendToWorkflow(workflowId, 'measurementData', message);
@@ -229,14 +239,14 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     const message = { messageId: this.generateMessageId(), workflowId, ...logEntry, timestamp: new Date() };
     this.sendToWorkflow(workflowId, 'realtimeLog', message);
   }
-  
+
   // ... (sendProgressUpdate, sendSystemStatus, sendNotification 保持原样) ...
   sendNotification(title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', source: string = 'system') {
-      const notification = {
-        id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        title, message, type, source, timestamp: new Date(),
-      };
-      this.broadcast('notification', notification);
+    const notification = {
+      id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title, message, type, source, timestamp: new Date(),
+    };
+    this.broadcast('notification', notification);
   }
 
   private sendToWorkflow(workflowId: string, event: string, data: any) {
@@ -260,7 +270,7 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     this.broadcast('healthCheck', healthData);
   }
 
-  onModuleDestroy() {}
+  onModuleDestroy() { }
 
   private getActiveWorkflowCount(): number {
     const workflowIds = new Set<string>();
@@ -269,44 +279,44 @@ export class WorkflowGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     }
     return workflowIds.size;
   }
-  
+
   // ... (getConnectionStats, updateClientActivity, sendToClient, disconnectClient 保持原样) ...
   getConnectionStats() {
-      return {
-        totalClients: this.connectedClients.size,
-        activeWorkflows: this.getActiveWorkflowCount(),
-        clientDetails: Array.from(this.connectedClients.values()).map(client => ({
-          id: client.id,
-          connectedAt: client.connectedAt,
-          lastActivity: client.lastActivity,
-          workflowCount: client.workflowIds.size,
-        })),
-      };
+    return {
+      totalClients: this.connectedClients.size,
+      activeWorkflows: this.getActiveWorkflowCount(),
+      clientDetails: Array.from(this.connectedClients.values()).map(client => ({
+        id: client.id,
+        connectedAt: client.connectedAt,
+        lastActivity: client.lastActivity,
+        workflowCount: client.workflowIds.size,
+      })),
+    };
   }
-  
+
   updateClientActivity(clientId: string) {
-      const client = this.connectedClients.get(clientId);
-      if (client) client.lastActivity = new Date();
+    const client = this.connectedClients.get(clientId);
+    if (client) client.lastActivity = new Date();
   }
-  
+
   sendToClient(clientId: string, event: string, data: any) {
-      const client = this.connectedClients.get(clientId);
-      if (client) {
-          this.updateClientActivity(clientId);
-          const message = { messageId: this.generateMessageId(), ...data, timestamp: new Date() };
-          client.socket.emit(event, message);
-          return true;
-      }
-      return false;
+    const client = this.connectedClients.get(clientId);
+    if (client) {
+      this.updateClientActivity(clientId);
+      const message = { messageId: this.generateMessageId(), ...data, timestamp: new Date() };
+      client.socket.emit(event, message);
+      return true;
+    }
+    return false;
   }
-  
+
   disconnectClient(clientId: string, reason: string = 'Server request') {
-      const client = this.connectedClients.get(clientId);
-      if (client) {
-          client.socket.emit('forceDisconnect', { reason, timestamp: new Date() });
-          client.socket.disconnect(true);
-          return true;
-      }
-      return false;
+    const client = this.connectedClients.get(clientId);
+    if (client) {
+      client.socket.emit('forceDisconnect', { reason, timestamp: new Date() });
+      client.socket.disconnect(true);
+      return true;
+    }
+    return false;
   }
 }

@@ -258,15 +258,15 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         }
       });
 
-      this.emitNodeEvent('started', executionId, node);
+      this.emitNodeEvent('started', executionId, node, ip);
 
       try {
         await this.dispatchNodeLogic(executionId, node);
         completedResults.push({ id: node.id, status: 'success' });
-        this.emitNodeEvent('completed', executionId, node);
+        this.emitNodeEvent('completed', executionId, node, ip);
       } catch (e: any) {
         const enhancedError = `Node [${node.type}] Failed: ${e.message}`;
-        this.emitNodeEvent('failed', executionId, node, { error: enhancedError });
+        this.emitNodeEvent('failed', executionId, node, ip, { error: enhancedError });
         throw new Error(enhancedError);
       }
     }
@@ -414,7 +414,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
   private generateTimestamp() { return new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); }
   private emitWorkflowEvent(type: string, eid: string, wfid: string, extra?: any) { this.eventBus.emit(`workflow.${type}`, { executionId: eid, workflowId: wfid, timestamp: new Date(), ...extra }); }
-  private emitNodeEvent(type: string, eid: string, node: any, extra?: any) { this.eventBus.emit(`node.${type}`, { nodeId: node.id, executionId: eid, nodeType: node.type, timestamp: new Date(), ...extra }); }
+  private emitNodeEvent(type: string, eid: string, node: any, index: number, extra?: any) { this.eventBus.emit(`node.${type}`, { nodeId: node.id, executionId: eid, nodeType: node.type, index, timestamp: new Date(), ...extra }); }
   async pauseExecution(id: string) { this.updateState({ status: 'paused' }); }
   async resumeExecution(id: string) { this.updateState({ status: 'running' }); }
   async cancelExecution(id: string) { this.updateState({ status: 'cancelled' }); }
