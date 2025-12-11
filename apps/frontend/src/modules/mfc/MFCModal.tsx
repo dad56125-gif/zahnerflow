@@ -169,14 +169,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                 >
                   {mfcState.isScanning ? '扫描中...' : '重新扫描设备'}
                 </button>
-
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => mfcControls.refreshDevices()}
-                  disabled={mfcState.isLoading}
-                >
-                  刷新状态
-                </button>
               </div>
             </>
           )}
