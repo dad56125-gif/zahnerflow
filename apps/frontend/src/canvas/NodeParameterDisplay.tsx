@@ -30,7 +30,10 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
         label: '流量',
         key: 'target_flow_rate',
         unit: 'sccm',
-        format: (v) => (v || 0).toFixed(1),
+        format: (v) => {
+            const num = typeof v === 'number' ? v : parseFloat(v);
+            return isNaN(num) ? '0.0' : num.toFixed(1);
+        },
         secondary: {
             label: '',
             key: 'gas_type',
