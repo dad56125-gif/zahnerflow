@@ -201,7 +201,7 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       };
 
       if (node.type === 'change_temperature') return <TemperatureInput {...props} />;
-      if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.availableDevices} />;
+      if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.devices} />;
 
       // 枚举判断逻辑
       const isEnum = [

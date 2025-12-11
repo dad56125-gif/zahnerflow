@@ -209,6 +209,15 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
               },
               timestamp: new Date().toISOString(),
             });
+
+            // 发现设备后立即轮询获取状态
+            try {
+              const status = await this.device.get_device_status(info.address);
+              if (status?.device_address !== undefined) {
+                this.update_device_status(status);
+                this.idle_last_poll.set(info.address, Date.now());
+              }
+            } catch (e) { /* 忽略状态获取错误 */ }
           }
         } catch (e) { /* 忽略单地址错误 */ }
 
@@ -222,25 +231,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         timestamp: new Date().toISOString()
       });
 
-      // 扫描完成后立即轮询所有设备获取初始状态
       if (this.device_statuses.size > 0) {
-        this.logger.log(`扫描完成，正在获取 ${this.device_statuses.size} 个设备初始状态...`);
-        const addresses = Array.from(this.device_statuses.keys());
-        for (const addr of addresses) {
-          try {
-            const res = await this.device.get_device_status(addr);
-            if (res?.device_address !== undefined) {
-              this.update_device_status(res);
-              // 设置空闲设备的初始轮询时间
-              this.idle_last_poll.set(addr, Date.now());
-            }
-            await new Promise(r => setTimeout(r, 100));
-          } catch (e) { /* 忽略错误继续 */ }
-        }
-        this.logger.log('设备初始状态获取完成');
-      }
-
-      if (this.device_statuses.size > 0 && this.polling_subscribers.size > 0) {
         this.start_polling();
       }
     } finally {
