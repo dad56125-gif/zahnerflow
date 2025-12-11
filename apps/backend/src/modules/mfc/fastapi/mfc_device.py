@@ -139,6 +139,16 @@ class MfcSession:
                 raise MfcError("Device not connected", ErrorCategory.DEVICE)
             
             try:
+                # === 发送前：等待串口静默，排空残留数据 ===
+                drain_start = time.time()
+                while time.time() - drain_start < 0.05:  # 最多等待50ms
+                    if self.ser.in_waiting:
+                        garbage = self.ser.read(self.ser.in_waiting)
+                        logger.debug(f"[DRAIN] Discarded {len(garbage)} bytes: {garbage.hex().upper()}")
+                        drain_start = time.time()  # 重置计时，继续等待
+                    else:
+                        time.sleep(0.005)
+                
                 self.ser.reset_input_buffer()
                 self.ser.write(cmd)
                 self.comm_log.add_log('TX', cmd.hex().upper(), self.connection_id)
@@ -150,19 +160,39 @@ class MfcSession:
                 while time.time() - start < 0.2: 
                     if self.ser.in_waiting:
                         response.extend(self.ser.read(self.ser.in_waiting))
-                        # 基础长度检查: Header(8) + Data + Checksum(1)
-                        # 第4字节(Index 3)通常是数据长度，但这取决于具体协议变种
-                        # 这里使用保守策略：只要收到数据且静默了一小段时间就认为结束
-                        if len(response) > 8: 
+                        # 完整帧至少需要: Header(8) + Data(2) + Checksum(1) = 11 bytes
+                        if len(response) >= 11: 
+                             # 等待一小段时间确认没有更多数据
+                             time.sleep(0.01)
+                             if self.ser.in_waiting:
+                                 response.extend(self.ser.read(self.ser.in_waiting))
                              break
                     else:
                         time.sleep(0.005)
                 
-                if len(response) > 0:
-                    self.comm_log.add_log('RX', response.hex().upper(), self.connection_id)
-                    return bytes(response)
-                else:
+                if len(response) == 0:
                     raise MfcError("Timeout: No response", ErrorCategory.TIMEOUT)
+                
+                self.comm_log.add_log('RX', response.hex().upper(), self.connection_id)
+                
+                # === 响应验证：检查帧头，处理粘包 ===
+                # 期望的响应帧头模式：地址(1) + 00 + 02 + 80 + 05 + Class + Inst + Attr
+                # 由于我们不知道精确的帧头，使用启发式方法：
+                # 正常响应帧应该以 XX 00 02 80 05 开头（XX是某个地址）
+                expected_pattern = bytes([0x00, 0x02, 0x80, 0x05])
+                pattern_offset = response.find(expected_pattern)
+                
+                if pattern_offset > 1:
+                    # 找到帧头模式，但位置不在开头，说明有粘包
+                    # 帧头实际从 pattern_offset - 1 开始（前面1字节是地址）
+                    actual_start = pattern_offset - 1
+                    logger.warning(f"[FRAME] Detected stale bytes, skipping {actual_start} bytes")
+                    response = response[actual_start:]
+                elif pattern_offset == -1 and len(response) > 8:
+                    # 没找到预期模式，可能是异常响应，记录警告但继续
+                    logger.warning(f"[FRAME] Unexpected response format: {response.hex().upper()}")
+                
+                return bytes(response)
             except MfcError:
                 raise
             except Exception as e:
