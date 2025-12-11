@@ -45,7 +45,8 @@ export const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, p
           top: `${position.top}px`,
           left: `${position.left}px`,
           width: `${position.width}px`,
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
+          zIndex: 10000
         } as React.CSSProperties}
       >
         <div className="dropdown_list">
