@@ -3359,11 +3359,11 @@
 /* === MFC设备卡片容器 === */
 .mfc-cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(clamp(17.5rem, 35vw, 20rem), 1fr));
-  gap: clamp(1.25rem, 2.5vw, 1.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--size-md);
   height: 100%;
   align-content: start;
-  padding: clamp(1rem, 2vw, 1.5rem);
+  padding: var(--size-md);
 }
 
 /* === MFC设备卡片 === */
