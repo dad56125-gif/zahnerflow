@@ -465,9 +465,11 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           // 空闲设备检查是否到达轮询间隔
           if (!isActive) {
             const lastPoll = this.idle_last_poll.get(addr) || 0;
-            if (now - lastPoll < this.IDLE_POLL_INTERVAL) {
+            const elapsed = now - lastPoll;
+            if (elapsed < this.IDLE_POLL_INTERVAL) {
               continue; // 跳过此设备，未到轮询时间
             }
+            this.logger.log(`[${addr}] 空闲设备轮询, 已过 ${Math.round(elapsed / 1000)}s`);
             this.idle_last_poll.set(addr, now);
           }
 
