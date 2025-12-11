@@ -375,23 +375,50 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         const subId = `temp_${nodeId}`;
         if (!this.polling_status.is_running) {
           this.subscribe_to_mfc_updates(subId);
-          setTimeout(() => this.unsubscribe_from_mfc_updates(subId), (params.stabilization_time || 10) * 1000 + 5000);
         }
 
-        // 3. 等待稳定
-        const waitTime = params.stabilization_time || 10;
-        await new Promise(r => setTimeout(r, waitTime * 1000));
+        // 3. 每秒轮询检查流量，容差内算通过，最多等待 stabilization_time 秒
+        const maxWaitTime = params.stabilization_time || 10;
+        const tolerance = 0.05; // 5% 容差
+        const targetFlow = params.target_flow_rate;
+        let finalFlow = targetFlow;
+        let stabilized = false;
 
-        // 4. 验证结果
-        let finalFlow = params.target_flow_rate;
-        try {
-          const status = await this.device.get_device_status(params.device_address);
-          if (status?.flow_sccm !== undefined) finalFlow = status.flow_sccm;
-        } catch (e) { }
+        this.logger.log(`[${nodeId}] 等待流量稳定: 目标 ${targetFlow} sccm, 容差 ${tolerance * 100}%, 最大等待 ${maxWaitTime}s`);
+
+        for (let elapsed = 0; elapsed < maxWaitTime; elapsed++) {
+          await new Promise(r => setTimeout(r, 1000));
+
+          try {
+            const status = await this.device.get_device_status(params.device_address);
+            if (status?.flow_sccm !== undefined) {
+              finalFlow = status.flow_sccm;
+              const error = targetFlow > 0
+                ? Math.abs(finalFlow - targetFlow) / targetFlow
+                : (finalFlow === 0 ? 0 : 1);
+
+              if (error <= tolerance) {
+                this.logger.log(`[${nodeId}] 流量稳定: ${finalFlow.toFixed(1)} sccm (误差 ${(error * 100).toFixed(1)}%)`);
+                stabilized = true;
+                break;
+              }
+              this.logger.log(`[${nodeId}] 等待中: ${finalFlow.toFixed(1)} / ${targetFlow} sccm (误差 ${(error * 100).toFixed(1)}%)`);
+            }
+          } catch (e) { /* 忽略单次查询错误 */ }
+        }
+
+        // 清理临时订阅
+        if (!this.polling_status.is_running) {
+          setTimeout(() => this.unsubscribe_from_mfc_updates(subId), 2000);
+        }
+
+        if (!stabilized) {
+          this.logger.warn(`[${nodeId}] 流量在 ${maxWaitTime}s 内未稳定，最终流量: ${finalFlow.toFixed(1)} sccm`);
+        }
 
         return {
           success: true,
-          updated_parameters: { ...params, final_flow_rate: finalFlow, execution_timestamp: new Date().toISOString() }
+          updated_parameters: { ...params, final_flow_rate: finalFlow, stabilized, execution_timestamp: new Date().toISOString() }
         };
       }, context);
     } catch (error) {
