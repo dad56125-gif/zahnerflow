@@ -302,12 +302,15 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       case 'change_gas_flow':
         if (!params.device_selection) throw new Error('Missing device_selection');
         const [addr, gas] = params.device_selection.split(':');
-        await this.mfcService.setFlowRateControl({
+        const flowResult = await this.mfcService.setFlowRateControl({
           device_address: parseInt(addr, 10),
           gas_type: gas,
           target_flow_rate: params.target_flow_rate,
-          stabilization_time: 10
+          stabilization_time: params.stabilization_time ?? 10
         }, node.id, executionId);
+        if (!flowResult.success) {
+          throw new Error(flowResult.error || '流量控制失败');
+        }
         break;
 
       default:
