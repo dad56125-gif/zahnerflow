@@ -148,6 +148,17 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
 
   if (!isVisible && !selectedNode) return null;
 
+  // 如果不是测量节点，显示占位提示
+  if (!isMeasurementNode) {
+    return (
+      <div className="data-viewer" style={{ padding: 'var(--size-md)' }}>
+        <div className="data-viewer-placeholder">
+          <div>该节点不支持 TIV 表格数据</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="data-viewer"
@@ -160,42 +171,43 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
         overflow: 'hidden'
       }}
     >
-      {/* 标签页 - 居中显示 */}
-      <div
-        className="data-tabs"
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 'var(--size-sm)',
-          flexShrink: 0,
-          background: 'var(--glass-bg)',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          alignSelf: 'center'
-        }}
-      >
-        {isMeasurementNode && (
-          <button
-            className={`data-tab ${activeTab === 'table' ? 'active' : ''}`}
-            onClick={() => setActiveTab('table')}
-            style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === 'table' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'table' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
-          >
-            TIV 数据表
-          </button>
-        )}
-        <button
-          className={`data-tab ${activeTab === 'raw' ? 'active' : ''}`}
-          onClick={() => setActiveTab('raw')}
-          style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === 'raw' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'raw' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          JSON 源数据
-        </button>
-      </div>
-
-      {/* 内容区域 */}
+      {/* 内容区域 - 直接显示表格 */}
       <div className="data-content-area" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {activeTab === 'table' && renderTable()}
-        {activeTab === 'raw' && renderRawData()}
+        {tableData.length === 0 ? (
+          <div className="data-viewer-placeholder">
+            <div className="data-viewer-placeholder-icon-sm">📝</div>
+            <div>暂无测量数据</div>
+            <div className="data-viewer-placeholder-subtext">运行时将实时显示数据</div>
+          </div>
+        ) : (
+          <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="data-viewer-summary">
+              <div><strong>数据点数:</strong> {tableData.length}</div>
+              <div><strong>最新时间:</strong> {tableData.length > 0 ? tableData[tableData.length - 1].t.toFixed(2) + 's' : '-'}</div>
+            </div>
+            <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>时间 (s)</th>
+                    <th>电压 (V)</th>
+                    <th>电流 (A)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* 新数据在最前面：反转数组显示 */}
+                  {[...tableData].reverse().map((row, idx) => (
+                    <tr key={tableData.length - 1 - idx}>
+                      <td>{row.t.toFixed(4)}</td>
+                      <td>{formatValue(row.v)}</td>
+                      <td>{formatValue(row.i)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

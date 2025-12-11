@@ -1,8 +1,8 @@
-﻿import React from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
+import { ScheduleRunner } from './ScheduleRunner';
 import { FilePathConfig } from '../shared/UserContext';
-
 
 interface ToolbarProps {
   onRunFlow: () => void;
@@ -34,6 +34,46 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const {
     clearCanvas
   } = useCanvasStore();
+
+  // 定时运行状态
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
+  const scheduleButtonRef = useRef<HTMLButtonElement>(null);
+  const scheduleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 定时触发逻辑
+  React.useEffect(() => {
+    // 清除之前的定时器
+    if (scheduleTimerRef.current) {
+      clearTimeout(scheduleTimerRef.current);
+      scheduleTimerRef.current = null;
+    }
+
+    if (scheduledTime) {
+      const now = new Date();
+      const delay = scheduledTime.getTime() - now.getTime();
+
+      if (delay > 0) {
+        console.log(`[定时运行] 将在 ${Math.round(delay / 1000)} 秒后执行`);
+        scheduleTimerRef.current = setTimeout(() => {
+          console.log('[定时运行] 时间到达，开始执行工作流！');
+          setScheduledTime(null); // 清除定时状态
+          onRunFlow(); // 执行运行
+        }, delay);
+      } else {
+        // 时间已过，立即执行
+        console.log('[定时运行] 时间已过，立即执行');
+        setScheduledTime(null);
+        onRunFlow();
+      }
+    }
+
+    return () => {
+      if (scheduleTimerRef.current) {
+        clearTimeout(scheduleTimerRef.current);
+      }
+    };
+  }, [scheduledTime, onRunFlow]);
 
   // 计算按钮状态 - 基于四种状态模式
   const getButtonStates = () => {
@@ -158,6 +198,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <span className="btn-text">{buttonStates.runButtonText}</span>
           </button>
 
+          {/* 定时运行按钮 */}
+          <button
+            ref={scheduleButtonRef}
+            className={`btn_base btn_layout btn_style_common btn_mini glass ${scheduledTime ? 'btn_warning' : 'btn_secondary'
+              } ${buttonStates.runButtonDisabled ? 'disabled' : ''}`}
+            onClick={() => setShowScheduler(!showScheduler)}
+            title={scheduledTime ? `定时运行：${scheduledTime.toLocaleTimeString()}` : "定时运行"}
+            disabled={buttonStates.runButtonDisabled}
+          >
+            <span className="btn-icon">⏰</span>
+          </button>
+
           {/* --- ✅ 修复点：动态绑定点击事件 --- */}
           <button
             className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.stopButtonVariant} ${buttonStates.stopButtonDisabled ? 'disabled' : ''
@@ -192,6 +244,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           onSave={onFilePathSave}
         />
       )}
+
+      {/* 定时运行弹窗 */}
+      <ScheduleRunner
+        isOpen={showScheduler}
+        onClose={() => setShowScheduler(false)}
+        onSchedule={(time) => {
+          setScheduledTime(time);
+          console.log(`定时运行设置为: ${time.toLocaleString()}`);
+          // TODO: 实现定时触发逻辑
+        }}
+        anchorRect={scheduleButtonRef.current?.getBoundingClientRect()}
+      />
     </>
   );
 };

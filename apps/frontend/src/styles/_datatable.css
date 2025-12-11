@@ -1,0 +1,174 @@
+/**
+ * DataTable 样式文件
+ * 通用实时数据表格组件样式
+ */
+
+/* === 表格容器 === */
+.data-table-wrapper {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+/* === 表格基础样式 === */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+/* === 表头 === */
+.data-table thead {
+    background: var(--glass-bg-hover);
+}
+
+.data-table th {
+    padding: var(--size-xs) var(--size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--glass-border);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: clamp(0.625rem, 1.2vw, 0.6875rem);
+}
+
+/* === 表体 === */
+.data-table td {
+    padding: var(--size-2xs) var(--size-sm);
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* === 悬停效果 === */
+.data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table__row--clickable {
+    cursor: pointer;
+}
+
+.data-table__row--clickable:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* === 空数据行 === */
+.data-table__empty-row td {
+    text-align: center;
+    padding: var(--size-xl);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* === 尺寸变体 === */
+.data-table--small th {
+    padding: var(--size-2xs) var(--size-xs);
+    font-size: clamp(0.5625rem, 1vw, 0.625rem);
+}
+
+.data-table--small td {
+    padding: var(--size-3xs) var(--size-xs);
+    font-size: clamp(0.5625rem, 1vw, 0.625rem);
+}
+
+.data-table--large th {
+    padding: var(--size-sm) var(--size-md);
+    font-size: clamp(0.6875rem, 1.4vw, 0.75rem);
+}
+
+.data-table--large td {
+    padding: var(--size-xs) var(--size-md);
+    font-size: clamp(0.6875rem, 1.4vw, 0.75rem);
+}
+
+/* === 样式变体 === */
+
+/* Striped - 斑马纹 */
+.data-table--striped tbody tr:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Compact - 紧凑模式 */
+.data-table--compact th,
+.data-table--compact td {
+    padding: var(--size-3xs) var(--size-2xs);
+}
+
+/* === 固定表头 === */
+.data-table--sticky-header thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--glass-bg-hover);
+    backdrop-filter: blur(var(--blur-panel));
+}
+
+/* === 加载状态 === */
+.data-table--loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.data-table__loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+}
+
+.data-table__spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: data-table-spin 0.8s linear infinite;
+}
+
+@keyframes data-table-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* === 新数据高亮动画 === */
+.data-table tbody tr:first-child {
+    animation: data-table-new-row 0.3s ease-out;
+}
+
+@keyframes data-table-new-row {
+    from {
+        background: rgba(59, 130, 246, 0.2);
+    }
+
+    to {
+        background: transparent;
+    }
+}
+
+/* === 响应式 === */
+@media (max-width: 768px) {
+
+    .data-table th,
+    .data-table td {
+        padding: var(--size-3xs) var(--size-2xs);
+        font-size: clamp(0.5rem, 1vw, 0.5625rem);
+    }
+}
