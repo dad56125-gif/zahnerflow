@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Button } from '../../shared/Button';
 import type { MfcState, MfcControls } from './useMfc';
 
 interface MFCConnectionPanelProps {
@@ -68,13 +69,16 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
             </select>
           </div>
 
-          <button
+          <Button
+            variant="primary"
+            size="medium"
+            block
+            loading={isConnecting}
             onClick={handleConnect}
-            disabled={isConnecting || !selectedPort}
-            className={`btn_base btn_layout btn_style_common btn_medium btn_primary btn_block ${isConnecting ? 'btn_loading' : ''}`}
+            disabled={!selectedPort}
           >
-            {isConnecting ? '连接中...' : '连接设备'}
-          </button>
+            连接设备
+          </Button>
         </div>
       )}
 
@@ -102,13 +106,14 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
           </div>
 
           <div className="connection-actions">
-            <button
+            <Button
+              variant="warning"
+              size="small"
               onClick={handleDisconnect}
               disabled={mfcState.isLoading}
-              className="btn btn-warning disconnect-btn"
             >
               断开连接
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -126,13 +131,15 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
           </div>
 
           <div className="connection-actions">
-            <button
+            <Button
+              variant="primary"
+              size="medium"
               onClick={handleConnect}
               disabled={isConnecting || !selectedPort}
-              className="btn btn-primary"
+              loading={isConnecting}
             >
               重试连接
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { Portal } from '../../components/Portal';
+import { Button } from '../../shared/Button';
 import type { MfcState, MfcControls } from './useMfc';
 import { MFCDeviceCard } from './MFCDeviceCard';
 import { MFCConnectionPanel } from './MFCConnectionPanel';
@@ -79,13 +80,25 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   mfcState.connection_status === 'error' ? '连接错误' : '未连接'})
             </span>
             {mfcState.connection_status === 'connected' && (
-              <button
-                className="btn_base btn_layout btn_style_common btn_medium btn_primary"
-                onClick={() => mfcControls.refresh()}
-                disabled={mfcState.isLoading}
-              >
-                重新连接
-              </button>
+              <>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => mfcControls.scanDevices()}
+                  disabled={mfcState.isLoading || mfcState.isScanning}
+                  loading={mfcState.isScanning}
+                >
+                  重新扫描
+                </Button>
+                <Button
+                  variant="danger"
+                  size="small"
+                  onClick={() => mfcControls.disconnect()}
+                  disabled={mfcState.isLoading || mfcState.isScanning}
+                >
+                  断开
+                </Button>
+              </>
             )}
           </div>
           <button className="modal_close" onClick={on_close}>×</button>
@@ -157,23 +170,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                 </div>
               )}
 
-              {/* 设备控制按钮 */}
-              <div className="device-controls">
-                <button
-                  className={`btn ${mfcState.isScanning ? 'btn-loading' : 'btn-primary'}`}
-                  onClick={() => mfcControls.scanDevices()}
-                  disabled={mfcState.isScanning}
-                >
-                  {mfcState.isScanning ? '扫描中...' : '重新扫描'}
-                </button>
-                <button
-                  className="btn btn-danger"
-                  onClick={() => mfcControls.disconnect()}
-                  disabled={mfcState.isLoading || mfcState.isScanning}
-                >
-                  断开连接
-                </button>
-              </div>
             </>
           )}
 
