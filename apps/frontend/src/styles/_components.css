@@ -5424,3 +5424,37 @@
   color: var(--text-muted);
   margin-top: var(--size-xs);
 }
+
+/* === MFC 设备分组样式 === */
+.mfc-device-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-lg);
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--size-md);
+}
+
+.mfc-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-sm);
+}
+
+.mfc-section-title {
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--color-success);
+  padding: var(--size-2xs) var(--size-sm);
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2xs);
+  width: fit-content;
+}
+
+.mfc-section-title.mfc-section-idle {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+}

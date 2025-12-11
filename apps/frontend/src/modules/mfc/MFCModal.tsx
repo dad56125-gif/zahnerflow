@@ -156,16 +156,48 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   <span className="mfc-empty-hint">长时间无响应请检查连接</span>
                 </div>
               ) : (
-                <div className="mfc-cards-container">
-                  {mfcState.devices.map((device) => (
-                    <MFCDeviceCard
-                      key={device.address}
-                      device={device}
-                      onSetFlow={mfcControls.setFlowRate}
-                      loading={mfcState.isLoading}
-                      disabled={mfcState.isScanning}
-                    />
-                  ))}
+                <div className="mfc-device-sections">
+                  {/* 激活设备 (set_flow > 0) */}
+                  {(() => {
+                    const activeDevices = mfcState.devices.filter(d => d.set_flow > 0);
+                    const idleDevices = mfcState.devices.filter(d => d.set_flow === 0);
+                    return (
+                      <>
+                        {activeDevices.length > 0 && (
+                          <div className="mfc-section">
+                            <div className="mfc-section-title">激活设备 ({activeDevices.length})</div>
+                            <div className="mfc-cards-container">
+                              {activeDevices.map((device) => (
+                                <MFCDeviceCard
+                                  key={device.address}
+                                  device={device}
+                                  onSetFlow={mfcControls.setFlowRate}
+                                  loading={mfcState.isLoading}
+                                  disabled={mfcState.isScanning}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {idleDevices.length > 0 && (
+                          <div className="mfc-section">
+                            <div className="mfc-section-title mfc-section-idle">空闲设备 ({idleDevices.length})</div>
+                            <div className="mfc-cards-container">
+                              {idleDevices.map((device) => (
+                                <MFCDeviceCard
+                                  key={device.address}
+                                  device={device}
+                                  onSetFlow={mfcControls.setFlowRate}
+                                  loading={mfcState.isLoading}
+                                  disabled={mfcState.isScanning}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 

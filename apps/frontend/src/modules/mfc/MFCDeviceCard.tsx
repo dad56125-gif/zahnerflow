@@ -24,9 +24,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   loading = false,
   disabled = false,
 }) => {
-  const [flowInputValue, setFlowInputValue] = useState<string>(
-    (device.set_flow ?? 0).toString()
-  );
+  const [flowInputValue, setFlowInputValue] = useState<string>('');
   const [isSettingFlow, setIsSettingFlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +67,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
 
     try {
       await onSetFlow?.(device.address, sccm);
-      setFlowInputValue(sccm.toString());
+      setFlowInputValue(''); // 设置成功后清空输入框
     } catch (err) {
       setError(`失败: ${err instanceof Error ? err.message : '未知'}`);
       setFlowInputValue(device.set_flow.toString());

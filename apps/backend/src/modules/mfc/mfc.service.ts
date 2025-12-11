@@ -427,15 +427,32 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Stopped polling');
   }
 
+  // 空闲设备上次轮询时间记录
+  private idle_last_poll = new Map<number, number>();
+  private IDLE_POLL_INTERVAL = 60000; // 空闲设备60秒轮询一次
+
   private async perform_polling(): Promise<void> {
     if (this.device_busy) return;
     this.is_polling_busy = true;
 
     try {
-      // 串行轮询所有设备
+      const now = Date.now();
       const addresses = Array.from(this.device_statuses.keys());
+
       for (const addr of addresses) {
         try {
+          const device = this.device_statuses.get(addr);
+          const isActive = device && (device.setpoint_sccm || 0) > 0;
+
+          // 空闲设备检查是否到达轮询间隔
+          if (!isActive) {
+            const lastPoll = this.idle_last_poll.get(addr) || 0;
+            if (now - lastPoll < this.IDLE_POLL_INTERVAL) {
+              continue; // 跳过此设备，未到轮询时间
+            }
+            this.idle_last_poll.set(addr, now);
+          }
+
           const res = await this.device.get_device_status(addr);
           if (res?.device_address !== undefined) this.update_device_status(res);
           if (addresses.indexOf(addr) < addresses.length - 1) await new Promise(r => setTimeout(r, 100));
@@ -443,7 +460,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
       }
 
       // 广播数据
-      const now = new Date().toISOString();
+      const timestamp = new Date().toISOString();
       const devices = Array.from(this.device_statuses.values());
 
       if (devices.length > 0) {
@@ -459,16 +476,16 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
             connection_status: d.connection_status === ConnectionState.CONNECTED ? 'connected' : 'disconnected',
             last_communication: d.last_communication
           })),
-          timestamp: now
+          timestamp
         });
 
         // 采样记录 (保留 DataService 调用)
         devices.forEach(d => {
           this.dataService.addFlowSample({
-            ts: now,
+            ts: timestamp,
             address: d.address,
             flow_sccm: d.flow_sccm || 0,
-            flow_percent: 0, // 简化计算
+            flow_percent: 0,
             digital_setpoint_percent: 0,
             active_setpoint_percent: 0
           });
@@ -480,7 +497,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.polling_status.error_count++;
       if (++this.polling_status.consecutive_errors >= 5) {
-        this.stop_polling(); // 错误过多自动停止
+        this.stop_polling();
       }
     } finally {
       this.is_polling_busy = false;
