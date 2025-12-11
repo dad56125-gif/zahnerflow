@@ -185,6 +185,19 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     this.db.prepare(`INSERT INTO executions (id, workflow_id, status, start_time) VALUES (?, ?, 'running', ?)`)
       .run(executionId, finalWorkflowId, startTime.toISOString());
 
+    // ✅ 【核心修改】确定要执行的节点：优先使用前端传递的 nodes
+    let nodesToExecute: any[];
+    if (nodes && nodes.length > 0) {
+      // 前端传递了 nodes，直接使用（支持修改参数后重新执行）
+      nodesToExecute = nodes;
+      this.logger.log(`[executeWorkflow] 使用前端传递的节点执行 (${nodes.length} 个)`);
+    } else {
+      // 没有传递 nodes，从数据库读取
+      const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
+      nodesToExecute = workflow.nodes;
+      this.logger.log(`[executeWorkflow] 从数据库读取节点执行 (${workflow.nodes.length} 个)`);
+    }
+
     // 更新全局状态
     this.updateState({
       status: 'running',
@@ -192,20 +205,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       executionId,
       startTime,
       error: null,
-      currentStep: { nodeId: null, nodeType: null, index: 0, total: nodes?.length || 0 }
+      currentStep: { nodeId: null, nodeType: null, index: 0, total: nodesToExecute.length }
     });
 
     this.emitWorkflowEvent('started', executionId, finalWorkflowId!);
 
     try {
-      const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
-
-      // 更新总步数
-      this.updateState({
-        currentStep: { ...this.state.currentStep!, total: workflow.nodes.length }
-      });
-
-      const results = await this.executeNodes(executionId, workflow.nodes);
+      const results = await this.executeNodes(executionId, nodesToExecute);
       const endTime = new Date();
       const duration = endTime.getTime() - startTime.getTime();
 

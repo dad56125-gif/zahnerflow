@@ -73,6 +73,7 @@ const AppContent: React.FC = () => {
     setSelectedWorkstation(workstationType);
     setWorkstationNodeGroups(getNodeGroupsByWorkstation(workstationType));
     useCanvasStore.getState().clearCanvas();
+    setCurrentWorkflow(null);  // 清空当前工作流，避免新节点使用旧 workflowId
   };
 
   const handleFilePathSave = (config: any) => {
