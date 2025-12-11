@@ -7,10 +7,19 @@ interface SidebarProps {
   onPanelChange: (panel: 'nodes') => void;
   nodeGroups: Record<NodeCategory, string[]>;
   selectedWorkstation: WorkstationType | null;
+  furnaceConnected?: boolean;
+  mfcConnected?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstation }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstation, furnaceConnected = false, mfcConnected = false }) => {
   const addNode = useCanvasStore((state) => state.addNode);
+
+  // 判断节点是否禁用
+  const isNodeDisabled = (nodeType: string): boolean => {
+    if (nodeType === 'change_temperature' && !furnaceConnected) return true;
+    if (nodeType === 'change_gas_flow' && !mfcConnected) return true;
+    return false;
+  };
 
   const handleCreateNode = (nodeType: string) => {
     if (selectedWorkstation) {
@@ -70,20 +79,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ nodeGroups, selectedWorkstatio
                     {categoryNodes.map((nodeType) => {
                       const config = getNodeConfig(nodeType);
                       if (!config) return null;
+                      const disabled = isNodeDisabled(nodeType);
                       return (
                         <div
                           key={nodeType}
-                          className="node-item glass"
-                          draggable
+                          className={`node-item glass ${disabled ? 'disabled' : ''}`}
+                          draggable={!disabled}
                           onDragStart={(e) => {
+                            if (disabled) { e.preventDefault(); return; }
                             try {
                               e.dataTransfer.setData('nodeType', nodeType);
                               e.dataTransfer.effectAllowed = 'copy';
                               e.dataTransfer.dropEffect = 'copy';
                             } catch { }
                           }}
-                          onClick={() => handleCreateNode(nodeType)}
-                          title={config.description}
+                          onClick={() => !disabled && handleCreateNode(nodeType)}
+                          title={disabled ? `请先连接${nodeType === 'change_temperature' ? 'Furnace' : 'MFC'}设备` : config.description}
                         >
                           <div className="node-icon">{config.icon}</div>
                           <div className="node-name">{config.name}</div>

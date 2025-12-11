@@ -2246,6 +2246,22 @@
   transform: scale(1.1);
 }
 
+.node-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.7);
+}
+
+.node-item.disabled:hover {
+  transform: none;
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: none;
+}
+
+.node-item.disabled .node-icon {
+  transform: none;
+}
 
 /* === 缩放控制 === */
 .zoom-controls {

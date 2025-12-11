@@ -206,6 +206,8 @@ const AppContent: React.FC = () => {
           onPanelChange={setActivePanel}
           nodeGroups={workstationNodeGroups}
           selectedWorkstation={selectedWorkstation}
+          furnaceConnected={furnaceState.connection_status === 'connected' && !!furnaceState.device_status}
+          mfcConnected={mfcState.connection_status === 'connected' && mfcState.devices.length > 0}
         />
       </div>
 
