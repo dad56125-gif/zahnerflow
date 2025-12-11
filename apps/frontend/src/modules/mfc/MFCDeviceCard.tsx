@@ -6,6 +6,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { MfcDevice, DeviceCardProps } from './mfcTypes';
+import { Button } from '../../shared/Button';
 
 interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   device: MfcDevice;
@@ -23,7 +24,6 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   loading = false,
   disabled = false,
 }) => {
-  // 组件内部状态 - 添加防御性编程，处理undefined值
   const [flowInputValue, setFlowInputValue] = useState<string>(
     (device.set_flow ?? 0).toString()
   );
@@ -44,20 +44,10 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   // 获取状态颜色
   const getStatusColor = useCallback(() => {
     switch (device.status) {
-      case 'connected': return '#4CAF50';
-      case 'warning': return '#FF9800';
-      case 'error': return '#F44336';
-      default: return '#9E9E9E';
-    }
-  }, [device.status]);
-
-  // 获取状态文本
-  const getStatusText = useCallback(() => {
-    switch (device.status) {
-      case 'connected': return '已连接';
-      case 'warning': return '警告';
-      case 'error': return '错误';
-      default: return '断开';
+      case 'connected': return 'var(--color-success)';
+      case 'warning': return 'var(--color-warning)';
+      case 'error': return 'var(--color-danger)';
+      default: return 'var(--text-muted)';
     }
   }, [device.status]);
 
@@ -65,19 +55,12 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   const handleSetFlow = useCallback(async () => {
     const sccm = parseFloat(flowInputValue);
 
-    // 验证输入
     if (isNaN(sccm)) {
-      setError('请输入有效的数字');
+      setError('请输入有效数字');
       return;
     }
-
-    if (sccm < 0) {
-      setError('流量不能为负数');
-      return;
-    }
-
-    if (sccm > device.max_flow_sccm) {
-      setError(`流量不能超过设备最大值 ${device.max_flow_sccm} sccm`);
+    if (sccm < 0 || sccm > device.max_flow_sccm) {
+      setError(`范围 0 - ${device.max_flow_sccm}`);
       return;
     }
 
@@ -86,189 +69,108 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
 
     try {
       await onSetFlow?.(device.address, sccm);
-      // 成功后更新输入值
       setFlowInputValue(sccm.toString());
-    } catch (error) {
-      setError(`设置失败: ${error instanceof Error ? error.message : '未知错误'}`);
-      // 恢复原始值
+    } catch (err) {
+      setError(`失败: ${err instanceof Error ? err.message : '未知'}`);
       setFlowInputValue(device.set_flow.toString());
     } finally {
       setIsSettingFlow(false);
     }
   }, [flowInputValue, device.address, device.max_flow_sccm, device.set_flow, onSetFlow]);
 
-  
-  // 处理键盘事件
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSetFlow();
-    }
+    if (e.key === 'Enter') handleSetFlow();
   }, [handleSetFlow]);
 
-  // 处理输入变化
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFlowInputValue(e.target.value);
     setError(null);
   }, []);
 
-  // 格式化流量显示
   const formatFlow = useCallback((flow: number) => {
-    if (flow === undefined || flow === null || isNaN(flow)) {
-      return '0.0';
-    }
-    return flow.toFixed(1);
+    return (flow ?? 0).toFixed(1);
   }, []);
 
-  // 安全获取百分比
-  const safeGetPercentage = useCallback((flow: number, maxFlow: number) => {
-    if (maxFlow === undefined || maxFlow === null || maxFlow === 0 || isNaN(maxFlow)) {
-      return '0.0';
-    }
-    if (flow === undefined || flow === null || isNaN(flow)) {
-      return '0.0';
-    }
-    const percentage = (flow / maxFlow) * 100;
-    return percentage.toFixed(1);
-  }, []);
+  const getPercent = useCallback((flow: number) => {
+    if (!device.max_flow_sccm) return '0';
+    return ((flow / device.max_flow_sccm) * 100).toFixed(0);
+  }, [device.max_flow_sccm]);
 
   return (
-    <div className={`mfc-device-card glass ${loading ? 'loading' : ''} ${disabled ? 'disabled' : ''}`}>
-      {/* 卡片头部 */}
-      <div className="mfc-card-header">
-        <div className="mfc-device-info">
-          <span className="mfc-device-id">MFC {device.address}</span>
-          <span className="mfc-gas-type">
-            {device.gas_type} ({device.max_flow_sccm} sccm)
-          </span>
+    <div className={`mfc-card ${loading ? 'loading' : ''} ${disabled ? 'disabled' : ''}`}>
+      {/* 头部：地址 + 气体 + 最大流量 + 状态 */}
+      <div className="mfc-card-head">
+        <div className="mfc-card-title">
+          <span className="mfc-addr">#{device.address}</span>
+          <span className="mfc-gas">{device.gas_type}</span>
+          <span className="mfc-max">{device.max_flow_sccm} sccm</span>
         </div>
-        <div className="mfc-status-indicator">
-          <div
-            className="status-light"
-            style={{ backgroundColor: getStatusColor() }}
-          />
-          <span className="status-text">{getStatusText()}</span>
-        </div>
+        <div className="mfc-status" style={{ color: getStatusColor() }}>●</div>
       </div>
 
-      {/* 卡片主体 */}
-      <div className="mfc-card-body">
-        {/* 左侧控制区 */}
-        <div className="mfc-left-panel">
-          {/* 流量显示 */}
-          <div className="mfc-flow-display">
-            <div className="flow-value-display">
-              <div className="flow-actual">
-                <span className="flow-label">实际流量</span>
-                <span className="flow-value">
-                  {formatFlow(device.flow_sccm)} sccm
-                </span>
-              </div>
-              <div className="flow-setpoint">
-                <span className="flow-label">设定流量</span>
-                <span className="flow-value">
-                  {formatFlow(device.set_flow)} sccm
-                </span>
-              </div>
+      {/* 主体：左控制 + 右图表 */}
+      <div className="mfc-card-main">
+        {/* 左侧：流量数值 + 输入控制 */}
+        <div className="mfc-control">
+          <div className="mfc-values">
+            <div className="mfc-value-row">
+              <span className="mfc-label">实际</span>
+              <span className="mfc-flow">{formatFlow(device.flow_sccm)}</span>
+              <span className="mfc-unit">sccm</span>
+            </div>
+            <div className="mfc-value-row">
+              <span className="mfc-label">设定</span>
+              <span className="mfc-flow mfc-flow-set">{formatFlow(device.set_flow)}</span>
+              <span className="mfc-unit">sccm</span>
             </div>
           </div>
 
-          {/* 控制区 */}
-          <div className="mfc-card-controls">
-            {/* 流量输入 */}
-            <div className="flow-input-group">
-              <label>设定 (sccm)</label>
-              <div className="input-with-button">
-                <input
-                  type="number"
-                  value={flowInputValue}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  disabled={disabled || isSettingFlow || loading}
-                  min="0"
-                  max={device.max_flow_sccm}
-                  step="0.1"
-                  className="flow-input"
-                />
-                <button
-                  className={`btn btn-sm ${isSettingFlow ? 'btn-loading' : 'btn-primary'}`}
-                  onClick={handleSetFlow}
-                  disabled={disabled || isSettingFlow || loading}
-                >
-                  {isSettingFlow ? '设置中...' : '设置'}
-                </button>
-              </div>
-              {error && (
-                <div className="error-message">{error}</div>
-              )}
-            </div>
-
-                      </div>
+          <div className="mfc-input-row">
+            <input
+              type="number"
+              value={flowInputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              disabled={disabled || isSettingFlow || loading}
+              min="0"
+              max={device.max_flow_sccm}
+              step="0.1"
+              className="mfc-input"
+              placeholder="sccm"
+            />
+            <Button
+              variant="primary"
+              size="small"
+              loading={isSettingFlow}
+              onClick={handleSetFlow}
+              disabled={disabled || loading}
+            >
+              设置
+            </Button>
+          </div>
+          {error && <div className="mfc-error">{error}</div>}
         </div>
 
-        {/* 右侧图表区 */}
-        <div className="mfc-right-panel">
-          <div className="flow-charts-container">
-            {/* 实际流量柱状图 */}
-            <div className="flow-chart-item">
-              <div className="chart-title">实际</div>
-              <div className="flow-bar-container">
-                <div className="flow-bar-wrapper">
-                  <div className="flow-bar-background">
-                    <div
-                      className="flow-bar-actual"
-                      style={{ height: `${getFlowBarHeight()}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="flow-bar-value">
-                  {formatFlow(device.flow_sccm)}
-                </div>
+        {/* 右侧：双柱状图水平并排 */}
+        <div className="mfc-bars">
+          <div className="mfc-bar-col">
+            <div className="mfc-bar-wrap">
+              <div className="mfc-bar-bg">
+                <div className="mfc-bar-fill mfc-bar-actual" style={{ height: `${getFlowBarHeight()}%` }} />
               </div>
             </div>
-
-            {/* 设定流量柱状图 */}
-            <div className="flow-chart-item">
-              <div className="chart-title">设定</div>
-              <div className="flow-bar-container">
-                <div className="flow-bar-wrapper">
-                  <div className="flow-bar-background">
-                    <div
-                      className="flow-bar-setpoint"
-                      style={{ height: `${getSetFlowBarHeight()}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="flow-bar-value">
-                  {formatFlow(device.set_flow)}
-                </div>
-              </div>
-            </div>
+            <span className="mfc-bar-label">{getPercent(device.flow_sccm)}%</span>
           </div>
-
-          {/* 百分比显示 */}
-          <div className="flow-percentages">
-            <div className="percentage-item">
-              <span className="percentage-label">实际:</span>
-              <span className="percentage-value">
-                {safeGetPercentage(device.flow_sccm, device.max_flow_sccm)}%
-              </span>
+          <div className="mfc-bar-col">
+            <div className="mfc-bar-wrap">
+              <div className="mfc-bar-bg">
+                <div className="mfc-bar-fill mfc-bar-setpoint" style={{ height: `${getSetFlowBarHeight()}%` }} />
+              </div>
             </div>
-            <div className="percentage-item">
-              <span className="percentage-label">设定:</span>
-              <span className="percentage-value">
-                {safeGetPercentage(device.set_flow, device.max_flow_sccm)}%
-              </span>
-            </div>
+            <span className="mfc-bar-label">{getPercent(device.set_flow)}%</span>
           </div>
         </div>
       </div>
-
-      {/* 加载遮罩 */}
-      {(loading || isSettingFlow) && (
-        <div className="loading-overlay">
-          <div className="loading-spinner" />
-        </div>
-      )}
     </div>
   );
 };
