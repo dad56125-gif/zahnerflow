@@ -214,7 +214,7 @@ class MfcSession:
             val_flow = self._parse_val(resp_flow, 8) # Data starts at index 8
             if val_flow is not None:
                 flow_pct = self._ufrac_to_pct(val_flow)
-            logger.debug(f"[FLOW] addr={address} | RX={resp_flow.hex().upper() if resp_flow else 'None'} | len={len(resp_flow) if resp_flow else 0} | UFRAC=0x{val_flow:04X if val_flow else 0} | pct={flow_pct:.2f}%")
+            logger.debug(f"[FLOW] addr={address} | RX={resp_flow.hex().upper() if resp_flow else 'None'} | len={len(resp_flow) if resp_flow else 0} | UFRAC=0x{(val_flow if val_flow else 0):04X} | pct={flow_pct:.2f}%")
         except MfcError as e:
             logger.warning(f"[FLOW] addr={address} | ERROR: {e}")
 
@@ -230,7 +230,7 @@ class MfcSession:
             val_sp = self._parse_val(resp_sp, 8)
             if val_sp is not None:
                 sp_pct = self._ufrac_to_pct(val_sp)
-            logger.info(f"[SETPOINT] addr={address} | RX={resp_sp.hex().upper() if resp_sp else 'None'} | len={len(resp_sp) if resp_sp else 0} | UFRAC=0x{val_sp:04X if val_sp else 0} | pct={sp_pct:.2f}%")
+            logger.info(f"[SETPOINT] addr={address} | RX={resp_sp.hex().upper() if resp_sp else 'None'} | len={len(resp_sp) if resp_sp else 0} | UFRAC=0x{(val_sp if val_sp else 0):04X} | pct={sp_pct:.2f}%")
         except MfcError as e:
             logger.warning(f"[SETPOINT] addr={address} | ERROR: {e}")
 
