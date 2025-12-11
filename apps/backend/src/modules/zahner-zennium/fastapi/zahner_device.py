@@ -46,11 +46,29 @@ class DeviceManager:
         self.wrapper: Optional[ThalesRemoteScriptWrapper] = None
 
     def connect(self, host: str):
+        # 验证现有连接是否真的在线
         if self.connection:
-            return # Already connected
+            if self.connection.isConnectedToTerm():
+                print(f"[System] Already connected to Zahner")
+                return  # 真的已连接
+            else:
+                # 连接已失效，清理后重连
+                print(f"[System] Previous connection invalid, reconnecting...")
+                self.connection = None
+                self.wrapper = None
+
         try:
             self.connection = ThalesRemoteConnection()
-            self.connection.connectToTerm(host)
+            success = self.connection.connectToTerm(host)
+            if not success:
+                self.connection = None
+                raise Exception("connectToTerm() returned False - connection rejected")
+
+            # 二次验证连接状态
+            if not self.connection.isConnectedToTerm():
+                self.connection = None
+                raise Exception("isConnectedToTerm() returned False after connect")
+
             self.wrapper = ThalesRemoteScriptWrapper(self.connection)
             self.wrapper.forceThalesIntoRemoteScript()
             self.wrapper.calibrateOffsets()
@@ -185,7 +203,7 @@ def connect_device(req: ConnectRequest):
         device_manager.connect(req.host)
         return {"status": "success", "message": f"Connected to {req.host}"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=503, detail=str(e))
 
 @app.post("/disconnect")
 def disconnect_device():

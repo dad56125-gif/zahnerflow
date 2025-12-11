@@ -8,7 +8,7 @@ import type { ProgramSegment } from '@zahnerflow/types';
 @Injectable()
 export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FurnaceService.name);
-  
+
   private isActive = false;
   private isConnected = false;
   private shouldPoll = false;
@@ -27,7 +27,7 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
     private readonly dataService: FurnaceDataService,
     @Inject(forwardRef(() => FurnaceGateway))
     private readonly gateway: FurnaceGateway,
-  ) {}
+  ) { }
 
   onModuleInit() {
     this.isActive = true;
@@ -173,7 +173,7 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
 
   async disconnect() {
     this.shouldPoll = false;
-    try { await this.device.disconnect(); } catch(e) {}
+    try { await this.device.disconnect(); } catch (e) { }
     this.isConnected = false;
     this.gateway.sendFurnaceStatusUpdate({ connection_state: { status: 'disconnected' } } as any);
     return { success: true };
@@ -183,13 +183,13 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   async pause() { return this.executeCommand(() => this.device.pause(), 'pause'); }
   async stop() { return this.executeCommand(() => this.device.stop(), 'stop'); }
   async setSegment(seg: number) { return this.executeCommand(() => this.device.setSegment(seg), 'set_segment'); }
-  
+
   async getSegment(id: number) {
-      // 前端调用的单点接口
-      const result: any = await this.executeCommand(
-          () => this.device.getSegment(id), `read_segment_${id}`
-      );
-      return result.segment_data;
+    // 前端调用的单点接口
+    const result: any = await this.executeCommand(
+      () => this.device.getSegment(id), `read_segment_${id}`
+    );
+    return result.segment_data;
   }
 
   // Passthroughs
@@ -205,8 +205,8 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
     return this.dataService.applyPreset(name, () => this.get_program_segments(), (segs) => this.set_program_segments(segs));
   }
   async get_history_data(params: any) { return this.dataService.getHistoryData(params); }
-  async subscribe_to_furnace_updates(id: string) {}
-  async unsubscribe_from_furnace_updates(id: string) {}
+  async subscribe_to_furnace_updates(id: string) { }
+  async unsubscribe_from_furnace_updates(id: string) { }
 
   // 批量读取程序段（内部循环27次getSegment）
   async get_program_segments(): Promise<ProgramSegment[]> {
@@ -277,6 +277,8 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       const currentTemp = status.pv;  // Python API已转换为用户格式
       const targetTemp = params.target_temperature;  // 用户输入格式
       const ratePerMin = params.rate;  // 用户输入格式
+      const tolerance = params.tolerance ?? 5;  // 温度容差（℃）
+      const stabilizationTime = (params.stabilization_time ?? 30) * 1000;  // 转换为毫秒
       const tempDiff = Math.abs(targetTemp - currentTemp);  // 直接计算用户格式差值
       const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
 
@@ -293,18 +295,52 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
         await this.run();
       }
 
-      const waitMs = (calculatedDuration * 60 * 1000) + (params.stabilization_time || 30 * 1000);
-      await new Promise(r => setTimeout(r, waitMs));
+      // ========== 轮询验证温度 ==========
+      const maxWaitMs = (calculatedDuration * 60 * 1000) + stabilizationTime;
+      const pollIntervalMs = 2000; // 每2秒检测一次
+      const startTime = Date.now();
+
+      this.logger.log(`[温度控制] 开始轮询验证 - 目标: ${targetTemp}℃, 容差: ±${tolerance}℃, 最大等待: ${Math.round(maxWaitMs / 1000)}s`);
+
+      while (Date.now() - startTime < maxWaitMs) {
+        const currentStatus = await this.device.status();
+        const currentPv = currentStatus.pv;
+
+        // 检查是否在容差范围内
+        if (Math.abs(currentPv - targetTemp) <= tolerance) {
+          this.logger.log(`[温度控制] 成功！当前: ${currentPv}℃, 目标: ${targetTemp}℃, 容差: ±${tolerance}℃`);
+          return {
+            success: true,
+            updated_parameters: {
+              ...params,
+              current_temperature: currentPv,
+              calculated_duration: calculatedDuration,
+              tolerance,
+              stabilization_time: params.stabilization_time ?? 30
+            }
+          };
+        }
+
+        // 等待下一次轮询
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+      }
+
+      // 超时未达目标
+      const finalStatus = await this.device.status();
+      const finalTemp = finalStatus.pv;
+      const errorMsg = `温度控制超时：当前 ${finalTemp}℃，目标 ${targetTemp}℃，容差 ±${tolerance}℃`;
+      this.logger.warn(`[温度控制] 失败！${errorMsg}`);
 
       return {
-        success: true,
+        success: false,
         updated_parameters: {
           ...params,
-          current_temperature: currentTemp,
+          current_temperature: finalTemp,
           calculated_duration: calculatedDuration,
-          tolerance: 5,
-          stabilization_time: params.stabilization_time || 30
-        }
+          tolerance,
+          stabilization_time: params.stabilization_time ?? 30
+        },
+        error: errorMsg
       };
     } catch (e: any) {
       return {

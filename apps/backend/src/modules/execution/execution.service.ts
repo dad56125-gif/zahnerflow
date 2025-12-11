@@ -278,11 +278,15 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       case 'delay': await this.executeDelay(params.duration || 1); break;
 
       case 'change_temperature':
-        await this.furnaceService.autoTemperatureControl({
+        const tempResult = await this.furnaceService.autoTemperatureControl({
           target_temperature: params.target_temperature,
           rate: params.rate,
-          tolerance: 5, stabilization_time: 30
+          tolerance: params.tolerance ?? 5,
+          stabilization_time: params.stabilization_time ?? 30
         }, node.id, executionId);
+        if (!tempResult.success) {
+          throw new Error(tempResult.error || '温度控制失败');
+        }
         break;
 
       case 'change_gas_flow':

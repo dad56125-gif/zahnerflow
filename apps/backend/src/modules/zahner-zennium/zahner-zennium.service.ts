@@ -50,7 +50,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     this.disconnectWebSocket();
     if (this.connected) {
-      await this.disconnect().catch(() => {});
+      await this.disconnect().catch(() => { });
     }
   }
 
@@ -71,17 +71,17 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       // 这里我们可以复用 connect，或者如果 Python 有专门的 calibration 测量类型，调用它。
       // 为简单起见，这里假设重新 connect 会触发 calibrateOffsets
       await this.connect('localhost');
-      return { 
-        success: true, 
-        timestamp: new Date(), 
-        parameters: { message: 'Calibrated via reconnection' } 
+      return {
+        success: true,
+        timestamp: new Date(),
+        parameters: { message: 'Calibrated via reconnection' }
       };
     } catch (e: any) {
-      return { 
-        success: false, 
-        timestamp: new Date(), 
-        parameters: {}, 
-        error: e.message 
+      return {
+        success: false,
+        timestamp: new Date(),
+        parameters: {},
+        error: e.message
       };
     }
   }
@@ -93,9 +93,9 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       return res.data;
     } catch (e) {
       this.log('enableWarn', 'Failed to fetch options from Python');
-      return { 
+      return {
         potentiostat_modes: ['POTMODE_POTENTIOSTATIC', 'POTMODE_GALVANOSTATIC'],
-        scan_strategies: ['SINGLE_SINE'] 
+        scan_strategies: ['SINGLE_SINE']
       };
     }
   }
@@ -131,8 +131,8 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       this.wsClient = null;
       this.wsReconnectTimer = setTimeout(() => this.connectWebSocket(), 5000);
     });
-    
-    this.wsClient.on('error', () => {});
+
+    this.wsClient.on('error', () => { });
   }
 
   private disconnectWebSocket() {
@@ -184,11 +184,14 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       if (res.data?.status === 'success') {
         this.updateStatus(true, false);
         this.eventBus.emit('device.connected', { deviceType: this.name });
+        this.logger.log(`[Zahner] Device connected successfully`);
       } else {
         throw new Error(res.data?.message || 'Unknown error');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || error.message;
+      // 处理 HTTP 错误（如 503 HTTPException）
+      const msg = error.response?.data?.detail || error.response?.data?.message || error.message;
+      this.logger.error(`[Zahner] Connection failed: ${msg}`);
       this.updateStatus(false, false, msg);
       throw new Error(`Connection Failed: ${msg}`);
     }
@@ -249,8 +252,8 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
 
   async getDeviceStatus(): Promise<DeviceStatus> {
     if (this.connected) {
-       const alive = await this.healthCheck();
-       if (!alive) this.updateStatus(false, false, 'Middleware lost');
+      const alive = await this.healthCheck();
+      if (!alive) this.updateStatus(false, false, 'Middleware lost');
     }
     return {
       connected: this.connected,
@@ -260,7 +263,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       error: this.error
     };
   }
-  
+
   private log(level: 'enableLog' | 'enableError' | 'enableWarn' | 'enableDebug', msg: string) {
     if (this.consoleManager.shouldDisplayLog(this.moduleName, level)) {
       this.consoleManager.log(this.moduleName, level, msg);
