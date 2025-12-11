@@ -82,7 +82,7 @@ export const MFCConnectionPanel: React.FC<MFCConnectionPanelProps> = ({ mfcState
             )}
           </div>
 
-          <div className="control-group">
+          <div className="control-group" style={{ marginBottom: 'var(--size-md)' }}>
             {/* 使用Dropdown组件替代原生select */}
             <button
               type="button"

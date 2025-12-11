@@ -37,7 +37,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, p
   if (!isOpen && !isHiding) return null;
 
   return (
-    <Portal>
+    <Portal pointerEvents="auto">
       <div
         ref={dropdownRef}
         className={`dropdown_base overlay_base ${isHiding ? 'hiding' : 'show'}`}

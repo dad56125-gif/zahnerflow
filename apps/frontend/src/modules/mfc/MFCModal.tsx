@@ -61,7 +61,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
           flexDirection: 'column',
           overflow: 'hidden',
           animation: 'modal_scale_in 0.3s var(--ease-bounce)',
-          isolation: 'isolate',
           pointerEvents: 'auto',
           zIndex: 1500
         }}
