@@ -5226,7 +5226,7 @@
 /* 卡片主体 - 左右布局 */
 .mfc-card-main {
   display: flex;
-  gap: var(--size-md);
+  gap: var(--size-sm);
   flex: 1;
 }
 
