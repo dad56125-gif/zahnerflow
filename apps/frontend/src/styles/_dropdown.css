@@ -3,7 +3,7 @@
 /* === 下拉菜单基础 === */
 .dropdown_base {
     position: fixed;
-    z-index: 9999;
+    z-index: var(--z-dropdown);
     min-width: 280px;
     max-height: 300px;
 

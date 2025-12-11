@@ -63,7 +63,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
           animation: 'modal_scale_in 0.3s var(--ease-bounce)',
           isolation: 'isolate',
           pointerEvents: 'auto',
-          zIndex: 2000
+          zIndex: 1500
         }}
         onClick={(e) => e.stopPropagation()}
       >
