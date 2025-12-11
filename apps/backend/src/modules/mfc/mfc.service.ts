@@ -212,7 +212,7 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
           }
         } catch (e) { /* 忽略单地址错误 */ }
 
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 200));
       }
 
       // 扫描完成，广播100%
