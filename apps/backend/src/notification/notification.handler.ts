@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventBus, EventPayload } from './event-bus.service';
 import { WorkflowGateway } from '../gateways/workflow.gateway';
 import { ConsoleDisplayManager } from '../common/console-display-manager.service';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class NotificationEventHandler {
@@ -9,6 +10,7 @@ export class NotificationEventHandler {
     private readonly eventBus: EventBus,
     private readonly workflowGateway: WorkflowGateway,
     private readonly consoleManager: ConsoleDisplayManager,
+    private readonly emailService: EmailService,
   ) {
     this.registerEventHandlers();
   }
@@ -19,7 +21,7 @@ export class NotificationEventHandler {
       'workflow.started': this.handleWorkflowStarted.bind(this),
       'workflow.completed': this.handleWorkflowCompleted.bind(this),
       'workflow.failed': this.handleWorkflowFailed.bind(this),
-      
+
       // 节点事件
       'node.started': this.handleNodeStarted.bind(this),
       'node.completed': this.handleNodeCompleted.bind(this),
@@ -51,50 +53,57 @@ export class NotificationEventHandler {
   }
 
   private async handleWorkflowCompleted(event: EventPayload) {
-    const { success, duration } = event.data;
+    const { success, duration, workflowId } = event.data;
     this.sendNotify(
-      '工作流结束', 
-      `Success: ${success}, Duration: ${duration}ms`, 
-      success ? 'success' : 'warning', 
+      '工作流结束',
+      `Success: ${success}, Duration: ${duration}ms`,
+      success ? 'success' : 'warning',
       event
     );
+
+    // 发送邮件通知
+    this.emailService.sendWorkflowNotification('completed', workflowId, { duration });
   }
 
   private async handleWorkflowFailed(event: EventPayload) {
-    this.sendNotify('工作流失败', `Error: ${event.data.error}`, 'error', event);
+    const { workflowId, error, duration } = event.data;
+    this.sendNotify('工作流失败', `Error: ${error}`, 'error', event);
+
+    // 发送邮件通知
+    this.emailService.sendWorkflowNotification('failed', workflowId, { error, duration });
   }
 
   // ... Node Handlers ...
   private async handleNodeStarted(event: EventPayload) {
     this.sendNotify('节点开始', `Node: ${event.data.nodeId}`, 'info', event);
   }
-  
+
   private async handleNodeCompleted(event: EventPayload) {
     // 节点完成通常不需要弹窗打扰用户，除非是重要的
     // 这里可以选择不发送 Notification，或者发送 Debug 级别的
   }
-  
+
   private async handleNodeFailed(event: EventPayload) {
     this.sendNotify('节点失败', `Node: ${event.data.nodeId}, Error: ${event.data.error}`, 'error', event);
   }
-  
+
   private async handleWorkflowNodeCompleted(event: EventPayload) {
-     // 冗余事件，通常忽略
+    // 冗余事件，通常忽略
   }
-  
+
   private async handleWorkflowNodeFailed(event: EventPayload) {
-     // 冗余事件，通常忽略，由 handleNodeFailed 处理
+    // 冗余事件，通常忽略，由 handleNodeFailed 处理
   }
 
   // ... Measurement Handlers ...
   private async handleMeasurementStarted(event: EventPayload) {
     this.sendNotify('测量开始', `Type: ${event.data.measurementType}`, 'info', event);
   }
-  
+
   private async handleMeasurementCompleted(event: EventPayload) {
     this.sendNotify('测量完成', `Type: ${event.data.measurementType}`, 'success', event);
   }
-  
+
   private async handleMeasurementFailed(event: EventPayload) {
     this.sendNotify('测量失败', `Type: ${event.data.measurementType}, Err: ${event.data.error}`, 'error', event);
   }
@@ -103,26 +112,26 @@ export class NotificationEventHandler {
   private async handleDeviceConnected(event: EventPayload) {
     this.sendNotify('设备连接', `Device: ${event.data.deviceType}`, 'success', event);
   }
-  
+
   private async handleDeviceDisconnected(event: EventPayload) {
     this.sendNotify('设备断开', `Device: ${event.data.deviceType}`, 'warning', event);
   }
-  
+
   private async handleDeviceError(event: EventPayload) {
     this.sendNotify('设备错误', `Device: ${event.data.deviceType}, Err: ${event.data.error}`, 'error', event);
   }
 
   // ... System Handlers ...
   private async handleSystemHealthCheck(event: EventPayload) {
-      // 健康检查通常不弹窗
+    // 健康检查通常不弹窗
   }
-  
+
   private async handleClientConnected(event: EventPayload) {
-      // 客户端连接不弹窗
+    // 客户端连接不弹窗
   }
-  
+
   private async handleClientDisconnected(event: EventPayload) {
-      // 客户端断开不弹窗
+    // 客户端断开不弹窗
   }
 
   // 辅助方法：统一构建并广播通知
@@ -137,10 +146,10 @@ export class NotificationEventHandler {
       details: JSON.stringify(event.data)
     };
     this.workflowGateway.broadcast('notification', notification);
-    
+
     // Log error events
     if (type === 'error') {
-        this.consoleManager.log('NotificationHandler', 'enableError', `Broadcast Error: ${message}`);
+      this.consoleManager.log('NotificationHandler', 'enableError', `Broadcast Error: ${message}`);
     }
   }
 }
