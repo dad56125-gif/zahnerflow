@@ -7,6 +7,7 @@ import React, { useMemo } from 'react';
 import * as clipper from 'clipper-lib';
 import { SimpleLoopInfo } from './useLoopDetection';
 import { DisplayNode } from './useLayout';
+import { useLoopProgress } from '../state/executionStateBridge';
 
 // =============================================================================
 // PART 1: Clipper 算法 (优化版)
@@ -98,6 +99,42 @@ function getNodeCenterPoint(node: any): Point {
     y: nodeY + nodeHeight / 2
   };
 }
+
+/**
+ * ✅ 循环标签子组件 - 使用 hook 获取循环进度
+ */
+interface LoopLabelProps {
+  loop: SimpleLoopInfo;
+  position: Point;
+  textColor: string;
+}
+
+const LoopLabel: React.FC<LoopLabelProps> = ({ loop, position, textColor }) => {
+  // 使用 hook 获取当前循环的执行进度
+  const loopProgress = useLoopProgress(loop.startIndex);
+
+  // 构建显示文本
+  const progressText = loopProgress
+    ? ` (${loopProgress.current + 1}/${loopProgress.total})`
+    : '';
+
+  return (
+    <text
+      x={position.x}
+      y={position.y - 42}
+      fill={textColor}
+      fontSize="12"
+      fontWeight="600"
+      fontFamily="system-ui, -apple-system, sans-serif"
+      textAnchor="middle"
+      style={{
+        textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
+      }}
+    >
+      第{loop.level + 1}级循环 • {loop.iterationCount}次{progressText}
+    </text>
+  );
+};
 
 export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   loop,
@@ -285,20 +322,11 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
           const textColor = levelColors[loop.level] || levelColors[0];
 
           return (
-            <text
-              x={firstPoint.x}
-              y={firstPoint.y - 42}
-              fill={textColor}
-              fontSize="12"
-              fontWeight="600"
-              fontFamily="system-ui, -apple-system, sans-serif"
-              textAnchor="middle"
-              style={{
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'
-              }}
-            >
-              第{loop.level + 1}级循环 • {loop.iterationCount}次
-            </text>
+            <LoopLabel
+              loop={loop}
+              position={firstPoint}
+              textColor={textColor}
+            />
           );
         })()}
       </g>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { executionService } from '../workflow/workflowService';
 import { workflowWebSocketService } from '../workflow/websocket.service';
-import { ExecutionSnapshot } from '../types/Interfaces';
+import { ExecutionSnapshot, LoopIterationEvent } from '../types/Interfaces';
 // clearMeasurementCache 已解耦，现在由 useMeasurementStream 自己监听 nodesReset 事件
 
 interface ExecutionState {
@@ -20,6 +20,15 @@ interface ExecutionState {
 
   // ✅ 新增：保存最新的完整快照，供组件读取详细信息
   lastSnapshot: ExecutionSnapshot | null;
+
+  // ✅ 新增：循环进度跟踪
+  loopProgress: {
+    [loopStartIndex: number]: {
+      current: number;
+      total: number;
+      nodeIndices: number[];
+    }
+  };
 
   // Actions
   startExecution: (workflowId: string | null, nodes: any[]) => Promise<void>;
@@ -82,7 +91,34 @@ export const useExecutionStore = create<ExecutionState>()(
             error: null,
             executionId: null,
             isRunning: false,
-            isPaused: false
+            isPaused: false,
+            loopProgress: {}
+          });
+        });
+
+        // ✅ 监听循环迭代开始事件（重置循环内节点状态为 idle）
+        workflowWebSocketService.onLoopIterationStart((event: LoopIterationEvent) => {
+          const state = get();
+          console.log('[ExecutionStateBridge] 循环迭代开始:', event);
+
+          // 重置循环内节点状态为 idle
+          const newNodeStatuses = [...state.nodeStatuses];
+          event.nodeIndices.forEach(idx => {
+            if (idx >= 0 && idx < newNodeStatuses.length) {
+              newNodeStatuses[idx] = 'idle';
+            }
+          });
+
+          set({
+            nodeStatuses: newNodeStatuses,
+            loopProgress: {
+              ...state.loopProgress,
+              [event.loopStartIndex]: {
+                current: event.iteration,
+                total: event.totalIterations,
+                nodeIndices: event.nodeIndices
+              }
+            }
           });
         });
 
@@ -168,6 +204,7 @@ export const useExecutionStore = create<ExecutionState>()(
         nodeResults: [],
         currentNodeIndex: null,
         lastSnapshot: null, // ✅ 初始化为空
+        loopProgress: {}, // ✅ 初始化循环进度
 
         startExecution: async (workflowId, nodes) => {
           // 【日志】前端传递的节点列表 - 记录完整信息
@@ -186,7 +223,8 @@ export const useExecutionStore = create<ExecutionState>()(
             progress: 0,
             nodeStatuses: new Array(nodes.length).fill('idle'),
             nodeResults: new Array(nodes.length).fill(null),
-            currentNodeIndex: null
+            currentNodeIndex: null,
+            loopProgress: {} // 重置循环进度
           });
 
           try {
@@ -249,7 +287,8 @@ export const useExecutionStore = create<ExecutionState>()(
           nodeStatuses: [],
           nodeResults: [],
           currentNodeIndex: null,
-          error: null
+          error: null,
+          loopProgress: {}
         })
       };
     },
@@ -263,3 +302,5 @@ export const useExecutionError = () => useExecutionStore(state => state.error);
 export const useNodeStatus = (index: number) => useExecutionStore(state => state.nodeStatuses[index] || 'idle');
 // ✅ 导出 Hook：直接获取最新的 SystemState
 export const useSystemState = () => useExecutionStore(state => state.lastSnapshot);
+// ✅ 新增：导出循环进度 Hook
+export const useLoopProgress = (loopStartIndex: number) => useExecutionStore(state => state.loopProgress[loopStartIndex]);

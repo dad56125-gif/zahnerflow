@@ -4,7 +4,8 @@ import {
   ExecutionSnapshot,
   NodeStatusUpdate,
   NodesResetEvent,
-  NotificationMessage
+  NotificationMessage,
+  LoopIterationEvent
 } from '../types/Interfaces'; // ✅ 统一引用
 import { getWsUrl } from '../config/env.config';
 
@@ -18,9 +19,11 @@ export class WorkflowWebSocketService {
     notification: [] as ((n: NotificationMessage) => void)[],
     nodesReset: [] as ((e: NodesResetEvent) => void)[],
     measurementData: [] as ((d: any) => void)[],
+    loopIterationStart: [] as ((d: LoopIterationEvent) => void)[],
+    loopIterationEnd: [] as ((d: LoopIterationEvent) => void)[],
   };
 
-  constructor(private serverUrl: string = getWsUrl()) {}
+  constructor(private serverUrl: string = getWsUrl()) { }
 
   connect() {
     if (this.socket) return;
@@ -30,7 +33,7 @@ export class WorkflowWebSocketService {
 
   private setupHandlers() {
     if (!this.socket) return;
-    
+
     // 基础连接
     this.socket.on('connect', () => this.trigger('connected'));
     this.socket.on('disconnect', () => this.trigger('disconnected'));
@@ -40,12 +43,16 @@ export class WorkflowWebSocketService {
     this.socket.on('nodeStatusUpdate', (d) => this.trigger('nodeStatusUpdate', d));
     this.socket.on('nodesReset', (d) => this.trigger('nodesReset', d));
     this.socket.on('measurementData', (d) => this.trigger('measurementData', d));
-    
+
     // 通知特殊处理 (打印日志 + 触发回调)
     this.socket.on('notification', (n) => {
       console.log(`[Notify] ${n.title}: ${n.message}`);
       this.trigger('notification', n);
     });
+
+    // 循环事件
+    this.socket.on('loopiteration_start', (d) => this.trigger('loopIterationStart', d));
+    this.socket.on('loopiteration_end', (d) => this.trigger('loopIterationEnd', d));
   }
 
   // 通用触发器 (减少重复代码)
@@ -59,7 +66,9 @@ export class WorkflowWebSocketService {
   onNodesReset(cb: (e: NodesResetEvent) => void) { this.callbacks.nodesReset.push(cb); }
   onNotification(cb: (n: NotificationMessage) => void) { this.callbacks.notification.push(cb); }
   onMeasurementData(cb: (d: any) => void) { this.callbacks.measurementData.push(cb); }
-  
+  onLoopIterationStart(cb: (d: LoopIterationEvent) => void) { this.callbacks.loopIterationStart.push(cb); }
+  onLoopIterationEnd(cb: (d: LoopIterationEvent) => void) { this.callbacks.loopIterationEnd.push(cb); }
+
   // 动作
   joinWorkflow(wid: string) { this.socket?.emit('joinWorkflow', { workflowId: wid }); }
   leaveWorkflow(wid: string) { this.socket?.emit('leaveWorkflow', { workflowId: wid }); }

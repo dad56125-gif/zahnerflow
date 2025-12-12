@@ -238,23 +238,106 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   // ... executeNodes 和 dispatchNodeLogic 逻辑保持不变，它们会自动使用 updateState ...
 
-  private async executeNodes(executionId: string, originalNodes: WorkflowNode[]): Promise<any[]> {
-    const queue = originalNodes; // 没必要深拷贝，只读操作
-    const completedResults: any[] = [];
 
-    for (let ip = 0; ip < queue.length; ip++) {
+  private async executeNodes(executionId: string, originalNodes: WorkflowNode[]): Promise<any[]> {
+    const nodes = originalNodes;
+    const completedResults: any[] = [];
+    let ip = 0;
+
+    while (ip < nodes.length) {
       // 检查状态
       if (this.state.status === 'cancelled') throw new Error('Execution cancelled by user');
       if (this.state.status === 'paused') await this.waitForResume();
 
-      const node = queue[ip];
+      const node = nodes[ip];
 
+      // ✅ 循环开始节点：执行循环体 loop_count 次
+      if (node.type === 'loop_start') {
+        const loopCount = node.config?.loop_count || 1;
+        const loopEndIdx = this.findMatchingLoopEnd(nodes, ip);
+
+        if (loopEndIdx === -1) {
+          this.logger.error(`[Loop] 未找到匹配的 loop_end，跳过循环`);
+          ip++;
+          continue;
+        }
+
+        // 获取循环体节点（不包括 loop_start 和 loop_end）
+        const loopBodyNodes = nodes.slice(ip + 1, loopEndIdx);
+        const loopBodyIndices = loopBodyNodes.map((_, i) => ip + 1 + i);
+
+        this.logger.log(`[Loop] 开始循环: 索引 ${ip} → ${loopEndIdx}, 循环次数: ${loopCount}, 循环体节点数: ${loopBodyNodes.length}`);
+
+        // 执行循环
+        for (let iter = 0; iter < loopCount; iter++) {
+          this.logger.log(`[Loop] === 第 ${iter + 1}/${loopCount} 轮 ===`);
+
+          // 发送循环迭代开始事件（前端用于重置节点状态）
+          this.emitLoopEvent('iteration.start', executionId, {
+            loopStartIndex: ip,
+            iteration: iter,
+            totalIterations: loopCount,
+            nodeIndices: loopBodyIndices
+          });
+
+          // 执行循环体内的每个节点
+          for (let bi = 0; bi < loopBodyNodes.length; bi++) {
+            const bodyNode = loopBodyNodes[bi];
+            const originalIndex = ip + 1 + bi;
+
+            // 检查状态
+            const snapshot = this.getExecutionSnapshot();
+            if (snapshot.status === 'cancelled') throw new Error('Execution cancelled by user');
+            if (snapshot.status === 'paused') await this.waitForResume();
+
+            this.updateState({
+              currentStep: {
+                nodeId: bodyNode.id,
+                nodeType: bodyNode.type,
+                index: originalIndex,
+                total: nodes.length
+              }
+            });
+
+            this.emitNodeEvent('started', executionId, bodyNode, originalIndex, { iteration: iter, totalIterations: loopCount });
+
+            try {
+              await this.dispatchNodeLogic(executionId, bodyNode);
+              completedResults.push({ id: bodyNode.id, status: 'success', iteration: iter });
+              this.emitNodeEvent('completed', executionId, bodyNode, originalIndex, { iteration: iter, totalIterations: loopCount });
+            } catch (e: any) {
+              const enhancedError = `Node [${bodyNode.type}] Failed (Iter ${iter + 1}/${loopCount}): ${e.message}`;
+              this.emitNodeEvent('failed', executionId, bodyNode, originalIndex, { error: enhancedError, iteration: iter });
+              throw new Error(enhancedError);
+            }
+          }
+
+          // 发送循环迭代结束事件
+          this.emitLoopEvent('iteration.end', executionId, {
+            loopStartIndex: ip,
+            iteration: iter,
+            totalIterations: loopCount
+          });
+        }
+
+        // 跳过整个循环（跳到 loop_end 之后）
+        ip = loopEndIdx + 1;
+        continue;
+      }
+
+      // ✅ 循环结束节点：直接跳过（在 loop_start 处理中已处理）
+      if (node.type === 'loop_end') {
+        ip++;
+        continue;
+      }
+
+      // ✅ 普通节点：正常执行
       this.updateState({
         currentStep: {
           nodeId: node.id,
           nodeType: node.type,
           index: ip,
-          total: queue.length
+          total: nodes.length
         }
       });
 
@@ -269,9 +352,37 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
         this.emitNodeEvent('failed', executionId, node, ip, { error: enhancedError });
         throw new Error(enhancedError);
       }
+
+      ip++;
     }
+
     return completedResults;
   }
+
+  /**
+   * 查找匹配的 loop_end 节点索引（支持嵌套循环）
+   */
+  private findMatchingLoopEnd(nodes: WorkflowNode[], loopStartIdx: number): number {
+    let depth = 0;
+    for (let i = loopStartIdx; i < nodes.length; i++) {
+      if (nodes[i].type === 'loop_start') depth++;
+      if (nodes[i].type === 'loop_end') {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * 发送循环事件
+   */
+  private emitLoopEvent(type: string, executionId: string, data: any): void {
+    this.eventBus.emit(`loop.${type}`, { executionId, timestamp: new Date(), ...data });
+    // 同时通过 WebSocket 广播给前端
+    this.workflowGateway.broadcast(`loop${type.replace('.', '_')}`, data);
+  }
+
 
   private async dispatchNodeLogic(executionId: string, node: WorkflowNode): Promise<void> {
     const { type, config } = node;

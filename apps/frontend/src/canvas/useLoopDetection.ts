@@ -7,6 +7,7 @@ export interface SimpleLoopInfo {
   id: string;
   startNodeId: string;
   endNodeId: string;
+  startIndex: number;  // ✅ 新增：loop_start 节点的索引
   level: number;
   nodeIds: string[];
   iterationCount: number;
@@ -36,6 +37,7 @@ export const useLoopDetection = (nodes: WorkflowNode[]): SimpleLoopInfo[] => {
           id: `loop_${start.nodeId}`,
           startNodeId: start.nodeId,
           endNodeId: node.id,
+          startIndex: start.index,  // ✅ 新增
           level: stack.length,
           nodeIds: innerNodeIds,
           iterationCount

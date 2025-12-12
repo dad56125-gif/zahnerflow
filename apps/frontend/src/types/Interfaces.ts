@@ -95,3 +95,11 @@ export interface NotificationMessage {
   message: string;
   timestamp: string;
 }
+
+// ==================== 7. 循环事件 (Loop Events) ====================
+export interface LoopIterationEvent {
+  loopStartIndex: number;
+  iteration: number;
+  totalIterations: number;
+  nodeIndices: number[];
+}
