@@ -417,7 +417,17 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
   private isMeasurementNodeType(t: string): boolean {
-    return ['eis_potentiostatic', 'ocp', 'ocp_measurement', 'voltage_ramp', 'current_ramp', 'chronoamperometry'].some(k => t.includes(k));
+    // ✅ 修复：添加遗漏的 chronopotentiometry 和 eis_galvanostatic
+    return [
+      'eis_potentiostatic',
+      'eis_galvanostatic',    // 新增
+      'ocp',
+      'ocp_measurement',
+      'voltage_ramp',
+      'current_ramp',
+      'chronoamperometry',
+      'chronopotentiometry'   // 新增
+    ].some(k => t.includes(k));
   }
   private generateTimestamp() { return new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_'); }
   private emitWorkflowEvent(type: string, eid: string, wfid: string, extra?: any) { this.eventBus.emit(`workflow.${type}`, { executionId: eid, workflowId: wfid, timestamp: new Date(), ...extra }); }
