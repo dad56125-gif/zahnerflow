@@ -227,8 +227,13 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       };
       this.logger.log(`[设备层 Zahner] 发送到 Python API: ${JSON.stringify(pythonParams)}`);
 
+      // ✅ 动态计算超时：measurement_duration + 5分钟缓冲，最小15分钟
+      const measurementDurationMs = (parameters.measurement_duration || 60) * 1000;
+      const dynamicTimeout = Math.max(this.timeoutMs, measurementDurationMs + 300000); // 至少15分钟，或测量时长+5分钟
+      this.logger.log(`[设备层 Zahner] 动态超时时间: ${dynamicTimeout / 1000}秒 (测量时长: ${parameters.measurement_duration || 60}秒)`);
+
       const response = await firstValueFrom(
-        this.httpService.post(`${this.endpoint}/measure`, pythonParams, { timeout: this.timeoutMs })
+        this.httpService.post(`${this.endpoint}/measure`, pythonParams, { timeout: dynamicTimeout })
       );
 
       const result = response.data;
