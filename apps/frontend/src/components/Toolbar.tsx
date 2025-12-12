@@ -2,6 +2,7 @@
 import { useCanvasStore } from '../state/canvasStore';
 import { FilePathManagerUI } from './FilePathManagerUI';
 import { ScheduleRunner } from './ScheduleRunner';
+import { SaveDropdown } from './SaveDropdown';
 import { FilePathConfig } from '../shared/UserContext';
 
 interface ToolbarProps {
@@ -155,7 +156,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <div className="toolbar glass">
         {/* 左侧：文件操作 */}
         <div className="flex items-center gap_sm">
-          <div className="flex gap_xs">
+          <div className="flex gap_sm">
             <button
               className={`btn_base btn_layout btn_style_common btn_mini glass btn_primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''
                 }`}
@@ -166,10 +167,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <span className="btn-icon">📄</span>
               <span className="btn-text">新建</span>
             </button>
+
+            {/* 保存按钮 */}
+            <SaveDropdown disabled={buttonStates.fileOperationsDisabled} />
           </div>
         </div>
 
-        {/* 中间：文件路径管理 (保持不变) */}
+        {/* 中间：文件路径管理 + 工作流管理 */}
         <div className="flex items-center gap_sm">
           {onToggleFilePathManager && (
             <button
@@ -181,6 +185,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             >
               <span className="btn-icon">📁</span>
               <span className="btn-text">文件路径</span>
+            </button>
+          )}
+
+          {onToggleWorkflowManager && (
+            <button
+              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn_primary' : 'btn_secondary')
+                }`}
+              onClick={onToggleWorkflowManager}
+              title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
+              disabled={buttonStates.workflowDisabled}
+            >
+              <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
+              <span className="btn-text">工作流</span>
             </button>
           )}
         </div>
@@ -207,10 +224,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             title={scheduledTime ? `定时运行：${scheduledTime.toLocaleTimeString()}` : "定时运行"}
             disabled={buttonStates.runButtonDisabled}
           >
-            <span className="btn-icon">⏰</span>
+            <span className="btn-text">定时运行</span>
           </button>
 
-          {/* --- ✅ 修复点：动态绑定点击事件 --- */}
           <button
             className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.stopButtonVariant} ${buttonStates.stopButtonDisabled ? 'disabled' : ''
               }`}
@@ -221,19 +237,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <span className="btn-icon">{buttonStates.stopButtonText === '重置' ? '🔄' : '⏹️'}</span>
             <span className="btn-text">{buttonStates.stopButtonText}</span>
           </button>
-
-          {onToggleWorkflowManager && (
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn_primary' : 'btn_secondary')
-                }`}
-              onClick={onToggleWorkflowManager}
-              title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
-              disabled={buttonStates.workflowDisabled}
-            >
-              <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
-              <span className="btn-text">工作流</span>
-            </button>
-          )}
         </div>
       </div>
 

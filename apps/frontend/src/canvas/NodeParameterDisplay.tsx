@@ -94,7 +94,7 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
     chronopotentiometry: {
         label: '电流',
         key: 'polarization_current',
-        unit: 'A',
+        unit: 'mA', // 显示毫安单位
         format: (v) => ((v || 0) * 1000).toFixed(1), // 转换为 mA
         secondary: {
             label: '时长',

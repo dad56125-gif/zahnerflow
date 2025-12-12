@@ -28,8 +28,9 @@ export const useLoopDetection = (nodes: WorkflowNode[]): SimpleLoopInfo[] => {
         const start = stack.pop()!;
         const innerNodeIds = nodes.slice(start.index, index + 1).map(n => n.id);
 
-        // 适配新结构：config 代替 data.parameters
-        const iterationCount = node.config?.loop_count || 1;
+        // 🔧 修复：从 loop_start 节点获取 loop_count，而不是 loop_end
+        const startNode = nodes[start.index];
+        const iterationCount = startNode.config?.loop_count || 1;
 
         loops.push({
           id: `loop_${start.nodeId}`,
