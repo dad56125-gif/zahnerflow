@@ -8,6 +8,7 @@
  */
 
 import { WorkflowNode } from '../types/Interfaces';
+import { unrollLoops } from '@shared/loopUnroller';
 
 // ==================== 类型定义 ====================
 
@@ -276,8 +277,6 @@ export class TimelineCalculator {
 }
 
 // ==================== 便捷工厂函数 ====================
-
-import { unrollLoops } from '../shared/loopUnroller';
 
 /**
  * 快速计算工作流预估时间（不创建实例）
