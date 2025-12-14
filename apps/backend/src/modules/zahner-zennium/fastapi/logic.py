@@ -138,11 +138,11 @@ def build_filename(measurement_type: str, params: dict) -> str:
     
     elif measurement_type == "chronoamperometry":
         param_str = format_voltage_for_filename(params.get("polarization_voltage", 0))
-        return f"CA_{param_str}_{timestamp}"
+        return f"CHRONO_{param_str}_{timestamp}"
     
     elif measurement_type == "chronopotentiometry":
         param_str = format_current_for_filename(params.get("polarization_current", 0))
-        return f"CP_{param_str}_{timestamp}"
+        return f"CHRONO_{param_str}_{timestamp}"
     
     elif measurement_type == "voltage_ramp":
         start_v = params.get("start_voltage", 0)
@@ -161,12 +161,12 @@ def build_filename(measurement_type: str, params: dict) -> str:
             else:
                 return format_voltage_for_filename(v)
         
-        return f"LSV_{fmt_v(start_v, start_ref)}to{fmt_v(end_v, end_ref)}_{timestamp}"
+        return f"RAMP_{fmt_v(start_v, start_ref)}to{fmt_v(end_v, end_ref)}_{timestamp}"
     
     elif measurement_type == "current_ramp":
         start_i = format_current_for_filename(params.get("start_current", 0))
         end_i = format_current_for_filename(params.get("end_current", 0))
-        return f"CR_{start_i}to{end_i}_{timestamp}"
+        return f"RAMP_{start_i}to{end_i}_{timestamp}"
     
     else:
         return f"{measurement_type}_{timestamp}"
