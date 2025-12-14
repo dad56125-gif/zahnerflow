@@ -239,6 +239,13 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       const result = response.data;
       if (result.status === 'error') throw new Error(result.error || 'Measurement logic error');
 
+      // 🔍 调试日志：检查 eis_data 是否存在
+      if (result.eis_data) {
+        this.logger.log(`[Zahner] EIS data received: ${result.eis_data.point_count} points`);
+      } else {
+        this.logger.log(`[Zahner] No eis_data in result. Keys: ${Object.keys(result).join(', ')}`);
+      }
+
       this.eventBus.emit('measurement.completed', { type: measurementType, result, nodeId });
       return result;
 
