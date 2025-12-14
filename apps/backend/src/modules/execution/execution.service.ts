@@ -451,7 +451,27 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       workflow_timestamp: timestamp
     });
 
-    await this.zahnerService.performMeasurement(type, { ...node.config, output_path: outputPath }, node.id, executionId);
+    const result = await this.zahnerService.performMeasurement(type, { ...node.config, output_path: outputPath }, node.id, executionId);
+
+    // ✅ 新增：如果是 EIS 测量且包含解析后的数据，广播给前端
+    if (result?.eis_data && (type.includes('eis_potentiostatic') || type.includes('eis_galvanostatic'))) {
+      const eisData = result.eis_data;
+      this.logger.log(`[EIS] Broadcasting EIS data: ${eisData.point_count} points`);
+
+      // 广播 EIS 数据（仅包含 frequency, z_real, z_imag）
+      this.workflowGateway.broadcast('eisDataReady', {
+        executionId,
+        nodeIndex: this.state.currentStep?.index,
+        nodeId: node.id,
+        data: {
+          frequency: eisData.frequency,
+          z_real: eisData.z_real,
+          z_imag: eisData.z_imag,
+          point_count: eisData.point_count,
+          csv_path: eisData.csv_path
+        }
+      });
+    }
   }
 
   private finishExecution(id: string, status: 'success' | 'failed', endTime: Date, duration: number, error?: string) {

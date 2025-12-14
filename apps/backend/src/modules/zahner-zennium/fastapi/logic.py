@@ -6,6 +6,9 @@ import csv
 import math
 from typing import Optional, Callable, Dict, Any
 
+# ISM 文件解析器
+from ism_parser import parse_ism_file
+
 # 引入 Zahner 官方库
 from thales_remote.script_wrapper import (
     PotentiostatMode,
@@ -454,15 +457,30 @@ def measure_eis(device: ThalesRemoteScriptWrapper, params: dict, mode: str) -> d
     print("[Logic] EIS Completed")
 
     # 返回结果路径 (Zahner 会生成 .txt 和 .ism 文件)
-    final_path = os.path.join(output_path, full_filename + ".ism") # 假设 ISM 是主文件
+    final_path = os.path.join(output_path, full_filename + ".ism")
+    
+    # 解析 ISM 文件，提取核心数据
+    eis_data = None
+    csv_path = None
+    try:
+        if os.path.exists(final_path):
+            eis_data = parse_ism_file(final_path)
+            csv_path = eis_data.get("csv_path")
+            print(f"[Logic] Parsed EIS data: {eis_data.get('point_count', 0)} points")
+        else:
+            print(f"[Logic] ISM file not found: {final_path}")
+    except Exception as e:
+        print(f"[Logic] ISM parse error: {e}")
     
     return {
         "output_path": output_path,
         "filename": full_filename,
         "full_path": final_path,
+        "csv_path": csv_path,
         "status": "success",
         "parameters": {
             "amplitude": amplitude,
             "bias": dc_bias if enable_bias else "OCP/Off"
-        }
+        },
+        "eis_data": eis_data  # { frequency, z_real, z_imag, csv_path, point_count }
     }

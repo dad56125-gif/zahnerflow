@@ -195,6 +195,7 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                                     nodeIndex={globalIndex}
                                     nodeConfig={{ name: nodeName, ...node.config }}
                                     systemState={systemState}
+                                    nodeType={node.type}
                                 />
                             );
                         })

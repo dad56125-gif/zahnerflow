@@ -21,6 +21,7 @@ export class WorkflowWebSocketService {
     measurementData: [] as ((d: any) => void)[],
     loopIterationStart: [] as ((d: LoopIterationEvent) => void)[],
     loopIterationEnd: [] as ((d: LoopIterationEvent) => void)[],
+    eisDataReady: [] as ((d: any) => void)[],  // EIS 测量完成数据
   };
 
   constructor(private serverUrl: string = getWsUrl()) { }
@@ -53,6 +54,9 @@ export class WorkflowWebSocketService {
     // 循环事件
     this.socket.on('loopiteration_start', (d) => this.trigger('loopIterationStart', d));
     this.socket.on('loopiteration_end', (d) => this.trigger('loopIterationEnd', d));
+
+    // EIS 数据事件
+    this.socket.on('eisDataReady', (d) => this.trigger('eisDataReady', d));
   }
 
   // 通用触发器 (减少重复代码)
@@ -68,6 +72,7 @@ export class WorkflowWebSocketService {
   onMeasurementData(cb: (d: any) => void) { this.callbacks.measurementData.push(cb); }
   onLoopIterationStart(cb: (d: LoopIterationEvent) => void) { this.callbacks.loopIterationStart.push(cb); }
   onLoopIterationEnd(cb: (d: LoopIterationEvent) => void) { this.callbacks.loopIterationEnd.push(cb); }
+  onEisDataReady(cb: (d: any) => void) { this.callbacks.eisDataReady.push(cb); }
 
   // 动作
   joinWorkflow(wid: string) { this.socket?.emit('joinWorkflow', { workflowId: wid }); }

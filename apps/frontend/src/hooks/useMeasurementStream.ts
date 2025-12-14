@@ -40,7 +40,12 @@ const setupGlobalListener = () => {
   });
 
   isGlobalListenerSetup = true;
+  console.log('[MeasurementStream] Global listener initialized');
 };
+
+// 🔥 关键修复：模块加载时立即初始化全局监听器
+// 这样即使 ChartModal 未打开，数据也会被缓存
+setupGlobalListener();
 
 // 导出清空缓存的方法（给重置按钮用）
 export const clearMeasurementCache = () => {
