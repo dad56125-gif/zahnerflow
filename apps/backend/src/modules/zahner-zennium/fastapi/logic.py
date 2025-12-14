@@ -66,13 +66,119 @@ def _save_data_chunk(filename: str, data: list, mode='a'):
     except Exception as e:
         print(f"[Logic Error] Save CSV failed: {e}")
 
-def _prepare_output_path(params: dict, default_name: str) -> str:
+def format_voltage_for_filename(value: float) -> str:
     """
-    准备输出文件路径。
+    智能电压格式化 (用于文件名，无小数点)
+    """
+    if value == 0:
+        return "0mV"
+    
+    abs_val = abs(value)
+    
+    # 检查是否为整数伏特
+    if abs_val >= 1 and value == int(value):
+        return f"{int(value)}V"
+    
+    # 毫伏范围 (>= 1mV)
+    if abs_val >= 0.001:
+        mv = round(value * 1000)
+        return f"{mv}mV"
+    
+    # 微伏范围
+    uv = round(value * 1e6)
+    return f"{uv}uV"
+
+def format_current_for_filename(value: float) -> str:
+    """
+    智能电流格式化 (用于文件名，无小数点)
+    """
+    if value == 0:
+        return "0mA"
+    
+    abs_val = abs(value)
+    
+    # 检查是否为整数安培
+    if abs_val >= 1 and value == int(value):
+        return f"{int(value)}A"
+    
+    # 毫安范围 (>= 1mA)
+    if abs_val >= 0.001:
+        ma = round(value * 1000)
+        return f"{ma}mA"
+    
+    # 微安范围 (>= 1uA)
+    if abs_val >= 1e-6:
+        ua = round(value * 1e6)
+        return f"{ua}uA"
+    
+    # 纳安范围
+    na = round(value * 1e9)
+    return f"{na}nA"
+
+def build_filename(measurement_type: str, params: dict) -> str:
+    """
+    根据测量类型和参数构建文件名 (无小数点)
+    """
+    timestamp = datetime.datetime.now().strftime("%H%M%S")
+    
+    if measurement_type == "eis_potentiostatic":
+        if not params.get("enable_dc_bias", False):
+            param_str = "OCV"
+        else:
+            param_str = format_voltage_for_filename(params.get('eis_potential', 0))
+        return f"EIS_{param_str}_{timestamp}"
+    
+    elif measurement_type == "eis_galvanostatic":
+        param_str = format_current_for_filename(params.get("eis_current", 0))
+        return f"EIS_{param_str}_{timestamp}"
+    
+    elif measurement_type in ["ocp", "ocp_measurement"]:
+        duration = int(params.get("measurement_duration", 60))
+        return f"OCP_{duration}s_{timestamp}"
+    
+    elif measurement_type == "chronoamperometry":
+        param_str = format_voltage_for_filename(params.get("polarization_voltage", 0))
+        return f"CA_{param_str}_{timestamp}"
+    
+    elif measurement_type == "chronopotentiometry":
+        param_str = format_current_for_filename(params.get("polarization_current", 0))
+        return f"CP_{param_str}_{timestamp}"
+    
+    elif measurement_type == "voltage_ramp":
+        start_v = params.get("start_voltage", 0)
+        end_v = params.get("end_voltage", 0)
+        start_ref = params.get("start_voltage_reference", "absolute")
+        end_ref = params.get("end_voltage_reference", "absolute")
+        
+        def fmt_v(v, ref):
+            if ref == "ocv":
+                if v == 0: 
+                    return "OCV"
+                elif v > 0: 
+                    return f"OCV+{format_voltage_for_filename(v)}"
+                else: 
+                    return f"OCV{format_voltage_for_filename(v)}"
+            else:
+                return format_voltage_for_filename(v)
+        
+        return f"LSV_{fmt_v(start_v, start_ref)}to{fmt_v(end_v, end_ref)}_{timestamp}"
+    
+    elif measurement_type == "current_ramp":
+        start_i = format_current_for_filename(params.get("start_current", 0))
+        end_i = format_current_for_filename(params.get("end_current", 0))
+        return f"CR_{start_i}to{end_i}_{timestamp}"
+    
+    else:
+        return f"{measurement_type}_{timestamp}"
+
+def _prepare_output_path(params: dict, measurement_type: str) -> str:
+    """
+    准备输出文件路径 (含智能文件名)
     """
     output_path = params.get("output_path", "c:/zahner_data/default")
-    filename_prefix = params.get("filename", default_name)
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # 使用新的命名函数
+    filename = build_filename(measurement_type, params)
     
     # 规范化路径 (Windows/Zahner 偏好)
     if output_path.startswith('/'):
@@ -85,7 +191,7 @@ def _prepare_output_path(params: dict, default_name: str) -> str:
     output_path = output_path.replace('/', '\\')
     os.makedirs(output_path, exist_ok=True)
     
-    full_path = os.path.join(output_path, f"{filename_prefix}_{timestamp}.csv")
+    full_path = os.path.join(output_path, f"{filename}.csv")
     return full_path
 
 # ==========================================
@@ -99,7 +205,7 @@ def measure_ocp(device: ThalesRemoteScriptWrapper, params: dict, callback: Optio
     duration = float(params.get("measurement_duration", 60.0))
     interval = float(params.get("sampling_interval", 1.0))
     
-    output_file = _prepare_output_path(params, "ocp")
+    output_file = _prepare_output_path(params, "ocp_measurement")
     
     print(f"[Logic] Starting OCP: {duration}s, interval: {interval}s")
     
@@ -156,8 +262,8 @@ def measure_chrono(device: ThalesRemoteScriptWrapper, params: dict, mode: str, c
     interval = float(params.get("sampling_interval", 1.0))
     
     is_potentiostatic = (mode == 'potentiostatic')
-    file_prefix = "chrono_amp" if is_potentiostatic else "chrono_pot"
-    output_file = _prepare_output_path(params, file_prefix)
+    measurement_type = "chronoamperometry" if is_potentiostatic else "chronopotentiometry"
+    output_file = _prepare_output_path(params, measurement_type)
     
     # 安全限制
     min_safe_i = float(params.get("min_current", -2.0))
@@ -249,8 +355,8 @@ def measure_ramp(device: ThalesRemoteScriptWrapper, params: dict, mode: str, cal
     interval = float(params.get("sampling_interval", 1.0))
     
     is_potentiostatic = (mode == 'potentiostatic')
-    file_prefix = "voltage_ramp" if is_potentiostatic else "current_ramp"
-    output_file = _prepare_output_path(params, file_prefix)
+    measurement_type = "voltage_ramp" if is_potentiostatic else "current_ramp"
+    output_file = _prepare_output_path(params, measurement_type)
     
     # 提取起始和结束值
     if is_potentiostatic:
@@ -374,9 +480,9 @@ def measure_eis(device: ThalesRemoteScriptWrapper, params: dict, mode: str) -> d
     if output_path.startswith('/'): output_path = 'c:' + output_path
     output_path = output_path.replace('/', '\\').lower() 
     
-    filename = params.get("filename", "eis")
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    full_filename = f"{filename}_{timestamp}" # 注意：Thales 不需要扩展名
+    # 使用智能文件名构建
+    measurement_type = "eis_potentiostatic" if is_potentiostatic else "eis_galvanostatic"
+    full_filename = build_filename(measurement_type, params)  # 注意：Thales 不需要扩展名
     
     print(f"[Logic] EIS ({mode}) -> Path: {output_path}, File: {full_filename}")
 
