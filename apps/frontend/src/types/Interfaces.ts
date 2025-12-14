@@ -11,7 +11,7 @@ export type NodeType =
   | 'change_temperature' | 'change_gas_flow'
   | 'eis_potentiostatic' | 'eis_galvanostatic'
   | 'ocp_measurement' | 'chronoamperometry' | 'chronopotentiometry'
-  | 'voltage_ramp' | 'current_ramp' | 'lsv_measurement'
+  | 'voltage_ramp' | 'current_ramp'
   | 'loop_start' | 'loop_end' | 'wait_delay';
 
 // ==================== 2. 静态配置 (Metadata) ====================

@@ -5,7 +5,7 @@ import { MeasurementType } from '@zahnerflow/types';
 
 @Controller('api/devices/zahner-zennium')
 export class ZahnerZenniumController {
-  constructor(private readonly service: ZahnerZenniumService) {}
+  constructor(private readonly service: ZahnerZenniumService) { }
 
   @Get('health')
   async health() { return this.service.health(); }
@@ -64,10 +64,6 @@ export class ZahnerZenniumController {
   @Post('measure/current/ramp')
   async measureCR(@Body() b: any) { return this.runMeasurement(MeasurementType.CURRENT_RAMP, b); }
 
-  // 快捷入口：LSV
-  @Post('measure/lsv')
-  async measureLSV(@Body() b: any) { return this.runMeasurement(MeasurementType.LSV, b); }
-
   @Post('calibrate')
   async calibrate() { return this.service.calibrate(); }
 
@@ -85,7 +81,7 @@ export class ZahnerZenniumController {
     const payload = { ...body, measurement_type: type };
     // 注意：nodeId 和 executionId 在手动模式下是虚拟的
     const result = await this.service.performMeasurement(type, payload, 'manual-api-node', 'manual-api-exec');
-    
+
     return {
       success: result.status === 'success',
       data: result.data,

@@ -26,8 +26,7 @@ const MEASUREMENT_NODE_TYPES = [
     'chronoamperometry',
     'chronopotentiometry',
     'voltage_ramp',
-    'current_ramp',
-    'lsv_measurement'
+    'current_ramp'
 ];
 
 export const ChartModal: React.FC<ChartModalProps> = ({

@@ -8,8 +8,7 @@ export enum MeasurementType {
   CHRONOAMPEROMETRY = 'chronoamperometry',
   CHRONOPOTENTIOMETRY = 'chronopotentiometry',
   VOLTAGE_RAMP = 'voltage_ramp',
-  CURRENT_RAMP = 'current_ramp',
-  LSV = 'lsv'
+  CURRENT_RAMP = 'current_ramp'
 }
 
 // 节点状态枚举

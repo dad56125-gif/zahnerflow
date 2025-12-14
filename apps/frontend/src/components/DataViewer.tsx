@@ -18,8 +18,7 @@ const MEASUREMENT_NODE_TYPES = [
   'chronoamperometry',
   'chronopotentiometry',
   'voltage_ramp',
-  'current_ramp',
-  'lsv_measurement'
+  'current_ramp'
 ];
 
 export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, selectedNode, showChart = true }) => {

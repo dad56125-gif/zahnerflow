@@ -36,8 +36,7 @@ const MEASUREMENT_NODE_TYPES: NodeType[] = [
   'chronoamperometry',
   'chronopotentiometry',
   'voltage_ramp',
-  'current_ramp',
-  'lsv_measurement'
+  'current_ramp'
 ];
 
 interface PropertyPanelProps {

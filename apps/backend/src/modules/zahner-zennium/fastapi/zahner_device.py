@@ -337,7 +337,7 @@ async def execute_measurement(req: MeasureRequest):
         # ------------------------------------------
         # 扫描类 (LSV / CV / Ramp)
         # ------------------------------------------
-        elif m_type in ["voltage_ramp", "lsv", "linear_sweep_voltammetry"]:
+        elif m_type == "voltage_ramp":
             result = await run_in_threadpool(
                 logic.measure_ramp,
                 wrapper, final_params, "potentiostatic", stream_cb

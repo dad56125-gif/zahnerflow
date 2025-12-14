@@ -66,7 +66,6 @@ const NODE_TIME_ESTIMATES: Record<string, number | ((config: Record<string, any>
     chronopotentiometry: (config) => config.measurement_duration || 60,
     voltage_ramp: (config) => config.measurement_duration || 130,
     current_ramp: (config) => config.measurement_duration || 60,
-    lsv_measurement: (config) => config.measurement_duration || 130,
 
     // 流程控制
     wait_delay: (config) => config.duration || 1,

@@ -27,7 +27,7 @@ export interface BuildOutputPathOptions {
 
 @Injectable()
 export class FilesService implements OnModuleInit {
-  constructor(private readonly db: DbService) {}
+  constructor(private readonly db: DbService) { }
 
   onModuleInit() {
     // 初始化 files 表，存储文件元数据
@@ -166,7 +166,7 @@ export class FilesService implements OnModuleInit {
     const rows = this.db.prepare(`SELECT id, json_data, updated_at FROM workflows`).all() as any[];
 
     const workflowFiles = [];
-    
+
     // 获取用户的项目列表，作为默认项目
     const projects = this.getProjects(user);
     const defaultProject = projects.length > 0 ? projects[0] : '默认项目';
@@ -174,7 +174,7 @@ export class FilesService implements OnModuleInit {
     for (const row of rows) {
       try {
         const wf = JSON.parse(row.json_data);
-        
+
         // 如果需要按项目过滤 (假设 workflow 对象里有 ownerName 或其他字段可以关联项目，暂时用默认)
         // 这里为了兼容旧逻辑，project_name 逻辑比较模糊，先保留
         const wfProject = project || defaultProject;
@@ -211,8 +211,7 @@ export class FilesService implements OnModuleInit {
       'chronoamperometry': 'ca',
       'chronopotentiometry': 'cp',
       'voltage_ramp': 'lsv',
-      'current_ramp': 'cv',
-      'lsv_measurement': 'lsv'
+      'current_ramp': 'cv'
     };
     return testTypeMap[measurementType] || 'general';
   }
@@ -293,7 +292,7 @@ export class FilesService implements OnModuleInit {
     });
   }
 
-  
+
   buildOutputPath(options: BuildOutputPathOptions): string {
     const {
       base_path = 'C:\\data\\archive',

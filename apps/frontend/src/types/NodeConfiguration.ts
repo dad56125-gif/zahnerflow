@@ -183,23 +183,6 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     }
   },
 
-  lsv_measurement: {
-    type: 'lsv_measurement',
-    name: '线性扫描伏安法',
-    category: 'basic_measurement',
-    description: '线性扫描伏安法测量 (LSV)',
-    icon: '🔬',
-    defaultParameters: {
-      start_voltage: -0.5,
-      end_voltage: 0.8,
-      voltage_reference: 'absolute',
-      measurement_duration: 130.0,
-      sampling_interval: 1.0,
-      min_current: -1.0,
-      max_current: 1.0
-    }
-  },
-
   // --- 流程控制 ---
   loop_start: {
     type: 'loop_start',
@@ -249,8 +232,7 @@ export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {
     'chronoamperometry',
     'chronopotentiometry',
     'voltage_ramp',
-    'current_ramp',
-    'lsv_measurement'
+    'current_ramp'
   ],
   flow_control: ['loop_start', 'loop_end', 'wait_delay']
 };
