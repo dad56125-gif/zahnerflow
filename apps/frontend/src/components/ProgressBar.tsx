@@ -20,10 +20,18 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     // 确保 nodes 始终为数组，防止 undefined 导致崩溃
     const nodes = useCanvasStore(state => (state && state.nodes) ? state.nodes : []) || [];
 
-    // 计算进度
-    const currentIndex = systemState?.currentStep?.index ?? 0;
-    const totalNodes = systemState?.currentStep?.total ?? nodes.length;
-    const progress = totalNodes > 0 ? (currentIndex / totalNodes) * 100 : 0;
+    // ✅ 优先使用展开后的索引 (准确反映循环执行进度)
+    const currentStep = systemState?.currentStep;
+    const useUnrolled = currentStep?.unrolledIndex !== undefined && currentStep?.unrolledTotal !== undefined;
+
+    const currentIndex = useUnrolled
+        ? currentStep.unrolledIndex!
+        : (currentStep?.index ?? 0);
+    const totalSteps = useUnrolled
+        ? currentStep.unrolledTotal!
+        : (currentStep?.total ?? nodes.length);
+
+    const progress = totalSteps > 0 ? (currentIndex / totalSteps) * 100 : 0;
 
     // 计算时间
     const estimatedSeconds = estimateWorkflowSeconds(nodes);
@@ -48,7 +56,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     const getStatusText = () => {
         if (isFailed) return '执行失败';
         if (isCompleted) return '已完成';
-        if (isRunning) return `步骤 ${currentIndex + 1}/${totalNodes}`;
+        if (isRunning) return `步骤 ${currentIndex + 1}/${totalSteps}`;
         return '就绪';
     };
 
@@ -94,7 +102,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
                     </span>
                 )}
 
-                {isIdle && totalNodes > 0 && (
+                {isIdle && totalSteps > 0 && (
                     <span className="progress-bar-time">
                         预计 {formatDuration(estimatedSeconds)}
                     </span>

@@ -10,6 +10,7 @@ import { ConsoleDisplayManager } from '../../common/console-display-manager.serv
 import { DbService } from '../../db/db.service';
 import { FilesService } from '../files/files.service';
 import { WorkflowGateway } from '../../gateways/workflow.gateway';
+import { unrollLoops, UnrolledStep, UnrollResult } from '@shared/loopUnroller';
 
 export interface ExecutionSnapshot {
   status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
@@ -18,8 +19,12 @@ export interface ExecutionSnapshot {
   currentStep: {
     nodeId: string | null;
     nodeType: string | null;
-    index: number;
-    total: number;
+    index: number;           // 原始节点索引 (向后兼容)
+    total: number;           // 原始节点总数 (向后兼容)
+    // 新增：展开后的索引（用于准确进度计算）
+    unrolledIndex?: number;  // 展开后的当前步骤索引
+    unrolledTotal?: number;  // 展开后的总步骤数
+    iterationPath?: number[]; // 当前迭代路径 [外层轮次, 内层轮次, ...]
   } | null;
   startTime: Date | null;
   endTime?: Date;  // 新增
@@ -240,138 +245,106 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
 
   private async executeNodes(executionId: string, originalNodes: WorkflowNode[]): Promise<any[]> {
-    const nodes = originalNodes;
     const completedResults: any[] = [];
-    let ip = 0;
 
-    while (ip < nodes.length) {
+    // ✅ 核心改动：使用 loopUnroller 展开循环
+    const unrollResult = unrollLoops(originalNodes);
+    const { steps } = unrollResult;
+    const totalSteps = unrollResult.summary.totalSteps;
+
+    this.logger.log(`[ExecuteNodes] 展开后共 ${totalSteps} 步 (原始节点: ${originalNodes.length})`);
+
+    // 跟踪当前循环迭代，用于发送循环事件
+    let lastIterationPath: number[] = [];
+
+    for (let unrolledIdx = 0; unrolledIdx < steps.length; unrolledIdx++) {
+      const step = steps[unrolledIdx];
+      const node = originalNodes[step.originalIndex];
+
       // 检查状态
       if (this.state.status === 'cancelled') throw new Error('Execution cancelled by user');
       if (this.state.status === 'paused') await this.waitForResume();
 
-      const node = nodes[ip];
+      // 检测循环迭代变化，发送循环事件
+      if (step.loopDepth > 0) {
+        const currentIterationKey = step.iterationPath.join(',');
+        const lastIterationKey = lastIterationPath.join(',');
 
-      // ✅ 循环开始节点：执行循环体 loop_count 次
-      if (node.type === 'loop_start') {
-        const loopCount = node.config?.loop_count || 1;
-        const loopEndIdx = this.findMatchingLoopEnd(nodes, ip);
+        if (currentIterationKey !== lastIterationKey) {
+          // 新的迭代开始
+          const loopStartIndex = step.loopContextStack[step.loopContextStack.length - 1];
+          const loopNode = originalNodes[loopStartIndex];
+          const totalIterations = loopNode?.config?.loop_count ?? 1;
+          const currentIteration = step.iterationPath[step.iterationPath.length - 1];
 
-        if (loopEndIdx === -1) {
-          this.logger.error(`[Loop] 未找到匹配的 loop_end，跳过循环`);
-          ip++;
-          continue;
-        }
+          // 收集本迭代的节点索引（用于前端重置状态）
+          const nodeIndices = steps
+            .filter(s =>
+              s.iterationPath.join(',') === currentIterationKey &&
+              s.loopContextStack[s.loopContextStack.length - 1] === loopStartIndex
+            )
+            .map(s => s.originalIndex);
 
-        // 获取循环体节点（不包括 loop_start 和 loop_end）
-        const loopBodyNodes = nodes.slice(ip + 1, loopEndIdx);
-        const loopBodyIndices = loopBodyNodes.map((_, i) => ip + 1 + i);
-
-        this.logger.log(`[Loop] 开始循环: 索引 ${ip} → ${loopEndIdx}, 循环次数: ${loopCount}, 循环体节点数: ${loopBodyNodes.length}`);
-
-        // 执行循环
-        for (let iter = 0; iter < loopCount; iter++) {
-          this.logger.log(`[Loop] === 第 ${iter + 1}/${loopCount} 轮 ===`);
-
-          // 发送循环迭代开始事件（前端用于重置节点状态）
           this.emitLoopEvent('iteration.start', executionId, {
-            loopStartIndex: ip,
-            iteration: iter,
-            totalIterations: loopCount,
-            nodeIndices: loopBodyIndices
+            loopStartIndex,
+            iteration: currentIteration,
+            totalIterations,
+            nodeIndices
           });
 
-          // 执行循环体内的每个节点
-          for (let bi = 0; bi < loopBodyNodes.length; bi++) {
-            const bodyNode = loopBodyNodes[bi];
-            const originalIndex = ip + 1 + bi;
-
-            // 检查状态
-            const snapshot = this.getExecutionSnapshot();
-            if (snapshot.status === 'cancelled') throw new Error('Execution cancelled by user');
-            if (snapshot.status === 'paused') await this.waitForResume();
-
-            this.updateState({
-              currentStep: {
-                nodeId: bodyNode.id,
-                nodeType: bodyNode.type,
-                index: originalIndex,
-                total: nodes.length
-              }
-            });
-
-            this.emitNodeEvent('started', executionId, bodyNode, originalIndex, { iteration: iter, totalIterations: loopCount });
-
-            try {
-              await this.dispatchNodeLogic(executionId, bodyNode);
-              completedResults.push({ id: bodyNode.id, status: 'success', iteration: iter });
-              this.emitNodeEvent('completed', executionId, bodyNode, originalIndex, { iteration: iter, totalIterations: loopCount });
-            } catch (e: any) {
-              const enhancedError = `Node [${bodyNode.type}] Failed (Iter ${iter + 1}/${loopCount}): ${e.message}`;
-              this.emitNodeEvent('failed', executionId, bodyNode, originalIndex, { error: enhancedError, iteration: iter });
-              throw new Error(enhancedError);
-            }
-          }
-
-          // 发送循环迭代结束事件
-          this.emitLoopEvent('iteration.end', executionId, {
-            loopStartIndex: ip,
-            iteration: iter,
-            totalIterations: loopCount
-          });
+          this.logger.log(`[Loop] === 第 ${currentIteration + 1}/${totalIterations} 轮 ===`);
         }
-
-        // 跳过整个循环（跳到 loop_end 之后）
-        ip = loopEndIdx + 1;
-        continue;
+        lastIterationPath = [...step.iterationPath];
       }
 
-      // ✅ 循环结束节点：直接跳过（在 loop_start 处理中已处理）
-      if (node.type === 'loop_end') {
-        ip++;
-        continue;
-      }
-
-      // ✅ 普通节点：正常执行
+      // ✅ 更新状态：包含展开后的索引
       this.updateState({
         currentStep: {
           nodeId: node.id,
           nodeType: node.type,
-          index: ip,
-          total: nodes.length
+          index: step.originalIndex,       // 原始索引 (向后兼容)
+          total: originalNodes.length,     // 原始总数 (向后兼容)
+          unrolledIndex: unrolledIdx,      // 展开后索引
+          unrolledTotal: totalSteps,       // 展开后总数
+          iterationPath: step.iterationPath // 迭代路径
         }
       });
 
-      this.emitNodeEvent('started', executionId, node, ip);
+      this.emitNodeEvent('started', executionId, node, step.originalIndex, {
+        iteration: step.iterationPath.length > 0 ? step.iterationPath[step.iterationPath.length - 1] : undefined,
+        iterationPath: step.iterationPath,
+        unrolledIndex: unrolledIdx,
+        unrolledTotal: totalSteps
+      });
 
       try {
         await this.dispatchNodeLogic(executionId, node);
-        completedResults.push({ id: node.id, status: 'success' });
-        this.emitNodeEvent('completed', executionId, node, ip);
+        completedResults.push({
+          id: node.id,
+          status: 'success',
+          iterationPath: step.iterationPath,
+          unrolledIndex: unrolledIdx
+        });
+        this.emitNodeEvent('completed', executionId, node, step.originalIndex, {
+          iteration: step.iterationPath.length > 0 ? step.iterationPath[step.iterationPath.length - 1] : undefined,
+          iterationPath: step.iterationPath,
+          unrolledIndex: unrolledIdx,
+          unrolledTotal: totalSteps
+        });
       } catch (e: any) {
-        const enhancedError = `Node [${node.type}] Failed: ${e.message}`;
-        this.emitNodeEvent('failed', executionId, node, ip, { error: enhancedError });
+        const iterInfo = step.iterationPath.length > 0
+          ? ` (迭代 ${step.iterationPath.map(i => i + 1).join('-')})`
+          : '';
+        const enhancedError = `Node [${node.type}] Failed${iterInfo}: ${e.message}`;
+        this.emitNodeEvent('failed', executionId, node, step.originalIndex, {
+          error: enhancedError,
+          iterationPath: step.iterationPath
+        });
         throw new Error(enhancedError);
       }
-
-      ip++;
     }
 
     return completedResults;
-  }
-
-  /**
-   * 查找匹配的 loop_end 节点索引（支持嵌套循环）
-   */
-  private findMatchingLoopEnd(nodes: WorkflowNode[], loopStartIdx: number): number {
-    let depth = 0;
-    for (let i = loopStartIdx; i < nodes.length; i++) {
-      if (nodes[i].type === 'loop_start') depth++;
-      if (nodes[i].type === 'loop_end') {
-        depth--;
-        if (depth === 0) return i;
-      }
-    }
-    return -1;
   }
 
   /**

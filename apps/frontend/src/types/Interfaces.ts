@@ -62,8 +62,12 @@ export interface ExecutionSnapshot {
   currentStep: {
     nodeId: string | null;
     nodeType: string | null;
-    index: number;
-    total: number;
+    index: number;           // 原始节点索引 (向后兼容)
+    total: number;           // 原始节点总数 (向后兼容)
+    // 新增：展开后的索引（用于准确进度计算）
+    unrolledIndex?: number;  // 展开后的当前步骤索引
+    unrolledTotal?: number;  // 展开后的总步骤数
+    iterationPath?: number[]; // 当前迭代路径 [外层轮次, 内层轮次, ...]
   } | null;
   startTime: string | null;
   endTime?: string;  // 新增：执行结束时间

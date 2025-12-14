@@ -277,17 +277,25 @@ export class TimelineCalculator {
 
 // ==================== 便捷工厂函数 ====================
 
+import { unrollLoops } from '../shared/loopUnroller';
+
 /**
  * 快速计算工作流预估时间（不创建实例）
+ * ✅ 使用 unrollLoops 考虑循环迭代
  */
 export function estimateWorkflowDuration(nodes: WorkflowNode[]): string {
-    const totalSeconds = nodes.reduce((sum, node) => sum + estimateNodeTime(node), 0);
+    const totalSeconds = estimateWorkflowSeconds(nodes);
     return formatDuration(totalSeconds);
 }
 
 /**
  * 快速获取工作流预估秒数
+ * ✅ 使用 unrollLoops 展开循环后计算真实执行时间
  */
 export function estimateWorkflowSeconds(nodes: WorkflowNode[]): number {
-    return nodes.reduce((sum, node) => sum + estimateNodeTime(node), 0);
+    const { steps } = unrollLoops(nodes);
+    return steps.reduce((sum, step) => {
+        const node = nodes[step.originalIndex];
+        return sum + estimateNodeTime(node);
+    }, 0);
 }

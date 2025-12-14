@@ -158,5 +158,40 @@ result.steps.forEach(step => {
 ## 文件位置
 
 ```
-apps/frontend/src/shared/loopUnroller.ts
+apps/
+├── shared/
+│   └── loopUnroller.ts   ← 共享模块 (单一真理源)
+├── backend/
+│   └── 通过 @shared/loopUnroller 导入
+└── frontend/
+    └── src/shared/loopUnroller.ts (重导出 @shared/loopUnroller)
 ```
+
+## TypeScript 配置
+
+前后端 `tsconfig.json` 都配置了 `@shared/*` 路径映射：
+
+```json
+{
+  "paths": {
+    "@shared/*": ["../shared/*"]
+  },
+  "include": ["src", "../shared"]
+}
+```
+
+## 后端集成
+
+后端 `execution.service.ts` 的 `executeNodes` 函数现在使用 `unrollLoops` 展开循环：
+
+```typescript
+const { steps } = unrollLoops(nodes);
+for (let unrolledIdx = 0; unrolledIdx < steps.length; unrolledIdx++) {
+  // currentStep 包含 unrolledIndex, unrolledTotal, iterationPath
+}
+```
+
+## 前端集成
+
+- **ProgressBar**: 优先使用 `currentStep.unrolledIndex / currentStep.unrolledTotal` 计算进度
+- **timelineCalculator**: 使用 `unrollLoops` 展开后计算真实执行时间
