@@ -9,6 +9,7 @@
     "target": "ES2020",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -27,8 +28,7 @@
     }
   },
   "include": [
-    "src/**/*.ts",
-    "../shared/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
