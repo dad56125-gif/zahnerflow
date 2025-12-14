@@ -10,7 +10,7 @@ import { ConsoleDisplayManager } from '../../common/console-display-manager.serv
 import { DbService } from '../../db/db.service';
 import { FilesService } from '../files/files.service';
 import { WorkflowGateway } from '../../gateways/workflow.gateway';
-import { unrollLoops, UnrolledStep, UnrollResult } from '@shared/loopUnroller';
+import { unrollLoops, UnrolledStep, UnrollResult } from '../../../../shared/loopUnroller';
 
 export interface ExecutionSnapshot {
   status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
