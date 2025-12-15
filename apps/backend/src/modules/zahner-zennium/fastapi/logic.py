@@ -118,31 +118,33 @@ def format_current_for_filename(value: float) -> str:
 def build_filename(measurement_type: str, params: dict) -> str:
     """
     根据测量类型和参数构建文件名 (无小数点)
+    支持环境上下文：furnace_temp, mfc_flows
     """
     timestamp = datetime.datetime.now().strftime("%H%M%S")
     
+    # 构建基础文件名（根据测量类型）
     if measurement_type == "eis_potentiostatic":
         if not params.get("enable_dc_bias", False):
             param_str = "OCV"
         else:
             param_str = format_voltage_for_filename(params.get('eis_potential', 0))
-        return f"EIS_{param_str}_{timestamp}"
+        base_name = f"EIS_{param_str}"
     
     elif measurement_type == "eis_galvanostatic":
         param_str = format_current_for_filename(params.get("eis_current", 0))
-        return f"EIS_{param_str}_{timestamp}"
+        base_name = f"EIS_{param_str}"
     
     elif measurement_type in ["ocp", "ocp_measurement"]:
         duration = int(params.get("measurement_duration", 60))
-        return f"OCP_{duration}s_{timestamp}"
+        base_name = f"OCP_{duration}s"
     
     elif measurement_type == "chronoamperometry":
         param_str = format_voltage_for_filename(params.get("polarization_voltage", 0))
-        return f"CHRONO_{param_str}_{timestamp}"
+        base_name = f"CA_{param_str}"
     
     elif measurement_type == "chronopotentiometry":
         param_str = format_current_for_filename(params.get("polarization_current", 0))
-        return f"CHRONO_{param_str}_{timestamp}"
+        base_name = f"CP_{param_str}"
     
     elif measurement_type == "voltage_ramp":
         start_v = params.get("start_voltage", 0)
@@ -161,15 +163,39 @@ def build_filename(measurement_type: str, params: dict) -> str:
             else:
                 return format_voltage_for_filename(v)
         
-        return f"RAMP_{fmt_v(start_v, start_ref)}to{fmt_v(end_v, end_ref)}_{timestamp}"
+        base_name = f"LSV_{fmt_v(start_v, start_ref)}to{fmt_v(end_v, end_ref)}"
     
     elif measurement_type == "current_ramp":
         start_i = format_current_for_filename(params.get("start_current", 0))
         end_i = format_current_for_filename(params.get("end_current", 0))
-        return f"RAMP_{start_i}to{end_i}_{timestamp}"
+        base_name = f"GSV_{start_i}to{end_i}"
     
     else:
-        return f"{measurement_type}_{timestamp}"
+        base_name = measurement_type
+    
+    # ✅ 新增：环境上下文（Furnace 温度 + MFC 流量）
+    env_parts = []
+    env_ctx = params.get("environment_context", {})
+    
+    # Furnace 温度
+    if env_ctx.get("furnace_temp") is not None:
+        temp = int(env_ctx["furnace_temp"])
+        env_parts.append(f"{temp}C")
+    
+    # MFC 流量
+    mfc_flows = env_ctx.get("mfc_flows", {})
+    if mfc_flows:
+        # 按气体名称排序，确保文件名一致性
+        for gas_name in sorted(mfc_flows.keys()):
+            flow = int(mfc_flows[gas_name])
+            env_parts.append(f"{flow}sccm{gas_name}")
+    
+    # 组合最终文件名
+    if env_parts:
+        env_str = "_".join(env_parts)
+        return f"{base_name}_{env_str}_{timestamp}"
+    else:
+        return f"{base_name}_{timestamp}"
 
 def _prepare_output_path(params: dict, measurement_type: str) -> str:
     """

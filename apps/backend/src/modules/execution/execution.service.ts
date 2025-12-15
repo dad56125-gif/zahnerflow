@@ -424,7 +424,19 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       workflow_timestamp: timestamp
     });
 
-    const result = await this.zahnerService.performMeasurement(type, { ...node.config, output_path: outputPath }, node.id, executionId);
+    // ✅ 新增：收集环境上下文（Furnace 温度 + MFC 流量）
+    const environmentContext = await this.collectEnvironmentContext();
+
+    const result = await this.zahnerService.performMeasurement(
+      type,
+      {
+        ...node.config,
+        output_path: outputPath,
+        environment_context: environmentContext  // 传递环境信息
+      },
+      node.id,
+      executionId
+    );
 
     // ✅ 新增：如果是 EIS 测量且包含解析后的数据，广播给前端
     if (result?.eis_data && (type.includes('eis_potentiostatic') || type.includes('eis_galvanostatic'))) {
@@ -457,6 +469,69 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     this.emitWorkflowEvent(finalStatus, id, wfId, { error, duration });
     this.updateState({ status: finalStatus, endTime, duration, error: error || null, currentStep: null });
+  }
+
+  // ==========================================
+  // Environment Context Collection
+  // ==========================================
+
+  /**
+   * 收集当前环境上下文（用于测量文件命名）
+   * - Furnace: 当前温度（整数，℃）
+   * - MFC: 激活设备的气体类型和流量（整数，sccm）
+   */
+  private async collectEnvironmentContext(): Promise<{
+    furnace_temp?: number;
+    mfc_flows?: Record<string, number>;
+  }> {
+    const context: { furnace_temp?: number; mfc_flows?: Record<string, number> } = {};
+
+    // 1. 获取 Furnace 温度
+    try {
+      const furnaceHealth = await this.furnaceService.health();
+      if (furnaceHealth?.device_connected) {
+        // Furnace 已连接，尝试获取当前温度
+        // 使用 FurnaceService 暴露的 API 获取历史数据的最新点
+        const historyData = await this.furnaceService.get_history_data({
+          range: { start: new Date(Date.now() - 10000).toISOString() }  // 最近 10 秒
+        }).catch(() => null);
+
+        if (historyData?.samples?.length > 0) {
+          const latestSample = historyData.samples[historyData.samples.length - 1];
+          if (latestSample?.temperature !== undefined) {
+            context.furnace_temp = Math.round(latestSample.temperature);
+            this.logger.debug(`[EnvContext] Furnace temp: ${context.furnace_temp}℃`);
+          }
+        }
+      }
+    } catch (e) {
+      this.logger.debug(`[EnvContext] Furnace not available`);
+    }
+
+    // 2. 获取 MFC 激活设备流量
+    try {
+      // 使用 status() 方法获取所有设备的当前状态
+      const statusArray = await this.mfcService.status().catch(() => []);
+
+      if (Array.isArray(statusArray) && statusArray.length > 0) {
+        const activeDevices = statusArray.filter((d: any) =>
+          d.flow_sccm !== undefined && d.flow_sccm > 0
+        );
+
+        if (activeDevices.length > 0) {
+          context.mfc_flows = {};
+          for (const device of activeDevices) {
+            const gasName = device.gas_type || `MFC${device.device_address}`;
+            context.mfc_flows[gasName] = Math.round(device.flow_sccm);
+          }
+          this.logger.debug(`[EnvContext] MFC flows: ${JSON.stringify(context.mfc_flows)}`);
+        }
+      }
+    } catch (e) {
+      this.logger.debug(`[EnvContext] MFC not available`);
+    }
+
+    return context;
   }
 
   // ==========================================
