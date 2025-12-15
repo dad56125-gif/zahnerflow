@@ -22,6 +22,24 @@ interface ReportGeneratorModalProps {
         duration?: number;
     } | null;
     user?: string;
+    nodeStatuses?: string[];  // 节点执行状态数组
+}
+
+/** 将执行状态字符串映射为报告状态 */
+function mapNodeStatus(status: string): 'success' | 'failed' | 'skipped' | 'pending' {
+    switch (status) {
+        case 'completed':
+        case 'success':
+        case 'done':
+            return 'success';
+        case 'failed':
+        case 'error':
+            return 'failed';
+        case 'skipped':
+            return 'skipped';
+        default:
+            return 'pending';
+    }
 }
 
 export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
@@ -30,15 +48,25 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
     workflow,
     execution,
     user = 'Unknown',
+    nodeStatuses = [],
 }) => {
     const reportRef = useRef<HTMLDivElement>(null);
     const [isExporting, setIsExporting] = useState(false);
 
+    // 将 nodeStatuses 转换为 nodeResults 格式
+    const nodeResults = useMemo(() => {
+        return nodeStatuses.map((status, index) => ({
+            nodeId: workflow?.nodes[index]?.id || `node-${index}`,
+            status: mapNodeStatus(status),
+            duration: undefined
+        }));
+    }, [nodeStatuses, workflow]);
+
     // 构建报告数据
     const reportData = useMemo<ReportData | null>(() => {
         if (!workflow || !execution) return null;
-        return buildReportData(workflow, execution, [], user);
-    }, [workflow, execution, user]);
+        return buildReportData(workflow, execution, nodeResults, user);
+    }, [workflow, execution, nodeResults, user]);
 
     // 导出 PDF
     const handleExportPdf = async () => {

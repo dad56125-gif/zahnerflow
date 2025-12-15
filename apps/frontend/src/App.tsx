@@ -67,6 +67,7 @@ const AppContent: React.FC = () => {
     endTime?: string;
     duration?: number;
   } | null>(null);
+  const [lastNodeStatuses, setLastNodeStatuses] = useState<string[]>([]);
 
   // 获取实时系统状态
   const systemState = useSystemState();
@@ -87,7 +88,7 @@ const AppContent: React.FC = () => {
     // 从运行中 -> 停止，说明执行完成
     if (prevIsRunning.current && !isRunning) {
       const executionState = useExecutionStore.getState();
-      const { executionId, workflowId, lastSnapshot } = executionState;
+      const { executionId, workflowId, lastSnapshot, nodeStatuses } = executionState;
 
       if (executionId && workflowId) {
         setLastExecution({
@@ -98,6 +99,8 @@ const AppContent: React.FC = () => {
           endTime: new Date().toISOString(),
           duration: lastSnapshot?.duration || 0
         });
+        // 保存节点状态用于报告
+        setLastNodeStatuses([...nodeStatuses]);
       }
     }
     prevIsRunning.current = isRunning;
@@ -324,6 +327,7 @@ const AppContent: React.FC = () => {
         workflow={currentWorkflow}
         execution={lastExecution}
         user={currentUser || 'Unknown'}
+        nodeStatuses={lastNodeStatuses}
       />
     </div>
   );

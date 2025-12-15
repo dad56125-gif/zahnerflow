@@ -18,7 +18,7 @@ interface ExecutionHistoryItem {
 
 interface NodeExecutionResult {
     nodeId: string;
-    status: 'success' | 'failed' | 'skipped';
+    status: 'success' | 'failed' | 'skipped' | 'pending';
     duration?: number;
 }
 
