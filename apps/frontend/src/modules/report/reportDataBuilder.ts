@@ -73,7 +73,8 @@ function buildNodeInfoListFromUnrolled(
 ): ReportNodeInfo[] {
     return unrolledSteps.map((step, stepIndex) => {
         const originalNode = originalNodes[step.originalIndex];
-        const nodeResult = nodeResults[stepIndex];  // 使用展开后的索引
+        // 使用原始节点索引获取状态（循环内节点所有迭代共享最终状态）
+        const nodeResult = nodeResults[step.originalIndex];
 
         // 格式化迭代路径
         const iterationInfo = step.iterationPath.length > 0
