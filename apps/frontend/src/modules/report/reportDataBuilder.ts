@@ -1,10 +1,13 @@
 /**
  * 实验报告模块 - 数据构建工具
  * 从 workflow 和 executionHistory 构建报告数据
+ * 
+ * 使用 loopUnroller 展开循环，生成真实的执行步骤列表
  */
 
 import { ReportData, ReportNodeInfo, NODE_TYPE_LABELS } from './types';
 import { Workflow, WorkflowNode } from '../../types/Interfaces';
+import { unrollLoops, formatIterationPath, UnrolledStep } from '../../shared/loopUnroller';
 
 interface ExecutionHistoryItem {
     executionId: string;
@@ -20,10 +23,12 @@ interface NodeExecutionResult {
     nodeId: string;
     status: 'success' | 'failed' | 'skipped' | 'pending';
     duration?: number;
+    startTime?: string;
+    endTime?: string;
 }
 
 /**
- * 构建报告数据
+ * 构建报告数据（使用展开后的节点列表）
  */
 export function buildReportData(
     workflow: Workflow,
@@ -31,11 +36,17 @@ export function buildReportData(
     nodeResults: NodeExecutionResult[] = [],
     user: string = 'Unknown'
 ): ReportData {
-    const nodes = buildNodeInfoList(workflow.nodes, nodeResults);
+    // 使用 loopUnroller 展开节点
+    const unrollResult = unrollLoops(workflow.nodes);
+    const nodes = buildNodeInfoListFromUnrolled(
+        workflow.nodes,
+        unrollResult.steps,
+        nodeResults
+    );
 
     return {
         // 封面信息
-        projectName: workflow.name || 'Untitled Project',
+        projectName: workflow.project_name || workflow.name || 'Untitled Project',
         individualName: workflow.individualName || '',
         workflowName: workflow.name || 'Untitled Workflow',
         user,
@@ -47,65 +58,48 @@ export function buildReportData(
         endTime: execution.endTime ? new Date(execution.endTime) : new Date(),
         duration: execution.duration || 0,
 
-        // 节点明细
+        // 节点明细（展开后的）
         nodes,
     };
 }
 
 /**
- * 构建节点明细列表（处理循环缩进）
+ * 从展开后的步骤列表构建报告节点信息
  */
-function buildNodeInfoList(
-    nodes: WorkflowNode[],
+function buildNodeInfoListFromUnrolled(
+    originalNodes: WorkflowNode[],
+    unrolledSteps: UnrolledStep[],
     nodeResults: NodeExecutionResult[]
 ): ReportNodeInfo[] {
-    const result: ReportNodeInfo[] = [];
-    let currentIndentLevel = 0;
-    const loopStack: number[] = []; // 记录循环嵌套深度
+    return unrolledSteps.map((step, stepIndex) => {
+        const originalNode = originalNodes[step.originalIndex];
+        const nodeResult = nodeResults[stepIndex];  // 使用展开后的索引
 
-    nodes.forEach((node, index) => {
-        // 循环开始：增加缩进
-        if (node.type === 'loop_start') {
-            result.push(buildNodeInfo(node, index, currentIndentLevel, nodeResults));
-            loopStack.push(currentIndentLevel);
-            currentIndentLevel++;
-            return;
-        }
+        // 格式化迭代路径
+        const iterationInfo = step.iterationPath.length > 0
+            ? ` [轮次: ${formatIterationPath(step.iterationPath)}]`
+            : '';
 
-        // 循环结束：恢复缩进
-        if (node.type === 'loop_end') {
-            currentIndentLevel = loopStack.pop() ?? 0;
-            result.push(buildNodeInfo(node, index, currentIndentLevel, nodeResults));
-            return;
-        }
-
-        // 普通节点
-        result.push(buildNodeInfo(node, index, currentIndentLevel, nodeResults));
+        return {
+            index: stepIndex + 1,
+            type: step.nodeType,
+            label: (NODE_TYPE_LABELS[step.nodeType] || step.nodeType) + iterationInfo,
+            keyParams: extractKeyParams(originalNode),
+            status: nodeResult?.status || 'pending',
+            duration: nodeResult?.duration ?? calculateDuration(nodeResult),
+            indentLevel: step.loopDepth,
+        };
     });
-
-    return result;
 }
 
 /**
- * 构建单个节点信息
+ * 计算节点耗时（结束时间 - 开始时间）
  */
-function buildNodeInfo(
-    node: WorkflowNode,
-    index: number,
-    indentLevel: number,
-    nodeResults: NodeExecutionResult[]
-): ReportNodeInfo {
-    const nodeResult = nodeResults.find(r => r.nodeId === node.id);
-
-    return {
-        index: index + 1,
-        type: node.type,
-        label: NODE_TYPE_LABELS[node.type] || node.type,
-        keyParams: extractKeyParams(node),
-        status: nodeResult?.status || 'pending',
-        duration: nodeResult?.duration,
-        indentLevel,
-    };
+function calculateDuration(result?: NodeExecutionResult): number | undefined {
+    if (!result?.startTime || !result?.endTime) return undefined;
+    const start = new Date(result.startTime).getTime();
+    const end = new Date(result.endTime).getTime();
+    return (end - start) / 1000;  // 转换为秒
 }
 
 /**
