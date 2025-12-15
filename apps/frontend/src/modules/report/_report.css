@@ -1,5 +1,6 @@
 /**
- * 实验报告模块 - 报告样式
+ * 实验报告模块 - 报告样式（深色模式）
+ * 类似 VSCode 深色主题风格
  */
 
 /* ==================== 弹窗容器 ==================== */
@@ -7,8 +8,8 @@
 .report-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -16,15 +17,16 @@
 }
 
 .report-modal {
-    background: #fff;
+    background: #1e1e1e;
     border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     width: 90%;
     max-width: 900px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border: 1px solid #333;
 }
 
 .report-modal-header {
@@ -32,15 +34,15 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    border-bottom: 1px solid #e0e0e0;
-    background: #f8f9fa;
+    border-bottom: 1px solid #333;
+    background: #252526;
 }
 
 .report-modal-header h2 {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: #e0e0e0;
 }
 
 .report-modal-actions {
@@ -77,31 +79,33 @@
     border: none;
     background: transparent;
     font-size: 18px;
-    color: #666;
+    color: #888;
     cursor: pointer;
     border-radius: 4px;
     transition: all 0.2s;
 }
 
 .report-close-btn:hover {
-    background: #eee;
-    color: #333;
+    background: #333;
+    color: #e0e0e0;
 }
 
 .report-modal-body {
     flex: 1;
     overflow-y: auto;
     padding: 24px;
-    background: #f5f5f5;
+    background: #1e1e1e;
 }
 
 /* ==================== 报告内容 ==================== */
 
 .report-preview {
-    background: white;
+    background: #252526;
     padding: 40px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+    border-radius: 8px;
+    color: #d4d4d4;
 }
 
 /* 封面页 */
@@ -109,12 +113,13 @@
     text-align: center;
     padding: 60px 0;
     margin-bottom: 40px;
+    border-bottom: 1px solid #333;
 }
 
 .report-title {
     font-size: 36px;
     font-weight: 700;
-    color: #1a1a2e;
+    color: #ffffff;
     margin: 0 0 20px 0;
 }
 
@@ -127,7 +132,7 @@
 
 .report-cover-info {
     font-size: 16px;
-    color: #1a1a2e;
+    color: #d4d4d4;
     line-height: 2;
 }
 
@@ -136,7 +141,7 @@
 }
 
 .report-cover-info strong {
-    color: #222;
+    color: #9cdcfe;
     min-width: 80px;
     display: inline-block;
 }
@@ -149,7 +154,7 @@
 .report-section-title {
     font-size: 20px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #4ec9b0;
     margin: 0 0 16px 0;
     padding-bottom: 8px;
     border-bottom: 2px solid #4f46e5;
@@ -164,15 +169,15 @@
 
 .report-summary-table td {
     padding: 12px 16px;
-    border: 1px solid #e0e0e0;
-    color: #1a1a2e;
+    border: 1px solid #333;
+    color: #d4d4d4;
 }
 
 .report-summary-table td:first-child {
-    background: #f8f9fa;
+    background: #2d2d2d;
     font-weight: 600;
     width: 120px;
-    color: #333;
+    color: #9cdcfe;
 }
 
 /* 节点明细表格 */
@@ -185,9 +190,9 @@
 .report-nodes-table th,
 .report-nodes-table td {
     padding: 10px 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #333;
     text-align: left;
-    color: #1a1a2e;
+    color: #d4d4d4;
 }
 
 .report-nodes-table th {
@@ -197,11 +202,11 @@
 }
 
 .report-nodes-table tbody tr:nth-child(even) {
-    background: #f8f9fa;
+    background: #2d2d2d;
 }
 
 .report-nodes-table tbody tr:hover {
-    background: #eef2ff;
+    background: #3c3c3c;
 }
 
 /* 缩进样式 */
@@ -218,7 +223,7 @@
 }
 
 .indent-marker {
-    color: #999;
+    color: #6a9955;
     margin-right: 4px;
 }
 
@@ -226,10 +231,10 @@
 .report-footer {
     margin-top: 60px;
     padding-top: 20px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid #333;
     text-align: center;
     font-size: 12px;
-    color: #999;
+    color: #808080;
 }
 
 .report-footer p {
