@@ -68,20 +68,6 @@ export const NodeChart: React.FC<NodeChartProps> = ({
     const option = isEisNode ? getEisChartOption() : getIvtChartOption();
     chartInstance.current.setOption(option, true);
 
-    // IVT 历史数据恢复
-    if (!isEisNode) {
-      const history = getFullHistory();
-      if (history.length > 0) {
-        setHasData(true);
-        const vData = history.map(p => [p.t, p.v] as [number, number]);
-        const iData = history.map(p => [p.t, p.i] as [number, number]);
-        historyRef.current = { voltage: vData, current: iData };
-        chartInstance.current.setOption({
-          series: [{ data: vData }, { data: iData }]
-        });
-      }
-    }
-
     const resizeHandler = () => chartInstance.current?.resize();
     window.addEventListener('resize', resizeHandler);
     return () => {
@@ -90,6 +76,29 @@ export const NodeChart: React.FC<NodeChartProps> = ({
       chartInstance.current = null;
     };
   }, [isEisNode]);
+
+  // 🔥 修复：IVT 历史数据恢复（每次组件挂载时执行）
+  useEffect(() => {
+    if (isEisNode) return;  // EIS 使用单独的恢复逻辑
+
+    // 延迟执行，确保图表已初始化
+    const timer = setTimeout(() => {
+      const history = getFullHistory();
+      console.log(`[NodeChart] IVT history restore: Node ${nodeIndex}, points: ${history.length}`);
+
+      if (history.length > 0 && chartInstance.current) {
+        setHasData(true);
+        const vData = history.map(p => [p.t, p.v] as [number, number]);
+        const iData = history.map(p => [p.t, p.i] as [number, number]);
+        historyRef.current = { voltage: vData, current: iData };
+        chartInstance.current.setOption({
+          series: [{ data: vData }, { data: iData }]
+        });
+      }
+    }, 50); // 50ms 延迟确保图表初始化完成
+
+    return () => clearTimeout(timer);
+  }, [nodeIndex, isEisNode]); // 依赖 nodeIndex 确保切换节点时也恢复
 
   // IVT 图表配置
   const getIvtChartOption = () => ({
