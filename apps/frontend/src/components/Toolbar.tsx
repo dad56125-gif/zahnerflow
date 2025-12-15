@@ -17,6 +17,9 @@ interface ToolbarProps {
   showFilePathManager?: boolean;
   onToggleFilePathManager?: () => void;
   onFilePathSave?: (config: FilePathConfig) => void;
+  // 新增：报告生成
+  onGenerateReport?: () => void;
+  canGenerateReport?: boolean;  // 是否有可生成报告的执行记录
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -30,7 +33,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   showWorkflowManager = false,
   showFilePathManager = false,
   onToggleFilePathManager,
-  onFilePathSave
+  onFilePathSave,
+  onGenerateReport,
+  canGenerateReport = false
 }) => {
   const {
     clearCanvas
@@ -198,6 +203,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             >
               <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
               <span className="btn-text">工作流</span>
+            </button>
+          )}
+
+          {/* 生成报告按钮 */}
+          {onGenerateReport && (
+            <button
+              className={`btn_base btn_layout btn_style_common btn_mini glass ${canGenerateReport ? 'btn_accent' : 'btn_secondary disabled'
+                }`}
+              onClick={onGenerateReport}
+              title={canGenerateReport ? "生成实验报告" : "执行工作流后可生成报告"}
+              disabled={!canGenerateReport || isRunning}
+            >
+              <span className="btn-icon">📊</span>
+              <span className="btn-text">报告</span>
             </button>
           )}
         </div>

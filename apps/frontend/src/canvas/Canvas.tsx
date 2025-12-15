@@ -31,6 +31,9 @@ interface CanvasProps {
   onStopFlow?: () => void;
   onResetFlow?: () => void;
   onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
+  // 报告相关
+  onGenerateReport?: () => void;
+  canGenerateReport?: boolean;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -49,7 +52,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   onRunFlow,
   onStopFlow,
   onResetFlow,
-  onLoopDetected
+  onLoopDetected,
+  onGenerateReport,
+  canGenerateReport = false
 }) => {
   // 1. 从 Store 获取纯数据和 Actions
   const {
@@ -252,6 +257,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           showFilePathManager={showFilePathManager}
           onToggleFilePathManager={onToggleFilePathManager}
           onFilePathSave={onFilePathSave}
+          onGenerateReport={onGenerateReport}
+          canGenerateReport={canGenerateReport}
         />
       )}
 

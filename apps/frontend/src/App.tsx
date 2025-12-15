@@ -18,6 +18,7 @@ import { workflowWebSocketService } from './workflow/websocket.service';
 
 import { MFCModal, useMfc } from './modules/mfc';
 import { useFurnace, DeviceModal } from './modules/furnace';
+import { ReportGeneratorModal } from './modules/report';
 import { UserProvider, useUser } from './shared/UserContext';
 import type { SimpleLoopInfo } from './canvas/useLoopDetection';
 
@@ -56,6 +57,17 @@ const AppContent: React.FC = () => {
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
   const [showChartModal, setShowChartModal] = useState(false);
 
+  // 报告相关状态
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [lastExecution, setLastExecution] = useState<{
+    executionId: string;
+    workflowId: string;
+    status: 'completed' | 'failed' | 'cancelled';
+    startTime: string;
+    endTime?: string;
+    duration?: number;
+  } | null>(null);
+
   // 获取实时系统状态
   const systemState = useSystemState();
 
@@ -68,6 +80,28 @@ const AppContent: React.FC = () => {
       setIsNotificationPanelOpen(true);
     }
   }, [hasError]);
+
+  // 监听执行完成，记录最后一次执行信息（用于报告生成）
+  const prevIsRunning = React.useRef(isRunning);
+  useEffect(() => {
+    // 从运行中 -> 停止，说明执行完成
+    if (prevIsRunning.current && !isRunning) {
+      const executionState = useExecutionStore.getState();
+      const { executionId, workflowId, lastSnapshot } = executionState;
+
+      if (executionId && workflowId) {
+        setLastExecution({
+          executionId,
+          workflowId,
+          status: executionError ? 'failed' : 'completed',
+          startTime: lastSnapshot?.startTime || new Date().toISOString(),
+          endTime: new Date().toISOString(),
+          duration: lastSnapshot?.duration || 0
+        });
+      }
+    }
+    prevIsRunning.current = isRunning;
+  }, [isRunning, executionError]);
 
   const handleWorkstationSelect = (workstation: any) => {
     const workstationType = workstation.id as WorkstationType;
@@ -229,6 +263,8 @@ const AppContent: React.FC = () => {
           onStopFlow={handleStopFlow}
           onResetFlow={resetFlow}
           onLoopDetected={handleLoopDetected}
+          onGenerateReport={() => setShowReportModal(true)}
+          canGenerateReport={!!lastExecution}
         />
       </div>
 
@@ -279,6 +315,15 @@ const AppContent: React.FC = () => {
         onClose={() => setShowChartModal(false)}
         systemState={systemState}
         nodes={nodes}
+      />
+
+      {/* 实验报告 Modal */}
+      <ReportGeneratorModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        workflow={currentWorkflow}
+        execution={lastExecution}
+        user={currentUser || 'Unknown'}
       />
     </div>
   );
