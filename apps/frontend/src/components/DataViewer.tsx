@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useSystemState } from '../workflow';
 import { useMeasurementStream } from '../hooks/useMeasurementStream';
+import { useEisData, EisDataPoint } from '../hooks/useEisData';
 import { RawStreamData } from '../types/Interfaces';
 
 interface DataViewerProps {
@@ -10,10 +11,8 @@ interface DataViewerProps {
   showChart?: boolean;
 }
 
-// 定义哪些节点类型支持 TIV 数据表
-const MEASUREMENT_NODE_TYPES = [
-  'eis_potentiostatic',
-  'eis_galvanostatic',
+// IVT 测量节点类型（流式数据）
+const IVT_NODE_TYPES = [
   'ocp_measurement',
   'chronoamperometry',
   'chronopotentiometry',
@@ -21,8 +20,16 @@ const MEASUREMENT_NODE_TYPES = [
   'current_ramp'
 ];
 
+// EIS 测量节点类型（一次性数据）
+const EIS_NODE_TYPES = [
+  'eis_potentiostatic',
+  'eis_galvanostatic'
+];
+
+// 所有支持数据表的节点类型
+const MEASUREMENT_NODE_TYPES = [...IVT_NODE_TYPES, ...EIS_NODE_TYPES];
+
 export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, selectedNode, showChart = true }) => {
-  const [activeTab, setActiveTab] = useState<'table' | 'raw' | 'processed'>('table');
   const [tableData, setTableData] = useState<RawStreamData[]>([]);
 
   const { nodes } = useCanvasStore();
@@ -31,47 +38,45 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
   // 获取节点索引和执行ID
   const nodeIndex = selectedNode ? nodes.findIndex(n => n.id === selectedNode.id) : -1;
   const activeExecutionId = systemState?.executionId || null;
-  const isMeasurementNode = selectedNode && MEASUREMENT_NODE_TYPES.includes(selectedNode.type);
 
-  // 只有测量节点才启用流 Hook
+  const isMeasurementNode = selectedNode && MEASUREMENT_NODE_TYPES.includes(selectedNode.type);
+  const isEisNode = selectedNode && EIS_NODE_TYPES.includes(selectedNode.type);
+  const isIvtNode = selectedNode && IVT_NODE_TYPES.includes(selectedNode.type);
+
+  // IVT 流式数据 Hook（仅 IVT 节点启用）
   const { getFullHistory, consumeBuffer } = useMeasurementStream({
-    nodeIndex: nodeIndex >= 0 && isMeasurementNode ? nodeIndex : -1,
+    nodeIndex: nodeIndex >= 0 && isIvtNode ? nodeIndex : -1,
     activeExecutionId
   });
 
-  // 自动切换 Tab：如果是测量节点，默认显示表格；否则显示原始数据
-  useEffect(() => {
-    if (isMeasurementNode) {
-      setActiveTab('table');
-    } else {
-      setActiveTab('raw');
-    }
-  }, [selectedNode, isMeasurementNode]);
+  // EIS 数据 Hook（仅 EIS 节点启用）
+  const { eisData } = useEisData({
+    nodeIndex: nodeIndex >= 0 && isEisNode ? nodeIndex : -1
+  });
 
-  // 初始化历史数据 & 监听新一轮执行
+  // IVT: 初始化历史数据 & 监听新一轮执行
   useEffect(() => {
-    if (isMeasurementNode && nodeIndex >= 0) {
+    if (isIvtNode && nodeIndex >= 0) {
       const history = getFullHistory();
       setTableData(history);
     } else {
       setTableData([]);
     }
-  }, [nodeIndex, activeExecutionId, isMeasurementNode]); // 依赖项变化时重置
+  }, [nodeIndex, activeExecutionId, isIvtNode]);
 
-  // 实时更新数据
+  // IVT: 实时更新数据
   useEffect(() => {
-    if (!isMeasurementNode) return;
+    if (!isIvtNode) return;
 
-    // 动画帧或定时消费 Buffer
     const interval = setInterval(() => {
       const chunk = consumeBuffer();
       if (chunk.length > 0) {
         setTableData(prev => [...prev, ...chunk]);
       }
-    }, 100); // 10Hz 刷新率足够表格使用
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [consumeBuffer, isMeasurementNode]);
+  }, [consumeBuffer, isIvtNode]);
 
   // 格式化数值
   const formatValue = (val: number) => {
@@ -80,15 +85,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     return val.toFixed(4);
   };
 
-  const renderTable = () => {
-    if (!isMeasurementNode) {
-      return (
-        <div className="data-viewer-placeholder">
-          <div>该节点不支持 TIV 表格数据</div>
-        </div>
-      );
-    }
-
+  // 渲染 IVT 表格
+  const renderIvtTable = () => {
     if (tableData.length === 0) {
       return (
         <div className="data-viewer-placeholder">
@@ -100,12 +98,12 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     }
 
     return (
-      <div className="table-viewer-container">
+      <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="data-viewer-summary">
           <div><strong>数据点数:</strong> {tableData.length}</div>
           <div><strong>最新时间:</strong> {tableData.length > 0 ? tableData[tableData.length - 1].t.toFixed(2) + 's' : '-'}</div>
         </div>
-        <div className="table-scroll-area glass-inset">
+        <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -115,10 +113,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
               </tr>
             </thead>
             <tbody>
-              {/* 为了性能，仅渲染最近 500 条 + 首部 10 条？ 或者全部渲染但需注意性能 */}
-              {/* 考虑到 React 渲染列表，暂时全量渲染，如果卡顿后续可优化 */}
-              {tableData.map((row, idx) => (
-                <tr key={idx}>
+              {[...tableData].reverse().map((row, idx) => (
+                <tr key={tableData.length - 1 - idx}>
                   <td>{row.t.toFixed(4)}</td>
                   <td>{formatValue(row.v)}</td>
                   <td>{formatValue(row.i)}</td>
@@ -126,21 +122,49 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
               ))}
             </tbody>
           </table>
-          {/* 自动滚动到底部 anchor? */}
-          <div style={{ float: "left", clear: "both" }} ></div>
         </div>
       </div>
     );
   };
 
-  const renderRawData = () => {
-    if (!selectedNode) return null;
-    const rawData = (selectedNode.data as any).rawData || selectedNode.data.results;
+  // 渲染 EIS 表格
+  const renderEisTable = () => {
+    if (!eisData || eisData.points.length === 0) {
+      return (
+        <div className="data-viewer-placeholder">
+          <div className="data-viewer-placeholder-icon-sm">�</div>
+          <div>暂无 EIS 数据</div>
+          <div className="data-viewer-placeholder-subtext">EIS 测量完成后将显示阻抗数据</div>
+        </div>
+      );
+    }
+
     return (
-      <div className="raw-data-viewer">
-        <pre className="data-viewer-pre">
-          {rawData ? JSON.stringify(rawData, null, 2) : '暂无原始数据'}
-        </pre>
+      <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="data-viewer-summary">
+          <div><strong>数据点数:</strong> {eisData.pointCount}</div>
+          <div><strong>频率范围:</strong> {eisData.points[eisData.points.length - 1]?.frequency.toExponential(2)} - {eisData.points[0]?.frequency.toExponential(2)} Hz</div>
+        </div>
+        <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>频率 (Hz)</th>
+                <th>Z' (Ω)</th>
+                <th>-Z'' (Ω)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eisData.points.map((row, idx) => (
+                <tr key={idx}>
+                  <td>{row.frequency.toExponential(3)}</td>
+                  <td>{formatValue(row.zReal)}</td>
+                  <td>{formatValue(-row.zImag)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
@@ -152,7 +176,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     return (
       <div className="data-viewer" style={{ padding: 'var(--size-md)' }}>
         <div className="data-viewer-placeholder">
-          <div>该节点不支持 TIV 表格数据</div>
+          <div>该节点不支持数据表格</div>
         </div>
       </div>
     );
@@ -170,43 +194,9 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
         overflow: 'hidden'
       }}
     >
-      {/* 内容区域 - 直接显示表格 */}
+      {/* 内容区域 - 根据节点类型显示不同的表格 */}
       <div className="data-content-area" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {tableData.length === 0 ? (
-          <div className="data-viewer-placeholder">
-            <div className="data-viewer-placeholder-icon-sm">📝</div>
-            <div>暂无测量数据</div>
-            <div className="data-viewer-placeholder-subtext">运行时将实时显示数据</div>
-          </div>
-        ) : (
-          <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="data-viewer-summary">
-              <div><strong>数据点数:</strong> {tableData.length}</div>
-              <div><strong>最新时间:</strong> {tableData.length > 0 ? tableData[tableData.length - 1].t.toFixed(2) + 's' : '-'}</div>
-            </div>
-            <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>时间 (s)</th>
-                    <th>电压 (V)</th>
-                    <th>电流 (A)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* 新数据在最前面：反转数组显示 */}
-                  {[...tableData].reverse().map((row, idx) => (
-                    <tr key={tableData.length - 1 - idx}>
-                      <td>{row.t.toFixed(4)}</td>
-                      <td>{formatValue(row.v)}</td>
-                      <td>{formatValue(row.i)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {isEisNode ? renderEisTable() : renderIvtTable()}
       </div>
     </div>
   );
