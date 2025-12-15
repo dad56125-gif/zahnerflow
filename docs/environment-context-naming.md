@@ -24,8 +24,8 @@ Zahner 测量文件名现在可以包含执行测量时的环境信息（Furnace
     ↓
 NestJS ExecutionService
     ├── collectEnvironmentContext()
-    │   ├── FurnaceService.health() → 获取温度
-    │   └── MfcService.status() → 获取激活设备流量
+    │   ├── FurnaceService.getCachedStatus() → 读取轮询缓存温度
+    │   └── MfcService.getCachedDeviceStatuses() → 读取轮询缓存流量
     ↓
 environment_context: {
   furnace_temp: 500,      // 整数，℃
@@ -50,29 +50,50 @@ private async collectEnvironmentContext(): Promise<{
 }> {
   const context = {};
 
-  // 1. Furnace 温度
-  const furnaceHealth = await this.furnaceService.health();
-  if (furnaceHealth?.device_connected) {
-    const historyData = await this.furnaceService.get_history_data({
-      range: { start: new Date(Date.now() - 10000).toISOString() }
-    });
-    if (historyData?.samples?.length > 0) {
-      context.furnace_temp = Math.round(historyData.samples.at(-1).temperature);
-    }
+  // 1. Furnace 温度（使用轮询缓存，无需额外查询）
+  const cachedStatus = this.furnaceService.getCachedStatus();
+  if (cachedStatus.isConnected && cachedStatus.pv !== undefined) {
+    context.furnace_temp = Math.round(cachedStatus.pv);
   }
 
-  // 2. MFC 激活设备流量
-  const statusArray = await this.mfcService.status();
-  const activeDevices = statusArray.filter(d => d.flow_sccm > 0);
+  // 2. MFC 激活设备流量（使用轮询缓存，无需额外查询）
+  const cachedStatuses = this.mfcService.getCachedDeviceStatuses();
+  const activeDevices = cachedStatuses.filter(d => d.flow_sccm && d.flow_sccm > 0);
   if (activeDevices.length > 0) {
     context.mfc_flows = {};
     for (const device of activeDevices) {
-      const gasName = device.gas_type || `MFC${device.device_address}`;
+      const gasName = device.gas_type || `MFC${device.address}`;
       context.mfc_flows[gasName] = Math.round(device.flow_sccm);
     }
   }
 
   return context;
+}
+```
+
+#### FurnaceService: `getCachedStatus()`
+
+```typescript
+/** 获取轮询缓存的 Furnace 状态（无需额外查询） */
+getCachedStatus(): { pv?: number; sv?: number; status?: string; isConnected: boolean } {
+  if (!this.isConnected || !this.pendingStatusData) {
+    return { isConnected: false };
+  }
+  return {
+    pv: this.pendingStatusData.pv,
+    sv: this.pendingStatusData.sv,
+    status: this.mapStatusCodeToText(this.pendingStatusData.status_code),
+    isConnected: true
+  };
+}
+```
+
+#### MfcService: `getCachedDeviceStatuses()`
+
+```typescript
+/** 获取轮询缓存的设备状态（无需额外查询） */
+getCachedDeviceStatuses(): DeviceStatusInfo[] {
+  return Array.from(this.device_statuses.values());
 }
 ```
 
@@ -104,12 +125,13 @@ def build_filename(measurement_type: str, params: dict) -> str:
 - ✅ 数据流清晰，单向依赖
 - ✅ Zahner FastAPI 不需要知道其他设备
 - ✅ 易于扩展（添加更多环境信息）
-- ✅ 实现简单（~100 行代码）
+- ✅ **使用轮询缓存，无额外网络请求**
+- ✅ **无延迟，无错误风险**
 
 ### 缺点
 
-- ❌ 每次测量都需要查询设备状态
-- ❌ 如果设备通信失败，文件名不包含环境信息
+- ❌ 依赖设备轮询正常运行
+- ❌ 如果设备未连接，文件名不包含环境信息
 
 ---
 

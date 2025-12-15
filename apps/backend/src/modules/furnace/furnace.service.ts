@@ -208,6 +208,20 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   async subscribe_to_furnace_updates(id: string) { }
   async unsubscribe_from_furnace_updates(id: string) { }
 
+  /** 获取轮询缓存的 Furnace 状态（无需额外查询） */
+  getCachedStatus(): { pv?: number; sv?: number; status?: string; isConnected: boolean } {
+    if (!this.isConnected || !this.pendingStatusData) {
+      return { isConnected: false };
+    }
+    const raw = this.pendingStatusData;
+    return {
+      pv: raw.pv,
+      sv: raw.sv,
+      status: this.mapStatusCodeToText(raw.status_code),
+      isConnected: true
+    };
+  }
+
   // 批量读取程序段（内部循环27次getSegment）
   async get_program_segments(): Promise<ProgramSegment[]> {
     const segments: ProgramSegment[] = [];

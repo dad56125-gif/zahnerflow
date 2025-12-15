@@ -571,6 +571,9 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
 
   is_device_busy(): boolean { return this.device_busy; }
   getDevices(): MfcDeviceInfo[] { return [...this.discovered]; }
+
+  /** 获取轮询缓存的设备状态（无需额外查询） */
+  getCachedDeviceStatuses(): DeviceStatusInfo[] { return Array.from(this.device_statuses.values()); }
   getConnectionStatus() { return { status: this.connection_state, connection_info: this.connection_info, device_count: this.discovered.length, polling_status: this.polling_status }; }
   async get_connection_info() { return this.connection_info || await this.device.get_connection_info(); }
   async query_flow_history(q: FlowHistoryQuery) { return this.dataService.queryFlowHistory(q); }

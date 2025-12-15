@@ -486,46 +486,31 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }> {
     const context: { furnace_temp?: number; mfc_flows?: Record<string, number> } = {};
 
-    // 1. 获取 Furnace 温度
+    // 1. 获取 Furnace 温度（使用轮询缓存，无需额外查询）
     try {
-      const furnaceHealth = await this.furnaceService.health();
-      if (furnaceHealth?.device_connected) {
-        // Furnace 已连接，尝试获取当前温度
-        // 使用 FurnaceService 暴露的 API 获取历史数据的最新点
-        const historyData = await this.furnaceService.get_history_data({
-          range: { start: new Date(Date.now() - 10000).toISOString() }  // 最近 10 秒
-        }).catch(() => null);
-
-        if (historyData?.samples?.length > 0) {
-          const latestSample = historyData.samples[historyData.samples.length - 1];
-          if (latestSample?.temperature !== undefined) {
-            context.furnace_temp = Math.round(latestSample.temperature);
-            this.logger.debug(`[EnvContext] Furnace temp: ${context.furnace_temp}℃`);
-          }
-        }
+      const cachedStatus = this.furnaceService.getCachedStatus();
+      if (cachedStatus.isConnected && cachedStatus.pv !== undefined) {
+        context.furnace_temp = Math.round(cachedStatus.pv);
+        this.logger.debug(`[EnvContext] Furnace temp: ${context.furnace_temp}℃`);
       }
     } catch (e) {
       this.logger.debug(`[EnvContext] Furnace not available`);
     }
 
-    // 2. 获取 MFC 激活设备流量
+    // 2. 获取 MFC 激活设备流量（使用轮询缓存，无需额外查询）
     try {
-      // 使用 status() 方法获取所有设备的当前状态
-      const statusArray = await this.mfcService.status().catch(() => []);
+      const cachedStatuses = this.mfcService.getCachedDeviceStatuses();
 
-      if (Array.isArray(statusArray) && statusArray.length > 0) {
-        const activeDevices = statusArray.filter((d: any) =>
-          d.flow_sccm !== undefined && d.flow_sccm > 0
-        );
+      // 只筛选有流量的设备
+      const activeDevices = cachedStatuses.filter(d => d.flow_sccm && d.flow_sccm > 0);
 
-        if (activeDevices.length > 0) {
-          context.mfc_flows = {};
-          for (const device of activeDevices) {
-            const gasName = device.gas_type || `MFC${device.device_address}`;
-            context.mfc_flows[gasName] = Math.round(device.flow_sccm);
-          }
-          this.logger.debug(`[EnvContext] MFC flows: ${JSON.stringify(context.mfc_flows)}`);
+      if (activeDevices.length > 0) {
+        context.mfc_flows = {};
+        for (const device of activeDevices) {
+          const gasName = device.gas_type || `MFC${device.address}`;
+          context.mfc_flows[gasName] = Math.round(device.flow_sccm!);
         }
+        this.logger.debug(`[EnvContext] MFC flows: ${JSON.stringify(context.mfc_flows)}`);
       }
     } catch (e) {
       this.logger.debug(`[EnvContext] MFC not available`);
