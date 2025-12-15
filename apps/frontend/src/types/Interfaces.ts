@@ -40,6 +40,7 @@ export interface Workflow {
   // 可选的元数据字段
   ownerName?: string;
   project_name?: string;
+  individualName?: string;  // 样品名称（用于报告）
 }
 
 // ==================== 4. 物理/流数据 (Stream Data) ====================
