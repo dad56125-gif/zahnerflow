@@ -236,8 +236,12 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
         this.httpService.post(`${this.endpoint}/measure`, pythonParams, { timeout: dynamicTimeout })
       );
 
-      const result = response.data;
-      if (result.status === 'error') throw new Error(result.error || 'Measurement logic error');
+      const responseData = response.data;
+      if (responseData.status === 'error') throw new Error(responseData.error || 'Measurement logic error');
+
+      // FastAPI 返回格式是 { status: "success", result: {...} }
+      // 实际测量结果在 responseData.result 中
+      const result = responseData.result || responseData;
 
       // 🔍 调试日志：检查 eis_data 是否存在
       if (result.eis_data) {
