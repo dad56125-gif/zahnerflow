@@ -106,7 +106,9 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                                     <tr><td>状态</td><td>{statusIcon} {statusText}</td></tr>
                                     <tr><td>开始时间</td><td>{formatDateTime(reportData.startTime)}</td></tr>
                                     <tr><td>结束时间</td><td>{formatDateTime(reportData.endTime)}</td></tr>
-                                    <tr><td>总耗时</td><td>{formatDuration(reportData.duration)}</td></tr>
+                                    <tr><td>总耗时</td><td>{formatDuration(
+                                        (reportData.endTime.getTime() - reportData.startTime.getTime()) / 1000
+                                    )}</td></tr>
                                     <tr><td>节点总数</td><td>{reportData.nodes.length}</td></tr>
                                 </tbody>
                             </table>
