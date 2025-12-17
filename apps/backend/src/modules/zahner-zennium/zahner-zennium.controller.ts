@@ -76,6 +76,24 @@ export class ZahnerZenniumController {
   @Get('options')
   async getOptions() { return this.service.getDeviceOptions(); }
 
+  // ==========================================
+  // 设备模式切换 API (真实设备 / 模拟器)
+  // ==========================================
+
+  @Get('device-mode')
+  getDeviceMode() {
+    return this.service.getDeviceMode();
+  }
+
+  @Post('device-mode')
+  @HttpCode(HttpStatus.OK)
+  async setDeviceMode(@Body() body: { mode: 'real' | 'simulator' }) {
+    if (!body.mode || !['real', 'simulator'].includes(body.mode)) {
+      return { success: false, error: 'Invalid mode. Use "real" or "simulator".' };
+    }
+    return this.service.setDeviceMode(body.mode);
+  }
+
   // 私有辅助方法：统一处理返回格式
   private async runMeasurement(type: MeasurementType, body: any) {
     const payload = { ...body, measurement_type: type };

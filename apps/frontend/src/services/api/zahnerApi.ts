@@ -108,4 +108,36 @@ class ApiHelpers {
 }
 
 export const apiHelpers = new ApiHelpers();
+
+// ==========================================
+// Zahner 设备模式切换 API
+// ==========================================
+
+export interface DeviceModeInfo {
+  mode: 'real' | 'simulator';
+  endpoint: string;
+}
+
+export const zahnerDeviceApi = {
+  /** 获取当前设备模式 */
+  getDeviceMode: (): Promise<DeviceModeInfo> =>
+    apiHelpers.get('/devices/zahner-zennium/device-mode'),
+
+  /** 切换设备模式 (real=真实设备, simulator=模拟器) */
+  setDeviceMode: (mode: 'real' | 'simulator'): Promise<{ success: boolean; mode: string }> =>
+    apiHelpers.post('/devices/zahner-zennium/device-mode', { mode }),
+
+  /** 连接设备 (同时适用于真实设备和模拟器) */
+  connect: (): Promise<{ message: string }> =>
+    apiHelpers.post('/devices/zahner-zennium/connect'),
+
+  /** 断开设备 */
+  disconnect: (): Promise<{ message: string }> =>
+    apiHelpers.post('/devices/zahner-zennium/disconnect'),
+
+  /** 获取设备状态 */
+  getStatus: (): Promise<any> =>
+    apiHelpers.get('/devices/zahner-zennium/status'),
+};
+
 export default apiHelpers;

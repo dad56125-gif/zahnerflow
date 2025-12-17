@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ExecutionModule } from './modules/execution/execution.module';
 import { ZahnerZenniumModule } from './modules/zahner-zennium/zahner-zennium.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
@@ -12,6 +13,7 @@ import { AppController } from './app.controller';
 import { MfcModule } from './modules/mfc/mfc.module';
 import { FurnaceModule } from './modules/furnace/furnace.module';
 import { UsersModule } from './modules/users/users.module';
+import { join } from 'path';
 
 /**
  * 应用主模块
@@ -19,6 +21,14 @@ import { UsersModule } from './modules/users/users.module';
  */
 @Module({
   imports: [
+    // 配置模块 - 加载项目根目录的 .env 文件
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        join(__dirname, '..', '..', '..', '.env'),  // 项目根目录
+        join(__dirname, '..', '.env'),               // backend 目录
+      ],
+    }),
     CommonModule,
     DbModule,
     GatewayModule,
@@ -34,4 +44,5 @@ import { UsersModule } from './modules/users/users.module';
   ],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule { }
+

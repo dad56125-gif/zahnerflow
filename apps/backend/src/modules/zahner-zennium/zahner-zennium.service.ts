@@ -11,17 +11,19 @@ import { MeasurementType } from '@zahnerflow/types';
 @Injectable()
 export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   readonly name = 'zahner-zennium';
-  readonly version = '3.0.1'; // Bump version
+  readonly version = '3.1.0'; // 新增模拟器模式支持
   readonly dependencies = ['HttpModule'];
 
   private readonly logger = new Logger(ZahnerZenniumService.name);
   private readonly moduleName = 'ZahnerZenniumService';
 
   private readonly timeoutMs = 900000;
-  private readonly endpoint: string;
+  private readonly realEndpoint: string;
+  private readonly realWsEndpoint: string;
+  private readonly simulatorEndpoint: string;
+  private readonly simulatorWsEndpoint: string;
 
   private wsClient: WebSocket | null = null;
-  private readonly wsEndpoint: string;
   private wsReconnectTimer: NodeJS.Timeout | null = null;
 
   private connected = false;
@@ -29,15 +31,89 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   private lastActivity = new Date();
   private error?: string;
 
+  // 设备模式: 'real' = 真实Zahner设备, 'simulator' = 模拟器
+  private deviceMode: 'real' | 'simulator' = 'real';
+
+  // 动态端点选择
+  private get activeEndpoint(): string {
+    return this.deviceMode === 'simulator' ? this.simulatorEndpoint : this.realEndpoint;
+  }
+
+  private get activeWsEndpoint(): string {
+    return this.deviceMode === 'simulator' ? this.simulatorWsEndpoint : this.realWsEndpoint;
+  }
+
+  // 兼容性别名
+  private get endpoint(): string {
+    return this.activeEndpoint;
+  }
+
+  private get wsEndpoint(): string {
+    return this.activeWsEndpoint;
+  }
+
   constructor(
     private readonly httpService: HttpService,
     private readonly eventBus: EventBus,
     private readonly consoleManager: ConsoleDisplayManager,
   ) {
-    const baseUrl = process.env.ZAHNER_FASTAPI_URL || 'localhost:8000';
-    const hostAndPort = baseUrl.replace('http://', '').replace('https://', '');
-    this.endpoint = `http://${hostAndPort}`;
-    this.wsEndpoint = `ws://${hostAndPort}/ws`;
+    // 真实设备端点
+    const realUrl = process.env.ZAHNER_FASTAPI_URL || 'localhost:8000';
+    const realHostPort = realUrl.replace('http://', '').replace('https://', '');
+    this.realEndpoint = `http://${realHostPort}`;
+    this.realWsEndpoint = `ws://${realHostPort}/ws`;
+
+    // 模拟器端点
+    const simUrl = process.env.ZAHNER_SIMULATOR_URL || 'localhost:8001';
+    const simHostPort = simUrl.replace('http://', '').replace('https://', '');
+    this.simulatorEndpoint = `http://${simHostPort}`;
+    this.simulatorWsEndpoint = `ws://${simHostPort}/ws`;
+
+    // 从环境变量读取默认模式: ZAHNER_MODE=simulator 启用模拟器
+    const envMode = process.env.ZAHNER_MODE?.toLowerCase();
+    if (envMode === 'simulator' || envMode === 'sim') {
+      this.deviceMode = 'simulator';
+      this.logger.log(`[Zahner] ⚡ SIMULATOR MODE (set by ZAHNER_MODE env)`);
+    } else {
+      this.deviceMode = 'real';
+      this.logger.log(`[Zahner] 🔌 REAL DEVICE MODE`);
+    }
+
+    this.logger.log(`[Zahner] Endpoints - Real: ${this.realEndpoint}, Simulator: ${this.simulatorEndpoint}`);
+  }
+
+  // ==========================================
+  // 设备模式切换 API
+  // ==========================================
+
+  async setDeviceMode(mode: 'real' | 'simulator'): Promise<{ success: boolean; mode: string }> {
+    if (this.deviceMode === mode) {
+      return { success: true, mode };
+    }
+
+    // 如果当前已连接，先断开
+    if (this.connected) {
+      await this.disconnect();
+    }
+
+    const oldMode = this.deviceMode;
+    this.deviceMode = mode;
+
+    // 重新连接 WebSocket
+    this.disconnectWebSocket();
+    this.connectWebSocket();
+
+    this.logger.log(`[Zahner] Device mode changed: ${oldMode} -> ${mode}`);
+    this.eventBus.emit('device.mode.changed', { oldMode, newMode: mode });
+
+    return { success: true, mode };
+  }
+
+  getDeviceMode(): { mode: string; endpoint: string } {
+    return {
+      mode: this.deviceMode,
+      endpoint: this.activeEndpoint
+    };
   }
 
   async onModuleInit() {
