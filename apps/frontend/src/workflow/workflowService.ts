@@ -25,7 +25,7 @@ export const workflowService = {
         }
       });
     }
-    
+
     const url = `/workflows${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return apiHelpers.getPaginated<Workflow>(url);
   },
@@ -60,7 +60,7 @@ export const workflowService = {
     return apiHelpers.post<Workflow>(`/workflows/${id}/duplicate`);
   },
 
-  };
+};
 
 // 执行相关API
 export const executionService = {
@@ -74,6 +74,7 @@ export const executionService = {
     nodes: any[],
     params?: {
       priority?: 'low' | 'normal' | 'high';
+      ownerName?: string;  // ✅ 新增：当前用户名，用于关联路径配置
     }
   ): Promise<{
     executionId: string;
@@ -84,7 +85,8 @@ export const executionService = {
     return apiHelpers.post('/executions', {
       workflowId,
       nodes,
-      ...params
+      ownerName: params?.ownerName,  // ✅ 传递给后端
+      priority: params?.priority
     });
   },
 
@@ -136,7 +138,7 @@ export const executionService = {
         }
       });
     }
-    
+
     const url = `/execution/history${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return apiHelpers.getPaginated<Execution>(url);
   },

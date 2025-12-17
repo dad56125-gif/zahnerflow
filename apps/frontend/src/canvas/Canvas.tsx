@@ -24,9 +24,6 @@ interface CanvasProps {
   onResetZoom: () => void;
   showWorkflowManager?: boolean;
   onToggleWorkflowManager?: () => void;
-  showFilePathManager?: boolean;
-  onToggleFilePathManager?: () => void;
-  onFilePathSave?: (config: any) => void;
   onRunFlow?: () => void;
   onStopFlow?: () => void;
   onResetFlow?: () => void;
@@ -46,9 +43,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   onResetZoom,
   showWorkflowManager = false,
   onToggleWorkflowManager,
-  showFilePathManager = false,
-  onToggleFilePathManager,
-  onFilePathSave,
   onRunFlow,
   onStopFlow,
   onResetFlow,
@@ -254,9 +248,6 @@ export const Canvas: React.FC<CanvasProps> = ({
           hasError={hasError}
           onToggleWorkflowManager={onToggleWorkflowManager}
           showWorkflowManager={showWorkflowManager}
-          showFilePathManager={showFilePathManager}
-          onToggleFilePathManager={onToggleFilePathManager}
-          onFilePathSave={onFilePathSave}
           onGenerateReport={onGenerateReport}
           canGenerateReport={canGenerateReport}
         />
@@ -334,9 +325,6 @@ export const Canvas: React.FC<CanvasProps> = ({
       {/* 模态框与浮层 */}
       {showWorkflowManager && (
         <WorkflowManagerUI onClose={onToggleWorkflowManager} />
-      )}
-      {showFilePathManager && (
-        <div className="file-path-manager-overlay-container"></div>
       )}
       <WorkflowIdDisplay />
     </div>

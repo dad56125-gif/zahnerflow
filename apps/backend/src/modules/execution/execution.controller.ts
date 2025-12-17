@@ -11,16 +11,20 @@ export class ExecutionController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createExecution(@Body() body: { workflowId: string | null; nodes?: any[] }): Promise<ExecutionSnapshot> {
+  async createExecution(@Body() body: {
+    workflowId: string | null;
+    nodes?: any[];
+    ownerName?: string;  // ✅ 新增：当前用户名，用于关联路径配置
+  }): Promise<ExecutionSnapshot> {
     // 【日志】Controller 层接收的节点列表
     if (body.nodes) {
-      this.logger.log(`[Controller] 接收前端节点列表 - 数量: ${body.nodes.length}`);
+      this.logger.log(`[Controller] 接收前端节点列表 - 数量: ${body.nodes.length}, 用户: ${body.ownerName}`);
       body.nodes.forEach((node, index) => {
         this.logger.log(`[Controller节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
       });
     }
 
-    return this.executionService.executeWorkflow(body.workflowId, body.nodes);
+    return this.executionService.executeWorkflow(body.workflowId, body.nodes, body.ownerName);
   }
 
   @Get()

@@ -63,6 +63,8 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     executionId: string;
     startTime: Date;
     workflowTimestamp: string;
+    ownerName?: string;
+    workflowName?: string;
   }>();
 
   // 内部便捷访问器 (Read-only)
@@ -150,16 +152,16 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // Workflow Execution
   // ==========================================
 
-  async executeWorkflow(workflowId: string | null, nodes?: any[]): Promise<ExecutionSnapshot> {
+  async executeWorkflow(workflowId: string | null, nodes?: any[], ownerName?: string): Promise<ExecutionSnapshot> {
     // 【日志】前端传递的节点列表
     if (nodes) {
-      this.logger.log(`[ExecutionService] 前端传递的节点列表 - 数量: ${nodes.length}`);
+      this.logger.log(`[ExecutionService] 前端传递的节点列表 - 数量: ${nodes.length}, 用户: ${ownerName}`);
       nodes.forEach((node, index) => {
         this.logger.log(`[前端节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
       });
     }
 
-    this.logger.log(`[executeWorkflow] START - workflowId=${workflowId}`);
+    this.logger.log(`[executeWorkflow] START - workflowId=${workflowId}, ownerName=${ownerName}`);
 
     let finalWorkflowId = workflowId;
 
@@ -168,9 +170,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       if (!nodes || nodes.length === 0) {
         throw new Error('Nodes array is required when workflowId is null');
       }
+      // ✅ 创建工作流时传入 ownerName
       const newWorkflow = await this.workflowService.createWorkflow({
         name: `AutoRun_${new Date().toISOString()}`,
-        nodes: nodes
+        nodes: nodes,
+        ownerName: ownerName  // ✅ 关键：关联用户
       });
       finalWorkflowId = newWorkflow.id;
     }
@@ -178,12 +182,23 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const startTime = new Date();
 
-    // 【修改】使用静态 Map 存储上下文
+    // 获取工作流名称
+    let workflowName = '';
+    try {
+      const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
+      workflowName = workflow.name || '';
+    } catch (e) {
+      // 忽略错误
+    }
+
+    // 【修改】使用静态 Map 存储上下文，包含用户信息
     ExecutionService._contexts.set(executionId, {
       workflowId: finalWorkflowId!,
       executionId,
       startTime,
-      workflowTimestamp: this.generateTimestamp()
+      workflowTimestamp: this.generateTimestamp(),
+      ownerName: ownerName,
+      workflowName: workflowName
     });
 
     // 写入数据库
@@ -412,17 +427,26 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const timestamp = context?.workflowTimestamp;
 
     const workflow = await this.workflowService.getWorkflow(workflowId);
-    const projectConfig = this.filesService.getProjectConfig(workflow.ownerName, workflow.name, workflow.individualName);
+
+    // ✅ 【核心修复】从 user_path_configs 表获取用户配置的路径
+    // 使用 workflow.ownerName 作为用户名
+    const userConfig = workflow.ownerName
+      ? this.filesService.getUserPathConfig(workflow.ownerName)
+      : null;
+
+    this.logger.log(`[Measurement] User: ${workflow.ownerName}, UserConfig: ${JSON.stringify(userConfig)}`);
 
     const outputPath = this.filesService.buildOutputPath({
-      base_path: projectConfig?.base_path,
-      project_name: workflow.name,
-      individual_name: workflow.individualName,
-      test_type: projectConfig?.test_type,
+      // 优先使用用户配置的路径，否则使用默认值
+      base_path: userConfig?.base_path || 'C:\\data\\archive',
+      project_name: userConfig?.project_name || workflow.name,
+      individual_name: userConfig?.individual_name || workflow.individualName,
       measurement_type: type,
       workflow_id: workflowId,
       workflow_timestamp: timestamp
     });
+
+    this.logger.log(`[Measurement] Output path: ${outputPath}`);
 
     // ✅ 新增：收集环境上下文（Furnace 温度 + MFC 流量）
     const environmentContext = await this.collectEnvironmentContext();
@@ -464,10 +488,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     this.db.prepare(`UPDATE executions SET status = ?, end_time = ?, duration = ?, error = ? WHERE id = ?`)
       .run(finalStatus, endTime.toISOString(), duration, error || null, id);
 
-    // 【修改】从静态 Map 获取 workflowId
-    const wfId = ExecutionService._contexts.get(id)?.workflowId || 'unknown';
+    // 【修改】从静态 Map 获取完整上下文
+    const context = ExecutionService._contexts.get(id);
+    const wfId = context?.workflowId || 'unknown';
+    const ownerName = context?.ownerName;
+    const workflowName = context?.workflowName;
 
-    this.emitWorkflowEvent(finalStatus, id, wfId, { error, duration });
+    this.emitWorkflowEvent(finalStatus, id, wfId, { error, duration, ownerName, workflowName });
     this.updateState({ status: finalStatus, endTime, duration, error: error || null, currentStep: null });
   }
 

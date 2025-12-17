@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Query, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { FilesService, RegisterFilePayload } from './files.service';
 import { exec } from 'child_process';
 import * as os from 'os';
 
 @Controller('api/files')
 export class FilesController {
-  constructor(private readonly filesService: FilesService) {}
+  constructor(private readonly filesService: FilesService) { }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -37,6 +37,65 @@ export class FilesController {
     return {
       success: true,
       projects
+    };
+  }
+
+  /**
+   * 删除项目
+   */
+  @Delete('projects/:projectName')
+  deleteProject(
+    @Param('projectName') projectName: string,
+    @Query('user') user: string
+  ) {
+    if (!user) {
+      return {
+        success: false,
+        message: 'User parameter is required'
+      };
+    }
+
+    if (!projectName) {
+      return {
+        success: false,
+        message: 'Project name is required'
+      };
+    }
+
+    try {
+      this.filesService.deleteProject(user, projectName);
+      return {
+        success: true,
+        message: `Project "${projectName}" deleted`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * 获取用户的路径配置（从 user_settings 表读取）
+   */
+  @Get('user-config')
+  getUserConfig(@Query('user') user: string) {
+    if (!user) {
+      return {
+        success: false,
+        message: 'User parameter is required'
+      };
+    }
+
+    const config = this.filesService.getUserPathConfig(user);
+    return {
+      success: true,
+      config: config || {
+        base_path: 'C:\\data\\archive',
+        project_name: '',
+        individual_name: ''
+      }
     };
   }
 

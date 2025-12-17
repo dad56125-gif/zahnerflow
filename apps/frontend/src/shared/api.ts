@@ -34,6 +34,17 @@ class ApiClient {
     return response.json();
   }
 
+  async put<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    return response.json();
+  }
+
   async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'DELETE',

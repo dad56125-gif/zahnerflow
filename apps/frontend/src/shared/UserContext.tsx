@@ -42,23 +42,15 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUserState] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
 
-  // 文件路径配置状态，从sessionStorage初始化
-  const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>(() => {
-    try {
-      const saved = sessionStorage.getItem('filePathConfig');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (error) {
-      console.warn('Failed to load filePathConfig from sessionStorage:', error);
-    }
-    // 默认配置
-    return {
-      base_path: 'C:\\data\\archive',
-      project_name: '',
-      individual_name: ''
-    };
+  // 文件路径配置状态
+  const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>({
+    base_path: 'C:\\data\\archive',
+    project_name: '',
+    individual_name: ''
   });
+
+  // 标记是否正在加载用户配置，防止重复请求
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
 
   const loadUsers = async () => {
     const response = await api.get('/users');
@@ -76,19 +68,74 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   };
 
-  const setCurrentUser = (user: string) => {
-    setCurrentUserState(user);
-    // 可以在这里添加持久化逻辑，比如保存到localStorage
-    localStorage.setItem('currentUser', user);
+  /**
+   * 从后端加载用户的配置（使用统一的用户配置 API）
+   */
+  const loadUserPathConfig = async (user: string) => {
+    if (!user || isLoadingConfig) return;
+
+    setIsLoadingConfig(true);
+    try {
+      // 使用新的统一用户配置 API
+      const response: any = await api.get(`/users/${encodeURIComponent(user)}/settings`);
+      if (response?.success && response?.settings?.file_path) {
+        setFilePathConfigState({
+          base_path: response.settings.file_path.base_path || 'C:\\data\\archive',
+          project_name: response.settings.file_path.project_name || '',
+          individual_name: response.settings.file_path.individual_name || ''
+        });
+        console.log(`[UserContext] 已加载用户 "${user}" 的路径配置:`, response.settings.file_path);
+      }
+    } catch (error) {
+      console.warn(`[UserContext] 加载用户 "${user}" 的路径配置失败:`, error);
+      // 失败时使用默认配置
+      setFilePathConfigState({
+        base_path: 'C:\\data\\archive',
+        project_name: '',
+        individual_name: ''
+      });
+    } finally {
+      setIsLoadingConfig(false);
+    }
   };
 
-  const setFilePathConfig = (config: FilePathConfig) => {
+  /**
+   * 设置当前用户（同时加载该用户的路径配置）
+   */
+  const setCurrentUser = (user: string) => {
+    // 如果用户没变，不重复操作
+    if (user === currentUser) return;
+
+    setCurrentUserState(user);
+    localStorage.setItem('currentUser', user);
+
+    // 加载该用户的路径配置
+    if (user) {
+      loadUserPathConfig(user);
+    } else {
+      // 用户被清空时，重置路径配置
+      setFilePathConfigState({
+        base_path: 'C:\\data\\archive',
+        project_name: '',
+        individual_name: ''
+      });
+    }
+  };
+
+  /**
+   * 设置文件路径配置（同时保存到后端）
+   */
+  const setFilePathConfig = async (config: FilePathConfig) => {
     setFilePathConfigState(config);
-    // 保存到sessionStorage，实现会话期间持久化
-    try {
-      sessionStorage.setItem('filePathConfig', JSON.stringify(config));
-    } catch (error) {
-      console.warn('Failed to save filePathConfig to sessionStorage:', error);
+
+    // 使用新的统一用户配置 API 保存
+    if (currentUser) {
+      try {
+        await api.put(`/users/${encodeURIComponent(currentUser)}/settings/file_path`, config);
+        console.log(`[UserContext] 已保存用户 "${currentUser}" 的路径配置`);
+      } catch (error) {
+        console.warn(`[UserContext] 保存用户路径配置失败:`, error);
+      }
     }
   };
 
@@ -122,15 +169,28 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         // 删除当前用户后清空选择，让用户手动选择
         setCurrentUserState('');
         localStorage.removeItem('currentUser');
+        // 重置路径配置
+        setFilePathConfigState({
+          base_path: 'C:\\data\\archive',
+          project_name: '',
+          individual_name: ''
+        });
       }
       return true;
     }
     return false;
   };
 
-  // 初始化时只加载用户列表，不选择任何用户
+  // 初始化时加载用户列表
   useEffect(() => {
     loadUsers();
+
+    // 如果 localStorage 中有保存的用户，加载其配置
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      setCurrentUserState(savedUser);
+      loadUserPathConfig(savedUser);
+    }
   }, []);
 
   const value: UserContextType = {
@@ -149,3 +209,4 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     </UserContext.Provider>
   );
 };
+

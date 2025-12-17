@@ -31,7 +31,6 @@ export class FilesService implements OnModuleInit {
 
   onModuleInit() {
     // 初始化 files 表，存储文件元数据
-    // 整合了原有的 data_file_paths 和 data_file 概念
     this.db.prepare(`
       CREATE TABLE IF NOT EXISTS files (
         id TEXT PRIMARY KEY,
@@ -45,6 +44,33 @@ export class FilesService implements OnModuleInit {
         created_at TEXT
       )
     `).run();
+  }
+
+  /**
+   * 获取用户的路径配置
+   * 从 user_settings 表读取
+   */
+  getUserPathConfig(user: string): { base_path: string; project_name: string; individual_name: string } | null {
+    const settingsRow = this.db.prepare(`
+      SELECT settings_json FROM user_settings WHERE user = ?
+    `).get(user) as { settings_json: string } | undefined;
+
+    if (settingsRow?.settings_json) {
+      try {
+        const settings = JSON.parse(settingsRow.settings_json);
+        if (settings.file_path) {
+          return {
+            base_path: settings.file_path.base_path || 'C:\\data\\archive',
+            project_name: settings.file_path.project_name || '',
+            individual_name: settings.file_path.individual_name || ''
+          };
+        }
+      } catch (e) {
+        console.warn(`[FilesService] Failed to parse user_settings for user ${user}`);
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -132,6 +158,19 @@ export class FilesService implements OnModuleInit {
     `).all(user) as { project_name: string }[];
 
     return rows.map(r => r.project_name);
+  }
+
+  /**
+   * 删除用户的项目（删除相关文件记录）
+   */
+  deleteProject(user: string, projectName: string): void {
+    // 删除 files 表中该用户该项目的所有记录
+    this.db.prepare(`
+      DELETE FROM files 
+      WHERE user = ? AND project_name = ?
+    `).run(user, projectName);
+
+    console.log(`[FilesService] 已删除用户 "${user}" 的项目 "${projectName}"`);
   }
 
   /**
@@ -306,6 +345,7 @@ export class FilesService implements OnModuleInit {
       workflow_timestamp
     } = options;
 
+    // 计算最终的测试类型
     let finalTestType: string;
     if (test_type) {
       finalTestType = test_type;
@@ -315,7 +355,9 @@ export class FilesService implements OnModuleInit {
       finalTestType = 'general';
     }
 
-    if (!useDefaultStructure && project_name && individual_name && test_type) {
+    // ✅ 修复：只要有 project_name 和 individual_name 就使用模式1（完整配置模式）
+    // 不再要求 test_type 必须存在，因为可以从 measurement_type 计算得出
+    if (!useDefaultStructure && project_name && individual_name) {
       return path.join(base_path, project_name, individual_name, finalTestType);
     } else {
       const timestamp = workflow_timestamp || (() => {

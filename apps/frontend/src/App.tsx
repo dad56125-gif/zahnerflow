@@ -53,7 +53,6 @@ const AppContent: React.FC = () => {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(false);
-  const [showFilePathManager, setShowFilePathManager] = useState(false);
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
   const [showChartModal, setShowChartModal] = useState(false);
 
@@ -140,7 +139,8 @@ const AppContent: React.FC = () => {
     }
     try {
       const workflowId = currentWorkflow?.id || null;
-      await startExecution(workflowId, nodes);
+      // ✅ 传递 currentUser 作为 ownerName，确保后端能关联用户的路径配置
+      await startExecution(workflowId, nodes, currentUser || undefined);
 
       const newWorkflowId = useExecutionStore.getState().workflowId;
 
@@ -259,9 +259,6 @@ const AppContent: React.FC = () => {
           onResetZoom={handleResetZoom}
           showWorkflowManager={showWorkflowManager}
           onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
-          showFilePathManager={showFilePathManager}
-          onToggleFilePathManager={() => setShowFilePathManager(!showFilePathManager)}
-          onFilePathSave={handleFilePathSave}
           onRunFlow={handleRunFlow}
           onStopFlow={handleStopFlow}
           onResetFlow={resetFlow}

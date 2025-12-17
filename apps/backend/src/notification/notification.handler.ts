@@ -53,7 +53,7 @@ export class NotificationEventHandler {
   }
 
   private async handleWorkflowCompleted(event: EventPayload) {
-    const { success, duration, workflowId } = event.data;
+    const { success, duration, workflowId, ownerName, workflowName } = event.data;
     this.sendNotify(
       '工作流结束',
       `Success: ${success}, Duration: ${duration}ms`,
@@ -61,16 +61,16 @@ export class NotificationEventHandler {
       event
     );
 
-    // 发送邮件通知
-    this.emailService.sendWorkflowNotification('completed', workflowId, { duration });
+    // 发送邮件通知（传递用户名以读取通知配置）
+    this.emailService.sendWorkflowNotification('completed', workflowId, ownerName, { duration, workflowName });
   }
 
   private async handleWorkflowFailed(event: EventPayload) {
-    const { workflowId, error, duration } = event.data;
+    const { workflowId, error, duration, ownerName, workflowName } = event.data;
     this.sendNotify('工作流失败', `Error: ${error}`, 'error', event);
 
     // 发送邮件通知
-    this.emailService.sendWorkflowNotification('failed', workflowId, { error, duration });
+    this.emailService.sendWorkflowNotification('failed', workflowId, ownerName, { error, duration, workflowName });
   }
 
   // ... Node Handlers ...

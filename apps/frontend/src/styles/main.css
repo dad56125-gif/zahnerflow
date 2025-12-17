@@ -37,6 +37,7 @@
 @import './_dropdown.css' layer(components);
 @import './_datatable.css' layer(components);
 @import './_schedule-runner.css' layer(components);
+@import './_user-settings.css' layer(components);
 @import './_components.css' layer(components);
 
 /* ==========================================================================

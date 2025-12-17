@@ -1,0 +1,525 @@
+/* 用户配置 Modal 样式 - 应用 Glass 效果 */
+
+.user-settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 极淡遮罩，无模糊（模糊只在 panel 上） */
+    background: rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    animation: settingsOverlayIn 0.2s ease-out;
+}
+
+/* 退出状态 */
+.user-settings-overlay.hiding {
+    animation: settingsOverlayOut 0.2s ease-out forwards;
+}
+
+.user-settings-overlay.hiding .user-settings-panel {
+    animation: settingsPanelOut 0.2s ease-out forwards;
+}
+
+@keyframes settingsOverlayIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes settingsOverlayOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+.user-settings-panel {
+    width: 45rem;
+    /* 720px */
+    height: 35rem;
+    /* 480px，固定高度 */
+    max-width: 90vw;
+    max-height: 80vh;
+    /* 使用 glass 变量 */
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-5, 20px));
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 20px 60px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: settingsPanelIn 0.25s ease-out;
+}
+
+@keyframes settingsPanelIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes settingsPanelOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+}
+
+/* 头部 */
+.settings-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.settings-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.current-user-badge {
+    margin-left: 12px;
+    padding: 4px 10px;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    font-size: 12px;
+    color: rgba(165, 180, 252, 0.9);
+}
+
+.settings-header .close-btn {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.settings-header .close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+/* 主体区域 */
+.settings-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* 左侧导航 */
+.settings-nav {
+    width: 160px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.nav-item:hover {
+    background: var(--glass-hover);
+}
+
+.nav-item.active {
+    background: var(--glass-bg-active);
+    border: 1px solid var(--glass-border-hover);
+}
+
+.nav-icon {
+    font-size: 18px;
+}
+
+.nav-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.nav-item.active .nav-label {
+    color: #a5b4fc;
+}
+
+/* 右侧内容 */
+.settings-content {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.settings-loading,
+.settings-error,
+.settings-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}
+
+.settings-error {
+    color: #f87171;
+}
+
+/* 分类内容区 */
+.section-content h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.section-desc {
+    margin: 0 0 20px 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* 表单组 */
+.section-content .form-group {
+    margin-bottom: 16px;
+}
+
+.section-content .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.section-content .form-group input[type="text"],
+.section-content .form-group input[type="email"],
+.section-content .form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.section-content .form-group input:focus,
+.section-content .form-group select:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.section-content .form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* 标签行（标签 + 错误提示） */
+.form-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.form-label-row label {
+    margin-bottom: 0;
+}
+
+.field-error {
+    font-size: 12px;
+    color: #f87171;
+}
+
+/* 错误状态输入框 */
+.section-content .form-group input.input-error {
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.section-content .form-group input.input-error:focus {
+    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* 路径输入组（输入框 + 浏览按钮） */
+.path-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.path-input-group input {
+    flex: 1;
+}
+
+.browse-btn {
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.browse-btn:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+/* 项目输入组（下拉 + 输入） */
+.project-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.project-dropdown-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.project-select-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-width: 140px;
+}
+
+.project-select-btn:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.dropdown-arrow-icon {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-left: auto;
+}
+
+.project-dropdown-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(20, 20, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+}
+
+.project-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.15s;
+}
+
+.project-dropdown-item:hover {
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.project-dropdown-item.active {
+    background: rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+}
+
+.project-dropdown-item .project-name {
+    flex: 1;
+    cursor: pointer;
+}
+
+.project-delete-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    opacity: 0;
+}
+
+.project-dropdown-item:hover .project-delete-btn {
+    opacity: 1;
+}
+
+.project-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.project-dropdown-empty {
+    padding: 12px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+}
+
+/* Checkbox 组 */
+.checkbox-group {
+    margin-bottom: 12px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #6366f1;
+}
+
+.checkbox-label span {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 路径预览 */
+.path-preview {
+    margin-top: 20px;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.path-preview label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.path-preview code {
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    color: rgba(165, 243, 252, 0.8);
+    word-break: break-all;
+}
+
+/* 云同步提示 */
+.cloud-note {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 8px;
+}
+
+.cloud-note p {
+    margin: 0;
+    font-size: 12px;
+    color: rgba(253, 224, 71, 0.9);
+}
+
+/* 底部状态 */
+.settings-footer {
+    padding: 12px 20px;
+    /* 去掉分界线 */
+    background: transparent;
+    text-align: right;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.save-status {
+    font-size: 12px;
+}
+
+.save-status.saving {
+    color: rgba(251, 191, 36, 0.8);
+}
+
+.save-status.saved {
+    color: rgba(74, 222, 128, 0.8);
+}
+
+/* 配置按钮（圆形齿轮） */
+.settings-btn-circle {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-left: 8px;
+}
+
+.settings-btn-circle:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    transform: rotate(30deg);
+}
+
+.settings-btn-circle:active {
+    transform: rotate(60deg) scale(0.95);
+}

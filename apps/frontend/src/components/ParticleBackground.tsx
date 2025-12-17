@@ -1,11 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 
-/**
- * 优化版粒子背景
- * - 移除 Canvas blur 滤镜（改用 CSS 渐变）
- * - 粒子数量 50（原100）
- * - 帧率限制 30fps（原60）
- */
 const ParticleBackground: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -23,12 +17,19 @@ const ParticleBackground: React.FC = () => {
         const TARGET_FPS = 30;
         const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
-        // === CONFIGURATION (优化版) ===
-        const PARTICLE_COUNT = 50; // 减少粒子数量
-        const CONNECTION_DISTANCE = 120;
-        const MOUSE_DISTANCE = 200;
-        const PARTICLE_SPEED = 0.3;
+        // === CONFIGURATION (性能优化版) ===
+        // 1. Constellation Config
+        const PARTICLE_COUNT = 50; // 优化：减少粒子数量
+        const CONNECTION_DISTANCE = 150;
+        const MOUSE_DISTANCE = 250;
+        const PARTICLE_SPEED = 0.4;
 
+        // 2. Aurora Wave Config
+        const WAVE_COUNT = 3;
+
+        // === STATE INITIALIZATION ===
+
+        // Particle Interface
         interface Particle {
             x: number;
             y: number;
@@ -47,15 +48,65 @@ const ParticleBackground: React.FC = () => {
                     y: Math.random() * height,
                     vx: (Math.random() - 0.5) * PARTICLE_SPEED,
                     vy: (Math.random() - 0.5) * PARTICLE_SPEED,
-                    size: Math.random() * 1.5 + 0.5,
+                    size: Math.random() * 2 + 1,
                 });
             }
         };
 
         initParticles();
 
-        let mouseX = -1000;
-        let mouseY = -1000;
+        // Wave Interface
+        interface Wave {
+            yOffsetProportion: number;
+            amplitude: number;
+            frequency: number;
+            speed: number;
+            phase: number;
+            baseHue: number;
+            hueRange: number;
+            hueSpeed: number;
+            huePhase: number;
+        }
+
+        const waves: Wave[] = [
+            {
+                yOffsetProportion: 0.3,
+                amplitude: 150,
+                frequency: 0.002,
+                speed: 0.002,      // 2x for 30fps compensation
+                phase: 0,
+                baseHue: 200, // Cyan/Blue
+                hueRange: 40,
+                hueSpeed: 0.004,   // 2x
+                huePhase: 0
+            },
+            {
+                yOffsetProportion: 0.5,
+                amplitude: 180,
+                frequency: 0.0015,
+                speed: 0.003,      // 2x
+                phase: 2,
+                baseHue: 260, // Purple
+                hueRange: 50,
+                hueSpeed: 0.003,   // 2x
+                huePhase: 1
+            },
+            {
+                yOffsetProportion: 0.7,
+                amplitude: 200,
+                frequency: 0.001,
+                speed: 0.0016,     // 2x
+                phase: 4,
+                baseHue: 320, // Pink/Red/Orange
+                hueRange: 40,
+                hueSpeed: 0.002,   // 2x
+                huePhase: 2
+            }
+        ];
+
+        // Interaction
+        let mouseX = 0;
+        let mouseY = 0;
 
         const handleResize = () => {
             width = canvas.width = window.innerWidth;
@@ -71,8 +122,9 @@ const ParticleBackground: React.FC = () => {
         window.addEventListener('resize', handleResize);
         window.addEventListener('mousemove', handleMouseMove);
 
-        const animate = (currentTime: number) => {
-            // 帧率限制
+        // Animation Loop (帧率限制)
+        const animate = (currentTime: number = 0) => {
+            // 帧率限制：30fps
             const delta = currentTime - lastFrameTime;
             if (delta < FRAME_INTERVAL) {
                 animationFrameId = requestAnimationFrame(animate);
@@ -80,10 +132,50 @@ const ParticleBackground: React.FC = () => {
             }
             lastFrameTime = currentTime - (delta % FRAME_INTERVAL);
 
-            // 清除（透明，让CSS背景显示）
-            ctx.clearRect(0, 0, width, height);
+            // Clear
+            ctx.fillStyle = '#0f172a'; // Deep background base
+            ctx.fillRect(0, 0, width, height);
 
-            // === 粒子绘制 ===
+            // === LAYER 1: AURORA WAVES (Background Color Flow) ===
+            ctx.globalCompositeOperation = 'screen';
+            ctx.filter = 'blur(60px)'; // Heavy blur for aurora effect
+
+            waves.forEach(wave => {
+                wave.phase += wave.speed;
+                wave.huePhase += wave.hueSpeed;
+
+                const yOffset = height * wave.yOffsetProportion;
+
+                // Dynamic Gradient Colors
+                const currentHueStart = wave.baseHue + Math.sin(wave.huePhase) * wave.hueRange;
+                const currentHueEnd = wave.baseHue + wave.hueRange + Math.cos(wave.huePhase) * wave.hueRange;
+
+                const gradient = ctx.createLinearGradient(0, 0, width, 0);
+                gradient.addColorStop(0, `hsla(${currentHueStart}, 70%, 50%, 0.25)`);
+                gradient.addColorStop(1, `hsla(${currentHueEnd}, 70%, 50%, 0.25)`);
+
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+
+                for (let x = 0; x <= width; x += 20) {
+                    const y = yOffset + Math.sin(x * wave.frequency + wave.phase) * wave.amplitude
+                        + Math.cos(x * wave.frequency * 0.5 + wave.phase) * (wave.amplitude * 0.5);
+                    ctx.lineTo(x, y);
+                }
+
+                ctx.lineTo(width, height);
+                ctx.lineTo(0, height);
+                ctx.closePath();
+
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            });
+
+            ctx.filter = 'none';
+            ctx.globalCompositeOperation = 'source-over';
+
+            // === LAYER 2: CONSTELLATION PARTICLES (Foreground Structure) ===
+
             particles.forEach((p, index) => {
                 // Movement
                 p.x += p.vx;
@@ -101,31 +193,27 @@ const ParticleBackground: React.FC = () => {
                 if (dist < MOUSE_DISTANCE) {
                     const force = (MOUSE_DISTANCE - dist) / MOUSE_DISTANCE;
                     const angle = Math.atan2(dy, dx);
-                    p.vx -= Math.cos(angle) * force * 0.015;
-                    p.vy -= Math.sin(angle) * force * 0.015;
+                    // Gentle push
+                    p.vx -= Math.cos(angle) * force * 0.02;
+                    p.vy -= Math.sin(angle) * force * 0.02;
                 }
 
-                // Draw Particle (使用渐变提升视觉效果)
-                const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
+                // Draw Particle
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White particles for contrast against aurora
                 ctx.fill();
 
-                // Connect (只检查后续粒子的一半，进一步减少计算)
-                const step = 2;
-                for (let j = index + 1; j < particles.length; j += step) {
+                // Connect (优化：每隔一个粒子检查连线)
+                for (let j = index + 1; j < particles.length; j += 2) {
                     const p2 = particles[j];
-                    const connDist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                    const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
 
-                    if (connDist < CONNECTION_DISTANCE) {
-                        const opacity = 1 - (connDist / CONNECTION_DISTANCE);
+                    if (dist < CONNECTION_DISTANCE) {
+                        const opacity = 1 - (dist / CONNECTION_DISTANCE);
                         ctx.beginPath();
                         ctx.lineWidth = 0.5;
-                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.2})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.3})`; // Subtle white lines
                         ctx.moveTo(p.x, p.y);
                         ctx.lineTo(p2.x, p2.y);
                         ctx.stroke();
@@ -133,6 +221,7 @@ const ParticleBackground: React.FC = () => {
                 }
             });
 
+            // Only request next frame if page is visible
             if (!document.hidden) {
                 animationFrameId = requestAnimationFrame(animate);
             }
@@ -140,14 +229,16 @@ const ParticleBackground: React.FC = () => {
 
         const handleVisibilityChange = () => {
             if (!document.hidden) {
+                // Resume animation loop if it stopped
                 cancelAnimationFrame(animationFrameId);
-                lastFrameTime = 0;
-                animationFrameId = requestAnimationFrame(animate);
+                animate();
             }
         };
 
         animationFrameId = requestAnimationFrame(animate);
 
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
@@ -159,38 +250,19 @@ const ParticleBackground: React.FC = () => {
     }, []);
 
     return (
-        <>
-            {/* CSS 渐变背景（替代 Canvas blur，零性能开销） */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    zIndex: -2,
-                    background: `
-                        radial-gradient(ellipse 80% 50% at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse 60% 40% at 80% 70%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
-                        radial-gradient(ellipse 70% 60% at 50% 90%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
-                        linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)
-                    `,
-                }}
-            />
-            {/* 粒子 Canvas（透明底，只绘制粒子） */}
-            <canvas
-                ref={canvasRef}
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    zIndex: -1,
-                    pointerEvents: 'none',
-                }}
-            />
-        </>
+        <canvas
+            ref={canvasRef}
+            className="fixed inset-0 -z-50 pointer-events-none"
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: -1,
+                background: '#0f172a'
+            }}
+        />
     );
 };
 

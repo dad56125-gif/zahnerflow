@@ -1,9 +1,7 @@
 ﻿import React, { useState, useRef } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
-import { FilePathManagerUI } from './FilePathManagerUI';
 import { ScheduleRunner } from './ScheduleRunner';
 import { SaveDropdown } from './SaveDropdown';
-import { FilePathConfig } from '../shared/UserContext';
 
 interface ToolbarProps {
   onRunFlow: () => void;
@@ -14,9 +12,6 @@ interface ToolbarProps {
   hasError: boolean;
   onToggleWorkflowManager?: () => void;
   showWorkflowManager?: boolean;
-  showFilePathManager?: boolean;
-  onToggleFilePathManager?: () => void;
-  onFilePathSave?: (config: FilePathConfig) => void;
   // 新增：报告生成
   onGenerateReport?: () => void;
   canGenerateReport?: boolean;  // 是否有可生成报告的执行记录
@@ -31,9 +26,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   hasError,
   onToggleWorkflowManager,
   showWorkflowManager = false,
-  showFilePathManager = false,
-  onToggleFilePathManager,
-  onFilePathSave,
   onGenerateReport,
   canGenerateReport = false
 }) => {
@@ -87,7 +79,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (!selectedWorkstation) {
       return {
         fileOperationsDisabled: true,
-        filePathDisabled: true,
         workflowDisabled: true,
         runButtonDisabled: true,
         runButtonText: '运行',
@@ -102,7 +93,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (hasError) {
       return {
         fileOperationsDisabled: true,
-        filePathDisabled: true,
         workflowDisabled: true,
         runButtonDisabled: true,
         runButtonText: '运行',
@@ -117,7 +107,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (isRunning) {
       return {
         fileOperationsDisabled: true,
-        filePathDisabled: true,
         workflowDisabled: true,
         runButtonDisabled: true,
         runButtonText: '运行中',
@@ -132,7 +121,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // --- 💡 改进：允许在此状态下重置，以便清除上一轮运行的成功(绿色)状态 ---
     return {
       fileOperationsDisabled: false,
-      filePathDisabled: false,
       workflowDisabled: false,
       runButtonDisabled: false,
       runButtonText: '运行',
@@ -178,21 +166,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
 
-        {/* 中间：文件路径管理 + 工作流管理 */}
+        {/* 中间：工作流管理 + 报告生成 */}
         <div className="flex items-center gap_sm">
-          {onToggleFilePathManager && (
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.filePathDisabled ? 'disabled' : (showFilePathManager ? 'btn_primary' : 'btn_secondary')
-                }`}
-              onClick={onToggleFilePathManager}
-              title={showFilePathManager ? "关闭文件路径管理" : "打开文件路径管理"}
-              disabled={buttonStates.filePathDisabled}
-            >
-              <span className="btn-icon">📁</span>
-              <span className="btn-text">文件路径</span>
-            </button>
-          )}
-
           {onToggleWorkflowManager && (
             <button
               className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn_primary' : 'btn_secondary')
@@ -259,13 +234,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       </div>
 
-      {/* 文件路径管理器覆盖层 (保持不变) */}
-      {showFilePathManager && onToggleFilePathManager && onFilePathSave && (
-        <FilePathManagerUI
-          onClose={onToggleFilePathManager}
-          onSave={onFilePathSave}
-        />
-      )}
+
 
       {/* 定时运行弹窗 */}
       <ScheduleRunner

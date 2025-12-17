@@ -1,6 +1,7 @@
 ﻿import React, { useState, useRef } from 'react';
 import { useUser } from '../shared/UserContext';
 import { Portal } from './Portal';
+import { UserSettingsModal } from './UserSettingsModal';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
 
 interface UserSelectorProps {
@@ -15,6 +16,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const { users, createUser, deleteUser } = useUser();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string>('');
   const [newUserName, setNewUserName] = useState('');
   const [error, setError] = useState('');
@@ -95,6 +97,17 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             strokeLinejoin="round"
           />
         </svg>
+      </button>
+
+      {/* 配置按钮 - 圆形齿轮，位于选择器右侧 */}
+      <button
+        className="settings-btn-circle glass"
+        onClick={() => setShowSettingsModal(true)}
+        title="用户配置"
+        disabled={!currentUser}
+        style={{ opacity: currentUser ? 1 : 0.5 }}
+      >
+        ⚙️
       </button>
 
       {/* 新建用户按钮 - 圆形 + 号，位于选择器右侧 */}
@@ -261,11 +274,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           </div>
         )}
       </Portal>
+
+      {/* 用户配置 Modal */}
+      <UserSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   );
 };
-
-
-
-
 

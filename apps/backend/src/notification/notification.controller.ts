@@ -1,5 +1,6 @@
 ﻿import { Controller, Post, Body, Get } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { EmailService } from './email.service';
 import { UserNotificationLevel } from '@zahnerflow/types';
 
 interface NotificationDto {
@@ -13,7 +14,10 @@ interface NotificationDto {
 
 @Controller('api/notifications')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly emailService: EmailService
+  ) { }
 
   @Post()
   async receiveNotification(@Body() notification: NotificationDto) {
@@ -32,7 +36,7 @@ export class NotificationController {
   async receiveFromPostman(@Body() notification: NotificationDto) {
     // 解析 source 字段 (e.g. "script.py:main")
     let sourceFile = 'postman';
-    
+
     if (notification.source && notification.source.includes(':')) {
       sourceFile = notification.source.split(':')[0];
     } else if (notification.source) {
@@ -50,12 +54,38 @@ export class NotificationController {
     return { success: true, message: 'Postman notification delivered' };
   }
 
+  /**
+   * 发送测试邮件
+   */
+  @Post('test-email')
+  async sendTestEmail(@Body() body: {
+    email: string;
+    smtp_server: string;
+    smtp_port: number;
+    smtp_user: string;
+    smtp_password: string;
+    smtp_secure: boolean;
+  }) {
+    if (!body.email) {
+      return { success: false, message: '邮箱地址不能为空' };
+    }
+
+    const result = await this.emailService.sendTestEmail(body.email, {
+      smtp_server: body.smtp_server,
+      smtp_port: body.smtp_port,
+      smtp_user: body.smtp_user,
+      smtp_password: body.smtp_password,
+      smtp_secure: body.smtp_secure
+    });
+    return result;
+  }
+
   @Get('stats')
   getNotificationStats() {
     // 这里的缓存统计已经在 Service 里简化了，如果没有实现 getCacheStats 可以返回空对象
     // 或者如果 NotificationService 保留了 getCacheStats 方法则调用
     if ('getCacheStats' in this.notificationService) {
-        return (this.notificationService as any).getCacheStats();
+      return (this.notificationService as any).getCacheStats();
     }
     return { status: 'active' };
   }
