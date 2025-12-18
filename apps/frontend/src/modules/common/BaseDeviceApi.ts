@@ -47,7 +47,20 @@ export async function apiRequest<T>(
             return null as T;
         }
 
-        return response.json();
+        // 处理空响应或 Content-Length: 0
+        const contentLength = response.headers.get('Content-Length');
+        const text = await response.text();
+
+        if (!text || text.trim() === '' || contentLength === '0') {
+            return null as T;
+        }
+
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.warn('Failed to parse response as JSON:', text);
+            return null as T;
+        }
     } catch (error) {
         if (error instanceof Error && !(error as unknown as DeviceError).code) {
             throw {

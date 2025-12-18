@@ -23,7 +23,16 @@ export interface FurnaceState {
   connection_status: DeviceConnectionStatus;
   segments: ProgramSegment[];
   presets: FurnacePresetMeta[];
-  history_data: Array<{ timestamp: string; temperature: number; sv?: number; mv?: number }>;
+  history_data: Array<{
+    timestamp: string;
+    temperature: number;
+    sv?: number;
+    mv?: number;
+    status?: string;
+    segment?: number;
+    segment_time?: number;
+    segment_time_set?: number;
+  }>;
   history_params: HistoryQueryParams;
   loading: boolean;
   error: DeviceError | null;
@@ -134,12 +143,30 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     furnaceWebSocketService.connect();
 
     furnaceWebSocketService.onStatusUpdate((update: FurnaceStatusUpdate) => {
-      updateState({
-        device_status: update.status,
-        connection_status: update.connection_state.status,
+      // 更新设备状态
+      setState((prev) => {
+        // 同时将温度数据追加到 history_data（用于实时数据记录）
+        const newHistoryEntry = {
+          timestamp: update.timestamp || new Date().toISOString(),
+          temperature: update.status?.pv ?? 0,
+          sv: update.status?.sv,
+          mv: update.status?.mv,
+          status: update.status?.status,
+          segment: update.status?.segment,
+          segment_time: update.status?.segment_time,
+          segment_time_set: update.status?.segment_time_set,
+        };
+
+        return {
+          ...prev,
+          device_status: update.status,
+          connection_status: update.connection_state?.status ?? prev.connection_status,
+          history_data: [...prev.history_data, newHistoryEntry].slice(-500),
+        };
       });
     });
 
+    // 保留 onSamplingData 监听（如果后端将来发送单独的采样事件）
     furnaceWebSocketService.onSamplingData((data) => {
       setState((prev) => ({
         ...prev,

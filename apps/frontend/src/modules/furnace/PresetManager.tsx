@@ -29,14 +29,21 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
   }, []);
 
   // 当presetSegments变化时更新输入框
+  // 重要：先清空所有输入框，再加载预设数据，避免保留之前"读取运行"获取的残留值
   useEffect(() => {
     if (presetSegments?.length) {
+      // 第1步：创建空白输入对象
       const newInputs: { [key: string]: string } = {};
+      for (let i = 1; i <= 27; i++) {
+        newInputs[`temp_${i}`] = '';
+        newInputs[`time_${i}`] = '';
+      }
+      // 第2步：填入预设中的数据
       presetSegments.forEach(segment => {
         newInputs[`temp_${segment.id}`] = segment.temperature.toString();
         newInputs[`time_${segment.id}`] = segment.time.toString();
       });
-      setInputs(prev => ({ ...prev, ...newInputs }));
+      setInputs(newInputs);
       setValidationErrors({});
     }
   }, [presetSegments]);
@@ -53,7 +60,8 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
   }, [furnaceControls]);
 
   // 写入处理 - 只有当有有效数据时才执行写入，带安全确认框
-  const handleWrite = useCallback(() => {
+  // 注意：写入后需要重新读取设备段，确保 furnaceState.segments 包含完整数据
+  const handleWrite = useCallback(async () => {
     // 检查是否有非空数据
     if (!SegmentValidator.hasValidData(inputs)) {
       alert('请输入至少一个程序段的温度或时间数据！');
@@ -70,7 +78,11 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
         segments.push({ id: i, temperature: temp, time: time });
       }
     }
-    furnaceControls.set_segments(segments);
+
+    // 写入预设段到设备
+    await furnaceControls.set_segments(segments);
+    // 重新读取设备的完整程序段，确保"设置程序段"标签页能看到完整数据
+    await furnaceControls.get_segments();
   }, [inputs, furnaceControls]);
 
   // 新建处理 - 清空数据和输入框，脱钩下拉菜单
@@ -201,6 +213,6 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
         validation_errors={validationErrors}
       />
 
-      </div>
+    </div>
   );
 };

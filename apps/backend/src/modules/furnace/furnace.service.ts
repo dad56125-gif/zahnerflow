@@ -243,7 +243,7 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
   }
 
   // 批量写入程序段（内部循环54次：27段×2参数）
-  async set_program_segments(segments: ProgramSegment[]): Promise<void> {
+  async set_program_segments(segments: ProgramSegment[]): Promise<{ success: boolean; count: number }> {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
 
@@ -264,6 +264,8 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
         progress: Math.round(((i + 1) / segments.length) * 100)
       });
     }
+
+    return { success: true, count: segments.length };
   }
 
   // ==================== 自动温度控制 ====================

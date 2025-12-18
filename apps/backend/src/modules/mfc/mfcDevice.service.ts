@@ -3,18 +3,64 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 
 @Injectable()
 export class MfcDeviceService {
-  private readonly http: AxiosInstance;
   private readonly logger = new Logger(MfcDeviceService.name);
 
+  // 端点配置
+  private readonly realEndpoint: string;
+  private readonly simulatorEndpoint: string;
+
+  // 设备模式: 'real' = 真实设备, 'simulator' = 模拟器
+  private deviceMode: 'real' | 'simulator' = 'real';
+
+  // 动态 HTTP 客户端
+  private http: AxiosInstance;
+
   constructor() {
-    const baseURL = process.env.MFC_FASTAPI_URL || 'http://127.0.0.1:8010';
-    this.http = axios.create({
-      baseURL,
-      timeout: 1500, // 默认超时
-      headers: {
-        'Content-Type': 'application/json',
-      }
+    // 真实设备端点
+    this.realEndpoint = process.env.MFC_FASTAPI_URL || 'http://127.0.0.1:8010';
+    // 模拟器端点
+    this.simulatorEndpoint = process.env.MFC_SIMULATOR_URL || 'http://127.0.0.1:8013';
+
+    // 从环境变量读取默认模式
+    const envMode = process.env.MFC_MODE?.toLowerCase();
+    if (envMode === 'simulator' || envMode === 'sim') {
+      this.deviceMode = 'simulator';
+      this.logger.log(`[MFC] ⚡ SIMULATOR MODE (set by MFC_MODE env)`);
+    } else {
+      this.deviceMode = 'real';
+      this.logger.log(`[MFC] 🔌 REAL DEVICE MODE`);
+    }
+
+    this.logger.log(`[MFC] Endpoints - Real: ${this.realEndpoint}, Simulator: ${this.simulatorEndpoint}`);
+
+    // 创建 HTTP 客户端
+    this.http = this.createHttpClient();
+  }
+
+  private get activeEndpoint(): string {
+    return this.deviceMode === 'simulator' ? this.simulatorEndpoint : this.realEndpoint;
+  }
+
+  private createHttpClient(): AxiosInstance {
+    return axios.create({
+      baseURL: this.activeEndpoint,
+      timeout: 1500,
+      headers: { 'Content-Type': 'application/json' }
     });
+  }
+
+  // 设备模式切换 API
+  setDeviceMode(mode: 'real' | 'simulator'): { success: boolean; mode: string; endpoint: string } {
+    if (this.deviceMode !== mode) {
+      this.deviceMode = mode;
+      this.http = this.createHttpClient();
+      this.logger.log(`[MFC] Device mode changed to: ${mode}, endpoint: ${this.activeEndpoint}`);
+    }
+    return { success: true, mode: this.deviceMode, endpoint: this.activeEndpoint };
+  }
+
+  getDeviceMode(): { mode: string; endpoint: string } {
+    return { mode: this.deviceMode, endpoint: this.activeEndpoint };
   }
 
   /**
@@ -110,7 +156,7 @@ export class MfcDeviceService {
     try {
       const { data } = await this.http.get('/status', {
         params: address != null ? { address } : {},
-        timeout: address != null ? timeout : 1500 
+        timeout: address != null ? timeout : 1500
       });
       return data;
     } catch (error) {

@@ -1,17 +1,66 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 
 @Injectable()
 export class FurnaceDeviceService {
-  private readonly baseURL: string;
-  private readonly http: AxiosInstance;
-  // 普通指令超时 1.5s，批量操作超时 30s
+  private readonly logger = new Logger(FurnaceDeviceService.name);
+
+  // 端点配置
+  private readonly realEndpoint: string;
+  private readonly simulatorEndpoint: string;
+
+  // 设备模式: 'real' = 真实设备, 'simulator' = 模拟器
+  private deviceMode: 'real' | 'simulator' = 'real';
+
+  // 动态 HTTP 客户端
+  private http: AxiosInstance;
+
+  // 超时配置
   private readonly normalTimeout = 1500;
   private readonly extendedTimeout = 30000;
 
   constructor() {
-    this.baseURL = process.env.FURNACE_FASTAPI_URL || 'http://127.0.0.1:8011';
-    this.http = axios.create({ baseURL: this.baseURL, timeout: this.normalTimeout });
+    // 真实设备端点
+    this.realEndpoint = process.env.FURNACE_FASTAPI_URL || 'http://127.0.0.1:8011';
+    // 模拟器端点
+    this.simulatorEndpoint = process.env.FURNACE_SIMULATOR_URL || 'http://127.0.0.1:8012';
+
+    // 从环境变量读取默认模式
+    const envMode = process.env.FURNACE_MODE?.toLowerCase();
+    if (envMode === 'simulator' || envMode === 'sim') {
+      this.deviceMode = 'simulator';
+      this.logger.log(`[Furnace] ⚡ SIMULATOR MODE (set by FURNACE_MODE env)`);
+    } else {
+      this.deviceMode = 'real';
+      this.logger.log(`[Furnace] 🔌 REAL DEVICE MODE`);
+    }
+
+    this.logger.log(`[Furnace] Endpoints - Real: ${this.realEndpoint}, Simulator: ${this.simulatorEndpoint}`);
+
+    // 创建 HTTP 客户端
+    this.http = this.createHttpClient();
+  }
+
+  private get activeEndpoint(): string {
+    return this.deviceMode === 'simulator' ? this.simulatorEndpoint : this.realEndpoint;
+  }
+
+  private createHttpClient(): AxiosInstance {
+    return axios.create({ baseURL: this.activeEndpoint, timeout: this.normalTimeout });
+  }
+
+  // 设备模式切换 API
+  setDeviceMode(mode: 'real' | 'simulator'): { success: boolean; mode: string; endpoint: string } {
+    if (this.deviceMode !== mode) {
+      this.deviceMode = mode;
+      this.http = this.createHttpClient();
+      this.logger.log(`[Furnace] Device mode changed to: ${mode}, endpoint: ${this.activeEndpoint}`);
+    }
+    return { success: true, mode: this.deviceMode, endpoint: this.activeEndpoint };
+  }
+
+  getDeviceMode(): { mode: string; endpoint: string } {
+    return { mode: this.deviceMode, endpoint: this.activeEndpoint };
   }
 
   async health(): Promise<any> { const { data } = await this.http.get('/health'); return data; }

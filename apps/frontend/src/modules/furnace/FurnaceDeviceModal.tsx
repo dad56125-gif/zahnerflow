@@ -136,7 +136,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                 )}
                 {activeTab === 'recording' && (
                   <div className="tabs_panel active">
-                    <RecordingTab />
+                    <RecordingTab furnaceState={furnaceState} />
                   </div>
                 )}
                 {activeTab === 'history' && (
@@ -165,56 +165,20 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   );
 }
 
-// ========== RecordingTab：实时数据表格 ==========
+// ========== RecordingTab：实时数据表格（WebSocket 推送） ==========
 
-function RecordingTab() {
-  const [samples, setSamples] = useState<Array<{
-    timestamp: string;
-    pv: number;
-    sv: number;
-    mv: number;
-    status_code: number;
-  }>>([]);
-  const [loading, setLoading] = useState(true);
+interface RecordingTabProps {
+  furnaceState: FurnaceState;
+}
 
-  // 2秒轮询（与后端采样频率同步）
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchSamples = async () => {
-      try {
-        const data = await FurnaceApi.queryFurnaceSamples({ limit: 1000 });
-        if (mounted) {
-          setSamples(data);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Failed to fetch samples:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchSamples();
-    const interval = setInterval(fetchSamples, 2000);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  const mapStatusCode = (code: number): string => {
-    switch (code) {
-      case 0: return '运行';
-      case 4: return '暂停';
-      case 12: return '停止';
-      default: return '未知';
-    }
-  };
+function RecordingTab({ furnaceState }: RecordingTabProps) {
+  // 使用 WebSocket 推送的实时数据（内存缓存，无延迟）
+  const samples = furnaceState.history_data;
+  const isConnected = furnaceState.connection_status === 'connected';
 
   const formatTime = (timestamp: string): string => {
     return new Date(timestamp).toLocaleString('zh-CN', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
   };
 
@@ -222,33 +186,41 @@ function RecordingTab() {
     <div className="card">
       <div className="card_header">
         <h4 className="card_title">实时数据记录</h4>
-        <div className="text-sm text-secondary">每2秒更新，保留最近1000条（约33分钟）</div>
+        <div className="text-sm text-secondary">
+          {isConnected
+            ? `WebSocket 实时推送，已记录 ${samples.length} 条（本次会话）`
+            : '设备未连接，请先连接设备'}
+        </div>
       </div>
       <div className="card_body">
-        {loading ? (<div className="text-secondary">正在加载数据...</div>) :
-          samples.length === 0 ? (<div className="text-secondary">暂无数据</div>) :
-            <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
-              <table className="data-table">
-                <thead><tr>
-                  <th>序号</th><th>记录时间</th><th>实际温度</th><th>设定温度</th><th>输出功率</th>
-                  <th>设备状态</th><th>程序段</th><th>段内时间</th><th>段设定时间</th>
-                </tr></thead>
-                <tbody>
-                  {samples.map((sample, idx) => (
-                    <tr key={sample.timestamp}>
-                      <td>{idx + 1}</td>
-                      <td>{formatTime(sample.timestamp)}</td>
-                      <td>{sample.pv.toFixed(1)}°C</td>
-                      <td>{sample.sv.toFixed(1)}°C</td>
-                      <td>{sample.mv.toFixed(1)}%</td>
-                      <td>{mapStatusCode(sample.status_code)}</td>
-                      <td>-</td><td>-</td><td>-</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-        }
+        {!isConnected ? (
+          <div className="text-secondary">请先连接 Furnace 设备以开始记录</div>
+        ) : samples.length === 0 ? (
+          <div className="text-secondary">等待数据...</div>
+        ) : (
+          <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
+            <table className="data-table">
+              <thead><tr>
+                <th>记录时间</th><th>实际温度</th><th>设定温度</th><th>输出功率</th>
+                <th>设备状态</th><th>程序段</th><th>段内时间</th><th>段设定时间</th>
+              </tr></thead>
+              <tbody>
+                {[...samples].reverse().map((sample, idx) => (
+                  <tr key={`${sample.timestamp}-${idx}`}>
+                    <td>{formatTime(sample.timestamp)}</td>
+                    <td>{(sample.temperature ?? 0).toFixed(1)}°C</td>
+                    <td>{(sample.sv ?? 0).toFixed(1)}°C</td>
+                    <td>{(sample.mv ?? 0).toFixed(1)}%</td>
+                    <td>{sample.status ?? '-'}</td>
+                    <td>{sample.segment ?? '-'}</td>
+                    <td>{sample.segment_time != null ? `${sample.segment_time}min` : '-'}</td>
+                    <td>{sample.segment_time_set != null ? `${sample.segment_time_set}min` : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -347,9 +319,9 @@ function HistoryTab() {
                   <tr key={sample.timestamp}>
                     <td>{idx + 1}</td>
                     <td>{formatTime(sample.timestamp)}</td>
-                    <td>{sample.pv.toFixed(1)}°C</td>
-                    {!isArchiveRange && <td>{sample.sv.toFixed(1)}°C</td>}
-                    {!isArchiveRange && <td>{sample.mv.toFixed(1)}%</td>}
+                    <td>{(sample.pv ?? 0).toFixed(1)}°C</td>
+                    {!isArchiveRange && <td>{(sample.sv ?? 0).toFixed(1)}°C</td>}
+                    {!isArchiveRange && <td>{(sample.mv ?? 0).toFixed(1)}%</td>}
                     {!isArchiveRange && <td>{mapStatusCode(sample.status_code || 0)}</td>}
                     <td>-</td><td>-</td><td>-</td>
                   </tr>

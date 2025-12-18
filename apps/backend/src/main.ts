@@ -27,9 +27,9 @@ export class SimplifiedAxiosExceptionFilter implements ExceptionFilter {
 
   private isAxiosError(exception: unknown): boolean {
     return exception &&
-           typeof exception === 'object' &&
-           'code' in exception &&
-           ('config' in exception || 'request' in exception);
+      typeof exception === 'object' &&
+      'code' in exception &&
+      ('config' in exception || 'request' in exception);
   }
 
   private extractEndpoint(axiosError: any): string {
@@ -42,12 +42,37 @@ export class SimplifiedAxiosExceptionFilter implements ExceptionFilter {
 }
 
 /**
+ * 根据 LOG_LEVEL 环境变量获取 NestJS 日志级别
+ */
+function getLogLevels(): ('error' | 'warn' | 'log' | 'debug' | 'verbose')[] {
+  const level = process.env.LOG_LEVEL?.toLowerCase() || 'log';
+
+  switch (level) {
+    case 'error':
+      return ['error'];
+    case 'warn':
+      return ['error', 'warn'];
+    case 'log':
+      return ['error', 'warn', 'log'];
+    case 'debug':
+      return ['error', 'warn', 'log', 'debug'];
+    case 'verbose':
+      return ['error', 'warn', 'log', 'debug', 'verbose'];
+    default:
+      return ['error', 'warn', 'log'];
+  }
+}
+
+/**
  * 应用程序启动类
  * 专门为ZahnerFlow前后端分离项目设计
  */
 async function bootstrap() {
+  const logLevels = getLogLevels();
+  console.log(`[Bootstrap] Log level: ${process.env.LOG_LEVEL || 'log'} → Enabled: [${logLevels.join(', ')}]`);
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    logger: logLevels,
   });
 
   // 应用自定义异常过滤器，简化 Axios 错误输出

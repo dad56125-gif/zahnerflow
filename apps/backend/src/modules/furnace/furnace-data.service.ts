@@ -192,7 +192,7 @@ export class FurnaceDataService implements OnModuleInit {
   async applyPreset(
     name: string,
     getDeviceSegments: () => Promise<ProgramSegment[]>,
-    setDeviceSegments: (segments: ProgramSegment[]) => Promise<void>
+    setDeviceSegments: (segments: ProgramSegment[]) => Promise<unknown>
   ): Promise<{ changed: boolean; steps: string[] }> {
     const preset = await this.getPreset(name);
     const before = await getDeviceSegments();

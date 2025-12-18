@@ -29,6 +29,60 @@ export class ConsoleDisplayManager {
 
   constructor() {
     this.initializeDefaultConfigs();
+    this.loadFromEnv();
+  }
+
+  /**
+   * 从环境变量加载日志配置
+   * LOG_LEVEL: 全局日志级别 (error/warn/log/debug/verbose)
+   * LOG_MODULES: 模块级别配置 (格式: ModuleName:level,ModuleName2:level)
+   */
+  private loadFromEnv(): void {
+    // 全局日志级别
+    const envLevel = process.env.LOG_LEVEL?.toLowerCase();
+    if (envLevel) {
+      const levelMap: Record<string, Partial<LogLevelConfig>> = {
+        'error': { enableError: true, enableWarn: false, enableLog: false, enableDebug: false, enableVerbose: false },
+        'warn': { enableError: true, enableWarn: true, enableLog: false, enableDebug: false, enableVerbose: false },
+        'log': { enableError: true, enableWarn: true, enableLog: true, enableDebug: false, enableVerbose: false },
+        'debug': { enableError: true, enableWarn: true, enableLog: true, enableDebug: true, enableVerbose: false },
+        'verbose': { enableError: true, enableWarn: true, enableLog: true, enableDebug: true, enableVerbose: true },
+      };
+      if (levelMap[envLevel]) {
+        this.globalLogLevel = { ...this.globalLogLevel, ...levelMap[envLevel] };
+        this.logger.log(`Global log level set from env: ${envLevel}`);
+      }
+    }
+
+    // 模块级别配置
+    const envModules = process.env.LOG_MODULES;
+    if (envModules) {
+      envModules.split(',').forEach(item => {
+        const [moduleName, level] = item.trim().split(':');
+        if (moduleName && level) {
+          const levelLower = level.toLowerCase();
+          const config = this.moduleLogLevels.get(moduleName) || { ...this.globalLogLevel };
+
+          // 根据级别设置
+          if (levelLower === 'debug') {
+            config.enableDebug = true;
+          } else if (levelLower === 'verbose') {
+            config.enableDebug = true;
+            config.enableVerbose = true;
+          } else if (levelLower === 'warn') {
+            config.enableLog = false;
+            config.enableDebug = false;
+          } else if (levelLower === 'error') {
+            config.enableLog = false;
+            config.enableWarn = false;
+            config.enableDebug = false;
+          }
+
+          this.moduleLogLevels.set(moduleName, config);
+          this.logger.log(`Module '${moduleName}' log level set from env: ${level}`);
+        }
+      });
+    }
   }
 
   log(moduleName: string, level: keyof LogLevelConfig, message: string, context?: any): void {
