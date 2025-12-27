@@ -289,3 +289,110 @@ def generate_pdf(report_data: dict, output_path: str):
 - 此功能为低优先级，待核心流程稳定后实施
 - Python 环境需与 FastAPI 设备服务共享，避免重复安装
 - 可考虑使用 `python-shell` npm 包简化 NestJS → Python 调用
+
+简化版实验报告 - 实施方案
+功能范围
+包含：
+
+✅ 封面页（项目信息、执行时间、操作人员）
+✅ 执行摘要（执行ID、状态、耗时）
+✅ 节点执行明细表（循环内节点自动缩进）
+暂不实现：
+
+❌ 测量数据图表
+❌ 统计分析表
+技术方案
+方案对比
+方案	技术栈	复杂度	工时
+A. 纯前端生成	jsPDF + html2canvas	🟢 低	4-6h
+B. Python 生成	ReportLab + child_process	🟡 中	8-10h
+推荐方案 A：纯前端生成，无需后端改动，快速上线。
+
+方案 A 详细设计
+架构
+⚠️ 独立性要求：前端报告生成模块需保持独立，与业务组件解耦，方便后续迁移到 Python/混合方案。
+
+前端 React
+├── modules/report/                [NEW] 独立报告模块
+│   ├── ReportGeneratorModal.tsx   报告预览+导出弹窗
+│   ├── reportDataBuilder.ts       数据构建工具
+│   ├── pdfExporter.ts             PDF 导出逻辑
+│   └── types.ts                   报告类型定义
+│
+└── 依赖: jsPDF + html2canvas
+迁移策略：
+
+报告数据结构 (ReportData) 设计为与生成器无关的中间格式
+未来迁移时，只需替换 pdfExporter.ts → 调用后端 Python API
+报告内容
+1. 封面页
+╔═══════════════════════════════════════════╗
+║                                           ║
+║           实验报告                         ║
+║      ─────────────────────                ║
+║                                           ║
+║   项目名称: {project_name}                ║
+║   样品名称: {individual_name}             ║
+║   工作流:   {workflow_name}               ║
+║                                           ║
+║   执行时间: 2024-12-15 10:30              ║
+║   操作人员: {user}                        ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+2. 执行摘要
+项目	值
+执行ID	exec_20241215_xxxxx
+状态	✅ 成功 / ❌ 失败
+开始时间	2024-12-15 10:30:00
+结束时间	2024-12-15 11:45:00
+总耗时	1小时15分钟
+节点总数	8
+3. 节点执行明细表
+序号	节点类型	节点名称	关键参数	状态	耗时
+1	startup	启动程序	host: localhost	✅	3s
+2	loop_start	循环开始	次数: 3	✅	-
+└ 3	eis_potentiostatic	EIS测试	DC: OCV	✅	5min
+└ 4	ocp_measurement	OCP	60s	✅	1min
+5	loop_end	循环结束	-	✅	-
+6	shutdown	关闭程序	-	✅	2s
+缩进规则：循环内的节点前添加 └ 前缀和额外缩进。
+
+文件结构
+apps/frontend/src/modules/report/   [NEW] 独立报告模块
+├── ReportGeneratorModal.tsx        报告预览+导出弹窗
+├── reportDataBuilder.ts            数据构建工具
+├── pdfExporter.ts                  PDF 导出逻辑 (可替换为后端调用)
+├── types.ts                        类型定义
+└── _report.css                     报告样式
+数据来源
+interface ReportData {
+  // 封面信息
+  projectName: string;
+  individualName: string;
+  workflowName: string;
+  user: string;  // 操作人员
+  
+  // 执行摘要
+  executionId: string;
+  status: 'completed' | 'failed';
+  startTime: Date;
+  endTime: Date;
+  duration: number; // 秒
+  
+  // 节点明细
+  nodes: ReportNodeInfo[];
+}
+interface ReportNodeInfo {
+  index: number;
+  type: string;
+  label: string;
+  keyParams: string;
+  status: 'success' | 'failed' | 'skipped';
+  duration?: number;
+  indentLevel: number;  // 0=普通, 1=循环内, 2=嵌套循环内
+}
+数据来源：
+
+workflow 对象（节点定义）
+executionHistory 数组（执行记录）
+unrolledSteps（展开后的执行步骤，用于判断循环嵌套）

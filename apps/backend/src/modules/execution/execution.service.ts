@@ -528,14 +528,15 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     try {
       const cachedStatuses = this.mfcService.getCachedDeviceStatuses();
 
-      // 只筛选有流量的设备
-      const activeDevices = cachedStatuses.filter(d => d.flow_sccm && d.flow_sccm > 0);
+      // 筛选激活设备：setpoint_sccm > 0 表示设备已激活（设定值不为0）
+      const activeDevices = cachedStatuses.filter(d => d.setpoint_sccm && d.setpoint_sccm > 0);
 
       if (activeDevices.length > 0) {
         context.mfc_flows = {};
         for (const device of activeDevices) {
           const gasName = device.gas_type || `MFC${device.address}`;
-          context.mfc_flows[gasName] = Math.round(device.flow_sccm!);
+          // 文件命名使用实际流量值 flow_sccm
+          context.mfc_flows[gasName] = Math.round(device.flow_sccm || 0);
         }
         this.logger.debug(`[EnvContext] MFC flows: ${JSON.stringify(context.mfc_flows)}`);
       }
