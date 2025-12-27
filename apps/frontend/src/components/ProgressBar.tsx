@@ -3,7 +3,7 @@
  * 显示工作流执行进度，点击唤起图表 Modal
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ExecutionSnapshot } from '../types/Interfaces';
 import { formatDuration, estimateWorkflowSeconds } from '../workflow/timelineCalculator';
 import { useCanvasStore } from '../state/canvasStore';
@@ -20,6 +20,27 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     // 确保 nodes 始终为数组，防止 undefined 导致崩溃
     const nodes = useCanvasStore(state => (state && state.nodes) ? state.nodes : []) || [];
 
+    // ✅ 实时计算 elapsed time（每秒更新）
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+    useEffect(() => {
+        if (systemState?.status !== 'running' || !systemState?.startTime) {
+            setElapsedSeconds(0);
+            return;
+        }
+
+        // 计算初始值
+        const startMs = new Date(systemState.startTime).getTime();
+        setElapsedSeconds((Date.now() - startMs) / 1000);
+
+        // 每秒更新
+        const timer = setInterval(() => {
+            setElapsedSeconds((Date.now() - startMs) / 1000);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [systemState?.status, systemState?.startTime]);
+
     // ✅ 优先使用展开后的索引 (准确反映循环执行进度)
     const currentStep = systemState?.currentStep;
     const useUnrolled = currentStep?.unrolledIndex !== undefined && currentStep?.unrolledTotal !== undefined;
@@ -35,7 +56,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
     // 计算时间
     const estimatedSeconds = estimateWorkflowSeconds(nodes);
-    const elapsedSeconds = systemState?.duration ?? 0;
     const remainingSeconds = Math.max(0, estimatedSeconds - elapsedSeconds);
 
     // 状态判断

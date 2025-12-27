@@ -194,6 +194,11 @@ export abstract class BaseWebSocketService<TCallbacks extends BaseCallbacks = Ba
             this.socket = null;
             this.isConnected = false;
             this.isSubscribed = false;
+
+            // 🔧 清理所有回调数组，防止回调累积导致内存泄漏
+            Object.keys(this.callbacks).forEach(key => {
+                (this.callbacks as unknown as Record<string, unknown[]>)[key] = [];
+            });
         }
     }
 

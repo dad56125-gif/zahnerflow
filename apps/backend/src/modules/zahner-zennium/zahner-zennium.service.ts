@@ -117,10 +117,12 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
+    // 仅执行健康检查，不自动连接 WebSocket
+    // WebSocket 将在用户手动 connect() 时触发
     await this.healthCheck().catch(e =>
       this.log('enableWarn', `FastAPI check failed: ${e.message}`)
     );
-    this.connectWebSocket();
+    // 移除自动连接：this.connectWebSocket();
   }
 
   async onModuleDestroy() {
@@ -261,6 +263,8 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
         this.updateStatus(true, false);
         this.eventBus.emit('device.connected', { deviceType: this.name });
         this.logger.log(`[Zahner] Device connected successfully`);
+        // 设备连接成功后，启动 WebSocket 流
+        this.connectWebSocket();
       } else {
         throw new Error(res.data?.message || 'Unknown error');
       }

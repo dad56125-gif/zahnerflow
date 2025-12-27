@@ -7,7 +7,13 @@ Zahner 设备模拟器 - 用于无硬件环境下的工作流测试
 功能: 模拟所有测量类型，生成占位文件，推送流式数据
 """
 
+import sys
 import asyncio
+
+# Windows 下使用 SelectorEventLoop 避免 ProactorEventLoop 资源限制问题
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import json
 import time
 import os
@@ -63,11 +69,16 @@ async def broadcast(data: dict):
     if not ws_connections:
         return
     msg = json.dumps(data)
+    dead_connections = []
     for ws in list(ws_connections):
         try:
             await ws.send_text(msg)
-        except:
-            pass
+        except Exception:
+            dead_connections.append(ws)
+    # 清理失效连接
+    for ws in dead_connections:
+        if ws in ws_connections:
+            ws_connections.remove(ws)
 
 # ==========================================
 # 文件生成工具
@@ -340,7 +351,17 @@ async def websocket_endpoint(websocket: WebSocket):
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
-        ws_connections.remove(websocket)
+        pass  # 正常断开
+    except Exception as e:
+        print(f"[Simulator WS] Error: {e}")
+    finally:
+        # 确保从连接列表中移除
+        if websocket in ws_connections:
+            ws_connections.remove(websocket)
+        try:
+            await websocket.close()
+        except:
+            pass
         print(f"[Simulator WS] Client disconnected. Total: {len(ws_connections)}")
 
 # ==========================================

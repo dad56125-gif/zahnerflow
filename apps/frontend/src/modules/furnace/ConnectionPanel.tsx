@@ -34,47 +34,45 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ furnaceState, 
   return (
     <>
       {/* 1. 端口连接区域 */}
-      <div className="device-connection-section">
-        {furnaceState.connection_status !== 'connected' ? (
-          <div className="device-connection-panel">
-            <div className="connection-header">
-              <h4>设备连接</h4>
-            </div>
-            <div className="control-group">
-              <select value={selectedPort} onChange={e => setSelectedPort(e.target.value)}>
-                <option value="">-- 选择端口 --</option>
-                {ports.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <button
-                onClick={loadPorts}
-                className="btn_base btn_layout btn_style_common btn_medium btn_secondary"
-                disabled={furnaceState.loading}
-              >
-                刷新
-              </button>
-              <button
-                onClick={handleConnect}
-                disabled={!selectedPort || furnaceState.loading}
-                className="btn_base btn_layout btn_style_common btn_medium btn_primary"
-              >
-                {furnaceState.loading ? '连接中...' : '连接'}
-              </button>
-            </div>
+      {furnaceState.connection_status !== 'connected' ? (
+        <div className="device-connection-panel">
+          <div className="connection-header">
+            <h4>设备连接</h4>
           </div>
-        ) : (
-          <div className="device-connection-panel connected">
-            <h4>设备已连接</h4>
-            <p>端口: <strong>{selectedPort}</strong></p>
+          <div className="control-group">
+            <select value={selectedPort} onChange={e => setSelectedPort(e.target.value)}>
+              <option value="">-- 选择端口 --</option>
+              {ports.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
             <button
-              onClick={() => furnaceControls.disconnect()}
-              className="btn_base btn_layout btn_style_common btn_medium btn_danger"
+              onClick={loadPorts}
+              className="btn_base btn_layout btn_style_common btn_medium btn_secondary"
               disabled={furnaceState.loading}
             >
-              断开连接
+              刷新
+            </button>
+            <button
+              onClick={handleConnect}
+              disabled={!selectedPort || furnaceState.loading}
+              className="btn_base btn_layout btn_style_common btn_medium btn_primary"
+            >
+              {furnaceState.loading ? '连接中...' : '连接'}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="device-connection-panel connected">
+          <span className="connection-status">设备已连接</span>
+          <span className="connection-port">端口: <strong>{selectedPort}</strong></span>
+          <button
+            onClick={() => furnaceControls.disconnect()}
+            className="btn_base btn_layout btn_style_common btn_small btn_danger"
+            disabled={furnaceState.loading}
+          >
+            断开连接
+          </button>
+        </div>
+      )}
 
       {/* 2. [已恢复] 操作日志区域 */}
       <div className="console-section">

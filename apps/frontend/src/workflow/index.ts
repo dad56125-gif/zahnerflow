@@ -15,7 +15,7 @@ export { workflowWebSocketService } from './websocket.service';
 // 4. 导出 Manager & UI (组件)
 export { WorkflowManager } from './WorkflowManager';
 export { WorkflowManagerUI } from '../components/WorkflowManagerUI';
-export { WorkflowIdDisplay } from '../components/WorkflowIdDisplay';
+export { WorkflowNameDisplay, WorkflowIdDisplay } from '../components/WorkflowNameDisplay';
 
 // 5. 导出 Timeline Calculator (时间线计算)
 export {

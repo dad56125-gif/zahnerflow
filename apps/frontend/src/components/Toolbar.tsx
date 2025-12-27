@@ -1,7 +1,9 @@
 ﻿import React, { useState, useRef } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
+import { useWorkflowStore } from '../state/currentWorkflowStore';
 import { ScheduleRunner } from './ScheduleRunner';
 import { SaveDropdown } from './SaveDropdown';
+import { SaveAsDropdown } from './SaveAsDropdown';
 
 interface ToolbarProps {
   onRunFlow: () => void;
@@ -32,6 +34,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const {
     clearCanvas
   } = useCanvasStore();
+
+  const {
+    setCurrentWorkflow,
+    setDraftWorkflowName
+  } = useWorkflowStore();
 
   // 定时运行状态
   const [showScheduler, setShowScheduler] = useState(false);
@@ -144,6 +151,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }
   };
 
+  // 新建工作流：清空画布 + 重置工作流状态
+  const handleNewWorkflow = () => {
+    clearCanvas();
+    setCurrentWorkflow(null);
+    setDraftWorkflowName(null);
+  };
+
   return (
     <>
       <div className="toolbar glass">
@@ -153,7 +167,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <button
               className={`btn_base btn_layout btn_style_common btn_mini glass btn_primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''
                 }`}
-              onClick={clearCanvas}
+              onClick={handleNewWorkflow}
               title="新建流程"
               disabled={buttonStates.fileOperationsDisabled}
             >
@@ -163,6 +177,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
             {/* 保存按钮 */}
             <SaveDropdown disabled={buttonStates.fileOperationsDisabled} />
+
+            {/* 另存为按钮 */}
+            <SaveAsDropdown disabled={buttonStates.fileOperationsDisabled} />
           </div>
         </div>
 

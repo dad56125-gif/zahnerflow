@@ -8,7 +8,7 @@ import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from '../components/Toolbar';
 import { LoopBoundary } from './LoopBoundary';
 import { WorkflowManagerUI } from '../components/WorkflowManagerUI';
-import { WorkflowIdDisplay } from '../components/WorkflowIdDisplay';
+import { WorkflowNameDisplay } from '../components/WorkflowNameDisplay';
 import { useLayout, DisplayNode } from './useLayout';
 import { useLoopDetection, SimpleLoopInfo } from './useLoopDetection';
 import { useCanvasDrag } from './useCanvasDrag';
@@ -326,7 +326,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       {showWorkflowManager && (
         <WorkflowManagerUI onClose={onToggleWorkflowManager} />
       )}
-      <WorkflowIdDisplay />
+      {/* 工作流名称显示 - 仅在选择工作站后显示 */}
+      {selectedWorkstation && <WorkflowNameDisplay />}
     </div>
   );
 };

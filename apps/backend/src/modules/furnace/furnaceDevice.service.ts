@@ -1,5 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import * as http from 'http';
+
+// 🔧 HTTP Keep-Alive 连接池 - 复用 TCP 连接，避免 TIME_WAIT 累积
+const keepAliveAgent = new http.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 5,
+});
 
 @Injectable()
 export class FurnaceDeviceService {
@@ -46,7 +54,11 @@ export class FurnaceDeviceService {
   }
 
   private createHttpClient(): AxiosInstance {
-    return axios.create({ baseURL: this.activeEndpoint, timeout: this.normalTimeout });
+    return axios.create({
+      baseURL: this.activeEndpoint,
+      timeout: this.normalTimeout,
+      httpAgent: keepAliveAgent,  // 🔧 复用 TCP 连接
+    });
   }
 
   // 设备模式切换 API

@@ -1090,16 +1090,235 @@
   flex: 1;
   gap: var(--space);
   min-height: 0;
+  height: 100%;
 }
 
 .furnace-modal-main {
   flex: 2;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 让 tabs_content 占满剩余高度并与右侧 card 样式一致 */
+.furnace-modal-main>.tabs_content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-overlay));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  padding: var(--size-xl);
+  /* padding 在这里 */
+}
+
+.furnace-modal-main>.tabs_content>.tabs_panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 不需要 padding，由父容器统一处理 */
+  /* 隐藏滚动条但保持滚动功能 */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+}
+
+.furnace-modal-main>.tabs_content>.tabs_panel::-webkit-scrollbar {
+  display: none;
+  /* Chrome/Safari/Opera */
 }
 
 .furnace-modal-sidebar {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 让右侧 card 占满高度 */
+.furnace-modal-sidebar>.card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.furnace-modal-sidebar>.card>.card_body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-lg);
+}
+
+/* === 设备连接区域 === */
+.device-connection-section {
+  flex: 0 0 auto;
+  /* 不伸缩，只占内容高度 */
+}
+
+.device-connection-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: var(--size-lg);
+  flex: 0 0 auto;
+  /* 不伸缩 */
+}
+
+.device-connection-panel.connected {
+  display: flex;
+  align-items: center;
+  gap: var(--size-sm);
+  padding: var(--size-sm) var(--size-md);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.device-connection-panel .connection-status {
+  font-weight: 600;
+  font-size: var(--size-sm);
+  color: var(--text-primary);
+}
+
+.device-connection-panel .connection-port {
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+}
+
+.device-connection-panel.connected>button {
+  margin-left: auto;
+  /* 右对齐 */
+}
+
+.device-connection-panel h4 {
+  margin: 0 0 var(--size-sm) 0;
+  font-size: var(--size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.device-connection-panel p {
+  margin: 0 0 var(--size-md) 0;
+  color: var(--text-secondary);
+  font-size: var(--size-sm);
+}
+
+.device-connection-panel .control-group {
+  display: flex;
+  gap: var(--size-sm);
+  align-items: center;
+}
+
+.device-connection-panel .control-group select {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--size-2xs) var(--size-sm);
+  font-size: var(--size-sm);
+}
+
+.device-connection-panel .control-group select option {
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--text-primary);
+}
+
+/* === 操作日志区域 === */
+.console-section {
+  flex: 1;
+  min-height: 150px;
+  /* 确保最小可见高度 */
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--size-sm) var(--size-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.console-header h4 {
+  margin: 0;
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.console-controls {
+  display: flex;
+  gap: var(--size-2xs);
+}
+
+.console-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--size-sm);
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2xs);
+}
+
+.console-log {
+  display: flex;
+  gap: var(--size-sm);
+  padding: var(--size-2xs) var(--size-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--size-xs);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.console-log.success {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.console-log.error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.console-log.warning {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.console-log.info {
+  color: var(--text-secondary);
+}
+
+.log-timestamp {
+  color: var(--text-secondary);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.log-message {
+  flex: 1;
+  word-break: break-word;
 }
 
 /* === 加载骨架与拖拽区�?=== */
@@ -2625,7 +2844,7 @@
 /* 旧版 workflow-filters、workflow-search、timeline、empty-state 样式已删除 */
 
 /* === 工作流ID/名称显示组件样式 === */
-.workflow-id-display {
+.workflow-name-display {
   /* 布局定位 */
   position: absolute;
   bottom: var(--size-lg);
@@ -2636,33 +2855,33 @@
   min-width: clamp(12.5rem, 20vw, 18.75rem);
   max-width: clamp(12.5rem, 20vw, 18.75rem);
 
-  /* 视觉样式 - 使用玻璃态系�?*/
+  /* 视觉样式 - 使用玻璃态系统 */
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   backdrop-filter: blur(var(--blur-md));
   box-shadow: 0 4px var(--size-lg) var(--glass-shadow);
 
-  /* 内间�?*/
+  /* 内间距 */
   padding: var(--size-2xs) var(--size-2xs);
 
   /* 交互 */
   transition: var(--transition);
 }
 
-.workflow-id-display:hover {
+.workflow-name-display:hover {
   background: var(--glass-bg-hover);
   border-color: var(--glass-border-hover);
   transform: translateY(-1px);
   box-shadow: 0 8px var(--size-xl) var(--glass-shadow-hover);
 }
 
-.workflow-id-display.placeholder {
+.workflow-name-display.placeholder {
   opacity: 0.6;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-.workflow-id-display.placeholder .display-text {
+.workflow-name-display.placeholder .display-text {
   color: var(--text-secondary);
   font-style: italic;
 }
@@ -2698,16 +2917,16 @@
   color: var(--text-muted);
   font-size: var(--size-sm);
 
-  /* 交互状�?*/
+  /* 交互状态 */
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 
-.workflow-id-display:hover .edit-hint {
+.workflow-name-display:hover .edit-hint {
   opacity: 0.7;
 }
 
-.workflow-id-display.editing {
+.workflow-name-display.editing {
   background: rgba(255, 255, 255, 0.2);
   border-color: var(--color-primary);
   box-shadow: 0 0 var(--size-md) rgba(59, 130, 246, 0.3);
@@ -3154,7 +3373,7 @@
     flex-direction: column;
   }
 
-  .workflow-id-display {
+  .workflow-name-display {
     bottom: var(--size-md);
     left: var(--size-md);
     min-width: clamp(10rem, 15vw, 15rem);
@@ -3919,6 +4138,174 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
+/* 紧凑型 chart header - 覆盖基础 padding */
+.chart-header.chart-header-compact {
+  padding: var(--size-xs);
+  gap: var(--size-sm);
+}
+
+.chart-header-compact .chart-title {
+  margin: 0;
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* 内联图例 */
+.chart-legend-inline {
+  display: flex;
+  gap: var(--size-sm);
+  font-size: var(--size-xs);
+  flex: 1;
+  justify-content: center;
+}
+
+.chart-legend-inline span {
+  white-space: nowrap;
+}
+
+/* 刷新图标按钮 - 参考 settings-btn-circle */
+.chart-header-compact .btn_icon {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  padding: 0;
+}
+
+.chart-header-compact .btn_icon:hover {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+}
+
+.chart-header-compact .btn_icon:active {
+  transform: scale(0.95);
+}
+
+/* === Canvas 温度曲线图样式 === */
+.temperature-chart {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--size-lg);
+  padding: var(--size-xs) 0;
+  font-size: var(--size-xs);
+}
+
+.legend-item {
+  white-space: nowrap;
+}
+
+.chart-main {
+  flex: 1;
+  position: relative;
+  min-height: 120px;
+}
+
+.chart-canvas {
+  display: block;
+}
+
+.chart-loading,
+.chart-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  gap: var(--size-xs);
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+}
+
+/* Chart Tooltip */
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  padding: 8px 12px;
+  background: rgba(20, 20, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.chart-tooltip .tooltip-time {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.chart-tooltip .tooltip-row {
+  line-height: 1.4;
+}
+
+.chart-tooltip .tooltip-segment {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+}
+
+/* chart-content 容器 - 用于包裹 TemperatureChart */
+.chart-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chart-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-sm);
+  padding: var(--size-xs);
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
 /* === 错误横幅 === */
 .error-banner {
   background: rgba(239, 68, 68, 0.2);
@@ -3939,58 +4326,16 @@
 /* === 控制面板 === */
 .control-panel {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  justify-content: space-between;
+  gap: var(--size-xs);
   align-items: center;
 }
 
-/* 运行/保温/停止按钮容器 - 两端对齐 */
-.control-panel>.btn_base:nth-child(1),
-.control-panel>.btn_base:nth-child(2),
-.control-panel>.btn_base:nth-child(3) {
-  flex: 1;
-  /* 占用可用空间 */
-  text-align: center;
-}
-
-/* 三个按钮容器 - 占满宽度 */
-.control-panel>.btn_base:nth-child(1)~.btn_base:nth-child(2)~.btn_base:nth-child(3) {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  gap: 0.5rem;
-}
-
-/* 五个控制元素容器 - 均匀分布 */
-.control-panel {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-/* 五个元素均分空间 */
-.control-panel>.btn_base:nth-child(1),
-.control-panel>.btn_base:nth-child(2),
-.control-panel>.btn_base:nth-child(3),
-.control-panel>.btn_base:nth-child(4),
+/* 所有控制元素等宽分布 */
+.control-panel>.btn_base,
 .control-panel>.monitoring-segment-input {
   flex: 1;
   text-align: center;
-}
-
-.control-panel>.btn_base:nth-child(4) {
-  flex: 0;
-  text-align: center;
-  min-width: auto;
-}
-
-.control-panel>.monitoring-segment-input {
-  flex: 1;
-  text-align: center;
+  justify-content: center;
 }
 
 /* === 程序段输入框 === */
@@ -3998,13 +4343,23 @@
   background: var(--glass-bg);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-panel);
   color: white;
-  padding: 0.5rem;
-  font-size: 0.875rem;
+  height: var(--size-3xl);
+  padding: 0 var(--size-sm);
+  font-size: var(--size-sm);
   text-align: center;
   transition: var(--transition);
-  width: 80px;
+  /* 隐藏 number input 的增减按钮 */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* 隐藏 Chrome/Safari/Edge 的 number spinner */
+.monitoring-segment-input::-webkit-outer-spin-button,
+.monitoring-segment-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .monitoring-segment-input:focus {
@@ -4080,11 +4435,6 @@
   font-size: 1rem;
 }
 
-.control-panel {
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
 .monitoring-segment-input {
   width: 80px;
   padding: 0.5rem;
@@ -4133,13 +4483,13 @@
 .control-bar {
   display: flex;
   align-items: center;
-  gap: var(--size-sm);
-  padding: var(--size-2xs);
+  gap: var(--size-xs);
+  padding: var(--size-xs);
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(var(--blur-overlay));
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius);
-  margin-bottom: var(--size-xl);
+  margin-bottom: var(--size-md);
   box-shadow:
     0 var(--size-sm) var(--size-3xl) rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -4148,13 +4498,16 @@
 /* === 预设选择�?=== */
 .preset-selector {
   flex: 2;
-  min-width: clamp(12.5rem, 10vw, 15rem);
+  min-width: clamp(10rem, 8vw, 12rem);
+  height: var(--size-2xl);
+  /* 与 btn_small 一致 */
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-panel);
+  /* 胶囊状 */
   color: var(--text-primary);
-  padding: var(--size-2xs);
-  font-size: var(--size-sm);
+  padding: 0 var(--size-sm);
+  font-size: var(--size-xs);
   transition: var(--transition);
 }
 
@@ -4172,13 +4525,16 @@
 /* === 预设名称输入�?=== */
 .preset-name-input {
   flex: 1.5;
-  min-width: clamp(9.5rem, 10vw, 12rem);
+  min-width: clamp(8rem, 8vw, 10rem);
+  height: var(--size-2xl);
+  /* 与 btn_small 一致 */
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-panel);
+  /* 胶囊状 */
   color: var(--text-primary);
-  padding: var(--size-2xs);
-  font-size: var(--size-sm);
+  padding: 0 var(--size-sm);
+  font-size: var(--size-xs);
   transition: var(--transition);
 }
 
@@ -4211,10 +4567,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* === 程序段网�?=== */
+/* === 程序段网格 === */
 .segments-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-flow: dense;
+  /* 紧凑填充 */
   gap: var(--size-3xs);
   padding: 0;
 }
@@ -4282,6 +4640,15 @@
   font-size: var(--size-sm);
   text-align: center;
   transition: var(--transition);
+  /* 隐藏 number input 的加减按钮 (Firefox) */
+  -moz-appearance: textfield;
+}
+
+/* 隐藏 Chrome/Safari/Edge 的 number input spinner */
+.segment-input::-webkit-outer-spin-button,
+.segment-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .segment-input:focus {

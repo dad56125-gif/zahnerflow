@@ -51,7 +51,8 @@
 .btn_small {
     gap: var(--size-xs);
     padding: var(--size-3xs) var(--size-md);
-    border-radius: var(--radius-button);
+    border-radius: var(--radius-panel);
+    /* 胶囊状 */
     font-size: var(--size-sm);
     height: var(--size-2xl);
     min-width: clamp(3.5rem, 5.5vw, 5rem);

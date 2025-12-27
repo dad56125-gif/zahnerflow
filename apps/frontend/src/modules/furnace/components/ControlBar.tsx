@@ -50,7 +50,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {/* 写入按钮 */}
       <button
-        className="btn_base btn_layout btn_style_common btn_medium btn_warning"
+        className="btn_base btn_layout btn_style_common btn_small btn_warning"
         onClick={on_write}
         disabled={!is_connected || is_loading}
       >
@@ -69,7 +69,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {/* 新建按钮 */}
       <button
-        className="btn_base btn_layout btn_style_common btn_medium btn_secondary"
+        className="btn_base btn_layout btn_style_common btn_small btn_secondary"
         onClick={on_new}
         disabled={!is_connected || is_loading}
       >
@@ -78,7 +78,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {/* 保存按钮 */}
       <button
-        className="btn_base btn_layout btn_style_common btn_medium btn_success"
+        className="btn_base btn_layout btn_style_common btn_small btn_success"
         onClick={on_save}
         disabled={!canSave || is_loading}
       >
@@ -87,7 +87,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
       {/* 读取运行按钮 */}
       <button
-        className="btn_base btn_layout btn_style_common btn_medium btn_primary"
+        className="btn_base btn_layout btn_style_common btn_small btn_primary"
         onClick={on_load_run}
         disabled={!is_connected || is_loading}
       >

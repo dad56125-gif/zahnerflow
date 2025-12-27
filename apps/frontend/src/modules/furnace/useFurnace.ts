@@ -16,6 +16,115 @@ import {
   SegmentProgress,
 } from './furnaceTypes';
 
+// ==================== 分梯度降采样 ====================
+
+/** 历史数据样本类型 */
+export interface HistorySample {
+  timestamp: string;
+  temperature: number;
+  sv?: number;
+  mv?: number;
+  status?: string;
+  segment?: number;
+  segment_time?: number;
+  segment_time_set?: number;
+}
+
+/** 分层历史数据结构 */
+export interface TieredHistory {
+  l0: HistorySample[];  // 实时层，最多 100 点 (1:1)
+  l1: HistorySample[];  // 第一层，最多 400 点 (1:16)
+  l2: HistorySample[];  // 第二层，最多 400 点 (1:64)
+  l3: HistorySample[];  // 第三层，最多 100 点 (1:256)
+  pendingL0: HistorySample[];  // L0 待降采样缓冲区
+}
+
+/** 降采样配置 */
+const TIER_CONFIG = {
+  L0_MAX: 100,      // L0 最大点数
+  L0_KEEP: 50,      // L0 永久保留的前 N 点
+  L1_MAX: 400,      // L1 最大点数
+  L2_MAX: 400,      // L2 最大点数
+  L3_MAX: 100,      // L3 最大点数
+  L0_TO_L1: 16,     // L0 → L1 降采样比例
+  L1_TO_L2: 4,      // L1 → L2 降采样比例 (16*4=64)
+  L2_TO_L3: 4,      // L2 → L3 降采样比例 (64*4=256)
+};
+
+/** 创建空的分层历史 */
+const createEmptyTieredHistory = (): TieredHistory => ({
+  l0: [],
+  l1: [],
+  l2: [],
+  l3: [],
+  pendingL0: [],
+});
+
+/** 对数组进行 N:1 降采样（保留每 N 个的最后一个） */
+const downsampleArray = (arr: HistorySample[], ratio: number): HistorySample[] => {
+  if (ratio <= 1 || arr.length === 0) return arr;
+  const result: HistorySample[] = [];
+  for (let i = ratio - 1; i < arr.length; i += ratio) {
+    result.push(arr[i]);
+  }
+  return result;
+};
+
+/** 添加样本到分层历史（核心降采样逻辑） */
+const addSampleToTiered = (sample: HistorySample, tiered: TieredHistory): TieredHistory => {
+  const result = { ...tiered };
+
+  // 1. 新数据加入 pendingL0
+  result.pendingL0 = [...result.pendingL0, sample];
+
+  // 2. pendingL0 达到 16 点时，取 1 点加入 L0，其余加入 L1 缓冲
+  if (result.pendingL0.length >= TIER_CONFIG.L0_TO_L1) {
+    // 取最后一点作为代表加入 L0
+    result.l0 = [...result.l0, result.pendingL0[result.pendingL0.length - 1]];
+    // 降采样后加入 L1
+    const downsampled = downsampleArray(result.pendingL0, TIER_CONFIG.L0_TO_L1);
+    result.l1 = [...result.l1, ...downsampled];
+    result.pendingL0 = [];
+  }
+
+  // 3. L0 超过上限时，将溢出部分移入 L1（但保留前 L0_KEEP 点）
+  if (result.l0.length > TIER_CONFIG.L0_MAX) {
+    const excess = result.l0.length - TIER_CONFIG.L0_MAX;
+    // 从 L0_KEEP 位置开始移除
+    const toMove = result.l0.splice(TIER_CONFIG.L0_KEEP, excess);
+    const downsampled = downsampleArray(toMove, TIER_CONFIG.L0_TO_L1);
+    result.l1 = [...result.l1, ...downsampled];
+  }
+
+  // 4. L1 超过上限时，降采样移入 L2
+  if (result.l1.length > TIER_CONFIG.L1_MAX) {
+    const excess = result.l1.length - TIER_CONFIG.L1_MAX;
+    const toMove = result.l1.splice(0, excess);
+    const downsampled = downsampleArray(toMove, TIER_CONFIG.L1_TO_L2);
+    result.l2 = [...result.l2, ...downsampled];
+  }
+
+  // 5. L2 超过上限时，降采样移入 L3
+  if (result.l2.length > TIER_CONFIG.L2_MAX) {
+    const excess = result.l2.length - TIER_CONFIG.L2_MAX;
+    const toMove = result.l2.splice(0, excess);
+    const downsampled = downsampleArray(toMove, TIER_CONFIG.L2_TO_L3);
+    result.l3 = [...result.l3, ...downsampled];
+  }
+
+  // 6. L3 超过上限时，丢弃最旧的
+  if (result.l3.length > TIER_CONFIG.L3_MAX) {
+    result.l3 = result.l3.slice(-TIER_CONFIG.L3_MAX);
+  }
+
+  return result;
+};
+
+/** 获取完整历史数据（合并所有层，按时间排序） */
+export const getFullHistory = (tiered: TieredHistory): HistorySample[] => {
+  return [...tiered.l3, ...tiered.l2, ...tiered.l1, ...tiered.l0, ...tiered.pendingL0];
+};
+
 // ==================== 状态类型 ====================
 
 export interface FurnaceState {
@@ -23,16 +132,8 @@ export interface FurnaceState {
   connection_status: DeviceConnectionStatus;
   segments: ProgramSegment[];
   presets: FurnacePresetMeta[];
-  history_data: Array<{
-    timestamp: string;
-    temperature: number;
-    sv?: number;
-    mv?: number;
-    status?: string;
-    segment?: number;
-    segment_time?: number;
-    segment_time_set?: number;
-  }>;
+  tiered_history: TieredHistory;  // 分层历史数据
+  history_data: HistorySample[];  // 用于显示的合并历史（从 tiered_history 计算）
   history_params: HistoryQueryParams;
   loading: boolean;
   error: DeviceError | null;
@@ -70,6 +171,7 @@ const createInitialState = (): FurnaceState => ({
   connection_status: 'disconnected',
   segments: [],
   presets: [],
+  tiered_history: createEmptyTieredHistory(),
   history_data: [],
   history_params: { limit: 1000 },
   loading: false,
@@ -113,7 +215,24 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
           ? (error as DeviceError)
           : { code: 'UNKNOWN', message: String(error), status: 0 };
 
-      updateState({ error: deviceError, loading: false, segment_progress: null });
+      // 检测设备断开错误，自动更新连接状态
+      const isDisconnected =
+        deviceError.status === 503 ||
+        deviceError.message?.toLowerCase().includes('disconnected') ||
+        deviceError.message?.toLowerCase().includes('device disconnected');
+
+      if (isDisconnected) {
+        updateState({
+          error: deviceError,
+          loading: false,
+          segment_progress: null,
+          connection_status: 'disconnected',
+          device_status: null
+        });
+      } else {
+        updateState({ error: deviceError, loading: false, segment_progress: null });
+      }
+
       addLog('error', deviceError.message);
     },
     [updateState, addLog]
@@ -145,10 +264,22 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     furnaceWebSocketService.onStatusUpdate((update: FurnaceStatusUpdate) => {
       // 更新设备状态
       setState((prev) => {
-        // 同时将温度数据追加到 history_data（用于实时数据记录）
-        const newHistoryEntry = {
+        // 只有当 pv 是有效数值时才追加到 history_data
+        const pv = update.status?.pv;
+        const isValidPv = typeof pv === 'number' && Number.isFinite(pv) && pv > 0;
+
+        if (!isValidPv) {
+          return {
+            ...prev,
+            device_status: update.status,
+            connection_status: update.connection_state?.status ?? prev.connection_status,
+          };
+        }
+
+        // 创建新样本
+        const newSample: HistorySample = {
           timestamp: update.timestamp || new Date().toISOString(),
-          temperature: update.status?.pv ?? 0,
+          temperature: pv,
           sv: update.status?.sv,
           mv: update.status?.mv,
           status: update.status?.status,
@@ -157,24 +288,36 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
           segment_time_set: update.status?.segment_time_set,
         };
 
+        // 使用分层降采样
+        const newTieredHistory = addSampleToTiered(newSample, prev.tiered_history);
+        const newHistoryData = getFullHistory(newTieredHistory);
+
         return {
           ...prev,
           device_status: update.status,
           connection_status: update.connection_state?.status ?? prev.connection_status,
-          history_data: [...prev.history_data, newHistoryEntry].slice(-500),
+          tiered_history: newTieredHistory,
+          history_data: newHistoryData,
         };
       });
     });
 
     // 保留 onSamplingData 监听（如果后端将来发送单独的采样事件）
     furnaceWebSocketService.onSamplingData((data) => {
-      setState((prev) => ({
-        ...prev,
-        history_data: [
-          ...prev.history_data,
-          { timestamp: data.timestamp, temperature: data.temperature, sv: data.sv, mv: data.mv },
-        ].slice(-500),
-      }));
+      setState((prev) => {
+        const newSample: HistorySample = {
+          timestamp: data.timestamp,
+          temperature: data.temperature,
+          sv: data.sv,
+          mv: data.mv,
+        };
+        const newTieredHistory = addSampleToTiered(newSample, prev.tiered_history);
+        return {
+          ...prev,
+          tiered_history: newTieredHistory,
+          history_data: getFullHistory(newTieredHistory),
+        };
+      });
     });
 
     furnaceWebSocketService.onConnected(() => {
@@ -352,6 +495,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     return () => {
       if (wsConnected.current) {
         furnaceWebSocketService.disconnect();
+        wsConnected.current = false;  // 🔧 重置状态，允许重新连接时重新注册回调
       }
     };
   }, []);

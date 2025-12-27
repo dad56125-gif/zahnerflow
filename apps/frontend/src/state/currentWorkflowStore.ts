@@ -10,11 +10,15 @@ interface WorkflowState {
   isLoading: boolean;
   error: string | null;
 
+  // 草稿工作流名称（用于尚未保存的新工作流）
+  draftWorkflowName: string | null;
+
   fetchWorkflows: () => Promise<void>;
   createWorkflow: (data: Partial<Workflow>) => Promise<void>;
   updateWorkflow: (id: string, data: Partial<Workflow>) => Promise<void>;
   deleteWorkflow: (id: string) => Promise<void>;
   setCurrentWorkflow: (workflow: Workflow | null) => void;
+  setDraftWorkflowName: (name: string | null) => void;
   clearError: () => void;
 }
 
@@ -26,6 +30,7 @@ export const useWorkflowStore = create<WorkflowState>()(
         currentWorkflow: null,
         isLoading: false,
         error: null,
+        draftWorkflowName: null,
 
         fetchWorkflows: async () => {
           set({ isLoading: true, error: null });
@@ -98,6 +103,10 @@ export const useWorkflowStore = create<WorkflowState>()(
 
         setCurrentWorkflow: (workflow) => {
           set({ currentWorkflow: workflow, error: null });
+        },
+
+        setDraftWorkflowName: (name) => {
+          set({ draftWorkflowName: name });
         },
 
         clearError: () => set({ error: null }),

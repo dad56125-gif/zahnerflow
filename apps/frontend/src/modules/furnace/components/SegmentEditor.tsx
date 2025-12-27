@@ -40,42 +40,55 @@ export const SegmentEditor: React.FC<SegmentEditorProps> = ({
   return (
     <div className="segments-editor">
       <div className="segments-grid">
-        {Array.from({ length: 27 }, (_, i) => {
-          const id = i + 1;
-          return (
-            <div key={id} className="segment-item">
-              <div className="segment-label">
-                C{id.toString().padStart(2, '0')}
-              </div>
-              <div className="input-group">
-                <input
-                  type="number"
-                  className={`segment-input ${validation_errors[`temp_${id}`] ? 'error' : ''}`}
-                  value={inputs[`temp_${id}`] ?? ''}
-                  onChange={(e) => handle_input_change(`temp_${id}`, e.target.value)}
-                  disabled={!is_connected}
-                  title={validation_errors[`temp_${id}`] || ''}
-                />
-                <span className="unit">℃</span>
-              </div>
+        {/* 按列优先顺序生成：3列布局时，竖向显示 c01 c02 c03 ... */}
+        {(() => {
+          const COLS = 3;
+          const ROWS = 9; // 27 ÷ 3 = 9
+          const elements = [];
 
-              <div className="segment-label">
-                t{id.toString().padStart(2, '0')}
-              </div>
-              <div className="input-group">
-                <input
-                  type="number"
-                  className={`segment-input ${validation_errors[`time_${id}`] ? 'error' : ''}`}
-                  value={inputs[`time_${id}`] ?? ''}
-                  onChange={(e) => handle_input_change(`time_${id}`, e.target.value)}
-                  disabled={!is_connected}
-                  title={validation_errors[`time_${id}`] || ''}
-                />
-                <span className="unit">min</span>
-              </div>
-            </div>
-          );
-        })}
+          // 按行遍历，每行从3列取元素
+          for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+              const id = col * ROWS + row + 1; // 列优先索引
+              if (id > 27) continue;
+
+              elements.push(
+                <div key={id} className="segment-item">
+                  <div className="segment-label">
+                    C{id.toString().padStart(2, '0')}
+                  </div>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      className={`segment-input ${validation_errors[`temp_${id}`] ? 'error' : ''}`}
+                      value={inputs[`temp_${id}`] ?? ''}
+                      onChange={(e) => handle_input_change(`temp_${id}`, e.target.value)}
+                      disabled={!is_connected}
+                      title={validation_errors[`temp_${id}`] || ''}
+                    />
+                    <span className="unit">℃</span>
+                  </div>
+
+                  <div className="segment-label">
+                    t{id.toString().padStart(2, '0')}
+                  </div>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      className={`segment-input ${validation_errors[`time_${id}`] ? 'error' : ''}`}
+                      value={inputs[`time_${id}`] ?? ''}
+                      onChange={(e) => handle_input_change(`time_${id}`, e.target.value)}
+                      disabled={!is_connected}
+                      title={validation_errors[`time_${id}`] || ''}
+                    />
+                    <span className="unit">min</span>
+                  </div>
+                </div>
+              );
+            }
+          }
+          return elements;
+        })()}
       </div>
     </div>
   );

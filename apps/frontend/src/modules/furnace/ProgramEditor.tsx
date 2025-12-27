@@ -70,14 +70,14 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
       {/* 控制栏 */}
       <div className="control-bar">
         <button
-          className="btn_base btn_layout btn_style_common btn_medium btn_primary"
+          className="btn_base btn_layout btn_style_common btn_small btn_primary"
           onClick={handleRead}
           disabled={!isConnected || furnaceState.loading}
         >
           {furnaceState.loading ? '读取中...' : '读取程序段'}
         </button>
         <button
-          className="btn_base btn_layout btn_style_common btn_medium btn_success"
+          className="btn_base btn_layout btn_style_common btn_small btn_success"
           onClick={handleWrite}
           disabled={!isConnected || furnaceState.loading}
         >
@@ -88,42 +88,55 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
       {/* 程序段编辑器 */}
       <div className="segments-editor">
         <div className="segments-grid">
-          {Array.from({ length: 27 }, (_, i) => {
-            const id = i + 1;
-            return (
-              <div key={id} className="segment-item">
-                <div className="segment-label">
-                  C{id.toString().padStart(2, '0')}
-                </div>
-                <div className="input-group">
-                  <input
-                    type="number"
-                    className={`segment-input ${validationErrors[`temp_${id}`] ? 'error' : ''}`}
-                    value={inputs[`temp_${id}`] ?? ''}
-                    onChange={(e) => handleInputChange(`temp_${id}`, e.target.value)}
-                    disabled={!isConnected}
-                    title={validationErrors[`temp_${id}`] || ''}
-                  />
-                  <span className="unit">℃</span>
-                </div>
+          {/* 按列优先顺序生成：3列布局时，竖向显示 c01 c02 c03 ... */}
+          {(() => {
+            const COLS = 3;
+            const ROWS = 9; // 27 ÷ 3 = 9
+            const elements = [];
 
-                <div className="segment-label">
-                  t{id.toString().padStart(2, '0')}
-                </div>
-                <div className="input-group">
-                  <input
-                    type="number"
-                    className={`segment-input ${validationErrors[`time_${id}`] ? 'error' : ''}`}
-                    value={inputs[`time_${id}`] ?? ''}
-                    onChange={(e) => handleInputChange(`time_${id}`, e.target.value)}
-                    disabled={!isConnected}
-                    title={validationErrors[`time_${id}`] || ''}
-                  />
-                  <span className="unit">min</span>
-                </div>
-              </div>
-            );
-          })}
+            // 按行遍历，每行从3列取元素
+            for (let row = 0; row < ROWS; row++) {
+              for (let col = 0; col < COLS; col++) {
+                const id = col * ROWS + row + 1; // 列优先索引
+                if (id > 27) continue;
+
+                elements.push(
+                  <div key={id} className="segment-item">
+                    <div className="segment-label">
+                      C{id.toString().padStart(2, '0')}
+                    </div>
+                    <div className="input-group">
+                      <input
+                        type="number"
+                        className={`segment-input ${validationErrors[`temp_${id}`] ? 'error' : ''}`}
+                        value={inputs[`temp_${id}`] ?? ''}
+                        onChange={(e) => handleInputChange(`temp_${id}`, e.target.value)}
+                        disabled={!isConnected}
+                        title={validationErrors[`temp_${id}`] || ''}
+                      />
+                      <span className="unit">℃</span>
+                    </div>
+
+                    <div className="segment-label">
+                      t{id.toString().padStart(2, '0')}
+                    </div>
+                    <div className="input-group">
+                      <input
+                        type="number"
+                        className={`segment-input ${validationErrors[`time_${id}`] ? 'error' : ''}`}
+                        value={inputs[`time_${id}`] ?? ''}
+                        onChange={(e) => handleInputChange(`time_${id}`, e.target.value)}
+                        disabled={!isConnected}
+                        title={validationErrors[`time_${id}`] || ''}
+                      />
+                      <span className="unit">min</span>
+                    </div>
+                  </div>
+                );
+              }
+            }
+            return elements;
+          })()}
         </div>
       </div>
     </div>

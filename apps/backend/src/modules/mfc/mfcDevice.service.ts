@@ -1,5 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosError, AxiosInstance } from 'axios';
+import * as http from 'http';
+
+// 🔧 HTTP Keep-Alive 连接池 - 复用 TCP 连接，避免 TIME_WAIT 累积
+const keepAliveAgent = new http.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 5,
+});
 
 @Injectable()
 export class MfcDeviceService {
@@ -45,7 +53,8 @@ export class MfcDeviceService {
     return axios.create({
       baseURL: this.activeEndpoint,
       timeout: 1500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      httpAgent: keepAliveAgent,  // 🔧 复用 TCP 连接
     });
   }
 

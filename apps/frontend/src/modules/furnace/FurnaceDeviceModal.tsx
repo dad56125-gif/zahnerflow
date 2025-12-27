@@ -183,26 +183,26 @@ function RecordingTab({ furnaceState }: RecordingTabProps) {
   };
 
   return (
-    <div className="card">
-      <div className="card_header">
-        <h4 className="card_title">实时数据记录</h4>
-        <div className="text-sm text-secondary">
+    <div className="recording-tab">
+      <div className="recording-header">
+        <h4 className="recording-title">实时数据记录</h4>
+        <span className="recording-subtitle">
           {isConnected
-            ? `WebSocket 实时推送，已记录 ${samples.length} 条（本次会话）`
-            : '设备未连接，请先连接设备'}
-        </div>
+            ? `已记录 ${samples.length} 条（本次会话）`
+            : '设备未连接'}
+        </span>
       </div>
-      <div className="card_body">
+      <div className="recording-body">
         {!isConnected ? (
           <div className="text-secondary">请先连接 Furnace 设备以开始记录</div>
         ) : samples.length === 0 ? (
           <div className="text-secondary">等待数据...</div>
         ) : (
-          <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
-            <table className="data-table">
+          <div className="recording-table-wrapper">
+            <table className="data-table data-table-sm">
               <thead><tr>
-                <th>记录时间</th><th>实际温度</th><th>设定温度</th><th>输出功率</th>
-                <th>设备状态</th><th>程序段</th><th>段内时间</th><th>段设定时间</th>
+                <th>时间</th><th>PV</th><th>SV</th><th>MV</th>
+                <th>状态</th><th>段</th><th>段时间</th><th>段设定</th>
               </tr></thead>
               <tbody>
                 {[...samples].reverse().map((sample, idx) => (
@@ -213,8 +213,8 @@ function RecordingTab({ furnaceState }: RecordingTabProps) {
                     <td>{(sample.mv ?? 0).toFixed(1)}%</td>
                     <td>{sample.status ?? '-'}</td>
                     <td>{sample.segment ?? '-'}</td>
-                    <td>{sample.segment_time != null ? `${sample.segment_time}min` : '-'}</td>
-                    <td>{sample.segment_time_set != null ? `${sample.segment_time_set}min` : '-'}</td>
+                    <td>{sample.segment_time ?? '-'}</td>
+                    <td>{sample.segment_time_set ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -228,11 +228,74 @@ function RecordingTab({ furnaceState }: RecordingTabProps) {
 
 // ========== HistoryTab：历史数据表格（带事件补全） ==========
 
+type TimeRangeOption = 'past_1h' | 'past_24h' | 'past_7d' | 'past_30d' | 'past_1y' | 'custom';
+
+const TIME_RANGE_OPTIONS: { value: TimeRangeOption; label: string; days: number }[] = [
+  { value: 'past_1h', label: '过去1小时', days: 0.04 },
+  { value: 'past_24h', label: '过去24小时', days: 1 },
+  { value: 'past_7d', label: '过去7天', days: 7 },
+  { value: 'past_30d', label: '过去一个月', days: 30 },
+  { value: 'past_1y', label: '过去一年', days: 365 },
+];
+
 function HistoryTab() {
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>('past_24h');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [samples, setSamples] = useState<Array<{ timestamp: string; pv: number; sv: number; mv: number; status_code?: number }>>([]);
   const [loading, setLoading] = useState(false);
+
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // 根据时间范围计算开始和结束日期
+  const calculateTimeRange = (range: TimeRangeOption): { start: string; end: string } => {
+    const now = new Date();
+    const end = now.toISOString().slice(0, 16);
+    let start: Date;
+
+    switch (range) {
+      case 'past_1h':
+        start = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case 'past_24h':
+        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'past_7d':
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'past_30d':
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'past_1y':
+        start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    return { start: start.toISOString().slice(0, 16), end };
+  };
+
+  // 时间范围变化时更新日期（包括初始化）
+  useEffect(() => {
+    if (timeRange !== 'custom') {
+      const { start, end } = calculateTimeRange(timeRange);
+      setStartDate(start);
+      setEndDate(end);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange]);
+
+  // 判断是否显示时间按钮（过去7天及之前）或日期按钮（过去7天及之后）
+  const showTimeButton = ['past_1h', 'past_24h', 'past_7d'].includes(timeRange);
+
+  // 安全地获取日期值，防止空字符串问题
+  const getDateValue = (dateStr: string, isDateTime: boolean): string => {
+    if (!dateStr) return '';
+    return isDateTime ? dateStr : (dateStr.length >= 10 ? dateStr.slice(0, 10) : dateStr);
+  };
 
   const mapStatusCode = (code: number): string => {
     switch (code) {
@@ -287,26 +350,81 @@ function HistoryTab() {
   const isArchiveRange = startDate && endDate && calculateDays(startDate, endDate) > 30;
 
   return (
-    <div className="card">
-      <div className="card_header"><h4 className="card_title">历史数据查询</h4></div>
-      <div className="card_body">
-        <div className="form_group"><label className="form_label">开始日期</label>
-          <input type="datetime-local" className="form_control" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </div>
-        <div className="form_group"><label className="form_label">结束日期</label>
-          <input type="datetime-local" className="form_control" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </div>
-        {isArchiveRange && <div className="text-sm text-secondary mb-2">检测到查询范围超过30天，SV/MV/状态数据将被隐藏（Archive优化）</div>}
-        <button className="btn btn_primary" onClick={queryHistory} disabled={loading}>
-          {loading ? '查询中...' : '查询历史数据'}
+    <div className="history-tab">
+      {/* 控制栏 - 与预设选项卡样式一致 */}
+      <div className="control-bar">
+        {/* 时间范围选择器 */}
+        <select
+          className="preset-selector"
+          value={timeRange}
+          onChange={(e) => setTimeRange(e.target.value as TimeRangeOption)}
+        >
+          {TIME_RANGE_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+
+        {/* 开始时间输入 */}
+        <input
+          type={showTimeButton ? 'datetime-local' : 'date'}
+          className="preset-name-input"
+          value={getDateValue(startDate, showTimeButton)}
+          onChange={(e) => {
+            setStartDate(showTimeButton ? e.target.value : e.target.value + 'T00:00');
+            setTimeRange('custom');
+          }}
+        />
+
+        {/* 开始时间的圆形按钮 */}
+        <button
+          className="btn_base btn_layout btn_style_common btn_small btn_secondary history-time-btn"
+          title={showTimeButton ? '选择时间' : '选择日期'}
+          onClick={() => {
+            const input = document.querySelector('.history-tab .preset-name-input:first-of-type') as HTMLInputElement;
+            input?.showPicker?.();
+          }}
+        >
+          {showTimeButton ? '🕐' : '📅'}
+        </button>
+
+        {/* 结束时间输入 */}
+        <input
+          type={showTimeButton ? 'datetime-local' : 'date'}
+          className="preset-name-input"
+          value={getDateValue(endDate, showTimeButton)}
+          onChange={(e) => {
+            setEndDate(showTimeButton ? e.target.value : e.target.value + 'T23:59');
+            setTimeRange('custom');
+          }}
+        />
+
+        {/* 结束时间的圆形按钮 */}
+        <button
+          className="btn_base btn_layout btn_style_common btn_small btn_secondary history-time-btn"
+          title={showTimeButton ? '选择时间' : '选择日期'}
+          onClick={() => {
+            const inputs = document.querySelectorAll('.history-tab .preset-name-input') as NodeListOf<HTMLInputElement>;
+            inputs[1]?.showPicker?.();
+          }}
+        >
+          {showTimeButton ? '🕐' : '📅'}
+        </button>
+
+        {/* 查询按钮 */}
+        <button
+          className="btn_base btn_layout btn_style_common btn_small btn_primary"
+          onClick={queryHistory}
+          disabled={loading}
+        >
+          {loading ? '查询中...' : '查询'}
         </button>
       </div>
 
+      {/* 数据表格 */}
       {!loading && samples.length > 0 && (
-        <div className="card_body">
-          <div className="mb-2 text-sm text-secondary">共 {samples.length} 条记录{isArchiveRange && '（归档数据，已隐藏SV/MV/状态）'}</div>
-          <div className="data-table-container" style={{ maxHeight: '500px', overflow: 'auto' }}>
-            <table className="data-table">
+        <div className="recording-body">
+          <div className="recording-table-wrapper">
+            <table className="data-table data-table-sm">
               <thead><tr>
                 <th>序号</th><th>记录时间</th><th>实际温度</th>
                 {!isArchiveRange && <th>设定温度</th>}
@@ -315,19 +433,61 @@ function HistoryTab() {
                 <th>程序段</th><th>段内时间</th><th>段设定时间</th>
               </tr></thead>
               <tbody>
-                {samples.map((sample, idx) => (
-                  <tr key={sample.timestamp}>
-                    <td>{idx + 1}</td>
-                    <td>{formatTime(sample.timestamp)}</td>
-                    <td>{(sample.pv ?? 0).toFixed(1)}°C</td>
-                    {!isArchiveRange && <td>{(sample.sv ?? 0).toFixed(1)}°C</td>}
-                    {!isArchiveRange && <td>{(sample.mv ?? 0).toFixed(1)}%</td>}
-                    {!isArchiveRange && <td>{mapStatusCode(sample.status_code || 0)}</td>}
-                    <td>-</td><td>-</td><td>-</td>
-                  </tr>
-                ))}
+                {samples
+                  .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                  .map((sample, idx) => (
+                    <tr key={sample.timestamp}>
+                      <td>{(currentPage - 1) * PAGE_SIZE + idx + 1}</td>
+                      <td>{formatTime(sample.timestamp)}</td>
+                      <td>{(sample.pv ?? 0).toFixed(1)}°C</td>
+                      {!isArchiveRange && <td>{(sample.sv ?? 0).toFixed(1)}°C</td>}
+                      {!isArchiveRange && <td>{(sample.mv ?? 0).toFixed(1)}%</td>}
+                      {!isArchiveRange && <td>{mapStatusCode(sample.status_code || 0)}</td>}
+                      <td>-</td><td>-</td><td>-</td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
+          </div>
+
+          {/* 分页控件 */}
+          <div className="history-pagination">
+            <span className="history-pagination-info">
+              共 {samples.length} 条{isArchiveRange && ' · 归档模式'}
+            </span>
+            <div className="history-pagination-buttons">
+              <button
+                className="btn_base btn_layout btn_style_common btn_small btn_secondary"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                首页
+              </button>
+              <button
+                className="btn_base btn_layout btn_style_common btn_small btn_secondary"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                上一页
+              </button>
+              <span className="history-page-info">
+                {currentPage} / {Math.ceil(samples.length / PAGE_SIZE)}
+              </span>
+              <button
+                className="btn_base btn_layout btn_style_common btn_small btn_secondary"
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(samples.length / PAGE_SIZE), p + 1))}
+                disabled={currentPage >= Math.ceil(samples.length / PAGE_SIZE)}
+              >
+                下一页
+              </button>
+              <button
+                className="btn_base btn_layout btn_style_common btn_small btn_secondary"
+                onClick={() => setCurrentPage(Math.ceil(samples.length / PAGE_SIZE))}
+                disabled={currentPage >= Math.ceil(samples.length / PAGE_SIZE)}
+              >
+                末页
+              </button>
+            </div>
           </div>
         </div>
       )}

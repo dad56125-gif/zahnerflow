@@ -141,8 +141,8 @@ function unrollRecursive(
             const loopEndIdx = findMatchingLoopEnd(nodes, i);
 
             if (loopEndIdx === -1) {
-                // 未找到匹配的 loop_end，跳过此节点
-                console.warn(`[loopUnroller] 未找到索引 ${i} 的 loop_start 对应的 loop_end`);
+                // 未找到匹配的 loop_end，静默跳过
+                // 这在用户编辑工作流时是正常的（刚添加 loop_start，还没添加 loop_end）
                 i++;
                 continue;
             }

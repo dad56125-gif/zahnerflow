@@ -7,6 +7,13 @@ Furnace 设备模拟器 - 用于无硬件环境下的工作流测试
 功能: 模拟 AI-518P 温控器的所有功能
 """
 
+import sys
+import asyncio
+
+# Windows 下使用 SelectorEventLoop 避免 ProactorEventLoop 资源限制问题
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -70,7 +77,15 @@ class FurnaceSimulator:
             self._thread.join(timeout=2)
     
     def _simulation_loop(self):
-        """后台温度模拟循环"""
+        """
+        后台温度模拟循环
+        
+        程序段运行逻辑：
+        - 段 N 的温度 C(N) 是起点
+        - 段 N+1 的温度 C(N+1) 是终点  
+        - 在段 N 的时间 T(N) 内，温度从 C(N) 线性变化到 C(N+1)
+        - 当 T(N) = 0 时，程序结束
+        """
         last_time = time.time()
         
         while self._running:
@@ -80,47 +95,76 @@ class FurnaceSimulator:
             
             with self._lock:
                 if self.connected and self.status_code == 0:  # Running
-                    # 获取当前段的目标温度
-                    if 1 <= self.current_segment <= 30:
-                        target = self.segments[self.current_segment - 1]["temperature"]
-                    else:
-                        target = self.sv
+                    seg_idx = self.current_segment - 1  # 0-indexed
                     
-                    # 温度逐渐趋向目标
-                    diff = target - self.pv
-                    if abs(diff) > 0.1:
+                    # 检查段索引有效性
+                    if seg_idx < 0 or seg_idx >= 29:  # 最多到段29，因为需要读取下一段
+                        self.status_code = 12  # Stop
+                        continue
+                    
+                    # 获取当前段和下一段的数据
+                    current_seg = self.segments[seg_idx]
+                    next_seg = self.segments[seg_idx + 1]
+                    
+                    start_temp = current_seg["temperature"]  # C(N) - 起点温度
+                    end_temp = next_seg["temperature"]       # C(N+1) - 终点温度
+                    seg_duration = current_seg["time"]       # T(N) - 段持续时间（分钟）
+                    
+                    # 更新段设定时间
+                    self.segment_time_set = seg_duration
+                    
+                    # 如果当前段时间为0，程序结束
+                    if seg_duration <= 0:
+                        self.status_code = 12  # Stop
+                        print(f"[Furnace Simulator] Segment {self.current_segment} time=0, program ended")
+                        continue
+                    
+                    # 计算目标温度（根据时间进度线性插值）
+                    progress = min(1.0, self.segment_time / seg_duration)
+                    target_temp = start_temp + (end_temp - start_temp) * progress
+                    
+                    # 更新 SV 为当前目标温度
+                    self.sv = round(target_temp, 1)
+                    
+                    # 温度逐渐趋向目标（模拟温控器响应）
+                    diff = target_temp - self.pv
+                    if abs(diff) > 0.05:
                         if diff > 0:
                             # 加热
                             self.pv += min(self.heating_rate * dt, diff)
-                            self.mv = min(100, int(diff * 10))
+                            self.mv = min(100.0, max(0, abs(diff) * 3))
                         else:
                             # 冷却
                             self.pv += max(-self.cooling_rate * dt, diff)
-                            self.mv = max(-100, int(diff * 10))
+                            self.mv = 0  # 自然冷却，无加热
                     else:
-                        self.pv = target
-                        self.mv = 0
+                        self.pv = target_temp
+                        self.mv = 5.0  # 保温微调
+                    
+                    # 添加小幅度噪声
+                    self.pv += random.gauss(0, 0.02)
                     
                     # 更新段时间
                     self.segment_time += dt / 60  # 转换为分钟
                     
                     # 检查是否需要切换到下一段
-                    seg_time_set = self.segments[self.current_segment - 1]["time"]
-                    if seg_time_set > 0 and self.segment_time >= seg_time_set:
-                        if self.current_segment < 30:
-                            next_seg_time = self.segments[self.current_segment]["time"]
-                            if next_seg_time > 0:
+                    if self.segment_time >= seg_duration:
+                        # 检查下一段的时间
+                        if seg_idx + 1 < 29:  # 还有下一段
+                            next_next_seg_time = self.segments[seg_idx + 2]["time"]
+                            if self.segments[seg_idx + 1]["time"] > 0:
+                                # 切换到下一段
                                 self.current_segment += 1
                                 self.segment_time = 0
-                                self.segment_time_set = next_seg_time
+                                print(f"[Furnace Simulator] Advanced to segment {self.current_segment}")
                             else:
                                 # 下一段时间为0，程序结束
-                                self.status_code = 12  # Stop
+                                self.status_code = 12
+                                print(f"[Furnace Simulator] Program completed at segment {self.current_segment}")
                         else:
-                            self.status_code = 12  # 最后一段完成
-                    
-                    # 添加小幅度噪声
-                    self.pv += random.gauss(0, 0.05)
+                            # 已是最后一段
+                            self.status_code = 12
+                            print("[Furnace Simulator] Program completed (last segment)")
             
             time.sleep(0.5)  # 0.5秒更新一次
 

@@ -77,14 +77,20 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
 
       {/* 温度曲线图 */}
       <div className="chart-container">
-        <div className="chart-header">
-          <h4>温度曲线</h4>
+        <div className="chart-header chart-header-compact">
+          <h5 className="chart-title">温度曲线</h5>
+          <div className="chart-legend-inline">
+            <span style={{ color: '#ef4444' }}>● PV</span>
+            <span style={{ color: '#3b82f6' }}>● SV</span>
+            <span style={{ color: '#10b981' }}>● MV</span>
+          </div>
           <button
-            className="btn_base btn_layout btn_style_common btn_small btn_secondary"
+            className="btn_base btn_icon btn_xs btn_ghost"
             onClick={() => furnaceControls.load_history_data()}
             disabled={furnaceState.loading}
+            title="刷新数据"
           >
-            刷新数据
+            ↻
           </button>
         </div>
         <div className="chart-content">
@@ -111,7 +117,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
 
         <button
           className="btn_base btn_layout btn_style_common btn_medium btn_warning"
-          style={{ marginLeft: 'var(--size-2xs)' }}
           onClick={furnaceControls.pause}
           disabled={
             furnaceState.connection_status !== 'connected' ||
@@ -125,7 +130,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
 
         <button
           className="btn_base btn_layout btn_style_common btn_medium btn_danger"
-          style={{ marginLeft: 'var(--size-2xs)' }}
           onClick={furnaceControls.stop}
           disabled={
             furnaceState.connection_status !== 'connected' ||
@@ -138,7 +142,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
 
         <button
           className="btn_base btn_layout btn_style_common btn_medium btn_secondary"
-          style={{ marginLeft: 'var(--size-2xs)' }}
           onClick={async () => {
             const input = document.getElementById('monitoringSegmentInput') as HTMLInputElement;
             const segment = parseInt(input.value);
@@ -171,7 +174,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading
           }
-          style={{ marginLeft: '8px', width: '80px' }}
         />
       </div>
     </div>
