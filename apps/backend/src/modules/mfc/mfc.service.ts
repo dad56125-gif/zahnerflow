@@ -384,6 +384,10 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
         let finalFlow = targetFlow;
         let stabilized = false;
 
+        // 特殊情况：目标为0时的容差范围（控制器无法精确控制接近0的流量）
+        const ZERO_TARGET_MIN = -10;  // sccm
+        const ZERO_TARGET_MAX = 4;    // sccm
+
         this.logger.log(`[${nodeId}] 等待流量稳定: 目标 ${targetFlow} sccm, 容差 ${tolerance * 100}%, 最大等待 ${maxWaitTime}s`);
 
         for (let elapsed = 0; elapsed < maxWaitTime; elapsed++) {
@@ -393,16 +397,26 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
             const status = await this.device.get_device_status(params.device_address);
             if (status?.flow_sccm !== undefined) {
               finalFlow = status.flow_sccm;
-              const error = targetFlow > 0
-                ? Math.abs(finalFlow - targetFlow) / targetFlow
-                : (finalFlow === 0 ? 0 : 1);
 
-              if (error <= tolerance) {
-                this.logger.log(`[${nodeId}] 流量稳定: ${finalFlow.toFixed(1)} sccm (误差 ${(error * 100).toFixed(1)}%)`);
+              let isStable = false;
+              let errorPercent = 0;
+
+              if (targetFlow === 0) {
+                // 目标为0：实际流量在 -10 到 4 sccm 范围内视为稳定
+                isStable = finalFlow >= ZERO_TARGET_MIN && finalFlow <= ZERO_TARGET_MAX;
+                errorPercent = isStable ? 0 : 100;
+              } else {
+                // 目标非0：使用百分比容差
+                errorPercent = Math.abs(finalFlow - targetFlow) / targetFlow * 100;
+                isStable = errorPercent <= tolerance * 100;
+              }
+
+              if (isStable) {
+                this.logger.log(`[${nodeId}] 流量稳定: ${finalFlow.toFixed(1)} sccm (误差 ${errorPercent.toFixed(1)}%)`);
                 stabilized = true;
                 break;
               }
-              this.logger.log(`[${nodeId}] 等待中: ${finalFlow.toFixed(1)} / ${targetFlow} sccm (误差 ${(error * 100).toFixed(1)}%)`);
+              this.logger.log(`[${nodeId}] 等待中: ${finalFlow.toFixed(1)} / ${targetFlow} sccm (误差 ${errorPercent.toFixed(1)}%)`);
             }
           } catch (e) { /* 忽略单次查询错误 */ }
         }
