@@ -120,7 +120,7 @@ def build_filename(measurement_type: str, params: dict) -> str:
     根据测量类型和参数构建文件名 (无小数点)
     支持环境上下文：furnace_temp, mfc_flows
     """
-    timestamp = datetime.datetime.now().strftime("%H%M%S")
+    timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     
     # 构建基础文件名（根据测量类型）
     if measurement_type == "eis_potentiostatic":

@@ -243,7 +243,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
   }
 
   if (paramKey === 'target_flow_rate') {
-    const maxFlow = defaultValue || 200; // 从参数中获取最大流量
+    const maxFlow = 200; // MFC 最大流量上限 200 sccm
     return (
       <input
         type="text"
