@@ -367,6 +367,19 @@ export class MfcService implements OnModuleInit, OnModuleDestroy {
 
         this.logger.log(`[${nodeId}] 流量控制: ${params.target_flow_rate} sccm`);
 
+        // ✅ 空闲设备预热轮询：避免因长时间未轮询导致超时
+        const isDeviceIdle = (device.setpoint_sccm || 0) === 0;
+        if (isDeviceIdle) {
+          this.logger.log(`[${nodeId}] 设备 ${params.device_address} 空闲，执行预热轮询`);
+          try {
+            await this.device.get_device_status(params.device_address);
+            this.idle_last_poll.set(params.device_address, Date.now());
+            await new Promise(r => setTimeout(r, 200));
+          } catch (e) {
+            this.logger.warn(`[${nodeId}] 预热失败，继续尝试: ${e}`);
+          }
+        }
+
         // 1. 执行设定
         const setRes = await this.setpoint(params.device_address, params.target_flow_rate);
         if (!setRes.ok) throw new Error(setRes.error_message || '设置失败');
