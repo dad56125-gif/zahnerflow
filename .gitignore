@@ -141,3 +141,5 @@ CLAUDE.md
 # Windows 生成的 nul 文件
 nul
 **/nul
+
+*.pyc
