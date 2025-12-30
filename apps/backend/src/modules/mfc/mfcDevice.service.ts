@@ -176,7 +176,8 @@ export class MfcDeviceService {
 
   async set_device_flow(request_body: { address: number; sccm: number }) {
     try {
-      const { data } = await this.http.post('/setpoint', request_body);
+      // 设置流量需要更长的超时时间，特别是连续命令时
+      const { data } = await this.http.post('/setpoint', request_body, { timeout: 3000 });
       return data;
     } catch (error) {
       this.logAxiosError('set flow', error);
