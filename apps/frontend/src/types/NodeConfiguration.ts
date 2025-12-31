@@ -4,6 +4,7 @@ import { NodeType, NodeConfig, NodeCategory } from './Interfaces';
 export const NODE_CATEGORY_NAMES: Record<NodeCategory, string> = {
   device: '设备',
   basic_measurement: '基础测量',
+  advanced_measurement: '高级测量',
   flow_control: '流程控制'
 };
 
@@ -219,6 +220,77 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
       allow_cancel: true,
       progress_updates: true
     }
+  },
+
+  // --- 高级测量 ---
+  galvanostatic_switching: {
+    type: 'galvanostatic_switching',
+    name: '恒电流切换',
+    category: 'advanced_measurement',
+    description: '在两个电流值之间周期性切换',
+    icon: '⇄',
+    defaultParameters: {
+      current_1: 0.0,
+      current_2: 10e-3,
+      hold_time_1: 30.0,
+      hold_time_2: 30.0,
+      cycles: 5,
+      sampling_interval: 0.5,
+      min_voltage: -4.0,
+      max_voltage: 4.0
+    }
+  },
+
+  potentiostatic_switching: {
+    type: 'potentiostatic_switching',
+    name: '恒电位切换',
+    category: 'advanced_measurement',
+    description: '在两个电位值之间周期性切换',
+    icon: '⇅',
+    defaultParameters: {
+      potential_1: 0.0,
+      potential_2: 0.5,
+      hold_time_1: 30.0,
+      hold_time_2: 30.0,
+      cycles: 5,
+      sampling_interval: 0.5,
+      min_current: -1.0,
+      max_current: 1.0
+    }
+  },
+
+  galvanostatic_step_ramp: {
+    type: 'galvanostatic_step_ramp',
+    name: '恒电流阶梯',
+    category: 'advanced_measurement',
+    description: '电流阶梯式变化，每阶保持固定时间',
+    icon: '▁▂▃▄',
+    defaultParameters: {
+      start_current: 0.1,
+      end_current: 1.0,
+      step_current: 0.1,
+      hold_time: 30.0,
+      sampling_interval: 1.0,
+      min_voltage: -4.0,
+      max_voltage: 4.0
+    }
+  },
+
+  potentiostatic_step_ramp: {
+    type: 'potentiostatic_step_ramp',
+    name: '恒电位阶梯',
+    category: 'advanced_measurement',
+    description: '电位阶梯式变化，每阶保持固定时间',
+    icon: '▁▂▃▄',
+    defaultParameters: {
+      start_potential: 0.0,
+      end_potential: 1.0,
+      step_potential: 0.1,
+      hold_time: 30.0,
+      sampling_interval: 1.0,
+      min_current: -1.0,
+      max_current: 1.0
+    }
   }
 };
 
@@ -233,6 +305,12 @@ export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {
     'chronopotentiometry',
     'voltage_ramp',
     'current_ramp'
+  ],
+  advanced_measurement: [
+    'galvanostatic_switching',
+    'potentiostatic_switching',
+    'galvanostatic_step_ramp',
+    'potentiostatic_step_ramp'
   ],
   flow_control: ['loop_start', 'loop_end', 'wait_delay']
 };

@@ -166,7 +166,13 @@ function unrollRecursive(
         else if (node.type === 'loop_end') {
             i++;
         }
-        // 情况 3：普通节点，添加到步骤列表
+        // 情况 3：高级节点展开（阶梯/切换）
+        else if (isAdvancedMeasurementNode(node.type)) {
+            const expandedSteps = expandAdvancedNode(node, i, iterationPath, loopContextStack);
+            steps.push(...expandedSteps);
+            i++;
+        }
+        // 情况 4：普通节点，添加到步骤列表
         else {
             steps.push({
                 nodeId: node.id,
@@ -177,6 +183,109 @@ function unrollRecursive(
                 loopDepth: iterationPath.length
             });
             i++;
+        }
+    }
+
+    return steps;
+}
+
+// =============================================================================
+// 高级节点展开逻辑
+// =============================================================================
+
+const ADVANCED_MEASUREMENT_TYPES = [
+    'galvanostatic_switching',
+    'potentiostatic_switching',
+    'galvanostatic_step_ramp',
+    'potentiostatic_step_ramp'
+];
+
+function isAdvancedMeasurementNode(type: string): boolean {
+    return ADVANCED_MEASUREMENT_TYPES.includes(type);
+}
+
+/**
+ * 展开高级节点为多个基础节点步骤
+ */
+function expandAdvancedNode(
+    node: SimpleNode,
+    originalIndex: number,
+    iterationPath: number[],
+    loopContextStack: number[]
+): UnrolledStep[] {
+    const steps: UnrolledStep[] = [];
+    const config = node.config || {};
+
+    switch (node.type) {
+        case 'galvanostatic_step_ramp':
+        case 'potentiostatic_step_ramp': {
+            // 阶梯展开：从 start 到 end，每步增加 step
+            const isGalvanostatic = node.type === 'galvanostatic_step_ramp';
+            const start = isGalvanostatic ? (config.start_current ?? 0.1) : (config.start_potential ?? 0);
+            const end = isGalvanostatic ? (config.end_current ?? 1.0) : (config.end_potential ?? 1.0);
+            const stepValue = isGalvanostatic ? (config.step_current ?? 0.1) : (config.step_potential ?? 0.1);
+
+            // 计算步数（支持正负步长）
+            const stepCount = Math.max(1, Math.floor(Math.abs(end - start) / Math.abs(stepValue)) + 1);
+            const direction = end >= start ? 1 : -1;
+            const actualStep = Math.abs(stepValue) * direction;
+
+            for (let s = 0; s < stepCount; s++) {
+                steps.push({
+                    nodeId: node.id,
+                    nodeType: isGalvanostatic ? 'chronopotentiometry' : 'chronoamperometry',
+                    originalIndex,
+                    iterationPath: [...iterationPath],
+                    loopContextStack: [...loopContextStack],
+                    loopDepth: iterationPath.length,
+                    // 扩展字段用于标记高级节点上下文
+                    parentNodeType: node.type,
+                    stepIndex: s,
+                    totalSteps: stepCount,
+                    stepValue: start + s * actualStep
+                } as UnrolledStep & { parentNodeType: string; stepIndex: number; totalSteps: number; stepValue: number });
+            }
+            break;
+        }
+
+        case 'galvanostatic_switching':
+        case 'potentiostatic_switching': {
+            // 切换展开：cycles 次循环，每次包含两个步骤
+            const isGalvanostatic = node.type === 'galvanostatic_switching';
+            const cycles = config.cycles ?? 5;
+
+            for (let c = 0; c < cycles; c++) {
+                // 步骤 1
+                steps.push({
+                    nodeId: node.id,
+                    nodeType: isGalvanostatic ? 'chronopotentiometry' : 'chronoamperometry',
+                    originalIndex,
+                    iterationPath: [...iterationPath],
+                    loopContextStack: [...loopContextStack],
+                    loopDepth: iterationPath.length,
+                    parentNodeType: node.type,
+                    stepIndex: c * 2,
+                    totalSteps: cycles * 2,
+                    cycleIndex: c,
+                    isFirstOfCycle: true
+                } as any);
+
+                // 步骤 2
+                steps.push({
+                    nodeId: node.id,
+                    nodeType: isGalvanostatic ? 'chronopotentiometry' : 'chronoamperometry',
+                    originalIndex,
+                    iterationPath: [...iterationPath],
+                    loopContextStack: [...loopContextStack],
+                    loopDepth: iterationPath.length,
+                    parentNodeType: node.type,
+                    stepIndex: c * 2 + 1,
+                    totalSteps: cycles * 2,
+                    cycleIndex: c,
+                    isFirstOfCycle: false
+                } as any);
+            }
+            break;
         }
     }
 

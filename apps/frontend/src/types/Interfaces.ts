@@ -1,7 +1,7 @@
 // ==================== 1. 基础枚举与类型 ====================
 export type WorkstationType = 'zahner-zennium' | 'simulator';
 
-export type NodeCategory = 'device' | 'basic_measurement' | 'flow_control';
+export type NodeCategory = 'device' | 'basic_measurement' | 'advanced_measurement' | 'flow_control';
 
 // 节点状态枚举 (原 NodeStatus)
 export type NodeStatus = 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
@@ -12,6 +12,8 @@ export type NodeType =
   | 'eis_potentiostatic' | 'eis_galvanostatic'
   | 'ocp_measurement' | 'chronoamperometry' | 'chronopotentiometry'
   | 'voltage_ramp' | 'current_ramp'
+  | 'galvanostatic_switching' | 'potentiostatic_switching'
+  | 'galvanostatic_step_ramp' | 'potentiostatic_step_ramp'
   | 'loop_start' | 'loop_end' | 'wait_delay';
 
 // ==================== 2. 静态配置 (Metadata) ====================

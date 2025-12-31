@@ -5,6 +5,12 @@
   "compilerOptions": {
     "deleteOutDir": false,
     "webpack": false,
-    "typeCheck": false
+    "typeCheck": false,
+    "assets": [
+      {
+        "include": "../shared/**/*",
+        "outDir": "dist/shared"
+      }
+    ]
   }
 }

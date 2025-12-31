@@ -17,7 +17,12 @@ const IVT_NODE_TYPES = [
   'chronoamperometry',
   'chronopotentiometry',
   'voltage_ramp',
-  'current_ramp'
+  'current_ramp',
+  // 高级测量节点（使用合并的 IVT 数据）
+  'galvanostatic_switching',
+  'potentiostatic_switching',
+  'galvanostatic_step_ramp',
+  'potentiostatic_step_ramp'
 ];
 
 // EIS 测量节点类型（一次性数据）

@@ -94,7 +94,20 @@ export const getParameterLabel = (key: string, nodeType?: string): string => {
     current_flow_rate: '当前流量 (sccm)',
     device_address: '设备地址',
     gas_type: '气体类型',
-    max_flow_sccm: '最大流量 (sccm)'
+    max_flow_sccm: '最大流量 (sccm)',
+
+    // 高级测量 - 切换节点参数
+    current_1: '电流值 1 (A)',
+    current_2: '电流值 2 (A)',
+    potential_1: '电位值 1 (V)',
+    potential_2: '电位值 2 (V)',
+    hold_time_1: '保持时间 1 (s)',
+    hold_time_2: '保持时间 2 (s)',
+
+    // 高级测量 - 阶梯节点参数
+    step_current: '电流步长 (A)',
+    step_potential: '电位步长 (V)',
+    hold_time: '每阶保持时间 (s)'
   };
   return labels[key] || key;
 };

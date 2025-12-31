@@ -23,6 +23,10 @@ export interface BuildOutputPathOptions {
   workflow_name?: string;
   useDefaultStructure?: boolean;
   workflow_timestamp?: string;
+  // 高级节点上下文
+  parent_node_type?: string;
+  step_index?: number;
+  total_steps?: number;
 }
 
 @Injectable()
@@ -357,15 +361,90 @@ export class FilesService implements OnModuleInit {
 
     // ✅ 修复：只要有 project_name 和 individual_name 就使用模式1（完整配置模式）
     // 不再要求 test_type 必须存在，因为可以从 measurement_type 计算得出
+    let basePath: string;
     if (!useDefaultStructure && project_name && individual_name) {
-      return path.join(base_path, project_name, individual_name, finalTestType);
+      basePath = path.join(base_path, project_name, individual_name, finalTestType);
     } else {
       const timestamp = workflow_timestamp || (() => {
         const now = new Date();
         return now.toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_');
       })();
       const workflowIdForPath = workflow_id || workflow_name || 'unknown_workflow';
-      return path.join(base_path, workflowIdForPath, timestamp, finalTestType);
+      basePath = path.join(base_path, workflowIdForPath, timestamp, finalTestType);
     }
+
+    // ✅ 新增：高级节点子文件夹
+    if (options.parent_node_type) {
+      const advancedFolderName = this.buildAdvancedNodeFolderName(options.parent_node_type, options);
+      return path.join(basePath, advancedFolderName);
+    }
+
+    return basePath;
+  }
+
+  /**
+   * 构建高级节点子文件夹名称
+   */
+  private buildAdvancedNodeFolderName(parentNodeType: string, options: any): string {
+    const config = options.node_config || {};
+    const timestamp = new Date().toISOString().slice(2, 16).replace(/[-:]/g, '').replace('T', '_');
+
+    switch (parentNodeType) {
+      case 'galvanostatic_step_ramp': {
+        const start = this.formatCurrentForPath(config.start_current ?? 0.1);
+        const end = this.formatCurrentForPath(config.end_current ?? 1.0);
+        const step = this.formatCurrentForPath(config.step_current ?? 0.1);
+        const hold = Math.round(config.hold_time ?? 30);
+        return `ChronoRamp_${start}-${end}_step${step}_${hold}s_${timestamp}`;
+      }
+      case 'potentiostatic_step_ramp': {
+        const start = this.formatVoltageForPath(config.start_potential ?? 0);
+        const end = this.formatVoltageForPath(config.end_potential ?? 1.0);
+        const step = this.formatVoltageForPath(config.step_potential ?? 0.1);
+        const hold = Math.round(config.hold_time ?? 30);
+        return `ChronoRamp_${start}-${end}_step${step}_${hold}s_${timestamp}`;
+      }
+      case 'galvanostatic_switching': {
+        const c1 = this.formatCurrentForPath(config.current_1 ?? 0);
+        const c2 = this.formatCurrentForPath(config.current_2 ?? 0.01);
+        const t1 = Math.round(config.hold_time_1 ?? 30);
+        const t2 = Math.round(config.hold_time_2 ?? 30);
+        const cycles = config.cycles ?? 5;
+        return `ChronoSwitch_${c1}-${c2}_${t1}s-${t2}s_${cycles}cycles_${timestamp}`;
+      }
+      case 'potentiostatic_switching': {
+        const v1 = this.formatVoltageForPath(config.potential_1 ?? 0);
+        const v2 = this.formatVoltageForPath(config.potential_2 ?? 0.5);
+        const t1 = Math.round(config.hold_time_1 ?? 30);
+        const t2 = Math.round(config.hold_time_2 ?? 30);
+        const cycles = config.cycles ?? 5;
+        return `ChronoSwitch_${v1}-${v2}_${t1}s-${t2}s_${cycles}cycles_${timestamp}`;
+      }
+      default:
+        return `Advanced_${timestamp}`;
+    }
+  }
+
+  /**
+   * 电流格式化（用于路径名，避免小数点）
+   */
+  private formatCurrentForPath(value: number): string {
+    if (value === 0) return '0mA';
+    const absVal = Math.abs(value);
+    if (absVal >= 1 && value === Math.floor(value)) return `${Math.round(value)}A`;
+    if (absVal >= 0.001) return `${Math.round(value * 1000)}mA`;
+    if (absVal >= 1e-6) return `${Math.round(value * 1e6)}uA`;
+    return `${Math.round(value * 1e9)}nA`;
+  }
+
+  /**
+   * 电压格式化（用于路径名，避免小数点）
+   */
+  private formatVoltageForPath(value: number): string {
+    if (value === 0) return '0mV';
+    const absVal = Math.abs(value);
+    if (absVal >= 1 && value === Math.floor(value)) return `${Math.round(value)}V`;
+    if (absVal >= 0.001) return `${Math.round(value * 1000)}mV`;
+    return `${Math.round(value * 1e6)}uV`;
   }
 }

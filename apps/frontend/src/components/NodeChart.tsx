@@ -68,10 +68,18 @@ export const NodeChart: React.FC<NodeChartProps> = ({
     const option = isEisNode ? getEisChartOption() : getIvtChartOption();
     chartInstance.current.setOption(option, true);
 
-    const resizeHandler = () => chartInstance.current?.resize();
-    window.addEventListener('resize', resizeHandler);
+    // ✅ 使用 ResizeObserver 监听容器尺寸变化
+    const resizeObserver = new ResizeObserver(() => {
+      chartInstance.current?.resize();
+    });
+    resizeObserver.observe(chartRef.current);
+
+    // 延迟 resize 确保尺寸正确
+    const timer = setTimeout(() => chartInstance.current?.resize(), 100);
+
     return () => {
-      window.removeEventListener('resize', resizeHandler);
+      resizeObserver.disconnect();
+      clearTimeout(timer);
       chartInstance.current?.dispose();
       chartInstance.current = null;
     };
@@ -252,8 +260,24 @@ export const NodeChart: React.FC<NodeChartProps> = ({
   };
 
   const getChartTypeLabel = () => {
-    return isEisNode ? 'Nyquist' : 'I-V-T';
+    if (isEisNode) return 'Nyquist';
+    // 高级节点显示特定标签
+    if (nodeType === 'galvanostatic_step_ramp' || nodeType === 'galvanostatic_switching') {
+      return 'Chrono I-V-T';
+    }
+    if (nodeType === 'potentiostatic_step_ramp' || nodeType === 'potentiostatic_switching') {
+      return 'Chrono I-V-T';
+    }
+    return 'I-V-T';
   };
+
+  // 判断是否为高级节点
+  const isAdvancedNode = [
+    'galvanostatic_switching',
+    'potentiostatic_switching',
+    'galvanostatic_step_ramp',
+    'potentiostatic_step_ramp'
+  ].includes(nodeType || '');
 
   return (
     <div
@@ -262,13 +286,18 @@ export const NodeChart: React.FC<NodeChartProps> = ({
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: 8,
         padding: '10px 8px',
-        marginBottom: 12,
+        marginBottom: isAdvancedNode ? 0 : 12,
         background: 'rgba(255, 255, 255, 0.02)',
         color: '#eee',
-        position: 'relative'
+        position: 'relative',
+        // ✅ 简化：高级节点使用 flex 填充，普通节点 auto
+        height: isAdvancedNode ? '100%' : 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, padding: '0 4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, padding: '0 4px', flexShrink: 0 }}>
         <strong style={{ color: '#fff', fontSize: '13px' }}>
           步骤{nodeIndex + 1}: {nodeConfig.name}
           <span style={{ marginLeft: 8, fontSize: '11px', color: isEisNode ? '#52c41a' : '#40a9ff', fontWeight: 'normal' }}>
@@ -281,8 +310,10 @@ export const NodeChart: React.FC<NodeChartProps> = ({
       <div
         ref={chartRef}
         style={{
-          height: 220,
+          // ✅ 简化：使用 flex: 1 自动填充剩余空间
+          flex: 1,
           width: '100%',
+          minHeight: isAdvancedNode ? 0 : 220,
           opacity: (isPending && !hasData) ? 0.5 : 1
         }}
       />

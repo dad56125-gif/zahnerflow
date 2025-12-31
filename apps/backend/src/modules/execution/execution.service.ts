@@ -10,7 +10,7 @@ import { ConsoleDisplayManager } from '../../common/console-display-manager.serv
 import { DbService } from '../../db/db.service';
 import { FilesService } from '../files/files.service';
 import { WorkflowGateway } from '../../gateways/workflow.gateway';
-import { unrollLoops, UnrolledStep, UnrollResult } from '../../shared/loopUnroller';
+import { unrollLoops, UnrolledStep, UnrollResult } from '@shared/loopUnroller';
 
 export interface ExecutionSnapshot {
   status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
@@ -67,6 +67,11 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     workflowName?: string;
   }>();
 
+  // ✅ 新增：高级节点时间偏移追踪
+  // 用于合并多个子步骤的时间轴（key: 原始节点索引, value: 累积时间偏移）
+  private static _advancedNodeTimeOffset = new Map<number, number>();
+  private static _lastDataTimestamp = new Map<number, number>();
+
   // 内部便捷访问器 (Read-only)
   private get state(): ExecutionSnapshot {
     return ExecutionService._state;
@@ -112,12 +117,24 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       return;
     }
 
-    // 广播数据
+    const nodeIndex = snapshot.currentStep.index;
+
+    // ✅ 应用高级节点时间偏移（合并多个子步骤的时间轴）
+    const timeOffset = ExecutionService._advancedNodeTimeOffset.get(nodeIndex) || 0;
+    const adjustedTime = rawData.t + timeOffset;
+
+    // 记录最后一个数据点的时间（用于下一个子步骤的偏移计算）
+    ExecutionService._lastDataTimestamp.set(nodeIndex, adjustedTime);
+
+    // 广播数据（使用调整后的时间）
     this.workflowGateway.broadcast('measurementData', {
       executionId: snapshot.executionId,
-      stepIndex: snapshot.currentStep.index,
+      stepIndex: nodeIndex,
       nodeId: snapshot.currentStep.nodeId,
-      data: rawData
+      data: {
+        ...rawData,
+        t: adjustedTime
+      }
     });
   }
 
@@ -333,7 +350,8 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       });
 
       try {
-        await this.dispatchNodeLogic(executionId, node);
+        // ✅ 传递展开后的步骤信息，用于高级节点执行
+        await this.dispatchNodeLogic(executionId, node, step as any);
         completedResults.push({
           id: node.id,
           status: 'success',
@@ -372,9 +390,39 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   }
 
 
-  private async dispatchNodeLogic(executionId: string, node: WorkflowNode): Promise<void> {
+  private async dispatchNodeLogic(executionId: string, node: WorkflowNode, step?: any): Promise<void> {
     const { type, config } = node;
     const params = config || {};
+
+    // ✅ 检查是否为高级节点展开后的步骤
+    const isExpandedAdvancedStep = step?.parentNodeType && this.isAdvancedMeasurementType(step.parentNodeType);
+
+    // 调试日志
+    if (step) {
+      this.logger.log(`[dispatchNodeLogic] step info: nodeType=${step.nodeType}, parentNodeType=${step.parentNodeType}, stepIndex=${step.stepIndex}`);
+    }
+    this.logger.log(`[dispatchNodeLogic] node.type=${type}, isExpandedAdvancedStep=${isExpandedAdvancedStep}`);
+
+    if (isExpandedAdvancedStep) {
+      // ✅ 新增：更新高级节点时间偏移（用于合并时间轴）
+      const originalIndex = step.originalIndex;
+      if (step.stepIndex === 0) {
+        // 第一个子步骤：重置时间偏移
+        ExecutionService._advancedNodeTimeOffset.set(originalIndex, 0);
+        ExecutionService._lastDataTimestamp.set(originalIndex, 0);
+      } else {
+        // 后续子步骤：使用上一个子步骤的最后时间作为偏移
+        const lastTime = ExecutionService._lastDataTimestamp.get(originalIndex) || 0;
+        ExecutionService._advancedNodeTimeOffset.set(originalIndex, lastTime);
+      }
+
+      // 高级节点展开后，使用展开后的测量类型执行
+      const expandedType = step.nodeType; // chronopotentiometry 或 chronoamperometry
+      const expandedParams = this.buildExpandedNodeParams(node, step);
+      this.logger.log(`[Advanced Node] Executing step ${step.stepIndex + 1}/${step.totalSteps}, type: ${expandedType}, originalIndex: ${step.originalIndex}`);
+      await this.executeMeasurement(executionId, { ...node, config: expandedParams }, expandedType, step);
+      return;
+    }
 
     // 这里保留原来的 switch case 逻辑
     switch (type) {
@@ -420,7 +468,70 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     }
   }
 
-  private async executeMeasurement(executionId: string, node: WorkflowNode, type: string) {
+  /**
+   * 检查是否为高级测量节点类型
+   */
+  private isAdvancedMeasurementType(type: string): boolean {
+    return [
+      'galvanostatic_switching',
+      'potentiostatic_switching',
+      'galvanostatic_step_ramp',
+      'potentiostatic_step_ramp'
+    ].includes(type);
+  }
+
+  /**
+   * 构建展开后节点的参数
+   */
+  private buildExpandedNodeParams(node: WorkflowNode, step: any): Record<string, any> {
+    const config = node.config || {};
+    const parentType = step.parentNodeType;
+
+    // 公共参数
+    const baseParams: Record<string, any> = {
+      sampling_interval: config.sampling_interval ?? 1.0,
+      min_voltage: config.min_voltage ?? -4.0,
+      max_voltage: config.max_voltage ?? 4.0,
+      min_current: config.min_current ?? -1.0,
+      max_current: config.max_current ?? 1.0,
+      // 高级节点上下文（用于文件夹命名）
+      parent_node_type: parentType,
+      step_index: step.stepIndex,
+      total_steps: step.totalSteps,
+      node_config: config
+    };
+
+    switch (parentType) {
+      case 'galvanostatic_step_ramp':
+        return {
+          ...baseParams,
+          polarization_current: step.stepValue,
+          measurement_duration: config.hold_time ?? 30
+        };
+      case 'potentiostatic_step_ramp':
+        return {
+          ...baseParams,
+          polarization_voltage: step.stepValue,
+          measurement_duration: config.hold_time ?? 30
+        };
+      case 'galvanostatic_switching':
+        return {
+          ...baseParams,
+          polarization_current: step.isFirstOfCycle ? config.current_1 : config.current_2,
+          measurement_duration: step.isFirstOfCycle ? config.hold_time_1 : config.hold_time_2
+        };
+      case 'potentiostatic_switching':
+        return {
+          ...baseParams,
+          polarization_voltage: step.isFirstOfCycle ? config.potential_1 : config.potential_2,
+          measurement_duration: step.isFirstOfCycle ? config.hold_time_1 : config.hold_time_2
+        };
+      default:
+        return baseParams;
+    }
+  }
+
+  private async executeMeasurement(executionId: string, node: WorkflowNode, type: string, step?: any) {
     // 【修改】从静态 Map 获取 context
     const context = ExecutionService._contexts.get(executionId);
     const workflowId = context?.workflowId || 'unknown';
@@ -436,6 +547,14 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
     this.logger.log(`[Measurement] User: ${workflow.ownerName}, UserConfig: ${JSON.stringify(userConfig)}`);
 
+    // ✅ 提取高级节点上下文（从展开后的参数中）
+    const advancedContext = node.config?.parent_node_type ? {
+      parent_node_type: node.config.parent_node_type,
+      step_index: node.config.step_index,
+      total_steps: node.config.total_steps,
+      node_config: node.config.node_config
+    } : undefined;
+
     const outputPath = this.filesService.buildOutputPath({
       // 优先使用用户配置的路径，否则使用默认值
       base_path: userConfig?.base_path || 'C:\\data\\archive',
@@ -443,7 +562,9 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       individual_name: userConfig?.individual_name || workflow.individualName,
       measurement_type: type,
       workflow_id: workflowId,
-      workflow_timestamp: timestamp
+      workflow_timestamp: timestamp,
+      // 高级节点上下文
+      ...advancedContext
     });
 
     this.logger.log(`[Measurement] Output path: ${outputPath}`);

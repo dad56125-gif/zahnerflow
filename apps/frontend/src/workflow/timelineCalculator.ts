@@ -71,6 +71,38 @@ const NODE_TIME_ESTIMATES: Record<string, number | ((config: Record<string, any>
     wait_delay: (config) => config.duration || 1,
     loop_start: 0,
     loop_end: 0,
+
+    // 高级测量 - 切换节点
+    galvanostatic_switching: (config) => {
+        const cycles = config.cycles || 5;
+        const holdTime1 = config.hold_time_1 || 30;
+        const holdTime2 = config.hold_time_2 || 30;
+        return cycles * (holdTime1 + holdTime2);
+    },
+    potentiostatic_switching: (config) => {
+        const cycles = config.cycles || 5;
+        const holdTime1 = config.hold_time_1 || 30;
+        const holdTime2 = config.hold_time_2 || 30;
+        return cycles * (holdTime1 + holdTime2);
+    },
+
+    // 高级测量 - 阶梯节点
+    galvanostatic_step_ramp: (config) => {
+        const start = config.start_current ?? 0.1;
+        const end = config.end_current ?? 1.0;
+        const step = Math.abs(config.step_current ?? 0.1);
+        const holdTime = config.hold_time || 30;
+        const stepCount = step > 0 ? Math.floor(Math.abs(end - start) / step) + 1 : 1;
+        return stepCount * holdTime;
+    },
+    potentiostatic_step_ramp: (config) => {
+        const start = config.start_potential ?? 0;
+        const end = config.end_potential ?? 1.0;
+        const step = Math.abs(config.step_potential ?? 0.1);
+        const holdTime = config.hold_time || 30;
+        const stepCount = step > 0 ? Math.floor(Math.abs(end - start) / step) + 1 : 1;
+        return stepCount * holdTime;
+    },
 };
 
 /** 5小时阈值（秒） */
@@ -289,11 +321,30 @@ export function estimateWorkflowDuration(nodes: WorkflowNode[]): string {
 /**
  * 快速获取工作流预估秒数
  * ✅ 使用 unrollLoops 展开循环后计算真实执行时间
+ * ✅ 高级节点直接使用整体时间，不按子步骤重复计算
  */
 export function estimateWorkflowSeconds(nodes: WorkflowNode[]): number {
     const { steps } = unrollLoops(nodes);
-    return steps.reduce((sum, step) => {
+
+    // 追踪已计算过的高级节点原始索引，避免重复计算
+    const calculatedAdvancedNodes = new Set<number>();
+
+    return steps.reduce((sum, step: any) => {
         const node = nodes[step.originalIndex];
+
+        // 如果是高级节点展开后的子步骤
+        if (step.parentNodeType) {
+            // 只在第一个子步骤时计算整个高级节点的时间
+            if (!calculatedAdvancedNodes.has(step.originalIndex)) {
+                calculatedAdvancedNodes.add(step.originalIndex);
+                return sum + estimateNodeTime(node);
+            }
+            // 其他子步骤跳过（时间已在第一个子步骤中计算）
+            return sum;
+        }
+
+        // 普通节点正常计算
         return sum + estimateNodeTime(node);
     }, 0);
 }
+

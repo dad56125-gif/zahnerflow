@@ -26,7 +26,12 @@ const MEASUREMENT_NODE_TYPES = [
     'chronoamperometry',
     'chronopotentiometry',
     'voltage_ramp',
-    'current_ramp'
+    'current_ramp',
+    // 高级测量节点
+    'galvanostatic_switching',
+    'potentiostatic_switching',
+    'galvanostatic_step_ramp',
+    'potentiostatic_step_ramp'
 ];
 
 export const ChartModal: React.FC<ChartModalProps> = ({
@@ -156,11 +161,17 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                     style={{
                         flex: 1,
                         overflow: 'auto',
-                        padding: 'var(--size-md)',
+                        padding: 'var(--size-sm)',
                         display: 'grid',
+                        // 基础节点两列并列，最小宽度 400px
                         gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                        gap: 'var(--size-md)',
-                        alignContent: 'start'
+                        // 每行固定高度
+                        gridAutoRows: '320px',
+                        gap: 'var(--size-sm)',
+                        alignContent: 'start',
+                        // 滚动吸附效果（mandatory = 强制吸附）
+                        scrollSnapType: 'y mandatory',
+                        scrollBehavior: 'smooth'
                     }}
                 >
                     {measurementNodes.length === 0 ? (
@@ -188,14 +199,35 @@ export const ChartModal: React.FC<ChartModalProps> = ({
                             const nodeConfig = NODE_CONFIGS[node.type];
                             const nodeName = nodeConfig?.name || node.type;
 
+                            // 判断是否为高级节点
+                            const isAdvancedNode = [
+                                'galvanostatic_switching',
+                                'potentiostatic_switching',
+                                'galvanostatic_step_ramp',
+                                'potentiostatic_step_ramp'
+                            ].includes(node.type);
+
                             return (
-                                <NodeChart
+                                <div
                                     key={node.id}
-                                    nodeIndex={globalIndex}
-                                    nodeConfig={{ name: nodeName, ...node.config }}
-                                    systemState={systemState}
-                                    nodeType={node.type}
-                                />
+                                    style={{
+                                        // 高级节点占据整行
+                                        gridColumn: isAdvancedNode ? '1 / -1' : 'auto',
+                                        // 所有节点 100% 填充 grid 单元格
+                                        height: '100%',
+                                        // 吸附到元素顶部（下一个图表顶部对齐视口）
+                                        scrollSnapAlign: 'start',
+                                        // 补偿 gap 间距，让上一个图底部显示
+                                        scrollMarginTop: 'var(--size-sm)'
+                                    }}
+                                >
+                                    <NodeChart
+                                        nodeIndex={globalIndex}
+                                        nodeConfig={{ name: nodeName, ...node.config }}
+                                        systemState={systemState}
+                                        nodeType={node.type}
+                                    />
+                                </div>
                             );
                         })
                     )}
