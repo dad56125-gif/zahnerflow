@@ -4,6 +4,7 @@ import { useWorkflowStore } from '../state/currentWorkflowStore';
 import { ScheduleRunner } from './ScheduleRunner';
 import { SaveDropdown } from './SaveDropdown';
 import { SaveAsDropdown } from './SaveAsDropdown';
+import { UnrollViewModal } from './UnrollViewModal';
 
 interface ToolbarProps {
   onRunFlow: () => void;
@@ -32,7 +33,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   canGenerateReport = false
 }) => {
   const {
-    clearCanvas
+    clearCanvas,
+    nodes
   } = useCanvasStore();
 
   const {
@@ -45,6 +47,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
   const scheduleButtonRef = useRef<HTMLButtonElement>(null);
   const scheduleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 展开视图状态
+  const [showUnrollView, setShowUnrollView] = useState(false);
 
   // 定时触发逻辑
   React.useEffect(() => {
@@ -183,8 +188,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
 
-        {/* 中间：工作流管理 + 报告生成 */}
+        {/* 中间：展开所有 + 工作流管理 + 报告生成 */}
         <div className="flex items-center gap_sm">
+          {/* 展开所有按钮 */}
+          <button
+            className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled || nodes.length === 0 ? 'disabled' : 'btn_secondary'
+              }`}
+            onClick={() => setShowUnrollView(true)}
+            title="查看展开后的所有执行步骤"
+            disabled={buttonStates.workflowDisabled || nodes.length === 0}
+          >
+            <span className="btn-icon">🔍</span>
+            <span className="btn-text">展开所有</span>
+          </button>
+
           {onToggleWorkflowManager && (
             <button
               className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn_primary' : 'btn_secondary')
@@ -263,6 +280,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           // TODO: 实现定时触发逻辑
         }}
         anchorRect={scheduleButtonRef.current?.getBoundingClientRect()}
+      />
+
+      {/* 展开视图弹窗 */}
+      <UnrollViewModal
+        isOpen={showUnrollView}
+        onClose={() => setShowUnrollView(false)}
+        nodes={nodes}
       />
     </>
   );
