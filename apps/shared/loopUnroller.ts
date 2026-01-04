@@ -223,10 +223,16 @@ function expandAdvancedNode(
             const isGalvanostatic = node.type === 'galvanostatic_step_ramp';
             const start = isGalvanostatic ? (config.start_current ?? 0.1) : (config.start_potential ?? 0);
             const end = isGalvanostatic ? (config.end_current ?? 1.0) : (config.end_potential ?? 1.0);
-            const stepValue = isGalvanostatic ? (config.step_current ?? 0.1) : (config.step_potential ?? 0.1);
+            let stepValue = isGalvanostatic ? (config.step_current ?? 0.1) : (config.step_potential ?? 0.1);
 
-            // 计算步数（支持正负步长）
-            const stepCount = Math.max(1, Math.floor(Math.abs(end - start) / Math.abs(stepValue)) + 1);
+            // ✅ 防护：stepValue 为 0 或无效时使用默认值，避免 Infinity
+            if (!stepValue || stepValue === 0 || !isFinite(stepValue)) {
+                stepValue = 0.1; // 使用安全默认值
+            }
+
+            // 计算步数（支持正负步长），限制最大步数防止内存溢出
+            const rawStepCount = Math.floor(Math.abs(end - start) / Math.abs(stepValue)) + 1;
+            const stepCount = Math.min(Math.max(1, rawStepCount), 1000); // 限制最大 1000 步
             const direction = end >= start ? 1 : -1;
             const actualStep = Math.abs(stepValue) * direction;
 

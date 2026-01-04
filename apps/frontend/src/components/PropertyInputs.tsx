@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dropdown } from '../shared/Dropdown';
 import { getParameterEnumLabel, getParameterPlaceholder, enumValues } from './propertyConfig';
 import { parseScientificNotation } from './propertyUtils';
@@ -21,34 +21,52 @@ interface BaseInputProps {
 }
 
 // --- 标准输入组件 ---
+// ✅ 使用本地 state 暂存输入，只在 onBlur 时更新 store
 export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number' }> = ({
   paramKey, value, defaultValue, onChange, type = 'text'
 }) => {
-  const val = value ?? defaultValue;
+  const externalValue = value ?? defaultValue;
+  const [localValue, setLocalValue] = useState(externalValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // 外部值变化时同步（仅在未聚焦时）
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalValue(externalValue);
+    }
+  }, [externalValue, isFocused]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (type === 'number') {
       // 简单数字验证
       if (e.target.value === '' || /^-?\d*\.?\d*$/.test(e.target.value)) {
-        onChange(paramKey, e.target.value);
+        setLocalValue(e.target.value);
       }
     } else {
-      onChange(paramKey, e.target.value);
+      setLocalValue(e.target.value);
     }
   };
 
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(false);
     if (type === 'number') {
       const parsed = parseScientificNotation(e.target.value);
       onChange(paramKey, parsed);
+    } else {
+      onChange(paramKey, localValue);
     }
   };
 
   return (
     <input
       type="text"
-      value={val}
+      value={localValue}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       className="input glass"
       placeholder={getParameterPlaceholder(paramKey)}
@@ -110,15 +128,26 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
 };
 
 // --- Temperature 专用组件 (简化版) ---
+// ✅ 统一使用本地 state，只在 onBlur 时更新 store
 export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
   const { paramKey, value, defaultValue, onChange } = props;
+  const externalValue = value ?? defaultValue;
+  const [localValue, setLocalValue] = useState(externalValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // 外部值变化时同步（仅在未聚焦时）
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalValue(externalValue);
+    }
+  }, [externalValue, isFocused]);
 
   // 只读属性
   if (['current_temperature', 'calculated_duration', 'tolerance', 'stabilization_time'].includes(paramKey)) {
     return (
       <input
         type="text"
-        value={value ?? defaultValue}
+        value={externalValue}
         disabled
         className="input glass disabled"
         placeholder={getParameterPlaceholder(paramKey)}
@@ -131,23 +160,26 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
     return (
       <input
         type="text"
-        value={value ?? defaultValue}
+        value={localValue}
         onChange={(e) => {
           const val = e.target.value;
-          // 只允许数字输入
-          if (!/^\d*$/.test(val)) return;
-          onChange(paramKey, val);
+          if (/^\d*$/.test(val)) {
+            setLocalValue(val);
+          }
         }}
+        onFocus={() => setIsFocused(true)}
         onBlur={(e) => {
+          setIsFocused(false);
           const val = e.target.value;
           if (!val) {
             onChange(paramKey, defaultValue);
+            setLocalValue(defaultValue);
             return;
           }
           const numValue = Number(val);
-          // 边界检查
           const correctedValue = Math.max(25, Math.min(1000, numValue));
           onChange(paramKey, correctedValue);
+          setLocalValue(correctedValue);
         }}
         className="input glass"
         min={25}
@@ -163,15 +195,26 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
     return (
       <input
         type="text"
-        value={value ?? defaultValue}
+        value={localValue}
         onChange={(e) => {
           const val = e.target.value;
-          // 允许数字和一位小数点
-          if (!/^\d*\.?\d?$/.test(val)) return;
+          if (/^\d*\.?\d?$/.test(val)) {
+            setLocalValue(val);
+          }
+        }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={(e) => {
+          setIsFocused(false);
+          const val = e.target.value;
+          if (!val) {
+            onChange(paramKey, defaultValue);
+            setLocalValue(defaultValue);
+            return;
+          }
           const numValue = Number(val);
-          // 边界检查
           const correctedValue = Math.max(0.1, Math.min(20, numValue));
           onChange(paramKey, correctedValue);
+          setLocalValue(correctedValue);
         }}
         className="input glass"
         min={0.1}
@@ -187,8 +230,19 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
 };
 
 // --- MFC 专用组件 (简化版) ---
+// ✅ 统一使用本地 state，只在 onBlur 时更新 store
 export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDeviceInfo[] }> = (props) => {
   const { paramKey, availableDevices, value, defaultValue, onChange, dropdownState } = props;
+  const externalValue = value ?? defaultValue;
+  const [localValue, setLocalValue] = useState(externalValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // 外部值变化时同步（仅在未聚焦时）
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalValue(externalValue);
+    }
+  }, [externalValue, isFocused]);
 
   if (paramKey === 'device_selection') {
     const dropdownId = 'mfc-device-selection';
@@ -247,23 +301,26 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
     return (
       <input
         type="text"
-        value={value ?? defaultValue}
+        value={localValue}
         onChange={(e) => {
           const val = e.target.value;
-          // 允许数字和一位小数点
-          if (!/^\d*\.?\d?$/.test(val)) return;
-          onChange(paramKey, val);
+          if (/^\d*\.?\d?$/.test(val)) {
+            setLocalValue(val);
+          }
         }}
+        onFocus={() => setIsFocused(true)}
         onBlur={(e) => {
+          setIsFocused(false);
           const val = e.target.value;
           if (!val) {
             onChange(paramKey, defaultValue);
+            setLocalValue(defaultValue);
             return;
           }
           const numValue = Number(val);
-          // 边界检查
           const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
           onChange(paramKey, correctedValue);
+          setLocalValue(correctedValue);
         }}
         className="input glass"
         min={0}
@@ -277,7 +334,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
 
   // 禁用运行时自动计算的参数
   if (['current_flow_rate', 'device_address', 'gas_type', 'max_flow_sccm', 'stabilization_time'].includes(paramKey)) {
-    return <input type="text" value={value ?? defaultValue} disabled className="input glass disabled" />;
+    return <input type="text" value={externalValue} disabled className="input glass disabled" />;
   }
 
   return <StandardInput {...props} type="number" />;
