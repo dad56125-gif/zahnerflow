@@ -351,10 +351,18 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
         throw new Error(`参数设置失败（重试 ${maxRetries} 次后仍失败）`);
       }
 
-      // ========== 第三步：启动程序（如果未运行）==========
+      // ========== 第三步：启动程序（使用缓存状态，避免额外 status 调用超时）==========
 
-      const status = await this.device.status();
-      if (status.status !== 'running') {
+      // 使用缓存检查设备状态（pendingStatusData 由 startPollingLoop 持续更新）
+      // 注意：此时轮询已暂停，使用的是暂停前的最后一次缓存数据
+      let needStart = true;
+      if (this.pendingStatusData && this.pendingStatusData.status_code === 2) {
+        // status_code === 2 表示正在运行
+        needStart = false;
+        this.logger.log(`[温度控制] 设备已在运行中`);
+      }
+
+      if (needStart) {
         await this.device.run();
         this.logger.log(`[温度控制] 设备已启动`);
       }
