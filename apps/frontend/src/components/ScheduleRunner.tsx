@@ -5,7 +5,7 @@
  * 功能：
  * - 翻页钟形式显示时:分
  * - 鼠标滚轮调整时间
- * - 最早可设定时间为当前时间的30分钟后
+ * - 最早可设定时间为当前时间的5分钟后
  * - 最多可设置24小时后（第二天同一时间）
  * - 第二天时显示 "+1" 标识
  */
@@ -37,10 +37,10 @@ export const ScheduleRunner: React.FC<ScheduleRunnerProps> = ({
 
     const modalRef = useRef<HTMLDivElement>(null);
 
-    // 计算最早可设定时间（当前时间 + 30分钟）
+    // 计算最早可设定时间（当前时间 + 5分钟）
     const getMinTime = useCallback(() => {
         const now = new Date();
-        now.setMinutes(now.getMinutes() + 2);
+        now.setMinutes(now.getMinutes() + 5);
         return now;
     }, []);
 

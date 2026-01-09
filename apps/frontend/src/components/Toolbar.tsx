@@ -1,10 +1,11 @@
-﻿import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
 import { ScheduleRunner } from './ScheduleRunner';
 import { SaveDropdown } from './SaveDropdown';
 import { SaveAsDropdown } from './SaveAsDropdown';
 import { UnrollViewModal } from './UnrollViewModal';
+import { formatDuration } from '../workflow/timelineCalculator';
 
 interface ToolbarProps {
   onRunFlow: () => void;
@@ -45,6 +46,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   // 定时运行状态
   const [showScheduler, setShowScheduler] = useState(false);
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
+  const [countdown, setCountdown] = useState<string>(''); // 倒计时显示
   const scheduleButtonRef = useRef<HTMLButtonElement>(null);
   const scheduleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -52,7 +54,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [showUnrollView, setShowUnrollView] = useState(false);
 
   // 定时触发逻辑
-  React.useEffect(() => {
+  useEffect(() => {
     // 清除之前的定时器
     if (scheduleTimerRef.current) {
       clearTimeout(scheduleTimerRef.current);
@@ -68,12 +70,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         scheduleTimerRef.current = setTimeout(() => {
           console.log('[定时运行] 时间到达，开始执行工作流！');
           setScheduledTime(null); // 清除定时状态
+          setCountdown(''); // 清除倒计时
           onRunFlow(); // 执行运行
         }, delay);
       } else {
         // 时间已过，立即执行
         console.log('[定时运行] 时间已过，立即执行');
         setScheduledTime(null);
+        setCountdown('');
         onRunFlow();
       }
     }
@@ -84,6 +88,32 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       }
     };
   }, [scheduledTime, onRunFlow]);
+
+  // 倒计时显示更新（每秒刷新）
+  useEffect(() => {
+    if (!scheduledTime) {
+      setCountdown('');
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, scheduledTime.getTime() - now);
+
+      if (remaining <= 0) {
+        setCountdown('');
+        return;
+      }
+
+      const seconds = Math.floor(remaining / 1000);
+      setCountdown(formatDuration(seconds));
+    };
+
+    updateCountdown(); // 立即更新一次
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [scheduledTime]);
 
   // 计算按钮状态 - 基于四种状态模式
   const getButtonStates = () => {
@@ -247,12 +277,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             ref={scheduleButtonRef}
             className={`btn_base btn_layout btn_style_common btn_mini glass ${scheduledTime ? 'btn_warning' : 'btn_secondary'
-              } ${buttonStates.runButtonDisabled ? 'disabled' : ''}`}
-            onClick={() => setShowScheduler(!showScheduler)}
-            title={scheduledTime ? `定时运行：${scheduledTime.toLocaleTimeString()}` : "定时运行"}
-            disabled={buttonStates.runButtonDisabled}
+              } ${buttonStates.runButtonDisabled && !scheduledTime ? 'disabled' : ''}`}
+            onClick={() => {
+              if (scheduledTime) {
+                // 已有定时任务，点击取消
+                setScheduledTime(null);
+                setCountdown('');
+                console.log('[定时运行] 已取消');
+              } else {
+                setShowScheduler(!showScheduler);
+              }
+            }}
+            title={scheduledTime ? `点击取消定时（${scheduledTime.toLocaleTimeString()}）` : "定时运行"}
+            disabled={buttonStates.runButtonDisabled && !scheduledTime}
           >
-            <span className="btn-text">定时运行</span>
+            <span className="btn-text">
+              {scheduledTime && countdown
+                ? `启动于 ${countdown}`
+                : '定时运行'
+              }
+            </span>
           </button>
 
           <button
