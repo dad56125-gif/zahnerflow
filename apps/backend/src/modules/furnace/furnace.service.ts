@@ -293,28 +293,98 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
     try {
       if (!this.isConnected) throw new Error('设备未连接');
 
-      // 获取当前温度（此时轮询已暂停，安全调用）
-      const status = await this.device.status();
-      const currentTemp = status.pv;  // Python API已转换为用户格式
-      const targetTemp = params.target_temperature;  // 用户输入格式
-      const ratePerMin = params.rate;  // 用户输入格式
-      const tolerance = params.tolerance ?? 5;  // 温度容差（℃）
-      const stabilizationTime = (params.stabilization_time ?? 30) * 1000;  // 转换为毫秒
-      const tempDiff = Math.abs(targetTemp - currentTemp);  // 直接计算用户格式差值
+      // ========== 第一步：获取当前温度（优先使用轮询缓存）==========
+      const cachedStatus = this.pendingStatusData;
+      let currentTemp: number;
+
+      if (cachedStatus && cachedStatus.pv !== undefined) {
+        currentTemp = cachedStatus.pv;
+        this.logger.log(`[温度控制] 使用缓存温度: ${currentTemp}℃`);
+      } else {
+        const status = await this.device.status();
+        currentTemp = status.pv;
+      }
+
+      const targetTemp = params.target_temperature;
+      const ratePerMin = params.rate;
+      const tolerance = params.tolerance ?? 5;
+      const stabilizationTime = (params.stabilization_time ?? 30) * 1000;
+      const tempDiff = Math.abs(targetTemp - currentTemp);
       const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
 
-      // 设置温度程序参数（此时轮询仍暂停）
-      // 注意：Python端要求 value 为 int 类型，需要 Math.round 转换
-      await this.device.setParameter(0x50, Math.round(currentTemp));  // 段28温度（起始）
-      await this.device.setParameter(0x51, calculatedDuration);  // 段28时间
-      await this.device.setParameter(0x52, Math.round(targetTemp));  // 段29温度（目标）
-      await this.device.setParameter(0x53, 5001);  // 段29时间（5001分钟≈83小时）
-      await this.device.setParameter(0x54, Math.round(targetTemp));  // 段30温度（必须设置）
-      // 注意：段30时间（0x55）不需要设置，默认为0表示程序结束
-      await this.device.setSegment(28);
+      // ========== 第二步：检查参数是否已设定（轮询已暂停，可直接调用）==========
 
+      // 注意：此时轮询已暂停（shouldPoll = false），可以直接调用 device 方法，不会冲突
+      const expectedSegment28Temp = Math.round(targetTemp);
+      let paramsAlreadySet = false;
+
+      try {
+        // 检查段 28 的温度是否已设定为目标温度
+        const segment28 = await this.device.getSegment(28);
+        const isCorrectTemp = Math.abs(segment28.temperature - expectedSegment28Temp) <= 1;
+
+        if (isCorrectTemp) {
+          paramsAlreadySet = true;
+          this.logger.log(`[温度控制] 段 28 温度已设定为 ${segment28.temperature}℃，跳过设置步骤`);
+        }
+      } catch (error) {
+        this.logger.warn(`[温度控制] 检查段 28 失败: ${error.message}`);
+      }
+
+      // ========== 第三步：设置参数（如果需要，带重试）==========
+
+      if (!paramsAlreadySet) {
+        this.logger.log(`[温度控制] 段 28 温度未设定，开始设置（最多3次）...`);
+
+        let setupSuccess = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (retryCount < maxRetries && !setupSuccess) {
+          retryCount++;
+          this.logger.log(`[温度控制] 第 ${retryCount}/${maxRetries} 次尝试设置参数...`);
+
+          try {
+            // 设置温度程序参数
+            await this.device.setParameter(0x50, Math.round(currentTemp));
+            await this.device.setParameter(0x51, calculatedDuration);
+            await this.device.setParameter(0x52, Math.round(targetTemp));
+            await this.device.setParameter(0x53, 5001);
+            await this.device.setParameter(0x54, Math.round(targetTemp));
+            await this.device.setSegment(28);
+
+            // 设置完成后，检查参数是否已设定
+            const segment28 = await this.device.getSegment(28);
+            const isCorrectTemp = Math.abs(segment28.temperature - expectedSegment28Temp) <= 1;
+
+            if (isCorrectTemp) {
+              setupSuccess = true;
+              this.logger.log(`[温度控制] 参数设置成功 (尝试 ${retryCount}/${maxRetries}) - 段 28 温度: ${segment28.temperature}℃`);
+            } else {
+              this.logger.log(`[温度控制] 段 28 温度不匹配: ${segment28.temperature}℃ vs ${expectedSegment28Temp}℃，准备重试...`);
+            }
+          } catch (error) {
+            this.logger.warn(`[温度控制] 设置过程出错: ${error.message}，准备重试...`);
+          }
+
+          // 如果未成功且未达到最大重试次数，等待后重试
+          if (!setupSuccess && retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+
+        // 3次尝试后仍失败，抛出错误
+        if (!setupSuccess) {
+          throw new Error(`参数设置失败（重试 ${maxRetries} 次后仍失败）`);
+        }
+      }
+
+      // ========== 第四步：启动程序（如果未运行）==========
+
+      const status = await this.device.status();
       if (status.status !== 'running') {
-        await this.device.run();  // 直接调用，不通过 executeCommand（因为轮询已暂停）
+        await this.device.run();
+        this.logger.log(`[温度控制] 设备已启动`);
       }
 
       // 恢复轮询，让 startPollingLoop 继续更新缓存数据
