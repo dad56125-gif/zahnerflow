@@ -374,4 +374,4 @@ if __name__ == "__main__":
     print("Zahner Simulator Service")
     print("Port: 8001 | Mode: Simulator | Speed: 10x default")
     print("=" * 50)
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8001, timeout_keep_alive=120)

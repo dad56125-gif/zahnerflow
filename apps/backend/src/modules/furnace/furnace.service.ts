@@ -286,9 +286,14 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
     updated_parameters: any;
     error?: string;
   }> {
+    // 暂停正常轮询，防止并发访问设备
+    const wasPolling = this.shouldPoll;
+    this.shouldPoll = false;
+
     try {
       if (!this.isConnected) throw new Error('设备未连接');
 
+      // 获取当前温度（此时轮询已暂停，安全调用）
       const status = await this.device.status();
       const currentTemp = status.pv;  // Python API已转换为用户格式
       const targetTemp = params.target_temperature;  // 用户输入格式
@@ -298,7 +303,7 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       const tempDiff = Math.abs(targetTemp - currentTemp);  // 直接计算用户格式差值
       const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
 
-      // 移除×10转换，统一传递用户格式给Python层处理
+      // 设置温度程序参数（此时轮询仍暂停）
       // 注意：Python端要求 value 为 int 类型，需要 Math.round 转换
       await this.device.setParameter(0x50, Math.round(currentTemp));  // 段28温度（起始）
       await this.device.setParameter(0x51, calculatedDuration);  // 段28时间
@@ -309,19 +314,32 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       await this.device.setSegment(28);
 
       if (status.status !== 'running') {
-        await this.run();
+        await this.device.run();  // 直接调用，不通过 executeCommand（因为轮询已暂停）
       }
 
-      // ========== 轮询验证温度 ==========
+      // 恢复轮询，让 startPollingLoop 继续更新缓存数据
+      this.shouldPoll = wasPolling;
+
+      // ========== 轮询验证温度（复用 startPollingLoop 的缓存数据）==========
       const maxWaitMs = (calculatedDuration * 60 * 1000) + stabilizationTime;
-      const pollIntervalMs = 2000; // 每2秒检测一次
+      const pollIntervalMs = 2000; // 每2秒检测一次（与 startPollingLoop 同步）
       const startTime = Date.now();
 
       this.logger.log(`[温度控制] 开始轮询验证 - 目标: ${targetTemp}℃, 容差: ±${tolerance}℃, 最大等待: ${Math.round(maxWaitMs / 1000)}s`);
 
+      // 使用 startPollingLoop 维护的缓存数据，避免重复轮询导致连接冲突
       while (Date.now() - startTime < maxWaitMs) {
-        const currentStatus = await this.device.status();
-        const currentPv = currentStatus.pv;
+        // 等待 startPollingLoop 更新数据
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+
+        // 从缓存读取最新状态（由 startPollingLoop 每 2 秒更新）
+        const cachedStatus = this.pendingStatusData;
+        if (!cachedStatus) {
+          this.logger.warn('[温度控制] 无缓存状态数据，等待下一轮...');
+          continue;
+        }
+
+        const currentPv = cachedStatus.pv;
 
         // 检查是否在容差范围内
         if (Math.abs(currentPv - targetTemp) <= tolerance) {
@@ -337,14 +355,10 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
             }
           };
         }
-
-        // 等待下一次轮询
-        await new Promise(r => setTimeout(r, pollIntervalMs));
       }
 
-      // 超时未达目标
-      const finalStatus = await this.device.status();
-      const finalTemp = finalStatus.pv;
+      // 超时未达目标 - 也从缓存读取
+      const finalTemp = this.pendingStatusData?.pv ?? currentTemp;
       const errorMsg = `温度控制超时：当前 ${finalTemp}℃，目标 ${targetTemp}℃，容差 ±${tolerance}℃`;
       this.logger.warn(`[温度控制] 失败！${errorMsg}`);
 
@@ -360,6 +374,8 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
         error: errorMsg
       };
     } catch (e: any) {
+      // 确保轮询被恢复
+      if (wasPolling) this.shouldPoll = true;
       return {
         success: false,
         updated_parameters: params,

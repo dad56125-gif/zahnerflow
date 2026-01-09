@@ -326,4 +326,4 @@ if __name__ == "__main__":
     print("Port: 8013 | Mode: Simulator")
     print("Preset devices: 32(N2), 33(O2), 34(Ar), 35(H2)")
     print("=" * 50)
-    uvicorn.run(app, host="0.0.0.0", port=8013)
+    uvicorn.run(app, host="0.0.0.0", port=8013, timeout_keep_alive=120)

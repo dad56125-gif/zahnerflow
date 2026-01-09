@@ -428,4 +428,4 @@ def active_sp(address: int = Query(...), controller: MfcSession = Depends(get_co
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8010)
+    uvicorn.run(app, host="127.0.0.1", port=8010, timeout_keep_alive=120)

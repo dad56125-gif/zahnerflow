@@ -376,4 +376,4 @@ if __name__ == "__main__":
     print("Furnace Simulator Service")
     print("Port: 8012 | Mode: Simulator")
     print("=" * 50)
-    uvicorn.run(app, host="0.0.0.0", port=8012)
+    uvicorn.run(app, host="0.0.0.0", port=8012, timeout_keep_alive=120)
