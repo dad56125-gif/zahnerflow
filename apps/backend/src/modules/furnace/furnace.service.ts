@@ -312,74 +312,46 @@ export class FurnaceService implements OnModuleInit, OnModuleDestroy {
       const tempDiff = Math.abs(targetTemp - currentTemp);
       const calculatedDuration = Math.ceil(tempDiff / ratePerMin);
 
-      // ========== 第二步：检查参数是否已设定（轮询已暂停，可直接调用）==========
+      // ========== 第二步：设置参数（带重试，不做检查）==========
 
-      // 注意：此时轮询已暂停（shouldPoll = false），可以直接调用 device 方法，不会冲突
-      const expectedSegment28Temp = Math.round(targetTemp);
-      let paramsAlreadySet = false;
+      this.logger.log(`[温度控制] 开始设置段 28 参数（最多3次）...`);
 
-      try {
-        // 检查段 28 的温度是否已设定为目标温度
-        const segment28 = await this.device.getSegment(28);
-        const isCorrectTemp = Math.abs(segment28.temperature - expectedSegment28Temp) <= 1;
+      let setupSuccess = false;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-        if (isCorrectTemp) {
-          paramsAlreadySet = true;
-          this.logger.log(`[温度控制] 段 28 温度已设定为 ${segment28.temperature}℃，跳过设置步骤`);
-        }
-      } catch (error) {
-        this.logger.warn(`[温度控制] 检查段 28 失败: ${error.message}`);
-      }
+      while (retryCount < maxRetries && !setupSuccess) {
+        retryCount++;
+        this.logger.log(`[温度控制] 第 ${retryCount}/${maxRetries} 次尝试设置参数...`);
 
-      // ========== 第三步：设置参数（如果需要，带重试）==========
+        try {
+          // 设置温度程序参数
+          await this.device.setParameter(0x50, Math.round(currentTemp));
+          await this.device.setParameter(0x51, calculatedDuration);
+          await this.device.setParameter(0x52, Math.round(targetTemp));
+          await this.device.setParameter(0x53, 5001);
+          await this.device.setParameter(0x54, Math.round(targetTemp));
+          await this.device.setSegment(28);
 
-      if (!paramsAlreadySet) {
-        this.logger.log(`[温度控制] 段 28 温度未设定，开始设置（最多3次）...`);
-
-        let setupSuccess = false;
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (retryCount < maxRetries && !setupSuccess) {
-          retryCount++;
-          this.logger.log(`[温度控制] 第 ${retryCount}/${maxRetries} 次尝试设置参数...`);
-
-          try {
-            // 设置温度程序参数
-            await this.device.setParameter(0x50, Math.round(currentTemp));
-            await this.device.setParameter(0x51, calculatedDuration);
-            await this.device.setParameter(0x52, Math.round(targetTemp));
-            await this.device.setParameter(0x53, 5001);
-            await this.device.setParameter(0x54, Math.round(targetTemp));
-            await this.device.setSegment(28);
-
-            // 设置完成后，检查参数是否已设定
-            const segment28 = await this.device.getSegment(28);
-            const isCorrectTemp = Math.abs(segment28.temperature - expectedSegment28Temp) <= 1;
-
-            if (isCorrectTemp) {
-              setupSuccess = true;
-              this.logger.log(`[温度控制] 参数设置成功 (尝试 ${retryCount}/${maxRetries}) - 段 28 温度: ${segment28.temperature}℃`);
-            } else {
-              this.logger.log(`[温度控制] 段 28 温度不匹配: ${segment28.temperature}℃ vs ${expectedSegment28Temp}℃，准备重试...`);
-            }
-          } catch (error) {
-            this.logger.warn(`[温度控制] 设置过程出错: ${error.message}，准备重试...`);
-          }
-
-          // 如果未成功且未达到最大重试次数，等待后重试
-          if (!setupSuccess && retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          // 设置完成（不做额外检查）
+          setupSuccess = true;
+          this.logger.log(`[温度控制] 参数设置成功 (尝试 ${retryCount}/${maxRetries})`);
+        } catch (error) {
+          this.logger.warn(`[温度控制] 设置过程出错: ${error.message}，准备重试...`);
         }
 
-        // 3次尝试后仍失败，抛出错误
-        if (!setupSuccess) {
-          throw new Error(`参数设置失败（重试 ${maxRetries} 次后仍失败）`);
+        // 如果未成功且未达到最大重试次数，等待后重试
+        if (!setupSuccess && retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
-      // ========== 第四步：启动程序（如果未运行）==========
+      // 3次尝试后仍失败，抛出错误
+      if (!setupSuccess) {
+        throw new Error(`参数设置失败（重试 ${maxRetries} 次后仍失败）`);
+      }
+
+      // ========== 第三步：启动程序（如果未运行）==========
 
       const status = await this.device.status();
       if (status.status !== 'running') {
