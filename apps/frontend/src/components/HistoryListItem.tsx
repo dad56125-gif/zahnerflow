@@ -3,7 +3,7 @@
  * 从 WorkflowManagerUI.tsx 提取的列表项渲染逻辑
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { WorkflowHistory } from './useWorkflowHistory';
 
 interface HistoryListItemProps {
@@ -13,6 +13,7 @@ interface HistoryListItemProps {
     onDelete: (item: WorkflowHistory) => void;
     onShowDeleteConfirm: (item: WorkflowHistory) => void;
     onCancelDelete: () => void;
+    onToggleFavorite?: (item: WorkflowHistory) => void;
 }
 
 export const HistoryListItem: React.FC<HistoryListItemProps> = ({
@@ -21,8 +22,12 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
     onLoad,
     onDelete,
     onShowDeleteConfirm,
-    onCancelDelete
+    onCancelDelete,
+    onToggleFavorite
 }) => {
+    // 增加内部动画状态，避免渲染时自动触发动画
+    const [isPlayingAnimation, setIsPlayingAnimation] = useState(false);
+
     return (
         <div
             className="history-item"
@@ -43,6 +48,25 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
                 </div>
             </div>
             <div className="history-actions">
+                {/* 收藏按钮 - 删除确认时隐藏 */}
+                {onToggleFavorite && !isDeleting && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            // 仅在从未收藏切换到已收藏时播放动画
+                            if (!item.is_favorite) {
+                                setIsPlayingAnimation(true);
+                                setTimeout(() => setIsPlayingAnimation(false), 500); // 动效时长结束后清除
+                            }
+                            onToggleFavorite(item);
+                        }}
+                        className={`favorite-btn ${item.is_favorite ? 'is-favorited' : ''} ${isPlayingAnimation ? 'animate-pop' : ''}`}
+                        title={item.is_favorite ? '取消收藏' : '收藏'}
+                    >
+                        ✦
+                    </button>
+                )}
+
                 <button
                     onClick={() => onShowDeleteConfirm(item)}
                     className="delete-user-btn"
@@ -53,7 +77,12 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
                 </button>
                 {isDeleting && (
                     <div className="delete-confirm">
-                        <span className="delete-confirm-text">确认删除？</span>
+                        <div className="delete-confirm-content">
+                            <span className="delete-confirm-text">确认删除？</span>
+                            {item.is_favorite && (
+                                <span className="delete-confirm-warning">⚠ 这是收藏的工作流</span>
+                            )}
+                        </div>
                         <button
                             onClick={() => onDelete(item)}
                             className="delete-confirm-btn confirm"
@@ -71,6 +100,7 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
                     </div>
                 )}
             </div>
+
         </div>
     );
 };

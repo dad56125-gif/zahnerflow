@@ -36,6 +36,7 @@ const MEASUREMENT_NODE_TYPES = [...IVT_NODE_TYPES, ...EIS_NODE_TYPES];
 
 export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, selectedNode, showChart = true }) => {
   const [tableData, setTableData] = useState<RawStreamData[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'health'>('table');
 
   const { nodes } = useCanvasStore();
   const systemState = useSystemState();
@@ -174,6 +175,72 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     );
   };
 
+  // 渲染电池健康状态
+  const renderHealthStatus = () => {
+    const healthData = selectedNode?.data?.results?.battery_health || selectedNode?.config?.battery_health || selectedNode?.data?.battery_health;
+
+    if (!healthData) {
+      return (
+        <div className="data-viewer-placeholder">
+          <div className="data-viewer-placeholder-icon-sm">🔋</div>
+          <div>暂无健康分析数据</div>
+          <div className="data-viewer-placeholder-subtext">测量完成后将显示电池健康状况</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="health-status-container glass-inset" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className={`health-badge ${healthData.status}`} style={{
+          padding: '12px 24px',
+          borderRadius: '12px',
+          backgroundColor: healthData.status === 'healthy' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)',
+          border: `1px solid ${healthData.status === 'healthy' ? '#4caf50' : '#ff9800'}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontSize: '1.2rem',
+          fontWeight: 'bold'
+        }}>
+          <span className="health-icon">{healthData.status === 'healthy' ? '✅' : '⚠️'}</span>
+          <span className="health-text" style={{ color: healthData.status === 'healthy' ? '#81c784' : '#ffb74d' }}>
+            {healthData.status === 'healthy' ? '电池状况良好' : '电池异常 (需关注)'}
+          </span>
+        </div>
+
+        <div className="health-metrics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          <div className="health-metric-card glass" style={{ padding: '15px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+            <div className="metric-label" style={{ fontSize: '0.8rem', opacity: 0.6 }}>平均电压</div>
+            <div className="metric-value" style={{ fontSize: '1.4rem', fontWeight: 600 }}>{healthData.avgVoltage.toFixed(4)} V</div>
+          </div>
+          <div className="health-metric-card glass" style={{ padding: '15px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+            <div className="metric-label" style={{ fontSize: '0.8rem', opacity: 0.6 }}>电压偏差</div>
+            <div className="metric-value" style={{ fontSize: '1.4rem', fontWeight: 600 }}>{healthData.deviation.toFixed(2)}%</div>
+          </div>
+        </div>
+
+        {healthData.issues && healthData.issues.length > 0 && (
+          <div className="health-issues-section" style={{ marginTop: '10px' }}>
+            <div className="issues-title" style={{ fontWeight: 'bold', marginBottom: '10px', color: '#ffb74d' }}>发现的问题:</div>
+            <ul className="issues-list" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {healthData.issues.map((issue: string, idx: number) => (
+                <li key={idx} className="issue-item" style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem',
+                  borderLeft: '3px solid #ff9800'
+                }}>
+                  {issue}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!isVisible && !selectedNode) return null;
 
   // 如果不是测量节点，显示占位提示
@@ -187,6 +254,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     );
   }
 
+  const isHealthMode = selectedNode?.config?.check_battery_health;
+
   return (
     <div
       className="data-viewer"
@@ -199,9 +268,27 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
         overflow: 'hidden'
       }}
     >
+      {/* 数据栏 Tab 切换 (仅在健康检测模式下显示) */}
+      {isHealthMode && (
+        <div className="data-viewer-tabs">
+          <button
+            className={`btn_base btn_layout btn_style_common btn_small glass ${viewMode === 'table' ? 'btn_primary' : 'btn_secondary'}`}
+            onClick={() => setViewMode('table')}
+          >
+            数据表格
+          </button>
+          <button
+            className={`btn_base btn_layout btn_style_common btn_small glass ${viewMode === 'health' ? 'btn_primary' : 'btn_secondary'}`}
+            onClick={() => setViewMode('health')}
+          >
+            健康状态
+          </button>
+        </div>
+      )}
+
       {/* 内容区域 - 根据节点类型显示不同的表格 */}
       <div className="data-content-area" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {isEisNode ? renderEisTable() : renderIvtTable()}
+        {viewMode === 'health' && isHealthMode ? renderHealthStatus() : (isEisNode ? renderEisTable() : renderIvtTable())}
       </div>
     </div>
   );

@@ -169,10 +169,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
   // Workflow Execution
   // ==========================================
 
-  async executeWorkflow(workflowId: string | null, nodes?: any[], ownerName?: string): Promise<ExecutionSnapshot> {
+  async executeWorkflow(workflowId: string | null, nodes?: any[], ownerName?: string, workflowName?: string): Promise<ExecutionSnapshot> {
     // 【日志】前端传递的节点列表
     if (nodes) {
-      this.logger.log(`[ExecutionService] 前端传递的节点列表 - 数量: ${nodes.length}, 用户: ${ownerName}`);
+      this.logger.log(`[ExecutionService] 接收执行请求 - 节点: ${nodes.length}, 用户: ${ownerName}, 名称: ${workflowName}`);
       nodes.forEach((node, index) => {
         this.logger.log(`[前端节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
       });
@@ -187,9 +187,13 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       if (!nodes || nodes.length === 0) {
         throw new Error('Nodes array is required when workflowId is null');
       }
+
+      // ✅ 优先使用前端传递的 workflowName，否则使用本地化的回退名称
+      const nameToUse = workflowName || `工作流 ${new Date().toLocaleString('zh-CN', { hour12: false }).replace(/-/g, '/')}`;
+
       // ✅ 创建工作流时传入 ownerName
       const newWorkflow = await this.workflowService.createWorkflow({
-        name: `AutoRun_${new Date().toISOString()}`,
+        name: nameToUse,
         nodes: nodes,
         ownerName: ownerName  // ✅ 关键：关联用户
       });
@@ -200,10 +204,10 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
     const startTime = new Date();
 
     // 获取工作流名称
-    let workflowName = '';
+    let effectiveWorkflowName = workflowName || '';
     try {
       const workflow = await this.workflowService.getWorkflow(finalWorkflowId!);
-      workflowName = workflow.name || '';
+      effectiveWorkflowName = workflow.name || workflowName || '';
     } catch (e) {
       // 忽略错误
     }
@@ -215,7 +219,7 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
       startTime,
       workflowTimestamp: this.generateTimestamp(),
       ownerName: ownerName,
-      workflowName: workflowName
+      workflowName: effectiveWorkflowName
     });
 
     // 写入数据库

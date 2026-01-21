@@ -68,6 +68,19 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
       }
     }, [supportsChart, activeTab]);
 
+    // ✅ [OCV健康检测] 强制同步参数 (防止状态更新延迟或旧数据残留)
+    useEffect(() => {
+      if (node && node.type === 'ocp_measurement' && node.config?.check_battery_health) {
+        if (node.config.measurement_duration !== 30 || node.config.sampling_interval !== 1) {
+          updateNodeConfig(node.id, {
+            ...node.config,
+            measurement_duration: 30,
+            sampling_interval: 1
+          });
+        }
+      }
+    }, [node?.id, node?.type, node?.config?.check_battery_health, updateNodeConfig]);
+
     // Dropdown 状态管理
     const [dropdownState, setDropdownState] = useState<{
       activeId: string | null;
@@ -139,6 +152,15 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           gas_type: gasType,
           max_flow_sccm: device?.max_flow_sccm || 200
         });
+      } else if (key === 'check_battery_health' && node.type === 'ocp_measurement') {
+        // ✅ OCV 模式切换逻辑：开启时固定参数，关闭时恢复默认
+        const isHealth = value === true || value === 'true';
+        updateNodeConfig(node.id, {
+          ...currentConfig,
+          check_battery_health: isHealth,
+          measurement_duration: isHealth ? 30 : 60,
+          sampling_interval: 1
+        });
       } else {
         updateNodeConfig(node.id, { ...currentConfig, [key]: value });
       }
@@ -191,12 +213,15 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
 
     const renderParameterField = (key: string, defaultValue: any) => {
       const currentValue = (node.config || {})[key];
+      const isDisabled = (node.config || {}).check_battery_health && (key === 'measurement_duration' || key === 'sampling_interval');
+
       const props = {
         paramKey: key,
         value: currentValue,
         defaultValue,
         onChange: handleParamChange,
-        dropdownState: dropdownContext
+        dropdownState: dropdownContext,
+        disabled: isDisabled
       };
 
       if (node.type === 'change_temperature') return <TemperatureInput {...props} />;

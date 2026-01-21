@@ -31,7 +31,7 @@ interface ExecutionState {
   };
 
   // Actions
-  startExecution: (workflowId: string | null, nodes: any[], ownerName?: string) => Promise<void>;
+  startExecution: (workflowId: string | null, nodes: any[], ownerName?: string, workflowName?: string) => Promise<{ executionId: string; workflowId: string }>;
   stopExecution: () => Promise<void>;
   pauseExecution: () => Promise<void>;
   resumeExecution: () => Promise<void>;
@@ -206,9 +206,9 @@ export const useExecutionStore = create<ExecutionState>()(
         lastSnapshot: null, // ✅ 初始化为空
         loopProgress: {}, // ✅ 初始化循环进度
 
-        startExecution: async (workflowId, nodes, ownerName) => {
+        startExecution: async (workflowId, nodes, ownerName, workflowName) => {
           // 【日志】前端传递的节点列表 - 记录完整信息
-          console.log(`[前端执行] 前端传递节点列表 - 数量: ${nodes.length}, 用户: ${ownerName}`);
+          console.log(`[前端执行] 前端传递节点列表 - 数量: ${nodes.length}, 用户: ${ownerName}, 名称: ${workflowName}`);
           nodes.forEach((node, index) => {
             console.log(`[前端节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
           });
@@ -228,14 +228,19 @@ export const useExecutionStore = create<ExecutionState>()(
           });
 
           try {
-            // 调用 HTTP API 启动，传递 ownerName
-            const result = await executionService.executeWorkflow(workflowId, nodes, { ownerName });
+            // 调用 HTTP API 启动，传递 ownerName 和 workflowName
+            const result = await executionService.executeWorkflow(workflowId, nodes, { ownerName, workflowName });
 
             // 更新返回的 executionId
             set({
               executionId: result.executionId,
               workflowId: result.workflowId || workflowId
             });
+
+            return {
+              executionId: result.executionId,
+              workflowId: result.workflowId || (workflowId as string)
+            };
 
             // 注意：后续的状态更新将由 WebSocket 的 snapshot 事件接管
           } catch (error) {

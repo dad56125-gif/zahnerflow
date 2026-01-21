@@ -177,6 +177,13 @@ async def execute_measurement(req: MeasureRequest):
     
     print(f"[Simulator] Measurement: {m_type}, params: {list(params.keys())}")
     
+    # ✅ 新增：模拟超时测试 (simulate_timeout_minutes)
+    # 如果设置了此参数，测量将使用真实时间（分钟）而非加速
+    timeout_minutes = params.get("simulate_timeout_minutes", 0)
+    if timeout_minutes > 0:
+        print(f"[Simulator] ⚙️ TIMEOUT TEST MODE: Will run for {timeout_minutes} minutes (real time)")
+        return await sim_timeout_test(params, timeout_minutes)
+    
     # 加速因子 (默认10倍速)
     speed = params.get("simulator_speed", 10)
     
@@ -201,6 +208,55 @@ async def execute_measurement(req: MeasureRequest):
 # ==========================================
 # 模拟测量实现
 # ==========================================
+
+async def sim_timeout_test(params: dict, timeout_minutes: float):
+    """
+    模拟超时测试 - 使用真实时间运行指定分钟数
+    用于测试10/20/30分钟的超时警告机制
+    """
+    output_path = params.get("output_path", "c:/zahner_data/simulator")
+    duration_seconds = timeout_minutes * 60
+    interval = 5.0  # 每5秒推送一次数据
+    
+    # 生成占位文件
+    filepath = os.path.join(output_path, f"TIMEOUT_TEST_{int(time.time())}.csv")
+    generate_placeholder_csv(filepath, ["time", "potential", "current"], rows=int(duration_seconds / interval))
+    
+    print(f"[Simulator] ⏱️ Starting timeout test: {timeout_minutes} minutes ({duration_seconds} seconds)")
+    
+    start = time.time()
+    points = 0
+    
+    while time.time() - start < duration_seconds:
+        t = time.time() - start
+        elapsed_min = t / 60
+        
+        # 模拟数据
+        v = battery.ocv + random.gauss(0, 0.002)
+        i = random.gauss(0.001, 0.0001)
+        
+        await broadcast({"t": round(t, 3), "v": round(v, 6), "i": round(i, 9)})
+        points += 1
+        
+        # 每分钟打印进度
+        if points % 12 == 0:  # 每分钟（12 * 5秒）
+            print(f"[Simulator] ⏱️ Timeout test progress: {elapsed_min:.1f} / {timeout_minutes} minutes")
+        
+        await asyncio.sleep(interval)
+    
+    total_elapsed = time.time() - start
+    print(f"[Simulator] ✅ Timeout test completed: {total_elapsed:.1f} seconds, {points} points")
+    
+    return {
+        "status": "success",
+        "result": {
+            "output_file": filepath,
+            "data_points": points,
+            "total_duration": total_elapsed,
+            "timeout_test": True,
+            "simulated": True
+        }
+    }
 
 async def sim_ocp(params: dict, speed: float):
     """模拟OCP测量"""

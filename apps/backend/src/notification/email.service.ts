@@ -7,6 +7,7 @@ interface UserNotificationConfig {
   enabled: boolean;
   on_complete: boolean;
   on_error: boolean;
+  on_warning: boolean;  // 新增：警告通知
   smtp_server: string;
   smtp_port: number;
   smtp_user: string;
@@ -69,16 +70,16 @@ export class EmailService {
 
   /**
    * 发送工作流通知邮件
-   * @param type 'completed' | 'failed'
+   * @param type 'completed' | 'failed' | 'warning'
    * @param workflowId 工作流ID
    * @param user 用户名（用于读取用户配置）
    * @param details 详细信息
    */
   async sendWorkflowNotification(
-    type: 'completed' | 'failed',
-    workflowId: string,
+    type: 'completed' | 'failed' | 'warning',
+    workflowId: string | null,
     user?: string,
-    details?: { duration?: number; error?: string; workflowName?: string }
+    details?: { duration?: number; error?: string; workflowName?: string; message?: string; elapsed?: number }
   ): Promise<void> {
     if (!user) {
       this.logger.log('[EmailService] 未提供用户名，跳过邮件通知');
@@ -107,13 +108,16 @@ export class EmailService {
     }
 
     // 检查是否应该发送此类型的通知
-    const isSuccess = type === 'completed';
-    if (isSuccess && !userConfig.on_complete) {
+    if (type === 'completed' && !userConfig.on_complete) {
       this.logger.log(`[EmailService] 用户 ${user} 未启用完成通知`);
       return;
     }
-    if (!isSuccess && !userConfig.on_error) {
+    if (type === 'failed' && !userConfig.on_error) {
       this.logger.log(`[EmailService] 用户 ${user} 未启用失败通知`);
+      return;
+    }
+    if (type === 'warning' && !userConfig.on_warning) {
+      this.logger.log(`[EmailService] 用户 ${user} 未启用警告通知`);
       return;
     }
 
@@ -124,37 +128,72 @@ export class EmailService {
       return;
     }
 
-    const workflowDisplayName = details?.workflowName || workflowId;
-    const subject = isSuccess
-      ? `✅ 工作流执行成功 - ${workflowDisplayName}`
-      : `❌ 工作流执行失败 - ${workflowDisplayName}`;
+    const workflowDisplayName = details?.workflowName || workflowId || '未知工作流';
+
+    // 根据类型生成邮件主题和样式
+    let subject: string;
+    let headerColor: string;
+    let headerIcon: string;
+    let statusText: string;
+
+    switch (type) {
+      case 'completed':
+        subject = `✅ 工作流执行成功 - ${workflowDisplayName}`;
+        headerColor = '#28a745';
+        headerIcon = '✅';
+        statusText = '成功';
+        break;
+      case 'warning':
+        subject = `⚠️ 测量超时警告 - ${workflowDisplayName}`;
+        headerColor = '#ffc107';
+        headerIcon = '⚠️';
+        statusText = '警告';
+        break;
+      case 'failed':
+      default:
+        subject = `❌ 工作流执行失败 - ${workflowDisplayName}`;
+        headerColor = '#dc3545';
+        headerIcon = '❌';
+        statusText = '失败';
+        break;
+    }
 
     const durationText = details?.duration
       ? `${Math.floor(details.duration / 60000)} 分钟 ${Math.floor((details.duration % 60000) / 1000)} 秒`
-      : '未知';
+      : details?.elapsed
+        ? `${Math.floor(details.elapsed / 60000)} 分钟`
+        : '未知';
 
     const html = `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
-        <h2 style="color: ${isSuccess ? '#28a745' : '#dc3545'};">
-          ${isSuccess ? '✅ 工作流执行成功' : '❌ 工作流执行失败'}
+        <h2 style="color: ${headerColor};">
+          ${headerIcon} ${type === 'completed' ? '工作流执行成功' : type === 'warning' ? '测量超时警告' : '工作流执行失败'}
         </h2>
         <table style="border-collapse: collapse; width: 100%; margin-top: 20px;">
           <tr>
             <td style="border: 1px solid #ddd; padding: 10px; background: #f8f9fa;"><strong>工作流名称</strong></td>
             <td style="border: 1px solid #ddd; padding: 10px;">${workflowDisplayName}</td>
           </tr>
+          ${workflowId ? `
           <tr>
             <td style="border: 1px solid #ddd; padding: 10px; background: #f8f9fa;"><strong>工作流 ID</strong></td>
             <td style="border: 1px solid #ddd; padding: 10px;">${workflowId}</td>
           </tr>
+          ` : ''}
           <tr>
             <td style="border: 1px solid #ddd; padding: 10px; background: #f8f9fa;"><strong>状态</strong></td>
-            <td style="border: 1px solid #ddd; padding: 10px;">${isSuccess ? '成功' : '失败'}</td>
+            <td style="border: 1px solid #ddd; padding: 10px;">${statusText}</td>
           </tr>
           <tr>
             <td style="border: 1px solid #ddd; padding: 10px; background: #f8f9fa;"><strong>执行时长</strong></td>
             <td style="border: 1px solid #ddd; padding: 10px;">${durationText}</td>
           </tr>
+          ${details?.message ? `
+          <tr>
+            <td style="border: 1px solid #ddd; padding: 10px; background: #f8f9fa;"><strong>消息</strong></td>
+            <td style="border: 1px solid #ddd; padding: 10px; color: ${headerColor};">${details.message}</td>
+          </tr>
+          ` : ''}
           ${details?.error ? `
           <tr>
             <td style="border: 1px solid #ddd; padding: 10px; background: #f8f9fa;"><strong>错误信息</strong></td>
@@ -206,6 +245,7 @@ export class EmailService {
       enabled: true,
       on_complete: true,
       on_error: true,
+      on_warning: true,
       ...smtpConfig
     });
 

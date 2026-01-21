@@ -18,12 +18,13 @@ interface BaseInputProps {
     open: (id: string, e: React.MouseEvent) => void;
     close: (id: string) => void;
   };
+  disabled?: boolean;
 }
 
 // --- 标准输入组件 ---
 // ✅ 使用本地 state 暂存输入，只在 onBlur 时更新 store
 export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number' }> = ({
-  paramKey, value, defaultValue, onChange, type = 'text'
+  paramKey, value, defaultValue, onChange, type = 'text', disabled
 }) => {
   const externalValue = value ?? defaultValue;
   const [localValue, setLocalValue] = useState(externalValue);
@@ -68,15 +69,16 @@ export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number'
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      className="input glass"
+      className={`input glass ${disabled ? 'disabled' : ''}`}
       placeholder={getParameterPlaceholder(paramKey)}
+      disabled={disabled}
     />
   );
 };
 
 // --- 枚举/布尔 下拉组件 ---
 export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
-  paramKey, value, defaultValue, onChange, dropdownState, options
+  paramKey, value, defaultValue, onChange, dropdownState, options, disabled
 }) => {
   const dropdownId = `enum-${paramKey}`;
   const val = value ?? defaultValue;
@@ -86,17 +88,22 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
   const effectiveOptions = isBool ? ['true', 'false'] : (options || enumValues[paramKey] || []);
 
   const getLabel = (v: string | boolean) => {
+    // 优先尝试获取翻译标签 (即使是 boolean 也可以有翻译)
+    const translated = getParameterEnumLabel(paramKey, String(v));
+    if (translated !== String(v)) return translated;
+
     if (isBool) return v ? '启用' : '禁用';
-    return getParameterEnumLabel(paramKey, v as string);
+    return translated;
   };
 
   return (
     <div className="dropdown-wrapper" style={{ position: 'relative' }}>
       <button
         type="button"
-        className="btn_base btn_layout btn_style_common btn_medium btn_secondary glass"
-        onClick={(e) => dropdownState.open(dropdownId, e)}
+        className={`btn_base btn_layout btn_style_common btn_medium btn_secondary glass ${disabled ? 'disabled' : ''}`}
+        onClick={(e) => !disabled && dropdownState.open(dropdownId, e)}
         style={{ width: '100%', justifyContent: 'space-between' }}
+        disabled={disabled}
       >
         <span>{getLabel(val)}</span>
         <svg className={`dropdown-arrow ${dropdownState.isOpen && dropdownState.position ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">

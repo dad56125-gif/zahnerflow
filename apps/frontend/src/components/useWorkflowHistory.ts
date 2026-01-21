@@ -20,12 +20,13 @@ export interface WorkflowHistory {
     node_count?: number;
     connection_count?: number;
     loop_count?: number;
+    is_favorite?: boolean;
 }
 
 interface UseWorkflowHistoryOptions {
     currentUser: string | null;
     selectedProject: string;
-    activeTab: 'templates' | 'history';
+    activeTab: 'history' | 'favorites';
 }
 
 export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
@@ -78,21 +79,17 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
             }
 
             const formattedWorkflows = workflows.map((workflow: any) => {
-                // 工作流节点直接在 workflow.nodes 上，不在 definition 里
-                const nodes = workflow.nodes || [];
-                // 统计循环节点数量（loop_start 类型）
-                const loopCount = nodes.filter((n: any) => n.type === 'loop_start').length;
-
                 return {
                     id: workflow.id,
                     name: workflow.name,
                     filename: `${workflow.id}.json`,
                     filepath: `/api/workflows/${workflow.id}`,
-                    project_name: workflow.individualName || workflow.ownerName || '默认项目',
+                    project_name: workflow.ownerName || '默认项目',
                     created_at: workflow.createdAt,
-                    node_count: nodes.length,
-                    connection_count: Math.max(0, nodes.length - 1), // 线性工作流的连接数 = 节点数 - 1
-                    loop_count: loopCount
+                    node_count: workflow.nodeCount || 0,
+                    connection_count: Math.max(0, (workflow.nodeCount || 0) - 1),
+                    loop_count: workflow.loopCount || 0,
+                    is_favorite: workflow.isFavorite || false
                 };
             });
 
@@ -168,9 +165,12 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
     // 删除历史工作流
     const deleteHistoryWorkflow = useCallback(async (workflow: WorkflowHistory) => {
         try {
+            // ✅ 调用后端 API 执行真删除
+            await api.delete(`/workflows/${workflow.id}`);
+
             setWorkflowHistory(prev => prev.filter(item => item.id !== workflow.id));
             setDeletingItemId(null);
-            console.log(`历史工作流 "${workflow.name}" 已从列表中移除`);
+            console.log(`历史工作流 "${workflow.name}" 已成功删除`);
         } catch (error) {
             console.error('删除历史工作流失败:', error);
             setDeletingItemId(null);
@@ -187,6 +187,24 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
         setDeletingItemId(null);
     }, []);
 
+    // 切换收藏状态
+    const toggleFavorite = useCallback(async (workflow: WorkflowHistory) => {
+        try {
+            const response: any = await api.post(`/workflows/${workflow.id}/favorite`);
+            const isFavorite = response.isFavorite ?? response.data?.isFavorite ?? !workflow.is_favorite;
+            // 更新本地状态
+            setWorkflowHistory(prev => prev.map(item =>
+                item.id === workflow.id
+                    ? { ...item, is_favorite: isFavorite }
+                    : item
+            ));
+            console.log(`工作流 "${workflow.name}" 收藏状态: ${isFavorite ? '已收藏' : '取消收藏'}`);
+        } catch (error) {
+            console.error('切换收藏状态失败:', error);
+        }
+    }, []);
+
+
     // 自动加载
     useEffect(() => {
         if (currentUser) {
@@ -195,14 +213,18 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
     }, [currentUser, loadProjects]);
 
     useEffect(() => {
-        if (activeTab === 'history') {
+        if (activeTab === 'history' || activeTab === 'favorites') {
             loadWorkflowHistory();
         }
     }, [activeTab, selectedProject, loadWorkflowHistory]);
 
+    // 计算收藏的工作流列表
+    const favoriteWorkflows = workflowHistory.filter(item => item.is_favorite);
+
     return {
         // 状态
         workflowHistory,
+        favoriteWorkflows,
         loadingHistory,
         historyError,
         projects,
@@ -213,5 +235,6 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
         deleteHistoryWorkflow,
         showDeleteConfirm,
         cancelDelete,
+        toggleFavorite,
     };
 };

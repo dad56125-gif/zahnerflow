@@ -115,6 +115,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '开路电位测量 (FastAPI)',
     icon: '🔋',
     defaultParameters: {
+      check_battery_health: false,
       measurement_duration: 60.0,
       sampling_interval: 1.0
     }

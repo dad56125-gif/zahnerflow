@@ -14,7 +14,7 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
   constructor(
     private readonly workflowStorage: WorkflowStorageService,
-  ) {}
+  ) { }
 
   async onModuleInit(): Promise<void> {
     this.workflowStorage.ensureTables();
@@ -76,14 +76,14 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     this.logger.log(`Created workflow ${id} with ${workflow.nodes.length} nodes`);
     return workflow;
   }
-// --- [补全缺失方法] ---
+  // --- [补全缺失方法] ---
 
   async duplicateWorkflow(id: string, newName?: string): Promise<Workflow> {
     const original = await this.getWorkflow(id);
-    
+
     // 生成新 ID
     const newId = this.generateWorkflowId();
-    
+
     // 深拷贝 nodes 并重生成 node IDs
     const newNodes = original.nodes.map(node => ({
       ...node,
@@ -103,17 +103,17 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
     this.workflows.set(newId, clonedWorkflow);
     await this.workflowStorage.saveWorkflow(clonedWorkflow);
-    
+
     return clonedWorkflow;
   }
 
   async batchUpdateNodeParam(id: string, key: string, value: any, nodeType?: string): Promise<Workflow> {
     const wf = await this.getWorkflow(id);
-    
+
     let updated = false;
     for (const node of wf.nodes) {
       if (nodeType && node.type !== nodeType) continue;
-      
+
       if (!node.config) node.config = {};
       node.config[key] = value;
       updated = true;
@@ -124,14 +124,14 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
       this.workflows.set(id, wf);
       await this.workflowStorage.updateWorkflow(id, wf);
     }
-    
+
     return wf;
   }
 
   // --- [补全结束] ---
   async updateWorkflow(id: string, updates: Partial<Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Workflow> {
     const current = await this.getWorkflow(id);
-    
+
     // 简单合并
     const updatedWorkflow: Workflow = {
       ...current,
@@ -162,13 +162,26 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
 
     const fromStore = await this.workflowStorage.getWorkflow(id);
     if (!fromStore) throw new Error(`Workflow ${id} not found`);
-    
+
     this.workflows.set(id, fromStore);
     return fromStore;
   }
 
-  async listWorkflows(): Promise<Workflow[]> {
+  async listWorkflows(): Promise<any[]> {
     return Array.from(this.workflows.values())
+      .map(wf => {
+        const nodes = wf.nodes || (wf as any).definition?.nodes || [];
+        return {
+          id: wf.id,
+          name: wf.name,
+          ownerName: wf.ownerName || wf.individualName || (wf as any).definition?.ownerName,
+          nodeCount: nodes.length,
+          loopCount: nodes.filter((n: any) => n.type === 'loop_start').length,
+          isFavorite: wf.isFavorite || false,
+          createdAt: wf.createdAt,
+          updatedAt: wf.updatedAt,
+        };
+      })
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -178,7 +191,7 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     const warnings: string[] = [];
 
     if (!data.name?.trim()) errors.push('Workflow name is required');
-    
+
     if (!Array.isArray(data.nodes) || data.nodes.length === 0) {
       errors.push('Workflow must have at least one node');
     } else {

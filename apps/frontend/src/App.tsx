@@ -139,25 +139,37 @@ const AppContent: React.FC = () => {
       return;
     }
     try {
+      const workflowStore = useWorkflowStore.getState();
       const workflowId = currentWorkflow?.id || null;
-      // ✅ 传递 currentUser 作为 ownerName，确保后端能关联用户的路径配置
-      await startExecution(workflowId, nodes, currentUser || undefined);
 
-      const newWorkflowId = useExecutionStore.getState().workflowId;
+      // ✅ 统一命名逻辑：如果还没有保存工作流，在这里生成一个与“保存”按钮一致的名称
+      let workflowName = currentWorkflow?.name;
+      if (!workflowId) {
+        const draftName = workflowStore.draftWorkflowName;
+        workflowName = draftName?.trim() || `工作流 ${new Date().toLocaleString('zh-CN', { hour12: false }).replace(/-/g, '/')}`;
 
-      if (newWorkflowId && !currentWorkflow?.id) {
-        // 构造简化的 Workflow 对象（遵循前端类型规范）
+        // 🔥 修复点 1：立即同步到草稿名，让 WorkflowNameDisplay 实时显示
+        if (!draftName) {
+          workflowStore.setDraftWorkflowName(workflowName);
+        }
+      }
+
+      // ✅ 传递 workflowName，并获取返回的正式 ID
+      const result = await startExecution(workflowId, nodes, currentUser || undefined, workflowName);
+
+      // 🔥 修复点 2：立即更新 currentWorkflow，确保 UI 能够正确展示
+      if (result.workflowId && !currentWorkflow?.id) {
+        // 构造完整的 Workflow 对象
         const newWorkflow: Workflow = {
-          id: newWorkflowId,
-          name: '新建工作流',
+          id: result.workflowId,
+          name: workflowName || '新建工作流',
           nodes: nodes,
-          // 可选字段：从用户上下文获取（如果存在）
           ...(currentUser && { ownerName: currentUser }),
           ...(filePathConfig.project_name && { project_name: filePathConfig.project_name }),
         };
 
         setCurrentWorkflow(newWorkflow);
-        console.log(`后端创建新工作流: ${newWorkflowId}`);
+        console.log(`[RunFlow] 已建立工作流上下文: ${result.workflowId}, 名称: ${workflowName}`);
       }
     } catch (error) {
       console.error('工作流执行失败:', error);

@@ -75,6 +75,7 @@ export const executionService = {
     params?: {
       priority?: 'low' | 'normal' | 'high';
       ownerName?: string;  // ✅ 新增：当前用户名，用于关联路径配置
+      workflowName?: string; // ✅ 新增：预定义的工作流名称
     }
   ): Promise<{
     executionId: string;
@@ -86,6 +87,7 @@ export const executionService = {
       workflowId,
       nodes,
       ownerName: params?.ownerName,  // ✅ 传递给后端
+      workflowName: params?.workflowName, // ✅ 传递给后端
       priority: params?.priority
     });
   },

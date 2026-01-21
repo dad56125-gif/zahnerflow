@@ -30,7 +30,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   onClose
 }) => {
   const { currentUser } = useUser();
-  const [activeTab, setActiveTab] = useState<'templates' | 'history'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'favorites'>('history');
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [isProjectDropdownHiding, setIsProjectDropdownHiding] = useState(false);
@@ -42,6 +42,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
   // 使用提取的历史记录 Hook
   const {
     workflowHistory,
+    favoriteWorkflows,
     loadingHistory,
     historyError,
     projects,
@@ -51,6 +52,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     deleteHistoryWorkflow,
     showDeleteConfirm,
     cancelDelete,
+    toggleFavorite,
   } = useWorkflowHistory({
     currentUser,
     selectedProject,
@@ -170,9 +172,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
               历史记录
             </button>
             <button
-              className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
-              onClick={() => setActiveTab('templates')}
-              disabled // 模板功能由后端提供
+              className={`tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
+              onClick={() => setActiveTab('favorites')}
             >
               收藏
             </button>
@@ -254,6 +255,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         onDelete={deleteHistoryWorkflow}
                         onShowDeleteConfirm={showDeleteConfirm}
                         onCancelDelete={cancelDelete}
+                        onToggleFavorite={toggleFavorite}
                       />
                     ))}
                   </div>
@@ -261,21 +263,38 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
               </div>
             )}
 
-            {/* 收藏标签 - 简化，模板功能由后端提供 */}
-            {activeTab === 'templates' && (
-              <div className="templates-tab">
-                <div className="templates-header">
-                  <h4>收藏</h4>
-                  <p>模板功能由后端提供，将在后续版本中实现</p>
-                </div>
-
-                <div className="templates-empty">
-                  <div className="empty-icon">⭐</div>
-                  <div className="empty-text">暂无收藏模板</div>
-                  <div className="empty-hint">
-                    工作流模板管理功能将在后续版本中提供
+            {/* 收藏标签 */}
+            {activeTab === 'favorites' && (
+              <div className="favorites-tab">
+                {loadingHistory ? (
+                  <div className="history-loading">
+                    <div className="loading-spinner spinner"></div>
+                    <div>正在加载收藏工作流...</div>
                   </div>
-                </div>
+                ) : favoriteWorkflows.length === 0 ? (
+                  <div className="history-empty">
+                    <div className="empty-icon">⭐</div>
+                    <div className="empty-text">暂无收藏</div>
+                    <div className="empty-hint">
+                      点击工作流列表项中的☆按钮即可收藏
+                    </div>
+                  </div>
+                ) : (
+                  <div className="history-list">
+                    {favoriteWorkflows.map((item) => (
+                      <HistoryListItem
+                        key={item.id}
+                        item={item}
+                        isDeleting={deletingItemId === item.id}
+                        onLoad={loadHistoryWorkflow}
+                        onDelete={deleteHistoryWorkflow}
+                        onShowDeleteConfirm={showDeleteConfirm}
+                        onCancelDelete={cancelDelete}
+                        onToggleFavorite={toggleFavorite}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

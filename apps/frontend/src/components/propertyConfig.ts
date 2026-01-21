@@ -107,7 +107,8 @@ export const getParameterLabel = (key: string, nodeType?: string): string => {
     // 高级测量 - 阶梯节点参数
     step_current: '电流步长 (A)',
     step_potential: '电位步长 (V)',
-    hold_time: '每阶保持时间 (s)'
+    hold_time: '每阶保持时间 (s)',
+    check_battery_health: '测量模式'
   };
   return labels[key] || key;
 };
@@ -204,6 +205,10 @@ export const getParameterEnumLabel = (key: string, value: string): string => {
       'COUNTER': '计数器',
       'DATE_TIME': '日期时间',
       'INDIVIDUAL': '自定义'
+    },
+    check_battery_health: {
+      'true': '电池健康检测',
+      'false': '普通测量'
     }
   };
   return enumLabels[key]?.[value] || value;

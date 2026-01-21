@@ -13,7 +13,7 @@ export class WorkflowController {
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly workflowStorage: WorkflowStorageService
-  ) {}
+  ) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -46,12 +46,12 @@ export class WorkflowController {
     const workflows = await this.workflowService.listWorkflows();
     const pageNum = page && page > 0 ? page : 1;
     const limitNum = limit && limit > 0 ? limit : 20;
-    
+
     const startIndex = (pageNum - 1) * limitNum;
     const endIndex = startIndex + limitNum;
-    
+
     const paginatedWorkflows = workflows.slice(startIndex, endIndex);
-    
+
     return {
       items: paginatedWorkflows,
       pagination: {
@@ -99,5 +99,14 @@ export class WorkflowController {
   ): Promise<Workflow> {
     // ✅ 这个方法现在需要在 Service 里补回来
     return this.workflowService.duplicateWorkflow(id, body?.name);
+  }
+
+  @Post(':id/favorite')
+  @HttpCode(HttpStatus.OK)
+  async toggleFavorite(@Param('id') id: string): Promise<{ id: string; isFavorite: boolean }> {
+    const workflow = await this.workflowService.getWorkflow(id);
+    const newFavoriteStatus = !workflow.isFavorite;
+    await this.workflowService.updateWorkflow(id, { isFavorite: newFavoriteStatus });
+    return { id, isFavorite: newFavoriteStatus };
   }
 }

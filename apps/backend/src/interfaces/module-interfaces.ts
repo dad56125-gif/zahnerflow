@@ -80,6 +80,7 @@ export interface Workflow {
   ownerName?: string;
   individualName?: string;
   nodes: WorkflowNode[];
+  isFavorite?: boolean;  // 收藏状态
   createdAt: Date;
   updatedAt: Date;
 }

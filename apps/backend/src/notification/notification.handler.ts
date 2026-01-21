@@ -33,6 +33,8 @@ export class NotificationEventHandler {
       'measurement.started': this.handleMeasurementStarted.bind(this),
       'measurement.completed': this.handleMeasurementCompleted.bind(this),
       'measurement.failed': this.handleMeasurementFailed.bind(this),
+      'measurement.warning': this.handleMeasurementWarning.bind(this),
+      'battery.health.warning': this.handleBatteryHealthWarning.bind(this),
 
       // 设备事件
       'device.connected': this.handleDeviceConnected.bind(this),
@@ -106,6 +108,36 @@ export class NotificationEventHandler {
 
   private async handleMeasurementFailed(event: EventPayload) {
     this.sendNotify('测量失败', `Type: ${event.data.measurementType}, Err: ${event.data.error}`, 'error', event);
+  }
+
+  private async handleMeasurementWarning(event: EventPayload) {
+    const { message, elapsed, nodeId, executionId } = event.data;
+    const elapsedMin = Math.floor(elapsed / 60000);
+
+    // 发送黄色通知到 NotificationPanel
+    this.sendNotify(
+      '测量超时警告',
+      `${message} (已运行 ${elapsedMin} 分钟)`,
+      'warning',
+      event
+    );
+
+    // 发送警告邮件（如果用户配置了 on_warning）
+    // 注意：warning 不停止工作流，仅通知
+    this.emailService.sendWorkflowNotification('warning', null, undefined, {
+      message, elapsed
+    });
+  }
+
+  private async handleBatteryHealthWarning(event: EventPayload) {
+    const { message, issues } = event.data;
+
+    this.sendNotify(
+      '电池健康警告',
+      `${message}: ${issues.join('; ')}`,
+      'warning',
+      event
+    );
   }
 
   // ... Device Handlers ...

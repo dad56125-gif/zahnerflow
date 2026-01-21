@@ -3136,25 +3136,191 @@
   gap: var(--size-3xs);
 }
 
-.delete-user-btn {
-  width: var(--size-lg);
-  height: var(--size-lg);
+.delete-user-btn,
+.favorite-btn {
+  width: 20px !important;
+  height: 20px !important;
   border: none;
-  border-radius: var(--radius-button);
-  background: transparent;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--size-xs);
+  font-size: 14px !important;
   transition: var(--transition);
   color: var(--text-muted);
+  line-height: 1;
+  overflow: hidden;
+  /* 强制裁剪溢出光效 */
+}
+
+/* 收藏按钮特有默认颜色：未收藏时更淡，突出金色星号的对比度 */
+.favorite-btn {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.delete-user-btn {
+  padding: 0;
+}
+
+.favorite-btn {
+  padding: 0 !important;
+  /* 强制移除 padding，确保绝对中心对齐 */
+  position: relative;
 }
 
 .delete-user-btn:hover {
   background: var(--color-danger-bg);
   color: var(--color-danger);
 }
+
+.favorite-btn:hover {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+/* 已收藏的静态状态：颜色高亮 */
+.favorite-btn.is-favorited {
+  color: #fbbf24 !important;
+  /* 强制亮起金色 */
+  background: rgba(251, 191, 36, 0.2);
+}
+
+
+/* 动效状态：仅在点击收藏时添加此 class 触发一次 */
+.favorite-btn.animate-pop {
+  animation: favorite-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 收藏时的闪烁效果 - 极致细化光束并精准对齐 */
+.favorite-btn.animate-pop::before,
+.favorite-btn.animate-pop::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+
+/* 垂直光束（上下） */
+.favorite-btn.animate-pop::before {
+  width: 1px;
+  height: 20px;
+  background: linear-gradient(to bottom,
+      transparent 5%,
+      /* 离边缘 1px (5%) */
+      #fbbf24 5%,
+      #fbbf24 13%,
+      /* 线段长度约 1.6px */
+      transparent 13%,
+      /* 离星号尖端保持间距 */
+      transparent 87%,
+      #fbbf24 87%,
+      #fbbf24 95%,
+      transparent 95%
+      /* 离边缘 1px */
+    );
+  transform: translate(-50%, -50%) scaleX(0.4);
+  animation: favorite-sparkle-v 0.5s ease-out forwards;
+}
+
+/* 水平光束（左右） */
+.favorite-btn.animate-pop::after {
+  width: 20px;
+  height: 1px;
+  background: linear-gradient(to right,
+      transparent 5%,
+      /* 离边缘 1px */
+      #fbbf24 5%,
+      #fbbf24 13%,
+      transparent 13%,
+      transparent 87%,
+      #fbbf24 87%,
+      #fbbf24 95%,
+      transparent 95%);
+  transform: translate(-50%, -50%) scaleY(0.4);
+  animation: favorite-sparkle-h 0.5s ease-out forwards;
+}
+
+
+
+@keyframes favorite-sparkle-v {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4, 0.4);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(0.4, 1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes favorite-sparkle-h {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4, 0.4);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1.2, 0.4);
+    opacity: 0;
+  }
+}
+
+
+@keyframes favorite-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.4);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes favorite-sparkle {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.favorite-btn.active:hover {
+  background: rgba(251, 191, 36, 0.3);
+}
+
+/* 未收藏状态下的实心淡色效果 */
+.favorite-btn:not(.active) {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+
+
 
 /* 删除确认 */
 .delete-confirm {
@@ -3172,6 +3338,19 @@
   font-size: var(--size-xs);
   color: var(--color-danger);
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.delete-confirm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delete-confirm-warning {
+  font-size: calc(var(--size-xs) * 0.85);
+  color: #fbbf24;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -3311,6 +3490,7 @@
   justify-content: center;
   padding: var(--size-4xl) var(--size-lg);
   text-align: center;
+  user-select: none;
 }
 
 .empty-icon {
@@ -5062,45 +5242,7 @@
   padding: 4px 0;
 }
 
-.delete-user-btn {
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1;
-  transition: all 0.2s ease;
-  opacity: 0.6;
-  margin-left: 8px;
-}
 
-.delete-user-btn:hover {
-  background: rgba(244, 67, 54, 0.8);
-  color: white;
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.delete-user-btn:active {
-  transform: scale(0.95);
-}
-
-
-.user-option.selected .delete-user-btn {
-  background: rgba(255, 255, 255, 0.2);
-  opacity: 0.8;
-}
-
-.user-option.selected .delete-user-btn:hover {
-  background: rgba(244, 67, 54, 0.9);
-}
 
 /* 暂无用户提示样式 */
 .empty-users {

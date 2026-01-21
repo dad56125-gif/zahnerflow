@@ -288,3 +288,16 @@
     min-width: 4rem;
     text-align: center;
 }
+
+/* === 数据栏 Tab 切换 === */
+.data-viewer-tabs {
+    display: flex;
+    gap: var(--size-xs);
+    margin-bottom: var(--size-sm);
+    flex-shrink: 0;
+}
+
+.data-viewer-tabs .btn_base {
+    flex: 1;
+    font-size: var(--text-xs);
+}

@@ -8,6 +8,13 @@ import { EventBus } from '../../notification/event-bus.service';
 import { ConsoleDisplayManager } from '../../common/console-display-manager.service';
 import { MeasurementType } from '@zahnerflow/types';
 
+interface BatteryHealthResult {
+  status: 'healthy' | 'warning';
+  avgVoltage: number;
+  deviation: number;
+  issues: string[];
+}
+
 @Injectable()
 export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   readonly name = 'zahner-zennium';
@@ -17,7 +24,12 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ZahnerZenniumService.name);
   private readonly moduleName = 'ZahnerZenniumService';
 
-  private readonly timeoutMs = 900000;
+  // 三段式超时配置
+  private readonly warningThreshold1 = 600000;   // 10分钟：第一次警告
+  private readonly warningThreshold2 = 1200000;  // 20分钟：第二次警告
+  private readonly failureTimeout = 1800000;     // 30分钟：最终失败
+  private readonly connectTimeout = 30000;       // 连接超时：30秒
+  private readonly healthCheckTimeout = 10000;   // 健康检查：10秒
   private readonly realEndpoint: string;
   private readonly realWsEndpoint: string;
   private readonly simulatorEndpoint: string;
@@ -28,6 +40,8 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
 
   private connected = false;
   private busy = false;
+  private lastDataReceived: number = 0;  // 无响应超时追踪
+  private voltageBuffer: number[] = [];  // ✅ 电池健康检测数据缓存
   private lastActivity = new Date();
   private error?: string;
 
@@ -199,6 +213,13 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     this.wsClient.on('message', (data: WebSocket.Data) => {
       try {
         const payload = JSON.parse(data.toString());
+        this.lastDataReceived = Date.now();  // ✅ 更新最后收到数据的时间
+
+        // ✅ 收集电压数据用于健康分析 (仅在忙碌状态下且可能是 OCP 测量时)
+        if (this.busy && payload.v !== undefined) {
+          this.voltageBuffer.push(payload.v);
+        }
+
         this.eventBus.emit('device.raw_stream', payload);
       } catch (e) {
         // ignore parse error
@@ -242,7 +263,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
   async healthCheck(): Promise<boolean> {
     try {
       const res = await firstValueFrom(
-        this.httpService.get(`${this.endpoint}/health`, { timeout: 3000 })
+        this.httpService.get(`${this.endpoint}/health`, { timeout: this.healthCheckTimeout })
       );
       return res?.status === 200;
     } catch {
@@ -255,7 +276,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       const res = await firstValueFrom(
         this.httpService.post(`${this.endpoint}/connect`,
           { host: host || 'localhost' },
-          { timeout: 10000 }
+          { timeout: this.connectTimeout }
         )
       );
 
@@ -295,6 +316,7 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`[设备层 Zahner] 原始参数: ${JSON.stringify(parameters)}`);
 
     this.updateStatus(true, true);
+    this.voltageBuffer = []; // ✅ 测量开始，清空缓存
     this.eventBus.emit('measurement.started', { type: measurementType, nodeId, executionId });
 
     try {
@@ -307,31 +329,86 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
       };
       this.logger.log(`[设备层 Zahner] 发送到 Python API: ${JSON.stringify(pythonParams)}`);
 
-      // ✅ 动态计算超时：measurement_duration + 5分钟缓冲，最小15分钟
+      // ✅ 三段式超时：使用 failureTimeout（30分钟）作为最终超时
       const measurementDurationMs = (parameters.measurement_duration || 60) * 1000;
-      const dynamicTimeout = Math.max(this.timeoutMs, measurementDurationMs + 300000); // 至少15分钟，或测量时长+5分钟
+      const dynamicTimeout = Math.max(this.failureTimeout, measurementDurationMs + 300000);
       this.logger.log(`[设备层 Zahner] 动态超时时间: ${dynamicTimeout / 1000}秒 (测量时长: ${parameters.measurement_duration || 60}秒)`);
 
-      const response = await firstValueFrom(
-        this.httpService.post(`${this.endpoint}/measure`, pythonParams, { timeout: dynamicTimeout })
-      );
+      // ✅ 无响应超时监控（检测设备无数据推送）
+      this.lastDataReceived = Date.now();  // 初始化
+      let warning1Sent = false;
+      let warning2Sent = false;
 
-      const responseData = response.data;
-      if (responseData.status === 'error') throw new Error(responseData.error || 'Measurement logic error');
+      const warningInterval = setInterval(() => {
+        const noResponseTime = Date.now() - this.lastDataReceived;
 
-      // FastAPI 返回格式是 { status: "success", result: {...} }
-      // 实际测量结果在 responseData.result 中
-      const result = responseData.result || responseData;
+        // 只有超过阈值没有收到数据才发警告
+        if (!warning1Sent && noResponseTime >= this.warningThreshold1) {
+          warning1Sent = true;
+          this.logger.warn(`[Zahner] ⚠️ 设备已 ${Math.floor(noResponseTime / 60000)} 分钟无响应！`);
+          this.eventBus.emit('measurement.warning', {
+            level: 1, elapsed: noResponseTime, nodeId, executionId,
+            message: '设备已10分钟无数据响应，请检查设备状态'
+          });
+        }
 
-      // 🔍 调试日志：检查 eis_data 是否存在
-      if (result.eis_data) {
-        this.logger.log(`[Zahner] EIS data received: ${result.eis_data.point_count} points`);
-      } else {
-        this.logger.log(`[Zahner] No eis_data in result. Keys: ${Object.keys(result).join(', ')}`);
+        if (!warning2Sent && noResponseTime >= this.warningThreshold2) {
+          warning2Sent = true;
+          this.logger.warn(`[Zahner] ⚠️⚠️ 设备已 ${Math.floor(noResponseTime / 60000)} 分钟无响应，建议检查连接！`);
+          this.eventBus.emit('measurement.warning', {
+            level: 2, elapsed: noResponseTime, nodeId, executionId,
+            message: '设备已20分钟无数据响应，建议检查连接'
+          });
+        }
+
+        // 如果收到新数据，重置警告状态
+        if (noResponseTime < this.warningThreshold1) {
+          warning1Sent = false;
+          warning2Sent = false;
+        }
+      }, 60000); // 每分钟检查一次
+
+      try {
+        const response = await firstValueFrom(
+          this.httpService.post(`${this.endpoint}/measure`, pythonParams, { timeout: dynamicTimeout })
+        );
+
+        const responseData = response.data;
+        if (responseData.status === 'error') throw new Error(responseData.error || 'Measurement logic error');
+
+        // FastAPI 返回格式是 { status: "success", result: {...} }
+        // 实际测量结果在 responseData.result 中
+        const result = responseData.result || responseData;
+
+        // 🔍 调试日志：检查 eis_data 是否存在
+        if (result.eis_data) {
+          this.logger.log(`[Zahner] EIS data received: ${result.eis_data.point_count} points`);
+        } else {
+          this.logger.log(`[Zahner] No eis_data in result. Keys: ${Object.keys(result).join(', ')}`);
+        }
+
+        this.eventBus.emit('measurement.completed', { type: measurementType, result, nodeId });
+
+        // ✅ 电池健康检测分析
+        if (measurementType === 'ocp_measurement' && parameters.check_battery_health) {
+          const healthResult = this.analyzeBatteryHealth();
+          result.battery_health = healthResult;
+
+          if (healthResult.status === 'warning') {
+            this.eventBus.emit('battery.health.warning', {
+              nodeId,
+              executionId,
+              message: '电池健康检测发现异常',
+              issues: healthResult.issues
+            });
+          }
+          this.voltageBuffer = []; // 分析完销毁缓存
+        }
+
+        return result;
+      } finally {
+        clearInterval(warningInterval);
       }
-
-      this.eventBus.emit('measurement.completed', { type: measurementType, result, nodeId });
-      return result;
 
     } catch (error: any) {
       const errMsg = error.response?.data?.error || error.message;
@@ -364,5 +441,46 @@ export class ZahnerZenniumService implements OnModuleInit, OnModuleDestroy {
     if (this.consoleManager.shouldDisplayLog(this.moduleName, level)) {
       this.consoleManager.log(this.moduleName, level, msg);
     }
+  }
+
+  private analyzeBatteryHealth(): BatteryHealthResult {
+    const voltages = this.voltageBuffer;
+    if (voltages.length < 5) {
+      return { status: 'warning', avgVoltage: 0, deviation: 0, issues: ['数据分析点不足'] };
+    }
+
+    const avg = voltages.reduce((a, b) => a + b, 0) / voltages.length;
+
+    // 标准差计算
+    const variance = voltages.reduce((sum, v) => sum + Math.pow(v - avg, 2), 0) / voltages.length;
+    const std = Math.sqrt(variance);
+    const deviation = (std / avg) * 100; // 偏差百分比 (标准差/平均值*100)
+
+    const issues: string[] = [];
+
+    // 规则1: 平均电压 < 1V 且偏差 >= 5%
+    if (avg < 1.0 && deviation >= 5) {
+      const devStr = deviation.toFixed(1);
+      issues.push(`平均电压偏低且不稳定 (${avg.toFixed(3)}V, 偏差${devStr}%)`);
+    }
+
+    // 规则2: 超过1个点 < 0.6V
+    const below06 = voltages.filter(v => v < 0.6).length;
+    if (below06 > 1) {
+      issues.push(`检测到 ${below06} 个极低电压点 (< 0.6V)`);
+    }
+
+    // 规则3: 超过3个点 < 0.8V
+    const below08 = voltages.filter(v => v < 0.8).length;
+    if (below08 > 3) {
+      issues.push(`检测到 ${below08} 个低电压点 (< 0.8V)`);
+    }
+
+    return {
+      status: issues.length > 0 ? 'warning' : 'healthy',
+      avgVoltage: avg,
+      deviation,
+      issues
+    };
   }
 }

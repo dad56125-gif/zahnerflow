@@ -14,17 +14,18 @@ export class ExecutionController {
   async createExecution(@Body() body: {
     workflowId: string | null;
     nodes?: any[];
-    ownerName?: string;  // ✅ 新增：当前用户名，用于关联路径配置
+    ownerName?: string;    // ✅ 用于关联路径配置
+    workflowName?: string; // ✅ 新增：预定义的工作流名称
   }): Promise<ExecutionSnapshot> {
     // 【日志】Controller 层接收的节点列表
     if (body.nodes) {
-      this.logger.log(`[Controller] 接收前端节点列表 - 数量: ${body.nodes.length}, 用户: ${body.ownerName}`);
+      this.logger.log(`[Controller] 接收执行请求 - 节点: ${body.nodes.length}, 用户: ${body.ownerName}, 名称: ${body.workflowName}`);
       body.nodes.forEach((node, index) => {
         this.logger.log(`[Controller节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
       });
     }
 
-    return this.executionService.executeWorkflow(body.workflowId, body.nodes, body.ownerName);
+    return this.executionService.executeWorkflow(body.workflowId, body.nodes, body.ownerName, body.workflowName);
   }
 
   @Get()
