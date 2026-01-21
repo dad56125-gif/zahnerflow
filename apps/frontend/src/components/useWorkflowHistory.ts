@@ -37,6 +37,9 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
     const [historyError, setHistoryError] = useState('');
     const [projects, setProjects] = useState<string[]>([]);
     const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const PAGE_SIZE = 20;
 
     const { setNodes } = useCanvasStore();
     const { setCurrentWorkflow } = useWorkflowStore();
@@ -58,23 +61,49 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
     }, [currentUser]);
 
     // 加载历史工作流列表
-    const loadWorkflowHistory = useCallback(async () => {
+    // reset: 是否重置列表（搜索条件变化或初始加载时为true，加载更多时为false）
+    const loadWorkflowHistory = useCallback(async (reset = true) => {
+        // 如果是加载更多且正在加载中或没有更多数据，则跳过
+        if (!reset && (loadingHistory || !hasMore)) return;
+
         setLoadingHistory(true);
-        setHistoryError('');
+        if (reset) {
+            setHistoryError('');
+            setPage(1);
+            setHasMore(true);
+            setWorkflowHistory([]); // 可选：清空列表以显示骨架屏，或保留以避免闪烁
+        }
 
         try {
-            const response: any = await api.get('/workflows?limit=50');
+            const currentPage = reset ? 1 : page + 1;
 
+            // 构建查询参数
+            let url = `/workflows?page=${currentPage}&limit=${PAGE_SIZE}`;
+            if (selectedProject) {
+                url += `&project=${encodeURIComponent(selectedProject)}`;
+            }
+            if (activeTab === 'favorites') {
+                url += `&favorites=true`;
+            }
+
+            const response: any = await api.get(url);
+
+            // 处理分页响应结构 { items: [], pagination: {...} }
             let workflows = [];
+            let hasNextPage = false;
+
             if (response?.items && Array.isArray(response.items)) {
                 workflows = response.items;
+                hasNextPage = response.pagination?.hasNext || false;
+            } else if (response?.data && Array.isArray(response.data)) {
+                // 兼容旧格式或无分页格式（如果后端未完全更新）
+                workflows = response.data;
+                hasNextPage = false;
             } else if (Array.isArray(response)) {
                 workflows = response;
-            } else if (response?.data && Array.isArray(response.data)) {
-                workflows = response.data;
+                hasNextPage = false;
             } else {
                 setHistoryError('无法解析工作流数据格式');
-                setWorkflowHistory([]);
                 return;
             }
 
@@ -93,27 +122,28 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
                 };
             });
 
-            const sortedWorkflows = formattedWorkflows.sort((a, b) =>
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
+            // 后端已经按时间排序，无需前端重排
 
-            const filteredWorkflows = selectedProject
-                ? sortedWorkflows.filter(w => w.project_name === selectedProject)
-                : sortedWorkflows;
+            if (reset) {
+                setWorkflowHistory(formattedWorkflows);
+            } else {
+                setWorkflowHistory(prev => [...prev, ...formattedWorkflows]);
+            }
 
-            setWorkflowHistory(filteredWorkflows);
+            setHasMore(hasNextPage);
+            setPage(currentPage);
 
-            if (filteredWorkflows.length === 0) {
+            if (reset && formattedWorkflows.length === 0) {
                 setHistoryError('没有找到匹配的工作流');
             }
         } catch (error) {
             console.error('Failed to load workflow history:', error);
             setHistoryError('网络错误，无法加载历史工作流');
-            setWorkflowHistory([]);
+            if (reset) setWorkflowHistory([]);
         } finally {
             setLoadingHistory(false);
         }
-    }, [selectedProject]);
+    }, [selectedProject, page, loadingHistory, hasMore, activeTab]); // 注意依赖项 updated
 
     // 加载特定历史工作流
     const loadHistoryWorkflow = useCallback(async (workflow: WorkflowHistory) => {
@@ -214,9 +244,9 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
 
     useEffect(() => {
         if (activeTab === 'history' || activeTab === 'favorites') {
-            loadWorkflowHistory();
+            loadWorkflowHistory(true);
         }
-    }, [activeTab, selectedProject, loadWorkflowHistory]);
+    }, [activeTab, selectedProject]); // 移除 loadWorkflowHistory 以避免死循环，因为 loadWorkflowHistory 依赖 page 等状态
 
     // 计算收藏的工作流列表
     const favoriteWorkflows = workflowHistory.filter(item => item.is_favorite);
@@ -236,5 +266,7 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
         showDeleteConfirm,
         cancelDelete,
         toggleFavorite,
+        hasMore,
+        page
     };
 };

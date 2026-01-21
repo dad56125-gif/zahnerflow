@@ -53,6 +53,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     showDeleteConfirm,
     cancelDelete,
     toggleFavorite,
+    hasMore,
   } = useWorkflowHistory({
     currentUser,
     selectedProject,
@@ -180,46 +181,29 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
           </div>
 
           {/* 标签内容 */}
-          <div className="tab-content">
+          <div
+            className="tab-content"
+            onScroll={(e) => {
+              const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+              // 距离底部 50px 时加载更多
+              if (scrollHeight - scrollTop - clientHeight < 50) {
+                if ((activeTab === 'history' || activeTab === 'favorites') && hasMore && !loadingHistory) {
+                  // 加载更多 (reset = false)
+                  loadWorkflowHistory(false);
+                }
+              }
+            }}
+          >
 
             {/* 历史记录标签 */}
             {activeTab === 'history' && (
               <div className="history-tab">
-                <div className="history-header">
-                  {/* 项目筛选器 - 自定义下拉菜单 */}
-                  <div className="history-filter">
-                    <button
-                      ref={projectDropdownButtonRef}
-                      className="btn btn_secondary btn_small"
-                      onClick={() => {
-                        if (isProjectDropdownOpen) {
-                          setIsProjectDropdownOpen(false);
-                          setIsProjectDropdownHiding(true);
-                        } else {
-                          setIsProjectDropdownOpen(true);
-                        }
-                      }}
-                    >
-                      <span className="user-display">{selectedProject || '请选择项目'}</span>
-                      <svg className={`dropdown-arrow ${isProjectDropdownOpen ? 'rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
-                        <path
-                          d="M -8 -3 L 0 5 L 8 -3"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.8)"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
 
                 {historyError && (
                   <div className="history-error alert alert_danger">
                     <div className="alert_message">{historyError}</div>
                     <button
-                      onClick={loadWorkflowHistory}
+                      onClick={() => loadWorkflowHistory(true)} // 重试时重置
                       className="retry-btn btn btn_warning btn_small"
                       disabled={loadingHistory}
                     >
@@ -228,7 +212,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                   </div>
                 )}
 
-                {loadingHistory ? (
+                {/* 初始加载且无数据时显示全屏 Loading */}
+                {loadingHistory && workflowHistory.length === 0 ? (
                   <div className="history-loading">
                     <div className="loading-spinner spinner"></div>
                     <div>正在加载历史工作流...</div>
@@ -258,6 +243,21 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         onToggleFavorite={toggleFavorite}
                       />
                     ))}
+
+                    {/* 底部加载更多指示器 */}
+                    {loadingHistory && (
+                      <div className="load-more-indicator" style={{ textAlign: 'center', padding: '10px', color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
+                        <span className="spinner" style={{ width: '12px', height: '12px', display: 'inline-block', marginRight: '8px', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+                        正在加载更多...
+                      </div>
+                    )}
+
+                    {/* 没有更多数据提示 */}
+                    {!hasMore && workflowHistory.length > 0 && (
+                      <div className="no-more-data" style={{ textAlign: 'center', padding: '10px', color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>
+                        - 没有更多记录了 -
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -266,7 +266,8 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
             {/* 收藏标签 */}
             {activeTab === 'favorites' && (
               <div className="favorites-tab">
-                {loadingHistory ? (
+                {/* 初始加载且无数据时显示全屏 Loading */}
+                {loadingHistory && favoriteWorkflows.length === 0 ? (
                   <div className="history-loading">
                     <div className="loading-spinner spinner"></div>
                     <div>正在加载收藏工作流...</div>
@@ -293,6 +294,21 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         onToggleFavorite={toggleFavorite}
                       />
                     ))}
+
+                    {/* 底部加载更多指示器 */}
+                    {loadingHistory && (
+                      <div className="load-more-indicator" style={{ textAlign: 'center', padding: '10px', color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
+                        <span className="spinner" style={{ width: '12px', height: '12px', display: 'inline-block', marginRight: '8px', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+                        正在加载更多...
+                      </div>
+                    )}
+
+                    {/* 没有更多数据提示 */}
+                    {!hasMore && favoriteWorkflows.length > 0 && (
+                      <div className="no-more-data" style={{ textAlign: 'center', padding: '10px', color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>
+                        - 没有更多记录了 -
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

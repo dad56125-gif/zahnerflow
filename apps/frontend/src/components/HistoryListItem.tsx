@@ -40,11 +40,13 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
                     <span className="history-id">{item.id}</span>
                 </div>
                 <div className="history-details">
-                    <span>节点: {item.node_count || 0}</span>
-                    <span>循环: {item.loop_count || 0}</span>
-                </div>
-                <div className="history-time">
-                    {new Date(item.created_at).toLocaleString()}
+                    <div>
+                        <span>节点: {item.node_count || 0}</span>
+                        <span>循环: {item.loop_count || 0}</span>
+                    </div>
+                    <div className="history-time">
+                        {new Date(item.created_at).toLocaleString()}
+                    </div>
                 </div>
             </div>
             <div className="history-actions">

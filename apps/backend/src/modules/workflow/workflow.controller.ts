@@ -41,9 +41,12 @@ export class WorkflowController {
   @Get()
   async getAllWorkflows(
     @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
+    @Query('project') project?: string,
+    @Query('favorites') favorites?: string
   ): Promise<PaginatedResponse<Workflow>> {
-    const workflows = await this.workflowService.listWorkflows();
+    const isFavorites = favorites === 'true';
+    const workflows = await this.workflowService.listWorkflows(project, isFavorites);
     const pageNum = page && page > 0 ? page : 1;
     const limitNum = limit && limit > 0 ? limit : 20;
 

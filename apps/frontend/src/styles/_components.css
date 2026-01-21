@@ -3066,7 +3066,7 @@
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: var(--size-sm);
+  gap: calc(var(--size-sm) / 2);
 }
 
 /* 历史记录项 - 参考 notification-item 样式 */
@@ -3078,7 +3078,6 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-button);
   padding: var(--size-sm);
-  margin-bottom: var(--size-2xs);
   transition: var(--transition);
   cursor: pointer;
 }
@@ -3119,16 +3118,23 @@
 
 .history-details {
   display: flex;
+  align-items: center;
   gap: var(--size-sm);
   font-size: var(--size-2xs);
   color: var(--text-muted);
-  margin-bottom: 2px;
+}
+
+.history-details>div:first-child {
+  display: flex;
+  gap: var(--size-sm);
 }
 
 .history-time {
   font-size: var(--size-2xs);
   color: var(--text-muted);
+  white-space: nowrap;
 }
+
 
 /* 历史记录操作按钮 */
 .history-actions {

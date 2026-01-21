@@ -167,8 +167,20 @@ export class WorkflowService implements IWorkflowModule, OnModuleInit {
     return fromStore;
   }
 
-  async listWorkflows(): Promise<any[]> {
-    return Array.from(this.workflows.values())
+  async listWorkflows(project?: string, favoritesOnly?: boolean): Promise<any[]> {
+    let workflows = Array.from(this.workflows.values());
+
+    if (project) {
+      workflows = workflows.filter(wf =>
+        (wf.ownerName || wf.individualName || (wf as any).definition?.ownerName) === project
+      );
+    }
+
+    if (favoritesOnly) {
+      workflows = workflows.filter(wf => wf.isFavorite);
+    }
+
+    return workflows
       .map(wf => {
         const nodes = wf.nodes || (wf as any).definition?.nodes || [];
         return {
