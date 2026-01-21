@@ -15,6 +15,7 @@ interface UserSettings {
         enabled: boolean;
         on_complete: boolean;
         on_error: boolean;
+        on_warning: boolean;
         smtp_server: string;
         smtp_port: number;
         smtp_user: string;
@@ -135,6 +136,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         try {
             const response: any = await api.get(`/users/${encodeURIComponent(currentUser)}/settings`);
             if (response?.success && response?.settings) {
+                // 兼容旧配置：确保 smtp_secure 和 on_warning 有默认值
+                if (response.settings.notification && response.settings.notification.smtp_secure !== true) {
+                    response.settings.notification.smtp_secure = true;
+                }
+                if (response.settings.notification && response.settings.notification.on_warning === undefined) {
+                    response.settings.notification.on_warning = false; // 默认不启用警告通知
+                }
                 setSettings(response.settings);
             }
         } catch (err) {
@@ -298,8 +306,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                     {/* 文件路径配置 */}
                                     {activeSection === 'file_path' && (
                                         <div className="section-content">
-                                            <h3>文件路径配置</h3>
-                                            <p className="section-desc">配置测量数据的保存位置和命名规则</p>
 
                                             <div className="form-group">
                                                 <div className="form-label-row">
@@ -425,178 +431,181 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                     {/* 通知配置 */}
                                     {activeSection === 'notification' && (
                                         <div className="section-content">
-                                            <h3>通知设置</h3>
-                                            <p className="section-desc">配置工作流执行完成或失败时的邮件通知</p>
 
-                                            <div className="form-group checkbox-group">
-                                                <label className="checkbox-label">
+                                            <div className="form-group" style={{ marginBottom: '24px', marginTop: '12px' }}>
+                                                <label className="setting-toggle">
                                                     <input
                                                         type="checkbox"
                                                         checked={settings.notification.enabled}
                                                         onChange={(e) => updateNotification('enabled', e.target.checked)}
                                                     />
-                                                    <span>启用邮件通知</span>
+                                                    <div className="toggle-track">
+                                                        <div className="toggle-thumb"></div>
+                                                    </div>
+                                                    <span className="toggle-label" style={{ fontSize: '15px' }}>
+                                                        {settings.notification.enabled ? '启用' : '不启用'}
+                                                    </span>
                                                 </label>
                                             </div>
 
-                                            <h4 style={{ marginTop: '20px', marginBottom: '12px', fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
-                                                SMTP 服务器配置
-                                            </h4>
+                                            {settings.notification.enabled && (
+                                                <div className="smtp-config-section" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                                    <div className="form-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                                                        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                                                            <label>SMTP 服务器</label>
+                                                            <input
+                                                                type="text"
+                                                                value={settings.notification.smtp_server || ''}
+                                                                onChange={(e) => updateNotification('smtp_server', e.target.value)}
+                                                                placeholder="smtp.qq.com"
+                                                            />
+                                                        </div>
+                                                        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                                                            <label>SMTP 用户名（发件邮箱）</label>
+                                                            <input
+                                                                type="text"
+                                                                value={settings.notification.smtp_user || ''}
+                                                                onChange={(e) => updateNotification('smtp_user', e.target.value)}
+                                                                placeholder="your@qq.com"
+                                                            />
+                                                        </div>
+                                                    </div>
 
-                                            <div className="form-group">
-                                                <label>SMTP 服务器</label>
-                                                <input
-                                                    type="text"
-                                                    value={settings.notification.smtp_server || ''}
-                                                    onChange={(e) => updateNotification('smtp_server', e.target.value)}
-                                                    placeholder="smtp.qq.com"
-                                                    disabled={!settings.notification.enabled}
-                                                />
-                                            </div>
+                                                    <div className="form-row" style={{ display: 'flex', gap: '12px', marginBottom: 0 }}>
+                                                        <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
+                                                            <label>SMTP 密码/授权码</label>
+                                                            <input
+                                                                type="password"
+                                                                value={settings.notification.smtp_password || ''}
+                                                                onChange={(e) => updateNotification('smtp_password', e.target.value)}
+                                                                placeholder="授权码（非邮箱密码）"
+                                                            />
+                                                        </div>
+                                                        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                                                            <label>端口</label>
+                                                            <input
+                                                                type="number"
+                                                                value={settings.notification.smtp_port || 465}
+                                                                onChange={(e) => updateNotification('smtp_port', parseInt(e.target.value) || 465)}
+                                                                placeholder="465"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <p className="hint-text" style={{ marginBottom: '12px' }}>
+                                                        QQ邮箱请使用授权码，可在 设置 → 账户 → POP3/SMTP服务 获取
+                                                    </p>
 
-                                            <div className="form-row" style={{ display: 'flex', gap: '12px' }}>
-                                                <div className="form-group" style={{ flex: 1 }}>
-                                                    <label>端口</label>
-                                                    <input
-                                                        type="number"
-                                                        value={settings.notification.smtp_port || 465}
-                                                        onChange={(e) => updateNotification('smtp_port', parseInt(e.target.value) || 465)}
-                                                        placeholder="465"
-                                                        disabled={!settings.notification.enabled}
-                                                    />
-                                                </div>
-                                                <div className="form-group checkbox-group" style={{ flex: 1, display: 'flex', alignItems: 'flex-end', paddingBottom: '10px' }}>
-                                                    <label className="checkbox-label">
+
+                                                    <div className="form-group" style={{ marginBottom: '12px' }}>
+                                                        <label>收件邮箱地址</label>
                                                         <input
-                                                            type="checkbox"
-                                                            checked={settings.notification.smtp_secure !== false}
-                                                            onChange={(e) => updateNotification('smtp_secure', e.target.checked)}
-                                                            disabled={!settings.notification.enabled}
+                                                            type="email"
+                                                            value={settings.notification.email}
+                                                            onChange={(e) => updateNotification('email', e.target.value)}
+                                                            placeholder="your@email.com"
                                                         />
-                                                        <span>使用 SSL/TLS</span>
-                                                    </label>
+                                                    </div>
+
+                                                    {/* 测试邮件按钮 */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                                        <button
+                                                            type="button"
+                                                            className="test-email-btn"
+                                                            onClick={async () => {
+                                                                if (!settings.notification.email) {
+                                                                    alert('请先填写收件邮箱地址');
+                                                                    return;
+                                                                }
+                                                                if (!settings.notification.smtp_server || !settings.notification.smtp_user || !settings.notification.smtp_password) {
+                                                                    alert('请先填写完整的 SMTP 配置');
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    const response: any = await api.post('/notifications/test-email', {
+                                                                        email: settings.notification.email,
+                                                                        smtp_server: settings.notification.smtp_server,
+                                                                        smtp_port: settings.notification.smtp_port || 465,
+                                                                        smtp_user: settings.notification.smtp_user,
+                                                                        smtp_password: settings.notification.smtp_password,
+                                                                        smtp_secure: settings.notification.smtp_secure !== false
+                                                                    });
+                                                                    if (response?.success) {
+                                                                        alert('测试邮件已发送，请检查收件箱');
+                                                                    } else {
+                                                                        alert(`发送失败: ${response?.message || '未知错误'}`);
+                                                                    }
+                                                                } catch (err: any) {
+                                                                    alert(`发送失败: ${err.message || '网络错误'}`);
+                                                                }
+                                                            }}
+                                                            disabled={!settings.notification.email || !settings.notification.smtp_user}
+                                                            style={{
+                                                                opacity: (settings.notification.email && settings.notification.smtp_user) ? 1 : 0.5
+                                                            }}
+                                                        >
+                                                            📧 发送测试邮件
+                                                        </button>
+                                                        <p className="hint-text" style={{ margin: 0 }}>
+                                                            点击后会使用上方配置发送测试邮件
+                                                        </p>
+                                                    </div>
+
+                                                    <h4 style={{ marginBottom: '6px', fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                                                        发送时机
+                                                    </h4>
+
+                                                    <div className="toggle-group">
+                                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                                            <label className="setting-toggle">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={settings.notification.on_complete}
+                                                                    onChange={(e) => updateNotification('on_complete', e.target.checked)}
+                                                                />
+                                                                <div className="toggle-track">
+                                                                    <div className="toggle-thumb"></div>
+                                                                </div>
+                                                                <span className="toggle-label sub-toggle">完成时</span>
+                                                            </label>
+                                                        </div>
+
+                                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                                            <label className="setting-toggle">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={settings.notification.on_error}
+                                                                    onChange={(e) => updateNotification('on_error', e.target.checked)}
+                                                                />
+                                                                <div className="toggle-track">
+                                                                    <div className="toggle-thumb"></div>
+                                                                </div>
+                                                                <span className="toggle-label sub-toggle">失败时</span>
+                                                            </label>
+                                                        </div>
+
+                                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                                            <label className="setting-toggle">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={settings.notification.on_warning}
+                                                                    onChange={(e) => updateNotification('on_warning', e.target.checked)}
+                                                                />
+                                                                <div className="toggle-track">
+                                                                    <div className="toggle-thumb"></div>
+                                                                </div>
+                                                                <span className="toggle-label sub-toggle">警告时</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
 
-                                            <div className="form-group">
-                                                <label>SMTP 用户名（发件邮箱）</label>
-                                                <input
-                                                    type="text"
-                                                    value={settings.notification.smtp_user || ''}
-                                                    onChange={(e) => updateNotification('smtp_user', e.target.value)}
-                                                    placeholder="your@qq.com"
-                                                    disabled={!settings.notification.enabled}
-                                                />
-                                            </div>
-
-                                            <div className="form-group">
-                                                <label>SMTP 密码/授权码</label>
-                                                <input
-                                                    type="password"
-                                                    value={settings.notification.smtp_password || ''}
-                                                    onChange={(e) => updateNotification('smtp_password', e.target.value)}
-                                                    placeholder="授权码（非邮箱密码）"
-                                                    disabled={!settings.notification.enabled}
-                                                />
-                                                <p className="hint-text" style={{ marginTop: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
-                                                    QQ邮箱请使用授权码，可在 设置 → 账户 → POP3/SMTP服务 获取
-                                                </p>
-                                            </div>
-
-                                            <h4 style={{ marginTop: '20px', marginBottom: '12px', fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
-                                                收件人设置
-                                            </h4>
-
-                                            <div className="form-group">
-                                                <label>收件邮箱地址</label>
-                                                <input
-                                                    type="email"
-                                                    value={settings.notification.email}
-                                                    onChange={(e) => updateNotification('email', e.target.value)}
-                                                    placeholder="your@email.com"
-                                                    disabled={!settings.notification.enabled}
-                                                />
-                                            </div>
-
-                                            <h4 style={{ marginTop: '20px', marginBottom: '12px', fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
-                                                通知类型
-                                            </h4>
-
-                                            <div className="form-group checkbox-group" style={{ marginLeft: '24px', opacity: settings.notification.enabled ? 1 : 0.5 }}>
-                                                <label className="checkbox-label">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={settings.notification.on_complete}
-                                                        onChange={(e) => updateNotification('on_complete', e.target.checked)}
-                                                        disabled={!settings.notification.enabled}
-                                                    />
-                                                    <span>工作流完成时通知</span>
-                                                </label>
-                                            </div>
-
-                                            <div className="form-group checkbox-group" style={{ marginLeft: '24px', opacity: settings.notification.enabled ? 1 : 0.5 }}>
-                                                <label className="checkbox-label">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={settings.notification.on_error}
-                                                        onChange={(e) => updateNotification('on_error', e.target.checked)}
-                                                        disabled={!settings.notification.enabled}
-                                                    />
-                                                    <span>工作流失败时通知</span>
-                                                </label>
-                                            </div>
-
-                                            {/* 测试邮件按钮 */}
-                                            <div className="form-group" style={{ marginTop: '16px' }}>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary"
-                                                    onClick={async () => {
-                                                        if (!settings.notification.email) {
-                                                            alert('请先填写收件邮箱地址');
-                                                            return;
-                                                        }
-                                                        if (!settings.notification.smtp_server || !settings.notification.smtp_user || !settings.notification.smtp_password) {
-                                                            alert('请先填写完整的 SMTP 配置');
-                                                            return;
-                                                        }
-                                                        try {
-                                                            const response: any = await api.post('/notifications/test-email', {
-                                                                email: settings.notification.email,
-                                                                smtp_server: settings.notification.smtp_server,
-                                                                smtp_port: settings.notification.smtp_port || 465,
-                                                                smtp_user: settings.notification.smtp_user,
-                                                                smtp_password: settings.notification.smtp_password,
-                                                                smtp_secure: settings.notification.smtp_secure !== false
-                                                            });
-                                                            if (response?.success) {
-                                                                alert('测试邮件已发送，请检查收件箱');
-                                                            } else {
-                                                                alert(`发送失败: ${response?.message || '未知错误'}`);
-                                                            }
-                                                        } catch (err: any) {
-                                                            alert(`发送失败: ${err.message || '网络错误'}`);
-                                                        }
-                                                    }}
-                                                    disabled={!settings.notification.enabled || !settings.notification.email || !settings.notification.smtp_user}
-                                                    style={{
-                                                        opacity: (settings.notification.enabled && settings.notification.email && settings.notification.smtp_user) ? 1 : 0.5
-                                                    }}
-                                                >
-                                                    📧 发送测试邮件
-                                                </button>
-                                                <p className="hint-text" style={{ marginTop: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                                                    点击后会使用上方配置发送测试邮件
-                                                </p>
-                                            </div>
                                         </div>
                                     )}
 
                                     {/* 云同步配置 */}
                                     {activeSection === 'cloud' && (
                                         <div className="section-content">
-                                            <h3>云同步设置</h3>
-                                            <p className="section-desc">配置数据同步到云存储服务</p>
 
                                             <div className="form-group">
                                                 <label>云服务提供商</label>

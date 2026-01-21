@@ -205,15 +205,23 @@
 }
 
 /* 分类内容区 */
+.section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
 .section-content h3 {
-    margin: 0 0 4px 0;
+    margin: 0;
     font-size: 16px;
     font-weight: 600;
     color: #fff;
+    white-space: nowrap;
 }
 
 .section-desc {
-    margin: 0 0 20px 0;
+    margin: 0;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.5);
 }
@@ -232,6 +240,8 @@
 
 .section-content .form-group input[type="text"],
 .section-content .form-group input[type="email"],
+.section-content .form-group input[type="number"],
+.section-content .form-group input[type="password"],
 .section-content .form-group select {
     width: 100%;
     padding: 10px 12px;
@@ -243,11 +253,27 @@
     transition: all 0.2s;
 }
 
-.section-content .form-group input:focus,
+.section-content .form-group input[type="text"]:focus,
+.section-content .form-group input[type="email"]:focus,
+.section-content .form-group input[type="number"]:focus,
+.section-content .form-group input[type="password"]:focus,
 .section-content .form-group select:focus {
     outline: none;
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* 移除数字输入框的上下箭头 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .section-content .form-group input::placeholder {
@@ -408,6 +434,13 @@
     color: #ef4444;
 }
 
+.hint-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
 .project-dropdown-empty {
     padding: 12px;
     font-size: 12px;
@@ -435,6 +468,81 @@
 
 .checkbox-label span {
     font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* === 增强型开关 (Toggle Switch) === */
+.section-content .form-group label.setting-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+    width: fit-content;
+}
+
+.setting-toggle input {
+    display: none;
+}
+
+.toggle-track {
+    position: relative;
+    width: 38px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.setting-toggle input:checked+.toggle-track {
+    background: rgba(99, 102, 241, 0.4);
+    border-color: rgba(99, 102, 241, 0.6);
+}
+
+.setting-toggle input:checked+.toggle-track .toggle-thumb {
+    left: 20px;
+    background: #a5b4fc;
+    box-shadow: 0 0 10px rgba(165, 180, 252, 0.5);
+}
+
+.toggle-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+/* 覆盖全局 h4 样式，确保与 label 间距一致 */
+.section-content h4 {
+    padding: 0;
+    margin-top: 0;
+}
+
+/* 通知类型开关组 */
+.toggle-group {
+    display: flex;
+    gap: 32px;
+    margin-left: 4px;
+}
+
+/* 针对通知类型的开关标签（稍微细一点） */
+.toggle-label.sub-toggle {
+    font-size: 13px;
+    font-weight: 500;
     color: rgba(255, 255, 255, 0.8);
 }
 
@@ -522,4 +630,37 @@
 
 .settings-btn-circle:active {
     transform: rotate(60deg) scale(0.95);
+}
+
+/* 测试邮件按钮 */
+.test-email-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: none !important;
+}
+
+.test-email-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: none !important;
+}
+
+.test-email-btn:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.test-email-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
