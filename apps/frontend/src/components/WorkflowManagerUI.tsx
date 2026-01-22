@@ -54,6 +54,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
     cancelDelete,
     toggleFavorite,
     hasMore,
+    isDeleting: isActionLoading
   } = useWorkflowHistory({
     currentUser,
     selectedProject,
@@ -236,6 +237,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         key={item.id}
                         item={item}
                         isDeleting={deletingItemId === item.id}
+                        isActionLoading={isActionLoading && deletingItemId === item.id}
                         onLoad={loadHistoryWorkflow}
                         onDelete={deleteHistoryWorkflow}
                         onShowDeleteConfirm={showDeleteConfirm}
@@ -287,6 +289,7 @@ export const WorkflowManagerUI: React.FC<WorkflowManagerUIProps> = ({
                         key={item.id}
                         item={item}
                         isDeleting={deletingItemId === item.id}
+                        isActionLoading={isActionLoading && deletingItemId === item.id}
                         onLoad={loadHistoryWorkflow}
                         onDelete={deleteHistoryWorkflow}
                         onShowDeleteConfirm={showDeleteConfirm}

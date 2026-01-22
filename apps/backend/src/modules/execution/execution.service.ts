@@ -730,7 +730,17 @@ export class ExecutionService implements IExecutionModule, OnModuleInit {
 
   private initDbTables() {
     this.db.prepare(`CREATE TABLE IF NOT EXISTS executions (id TEXT PRIMARY KEY, workflow_id TEXT, status TEXT, start_time TEXT, end_time TEXT, duration INTEGER, error TEXT, logs_json TEXT)`).run();
+    // ✅ 新增索引以提升按 workflow_id 查询/删除的速度
+    this.db.prepare(`CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id)`).run();
     this.db.prepare(`CREATE TABLE IF NOT EXISTS hooks (id TEXT PRIMARY KEY, name TEXT, enabled INTEGER, rule_json TEXT)`).run();
+  }
+
+  /**
+   * 按工作流 ID 删除所有执行记录
+   */
+  async deleteExecutionsByWorkflowId(workflowId: string): Promise<void> {
+    this.logger.log(`[ExecutionService] 清理工作流 ${workflowId} 的执行记录`);
+    this.db.prepare(`DELETE FROM executions WHERE workflow_id = ?`).run(workflowId);
   }
 
   private isMeasurementNodeType(t: string): boolean {

@@ -37,6 +37,7 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
     const [historyError, setHistoryError] = useState('');
     const [projects, setProjects] = useState<string[]>([]);
     const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const PAGE_SIZE = 20;
@@ -194,6 +195,7 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
 
     // 删除历史工作流
     const deleteHistoryWorkflow = useCallback(async (workflow: WorkflowHistory) => {
+        setIsDeleting(true);
         try {
             // ✅ 调用后端 API 执行真删除
             await api.delete(`/workflows/${workflow.id}`);
@@ -203,8 +205,10 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
             console.log(`历史工作流 "${workflow.name}" 已成功删除`);
         } catch (error) {
             console.error('删除历史工作流失败:', error);
-            setDeletingItemId(null);
             alert(`删除工作流 "${workflow.name}" 失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        } finally {
+            setIsDeleting(false);
+            setDeletingItemId(null);
         }
     }, []);
 
@@ -259,6 +263,7 @@ export const useWorkflowHistory = (options: UseWorkflowHistoryOptions) => {
         historyError,
         projects,
         deletingItemId,
+        isDeleting,
         // 操作
         loadWorkflowHistory,
         loadHistoryWorkflow,

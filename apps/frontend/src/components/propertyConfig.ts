@@ -65,15 +65,6 @@ export const getParameterLabel = (key: string, nodeType?: string): string => {
     condition: '条件',
     branch_mode: '分支模式',
     amplitude: '测量幅度 (V)',
-    startFrequency: '起始频率 (Hz)',
-    lowerFrequencyLimit: '最低频率限制 (Hz)',
-    upperFrequencyLimit: '最高频率限制 (Hz)',
-    lowerNumberOfPeriods: '低频段周期数',
-    upperNumberOfPeriods: '高频段周期数',
-    lowerStepsPerDecade: '低频段每十频程步数',
-    upperStepsPerDecade: '高频段每十频程步数',
-    scanDirection: '扫描方向',
-    scanStrategy: '扫描策略',
     potentiostatMode: '恒电位仪模式',
     selectPotentiostat: '选择恒电位仪',
     outputPath: '输出路径',
@@ -161,8 +152,6 @@ export const enumValues: Record<string, string[]> = {
   eis_scan_strategy: ['SINGLE_SINE', 'MULTI_SINE'],
   start_voltage_reference: ['absolute', 'ocv'],
   end_voltage_reference: ['absolute', 'ocv'],
-  scanDirection: ['START_TO_MAX', 'MAX_TO_START', 'START_TO_MIN', 'MIN_TO_START'],
-  scanStrategy: ['SINGLE_SINE', 'MULTI_SINE', 'NOISE'],
   potentiostatMode: ['POTMODE_POTENTIOSTATIC', 'POTMODE_GALVANOSTATIC'],
   fileNaming: ['COUNTER', 'DATE_TIME', 'INDIVIDUAL']
 };
@@ -171,8 +160,8 @@ export const enumValues: Record<string, string[]> = {
 export const getParameterEnumLabel = (key: string, value: string): string => {
   const enumLabels: Record<string, Record<string, string>> = {
     eis_scan_direction: {
-      'START_TO_MAX': '从起始频率到最高频率',
-      'START_TO_MIN': '从起始频率到最低频率'
+      'START_TO_MAX': '从起始频率到最低频率',
+      'START_TO_MIN': '从起始频率到最高频率'
     },
     eis_scan_strategy: {
       'SINGLE_SINE': '单正弦波',
@@ -185,17 +174,6 @@ export const getParameterEnumLabel = (key: string, value: string): string => {
     end_voltage_reference: {
       'absolute': '绝对电位',
       'ocv': '开路电位'
-    },
-    scanDirection: {
-      'START_TO_MAX': '从起始到最大',
-      'MAX_TO_START': '从最大到起始',
-      'START_TO_MIN': '从起始到最小',
-      'MIN_TO_START': '从最小到起始'
-    },
-    scanStrategy: {
-      'SINGLE_SINE': '单正弦波',
-      'MULTI_SINE': '多正弦波',
-      'NOISE': '噪声'
     },
     potentiostatMode: {
       'POTMODE_POTENTIOSTATIC': '恒电位模式',

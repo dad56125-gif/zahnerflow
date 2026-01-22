@@ -68,9 +68,9 @@ export class WorkflowStorageService {
         json_data = excluded.json_data,
         updated_at = excluded.updated_at
     `).run(
-      workflow.id, 
-      jsonData, 
-      workflow.createdAt.toISOString(), 
+      workflow.id,
+      jsonData,
+      workflow.createdAt.toISOString(),
       now
     );
   }
@@ -119,6 +119,10 @@ export class WorkflowStorageService {
    * 删除工作流
    */
   async deleteWorkflow(id: string): Promise<void> {
+    // 1. 同时清理该工作流的所有执行记录 (防止数据库无限膨胀)
+    this.dbService.prepare(`DELETE FROM executions WHERE workflow_id = ?`).run(id);
+
+    // 2. 删除工作流主记录
     this.dbService.prepare(`DELETE FROM workflows WHERE id = ?`).run(id);
   }
 

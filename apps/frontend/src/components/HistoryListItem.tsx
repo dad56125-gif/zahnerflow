@@ -14,6 +14,7 @@ interface HistoryListItemProps {
     onShowDeleteConfirm: (item: WorkflowHistory) => void;
     onCancelDelete: () => void;
     onToggleFavorite?: (item: WorkflowHistory) => void;
+    isActionLoading?: boolean;
 }
 
 export const HistoryListItem: React.FC<HistoryListItemProps> = ({
@@ -23,7 +24,8 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
     onDelete,
     onShowDeleteConfirm,
     onCancelDelete,
-    onToggleFavorite
+    onToggleFavorite,
+    isActionLoading
 }) => {
     // 增加内部动画状态，避免渲染时自动触发动画
     const [isPlayingAnimation, setIsPlayingAnimation] = useState(false);
@@ -89,8 +91,9 @@ export const HistoryListItem: React.FC<HistoryListItemProps> = ({
                             onClick={() => onDelete(item)}
                             className="delete-confirm-btn confirm"
                             title="确认删除"
+                            disabled={isActionLoading}
                         >
-                            ✓
+                            {isActionLoading ? '...' : '✓'}
                         </button>
                         <button
                             onClick={onCancelDelete}
