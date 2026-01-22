@@ -7,4 +7,4 @@
  */
 
 // 重导出共享模块的所有内容
-export * from '@shared/loopUnroller';
+export * from '@shared/loopUnroller.ts';

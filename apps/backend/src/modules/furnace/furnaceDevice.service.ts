@@ -24,7 +24,7 @@ export class FurnaceDeviceService {
   private http: AxiosInstance;
 
   // 超时配置
-  private readonly normalTimeout = 1500;
+  private readonly normalTimeout = 5000;
   private readonly extendedTimeout = 30000;
 
   constructor() {

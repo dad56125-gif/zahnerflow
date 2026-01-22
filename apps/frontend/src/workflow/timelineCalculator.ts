@@ -8,7 +8,7 @@
  */
 
 import { WorkflowNode } from '../types/Interfaces';
-import { unrollLoops } from '@shared/loopUnroller';
+import { unrollLoops } from '@shared/loopUnroller.ts';
 
 // ==================== 类型定义 ====================
 

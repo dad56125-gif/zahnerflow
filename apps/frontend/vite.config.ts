@@ -18,6 +18,10 @@ export default defineConfig({
   server: {
     port: 8083,
     host: true,
+    fs: {
+      strict: false,
+      allow: ['..']
+    },
     proxy: {
       // 所有设备 API 都通过统一的后端访问
       '/api': {
