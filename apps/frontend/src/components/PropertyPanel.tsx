@@ -161,6 +161,40 @@ export const PropertyPanel = React.forwardRef<HTMLDivElement, PropertyPanelProps
           measurement_duration: isHealth ? 30 : 60,
           sampling_interval: 1
         });
+      } else if (
+        (node.type === 'eis_potentiostatic' || node.type === 'eis_galvanostatic') &&
+        ['eis_start_frequency', 'eis_upper_frequency', 'eis_lower_frequency'].includes(key)
+      ) {
+        // 频率连锁机制：确保 高频限制 >= 起始频率 >= 低频限制
+        const newValue = Number(value);
+        let newConfig = { ...currentConfig, [key]: newValue };
+
+        if (key === 'eis_start_frequency') {
+          // 修改起始：若超过上限，拉高上限；若低于下限，拉低下限
+          if (newValue > (newConfig.eis_upper_frequency || 0)) {
+            newConfig.eis_upper_frequency = newValue;
+          }
+          if (newValue < (newConfig.eis_lower_frequency || 0)) {
+            newConfig.eis_lower_frequency = newValue;
+          }
+        } else if (key === 'eis_upper_frequency') {
+          // 修改上限：若低于起始，同步降低起始；由于起始可能低于下限，需再次级联
+          if (newValue < (newConfig.eis_start_frequency || 0)) {
+            newConfig.eis_start_frequency = newValue;
+            if (newValue < (newConfig.eis_lower_frequency || 0)) {
+              newConfig.eis_lower_frequency = newValue;
+            }
+          }
+        } else if (key === 'eis_lower_frequency') {
+          // 修改下限：若超过起始，同步提高起始；由于起始可能超过上限，需再次级联
+          if (newValue > (newConfig.eis_start_frequency || 0)) {
+            newConfig.eis_start_frequency = newValue;
+            if (newValue > (newConfig.eis_upper_frequency || 0)) {
+              newConfig.eis_upper_frequency = newValue;
+            }
+          }
+        }
+        updateNodeConfig(node.id, newConfig);
       } else {
         updateNodeConfig(node.id, { ...currentConfig, [key]: value });
       }
