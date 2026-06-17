@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { WorkstationType, Workflow } from './types/Interfaces';
 import { getNodeGroupsByWorkstation } from './types/NodeUtilities';
 
@@ -6,7 +6,7 @@ import { TopNavbar } from './components/TopNavbar';
 import { Sidebar } from './components/Sidebar';
 import { PropertyPanel } from './components/PropertyPanel';
 import { StatusBar } from './components/StatusBar';
-import { ChartModal } from './components/ChartModal';
+import { MeasurementDashboard } from './components/measurement-dashboard/MeasurementDashboard';
 import { Canvas } from './canvas/Canvas';
 import { setupAutoGlassEffect } from './shared/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
@@ -54,7 +54,7 @@ const AppContent: React.FC = () => {
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(false);
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
-  const [showChartModal, setShowChartModal] = useState(false);
+  const [showMeasurementDashboard, setShowMeasurementDashboard] = useState(false);
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
@@ -319,13 +319,13 @@ const AppContent: React.FC = () => {
         setIsNotificationPanelOpen={setIsNotificationPanelOpen}
         detectedLoops={detectedLoops}
         systemState={systemState}
-        onProgressBarClick={() => setShowChartModal(true)}
+        onProgressBarClick={() => setShowMeasurementDashboard(true)}
       />
 
       {/* 图表 Modal */}
-      <ChartModal
-        isOpen={showChartModal}
-        onClose={() => setShowChartModal(false)}
+      <MeasurementDashboard
+        isOpen={showMeasurementDashboard}
+        onClose={() => setShowMeasurementDashboard(false)}
         systemState={systemState}
         nodes={nodes}
       />

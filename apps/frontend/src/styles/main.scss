@@ -1,0 +1,51 @@
+/* === main.scss - SCSS + CSS @layer 整合入口 === */
+
+@layer tokens, base, layout, components, utilities;
+
+/* 1. 令牌层 (Tokens Layer) */
+@layer tokens {
+  @import './_tokens.css';
+}
+
+/* 2. 基础层 (Base Layer) */
+@layer base {
+  @import './_base.scss';
+  @import './_animations.scss';
+}
+
+/* 3. 布局层 (Layout Layer) */
+@layer layout {
+  @import './_layout.scss';
+}
+
+/* 4. 组件层 (Components Layer) */
+@layer components {
+  // 必须最先导入占位符和公共工具，方便后续组件继承
+  @import './_placeholders.scss';
+  @import './_ui-kit.scss';
+  
+  // UI 基础组件
+  @import './_buttons.scss';
+  @import './_dropdown.scss';
+  @import './_datatable.scss';
+  @import './_schedule-runner.scss';
+  @import './_user-settings.scss';
+  @import './_chart-modal.scss';
+  @import './_chart.scss';
+  @import './_workflow-controls.scss';
+  
+  // 高级布局与业务组件
+  @import './_advanced-components.scss';
+  @import './_canvas.scss';
+  @import './_furnace.scss';
+  @import './_mfc.scss';
+  
+  // 模块样式（在此引入作为备用兜底，防止局部引入失效）
+  @import './_report.scss';
+  @import '../components/_execution-history.scss';
+}
+
+/* 5. 工具层 (Utilities Layer) */
+@layer utilities {
+  @import './_utilities.css';
+}

@@ -1,0 +1,172 @@
+/* === _animations.css - 关键帧动画定义 === */
+/* 仅保留被其他 CSS/TSX 文件实际引用的 @keyframes */
+/* 未使用的工具类动画已移除 (详见 _components.css 拆分记录) */
+
+/* === 节点状态动画 === */
+@keyframes running_status_pulse {
+  0%, 100% {
+    opacity: 0.7;
+    box-shadow:
+      0 0 3px rgba(25, 118, 210, 0.2),
+      0 8px 32px var(--glass-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 var(--glass-hover);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 12px rgba(25, 118, 210, 0.5),
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes failed_status_glow {
+  0%, 100% {
+    box-shadow:
+      0 8px 32px var(--glass-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 var(--glass-hover),
+      inset 0 2px 4px rgba(211, 47, 47, 0.2),
+      inset 0 0 8px rgba(211, 47, 47, 0.4),
+      inset 0 -2px 6px rgba(211, 47, 47, 0.6);
+  }
+  50% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 2px 12px rgba(211, 47, 47, 0.6),
+      inset 0 0 24px rgba(211, 47, 47, 0.9),
+      inset 0 -2px 16px rgba(211, 47, 47, 1);
+  }
+}
+
+@keyframes completed_status_success {
+  0% {
+    box-shadow:
+      0 0 3px rgba(46, 125, 50, 0.2),
+      0 8px 32px var(--glass-shadow);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(46, 125, 50, 0.6),
+      0 8px 32px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    box-shadow:
+      0 0 3px rgba(46, 125, 50, 0.3),
+      0 8px 32px var(--glass-shadow);
+  }
+}
+
+/* === 设备连接动画 === */
+@keyframes device_connecting {
+  0% {
+    border-color: var(--device-connecting);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    border-color: var(--device-connecting);
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+  100% {
+    border-color: var(--device-connecting);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes device_online_pulse {
+  0%, 100% {
+    border-color: var(--device-online);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    border-color: var(--device-online);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes device_error_blink {
+  0%, 50%, 100% {
+    border-color: var(--device-error);
+    box-shadow: 0 0 4px rgba(220, 38, 38, 0.4);
+  }
+  25%, 75% {
+    border-color: var(--device-error);
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.8);
+  }
+}
+
+/* === 数据流动画 === */
+@keyframes data_flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+/* === 下拉菜单动画 === */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
+/* === 模态框动画 === */
+
+
+@keyframes modal_scale_in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* === 加载动画 === */
+@keyframes loader_spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* === pulse 动画（在StatusBar中使用） === */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* === 可访问性：减少动画偏好 === */
+@media (prefers-reduced-motion: reduce) {
+  .respect-motion {
+    animation: none !important;
+    transition: none !important;
+  }
+}
