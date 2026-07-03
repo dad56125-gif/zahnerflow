@@ -1,83 +1,39 @@
 @echo off
 chcp 65001 > nul
 echo ========================================
-echo ZahnerFlow - 真实设备模式启动器
+echo ZahnerFlow - single Python backend
 echo ========================================
 echo.
-echo 正在清理端口 8000, 8010, 8011, 8083, 3001...
 
-echo Killing processes on port 8010 (MFC FastAPI)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8010 ^| findstr LISTENING') do (
-    echo Found process %%a on port 8010, killing...
+echo Cleaning backend port 3001 and frontend dev port 8083...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3001 ^| findstr LISTENING') do (
+    echo Found process %%a on port 3001, killing...
     taskkill /f /pid %%a 2>nul
 )
-
-echo Killing processes on port 8011 (Furnace FastAPI)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8011 ^| findstr LISTENING') do (
-    echo Found process %%a on port 8011, killing...
-    taskkill /f /pid %%a 2>nul
-)
-
-echo Killing processes on port 8000 (Zahner API)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') do (
-    echo Found process %%a on port 8000, killing...
-    taskkill /f /pid %%a 2>nul
-)
-
-echo Killing processes on port 8083 (Frontend)...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8083 ^| findstr LISTENING') do (
     echo Found process %%a on port 8083, killing...
     taskkill /f /pid %%a 2>nul
 )
 
-echo Killing processes on port 3001 (Backend)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3001 ^| findstr LISTENING') do (
-    echo Found process %%a on port 3001, killing...
-    taskkill /f /pid %%a 2>nul
-)
-
-echo Waiting for processes to close...
 timeout /t 2 /nobreak > nul
 
-echo.
-echo ========================================
-echo 启动真实设备服务...
-echo ========================================
-
-echo Starting Furnace FastAPI Server on port 8011...
-start "Furnace FastAPI" cmd /k "cd /d "%~dp0apps\backend\src\modules\furnace\fastapi" && python ai518p_device.py"
-
-echo Starting MFC FastAPI Server on port 8010...
-start "MFC FastAPI" cmd /k "cd /d "%~dp0apps\backend\src\modules\mfc\fastapi" && python mfc_device.py"
-
-echo Starting Zahner API Server on port 8000...
-start "Zahner API" cmd /k "cd /d "%~dp0apps\backend\src\modules\zahner-zennium\fastapi" && python zahner_device.py"
-
-echo Waiting for device services to fully initialize...
-timeout /t 4 /nobreak > nul
-
-echo Starting Backend on port 3001...
-start "Backend" cmd /k "cd /d "%~dp0apps\backend" && pnpm start:dev"
+echo Starting Python backend on port 3001...
+start "ZahnerFlow Python Backend" cmd /k "cd /d "%~dp0" && uv run python apps\python_backend\main.py"
 
 echo Waiting for backend service to initialize...
 timeout /t 3 /nobreak > nul
 
-echo Starting Frontend on port 8083...
-start "Frontend" cmd /k "cd /d "%~dp0apps\frontend" && pnpm dev"
+echo Starting frontend dev server on port 8083...
+start "ZahnerFlow Frontend" cmd /k "cd /d "%~dp0apps\frontend" && pnpm dev"
 
 echo.
 echo ========================================
-echo 所有服务已启动 [真实设备模式]
+echo ZahnerFlow started
 echo ========================================
+echo Backend:  http://localhost:3001
+echo Frontend: http://localhost:8083
 echo.
-echo Frontend:       http://localhost:8083
-echo Backend:        http://localhost:3001
-echo MFC FastAPI:    http://localhost:8010
-echo Furnace FastAPI: http://localhost:8011
-echo Zahner API:     http://localhost:8000
-echo.
-echo 注意: 此模式需要连接真实硬件设备
-echo 如需模拟器模式，请运行 start-simulator.bat
+echo Runtime exposes no device FastAPI ports.
 echo ========================================
 echo.
 pause

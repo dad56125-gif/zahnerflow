@@ -3,6 +3,12 @@
  * 实现温度、时间输入的验证逻辑
  */
 
+import {
+  FURNACE_TEMPERATURE_MAX_C,
+  FURNACE_TEMPERATURE_MIN_C,
+  FURNACE_TEMPERATURE_RANGE_LABEL
+} from './temperatureLimits';
+
 export interface ValidationResult {
   is_valid: boolean;
   value: number;
@@ -12,7 +18,7 @@ export interface ValidationResult {
 export class SegmentValidator {
   /**
    * 验证温度输入
-   * 范围：25-900℃
+   * 范围：25-1100℃
    * @param value 输入值
    * @returns 验证结果
    */
@@ -33,8 +39,12 @@ export class SegmentValidator {
     const num = parseInt(trimmed);
 
     // 检查温度范围
-    if (num < 25 || num > 900) {
-      return { is_valid: false, value: 25, error_message: "温度范围：25-900℃" };
+    if (num < FURNACE_TEMPERATURE_MIN_C || num > FURNACE_TEMPERATURE_MAX_C) {
+      return {
+        is_valid: false,
+        value: FURNACE_TEMPERATURE_MIN_C,
+        error_message: `温度范围：${FURNACE_TEMPERATURE_RANGE_LABEL}`
+      };
     }
 
     return { is_valid: true, value: num };
@@ -142,7 +152,7 @@ export class SegmentValidator {
    * @returns 默认温度值
    */
   static getDefaultTemperature(): number {
-    return 25;
+    return FURNACE_TEMPERATURE_MIN_C;
   }
 
   /**

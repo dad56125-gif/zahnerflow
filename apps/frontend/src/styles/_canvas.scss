@@ -1,0 +1,483 @@
+/* === _canvas.scss - Canvas & Node System BEM === */
+
+/* === Canvas Block === */
+.canvas {
+  @extend %glass-panel-base;
+  position: relative;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  @include top-blur-veil(calc(var(--toolbar-h) + var(--size-2xl)), var(--z-toolbar), 6px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 var(--glass-hover);
+
+  &.connecting-mode {
+    cursor: crosshair;
+    .node {
+      cursor: pointer;
+      &:hover { outline: 2px solid var(--glass-border-hover); outline-offset: var(--size-3xs); }
+    }
+  }
+  &.loop-mode-active {
+    cursor: crosshair;
+    .canvas__inner { background: rgba(156, 39, 176, 0.02); }
+  }
+}
+
+/* === Canvas Elements === */
+.canvas__viewport {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  z-index: 1;
+  scroll-padding-top: calc(var(--toolbar-h) + var(--space));
+  mask-image:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0.08) var(--size-xl),
+      rgba(0, 0, 0, 0.42) calc(var(--toolbar-h) * 0.86),
+      #000 calc(var(--toolbar-h) + var(--size-md))
+    );
+  -webkit-mask-image:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0.08) var(--size-xl),
+      rgba(0, 0, 0, 0.42) calc(var(--toolbar-h) * 0.86),
+      #000 calc(var(--toolbar-h) + var(--size-md))
+    );
+}
+
+.canvas__inner {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.canvas__grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: var(--size-lg) var(--size-lg);
+  pointer-events: none; z-index: 0;
+}
+
+.connections-layer { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+
+/* ==========================================================================
+   Node System
+   ========================================================================== */
+
+/* === Node Block === */
+.node {
+  position: absolute;
+  @extend %glass-panel-base;
+  backdrop-filter: blur(var(--blur-overlay));
+  color: var(--text-primary);
+  display: flex; align-items: center; justify-content: flex-start;
+  cursor: pointer;
+  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 var(--glass-hover);
+  font-size: var(--size-sm); font-weight: 600;
+  transition: var(--transition); user-select: none;
+  text-shadow: var(--text-shadow-body);
+  padding: var(--size-3xs) var(--size-xs);
+  z-index: 10;
+  border-width: var(--size-3xs);
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+    z-index: 20;
+  }
+}
+
+/* === Node State Modifiers === */
+.node.status-ready,
+.node.status-idle { border-color: var(--glass-border); }
+
+@mixin node-status-bg($r, $g, $b, $alpha) {
+  background: linear-gradient(to bottom, rgba($r, $g, $b, 0.02) 0%, rgba($r, $g, $b, $alpha) 100%);
+}
+
+.node.status-running   { border-color: var(--workflow-running);   @include node-status-bg(59, 130, 246, 0.3);  animation: running_status_pulse 1.5s ease-in-out infinite; }
+.node.status-completed { border-color: var(--workflow-completed); @include node-status-bg(16, 185, 129, 0.25); animation: completed_status_success 2s ease-in-out; }
+.node.status-failed    { border-color: var(--workflow-error);     @include node-status-bg(239, 68, 68, 0.16);  animation: failed_status_glow 2s ease-in-out infinite; }
+.node.status-paused    { border-color: var(--workflow-paused);    @include node-status-bg(245, 158, 11, 0.2); }
+.node.status-pending   { border-color: var(--glass-border);       @include node-status-bg(255, 255, 255, 0.25); }
+
+.node.is-selected {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2), 0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+  z-index: 30;
+}
+
+.node.is-dragging {
+  opacity: 0.6; cursor: grabbing; transform: scale(1.05); z-index: 1000;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: none;
+}
+
+.node.is-drag-over {
+  border-color: var(--color-primary); background: rgba(59, 130, 246, 0.2);
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  outline: 2px dashed var(--color-primary); outline-offset: 4px;
+}
+
+.node.is-connecting {
+  outline: 2px solid var(--color-primary);
+  outline-offset: var(--size-3xs);
+}
+
+/* === Node Elements === */
+.node__icon {
+  font-size: var(--size-xl); opacity: 0.85;
+  text-shadow: var(--text-shadow-body), 0 0 10px var(--glass-hover);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 4px var(--glass-hover));
+  backdrop-filter: blur(1px); transition: var(--transition); flex-shrink: 0;
+
+  .node:hover & {
+    opacity: 1; transform: scale(1.05);
+    text-shadow: var(--text-shadow-body), 0 0 15px rgba(255, 255, 255, 0.2);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+  }
+}
+
+.node__icon--large {
+  width: var(--size-xl);
+  height: var(--size-xl);
+  font-size: var(--size-lg);
+  flex-shrink: 0;
+  margin-right: var(--size-2xs);
+  opacity: 0.9;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.node__icon .node-library-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.node__icon .node-library-svg__primary,
+.node__icon .node-library-svg__secondary {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.node__icon .node-library-svg__primary {
+  stroke: var(--text-primary);
+}
+
+.node__icon .node-library-svg__label {
+  fill: var(--text-primary);
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.node__icon .node-library-svg--eis_potentiostatic .node-library-svg__secondary {
+  stroke: var(--node-library-icon-eis-voltage);
+}
+
+.node__icon .node-library-svg--eis_galvanostatic .node-library-svg__secondary {
+  stroke: var(--node-library-icon-eis-current);
+}
+
+.node__icon .node-library-svg--voltage_ramp .node-library-svg__secondary,
+.node__icon .node-library-svg--potentiostatic_step_ramp .node-library-svg__secondary {
+  stroke: var(--node-library-icon-ramp-voltage);
+}
+
+.node__icon .node-library-svg--current_ramp .node-library-svg__secondary,
+.node__icon .node-library-svg--galvanostatic_step_ramp .node-library-svg__secondary {
+  stroke: var(--node-library-icon-ramp-current);
+}
+
+.node__icon .node-library-svg--chronopotentiometry .node-library-svg__secondary {
+  stroke: var(--node-library-icon-chrono-voltage);
+}
+
+.node__icon .node-library-svg--chronoamperometry .node-library-svg__secondary {
+  stroke: var(--node-library-icon-chrono-current);
+}
+
+.node__icon .node-library-svg--potentiostatic_switching .node-library-svg__secondary {
+  stroke: var(--node-library-icon-switching-voltage);
+}
+
+.node__icon .node-library-svg--galvanostatic_switching .node-library-svg__secondary {
+  stroke: var(--node-library-icon-switching-current);
+}
+
+.node__icon .node-library-svg--ocp_measurement .node-library-svg__secondary {
+  stroke: var(--node-library-icon-ocp);
+}
+
+.node__icon .node-library-svg--change_temperature .node-library-svg__secondary {
+  stroke: var(--device-icon-furnace);
+}
+
+.node__icon .node-library-svg--change_gas_flow .node-library-svg__secondary {
+  stroke: var(--device-icon-mfc);
+}
+
+.node__icon .node-library-svg--wait_delay .node-library-svg__secondary,
+.node__icon .node-library-svg--scheduled_start .node-library-svg__secondary {
+  stroke: var(--node-library-icon-blue-gray);
+}
+
+.node__icon .node-library-svg--loop_start .node-library-svg__secondary,
+.node__icon .node-library-svg--loop_end .node-library-svg__secondary {
+  stroke: var(--node-library-icon-loop);
+}
+
+.node__icon .node-library-svg--workflow_block .node-library-svg__secondary {
+  stroke: var(--node-library-icon-workflow);
+}
+
+.node__content    { @include flex-col(0); flex: 1; min-width: 0; }
+.node__title      { font-size: var(--size-sm); font-weight: 600; text-align: left; @extend %text-ellipsis; line-height: 1.12; }
+
+.node__index-badge {
+  @extend %badge-base;
+  position: absolute; top: -9px; left: -9px; z-index: 100;
+  pointer-events: none; user-select: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 242, 220, 0.68) 20%, rgba(255, 174, 116, 0.6) 52%, rgba(255, 82, 52, 0.6) 100%) !important;
+  background-color: rgba(255, 156, 100, 0.6) !important;
+  color: #5c2f17;
+  border-color: rgba(255, 224, 196, 0.72);
+  backdrop-filter: blur(var(--blur-1)) saturate(1.45);
+  -webkit-backdrop-filter: blur(var(--blur-1)) saturate(1.45);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
+  min-width: 2.3rem;
+  height: 1.45rem;
+  padding: 0 var(--size-2xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow:
+    0 4px 12px rgba(88, 58, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -1px 0 rgba(186, 136, 20, 0.22);
+
+  .node:hover & {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 246, 230, 0.72) 20%, rgba(255, 188, 130, 0.6) 52%, rgba(255, 98, 64, 0.6) 100%) !important;
+    background-color: rgba(255, 170, 112, 0.6) !important;
+    border-color: rgba(255, 234, 218, 0.82);
+    transition: var(--transition);
+  }
+}
+
+.node__selection-border {
+  position: absolute; inset: -4px;
+  border: 2px solid var(--glass-border-hover); border-radius: var(--radius);
+  pointer-events: none; z-index: 25;
+  animation: selection-glow 2s ease-in-out infinite;
+}
+
+
+/* === Connection Start Indicator === */
+.connection-start__indicator {
+  position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+  background: var(--color-primary); color: white;
+  padding: var(--size-3xs) var(--size-2xs); border-radius: var(--radius-sm);
+  font-size: var(--size-xs); font-weight: 600; z-index: 30;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Loop Boundary System
+   ========================================================================== */
+
+.loop-boundary {
+  position: absolute; inset: 0; pointer-events: none; z-index: 2;
+
+  &__fill   { fill-opacity: 0.15; transition: all 0.3s var(--ease-in-out); filter: drop-shadow(0 2px 4px var(--glass-shadow)); }
+  &__border { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; transition: all 0.3s var(--ease-in-out); filter: drop-shadow(0 1px 2px var(--glass-shadow)); }
+  &__label  { font-weight: 600; font-family: system-ui, -apple-system, sans-serif; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); }
+
+  &.level-0 &__fill   { fill: var(--loop-level-0-fill); }
+  &.level-0 &__border { stroke: var(--loop-level-0); }
+  &.level-1 &__fill   { fill: var(--loop-level-1-fill); }
+  &.level-1 &__border { stroke: var(--loop-level-1); }
+  &.level-2 &__fill   { fill: var(--loop-level-2-fill); }
+  &.level-2 &__border { stroke: var(--loop-level-2); }
+  &.level-3 &__fill   { fill: var(--loop-level-3-fill); }
+  &.level-3 &__border { stroke: var(--loop-level-3); }
+
+  &.is-highlighted &__fill { filter: drop-shadow(0 0 12px currentColor); }
+}
+
+/* ==========================================================================
+   Workflow Manager Panel
+   ========================================================================== */
+
+.workflow-manager {
+  @extend %manager-panel;
+  max-height: 60vh;
+
+  &__header  { @extend %panel-header; padding: var(--size-lg);
+    h2, h3 { margin: 0; color: var(--text-primary); font-size: var(--size-lg); font-weight: 600; }
+  }
+
+  &__overlay { @extend %overlay-base; }
+
+  &__tabs {
+    display: flex;
+    gap: var(--size-2xs);
+    padding: 0 var(--size-lg) var(--size-sm);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  &__tab-btn {
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    font-family: inherit;
+    font-weight: 500;
+    padding: var(--size-2xs) var(--size-md);
+    border-radius: var(--radius-button);
+    background: transparent;
+    color: var(--text-secondary);
+
+    &:hover,
+    &.is-active {
+      background: var(--glass-hover);
+      color: var(--text-primary);
+    }
+  }
+
+  &__content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--size-lg);
+  }
+}
+
+.workflow__stats      { display: flex; gap: var(--size-sm); font-size: var(--size-xs); color: var(--text-secondary); }
+
+/* ==========================================================================
+   History System
+   ========================================================================== */
+
+.history__list   { @include flex-col(calc(var(--size-sm) / 2)); }
+.history__item   { @extend %list-item-base; }
+.history__error   { margin-bottom: var(--size-sm); }
+
+%history-centered {
+  @include flex-col(0);
+  align-items: center; justify-content: center;
+  padding: var(--size-4xl) var(--size-lg); text-align: center;
+}
+
+.history__loading { @extend %history-centered; color: var(--text-secondary); }
+.history__empty   { @extend %history-centered; user-select: none; }
+.history__load-more,
+.history__end {
+  text-align: center;
+  padding: var(--size-sm);
+  font-size: var(--size-xs);
+}
+.history__load-more { color: rgba(255, 255, 255, 0.5); }
+.history__end { color: rgba(255, 255, 255, 0.3); }
+
+/* === Delete Confirm === */
+.delete-confirm {
+  @extend %flex-center;
+  gap: var(--size-2xs); padding: var(--size-3xs) var(--size-2xs);
+  background: var(--color-danger-bg); border: 1px solid var(--color-danger);
+  border-radius: var(--radius-button);
+
+  &__text          { font-size: var(--size-xs); color: var(--color-danger); font-weight: 500; white-space: nowrap; }
+  &__content       { @include flex-col(2px); }
+  &__warning       { font-size: calc(var(--size-xs) * 0.85); color: var(--color-favorite); font-weight: 400; white-space: nowrap; }
+  &__icon          { font-size: var(--size-5xl); margin-bottom: var(--size-md); text-align: center; }
+  &__warning-text  { margin: 16px 0; font-size: 16px; color: var(--text-primary); text-align: center;
+    strong { color: #f44336; font-weight: 600; }
+  }
+  &__warning-subtext { margin: var(--space-2) 0 var(--space-6) 0; font-size: 14px; color: rgba(255, 255, 255, 0.7); text-align: center; line-height: 1.4; }
+}
+
+/* === Empty State === */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space);
+  text-align: center;
+}
+.empty-icon { font-size: var(--size-4xl); margin-bottom: var(--size-md); opacity: 0.5; }
+.empty-text { font-size: var(--size-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--size-3xs); }
+.empty-subtitle { font-size: var(--size-sm); color: var(--text-secondary); }
+.empty-hint { font-size: var(--size-sm); color: var(--text-secondary); }
+
+/* === Node Library Empty State === */
+.no-workstation-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space);
+  text-align: center;
+}
+.no-workstation-text {
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+/* NodeRenderer: .connection-start__indicator */
+@keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); } 40% { transform: translateX(-50%) translateY(-3px); } 60% { transform: translateX(-50%) translateY(-1.5px); } }
+/* NodeRenderer: .node__selection-border */
+@keyframes selection-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+/* ==========================================================================
+   EIS Parameters
+   ========================================================================== */
+
+.eis-parameters {
+  @include flex-col(0);
+  margin-top: 1px;
+  min-width: 0;
+  letter-spacing: 0;
+}
+
+.eis-current,
+.eis-frequency {
+  @extend %text-ellipsis;
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+  line-height: 1.02;
+  font-variant-numeric: tabular-nums;
+}
+
+.eis-frequency {
+  display: block;
+  color: var(--text-muted);
+  font-size: calc(var(--size-xs) * 0.96);
+  font-weight: 500;
+}

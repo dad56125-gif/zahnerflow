@@ -1,16 +1,16 @@
 /**
  * MeasurementDashboard 组件
  * 全屏显示测量图表的 Modal，使用 Portal 渲染
- * 宽度对齐 Canvas 边界（--sidebar-r 到 --property-l）
+ * 宽度对齐 Canvas 边界（--left-panel-r 到 --property-l）
  * 高度为 Canvas 高度的 2/3
  */
 
 import React, { useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
-import { Portal } from '../Portal';
+import { ModalLayer } from '../shared/OverlayLayer';
 import { MeasurementChart } from './MeasurementChart';
 import { MeasurementTabBar } from './MeasurementTabBar';
 import { useBulkSelection } from './useBulkSelection';
-import { ExecutionSnapshot, WorkflowNode } from '../../types/Interfaces';
+import type { ExecutionSnapshot, WorkflowNode } from '@zahnerflow/types';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme } from '../../utils/colorUtils';
 
@@ -57,8 +57,6 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
     systemState,
     nodes
 }) => {
-    const [dimensions, setDimensions] = useState({ left: 0, width: 0, top: 0, height: 0 });
-    const modalRef = useRef<HTMLDivElement>(null);
     const secondaryTabsRef = useRef<HTMLDivElement>(null);
     const secondaryTabsContentRef = useRef<HTMLDivElement>(null);
     const { bulkMode, handleBulkToggleClick: bulkToggleHandler, resetBulkSelection } = useBulkSelection();
@@ -168,7 +166,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
             cancelAnimationFrame(secondFrame);
             window.removeEventListener('resize', updateSecondaryOverflow);
         };
-    }, [activeTypeKey, activeGroup?.nodes.length, dimensions.width]);
+    }, [activeTypeKey, activeGroup?.nodes.length]);
 
     // 监听运行步骤的变化，实现自动聚焦
     useEffect(() => {
@@ -244,67 +242,6 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         });
     };
 
-    // 计算 Modal 尺寸和位置
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const computeDimensions = () => {
-            const computedStyle = getComputedStyle(document.documentElement);
-
-            const sidebarW = parseFloat(computedStyle.getPropertyValue('--sidebar-w')) || 256;
-            const propertyW = parseFloat(computedStyle.getPropertyValue('--property-w')) || 256;
-            const space = parseFloat(computedStyle.getPropertyValue('--space')) || 24;
-            const navbarH = parseFloat(computedStyle.getPropertyValue('--navbar-h')) || 48;
-
-            const canvasTop = space + navbarH + space;
-            const canvasHeight = window.innerHeight - canvasTop - (navbarH + 2 * space);
-
-            setDimensions({
-                left: 0,
-                width: 0,
-                top: canvasTop + (canvasHeight * 0.1),
-                height: canvasHeight * 0.66
-            });
-        };
-
-        computeDimensions();
-        window.addEventListener('resize', computeDimensions);
-
-        return () => window.removeEventListener('resize', computeDimensions);
-    }, [isOpen]);
-
-    // ESC 键关闭
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
-    // 动画状态管理
-    const [isRendered, setIsRendered] = useState(isOpen);
-    const [isHiding, setIsHiding] = useState(false);
-
-    useEffect(() => {
-        if (isOpen) {
-            setIsRendered(true);
-            setIsHiding(false);
-        } else if (isRendered) {
-            setIsHiding(true);
-            const timer = setTimeout(() => {
-                setIsRendered(false);
-                setIsHiding(false);
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen]);
-
     // 全局点击监听用于收起二级 Tab 展开面板
     useEffect(() => {
         if (!isSecondaryExpanded) return;
@@ -326,23 +263,34 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         };
     }, [isSecondaryExpanded]);
 
-    if (!isRendered) return null;
-
     return (
-        <Portal isOpen={true} pointerEvents="auto">
+        <ModalLayer
+            open={isOpen}
+            onOpenChange={(open) => {
+                if (!open) onClose();
+            }}
+            backdrop={false}
+            blur={false}
+            closeOnBackdrop={false}
+            contentClassName="overlay-layer__content--fill"
+            id="measurement-dashboard-overlay"
+        >
+            {({ state, close }) => {
+                const isHiding = state === 'closing';
+                return (
             <div
-                className={`chart-modal-backdrop ${isHiding ? 'hiding' : 'show'}`}
+                className={`chart-modal-backdrop ${isHiding ? 'is-hiding' : 'is-visible'}`}
                 onClick={() => {
                     if (isSecondaryOverflowing && isSecondaryExpanded) {
                         setIsSecondaryExpanded(false);
                     } else {
-                        onClose();
+                        close();
                     }
                 }}
             >
                 {/* 1. 悬浮的 Tab 栏 */}
                 <div
-                    className={`chart-modal__tab-container ${isHiding ? 'hiding' : 'show'}`}
+                    className={`chart-modal__tab-container ${isHiding ? 'is-hiding' : 'is-visible'}`}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <MeasurementTabBar
@@ -364,8 +312,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
 
                 {/* 2. Modal 大卡片 */}
                 <div
-                    ref={modalRef}
-                    className={`chart-modal glass ${isHiding ? 'hiding' : 'show'}`}
+                    className={`chart-modal glass ${isHiding ? 'is-hiding' : 'is-visible'}`}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* 标题栏 + 二级标签 */}
@@ -488,6 +435,8 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                     </div>
                 </div>
             </div>
-        </Portal>
+                );
+            }}
+        </ModalLayer>
     );
 };

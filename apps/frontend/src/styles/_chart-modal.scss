@@ -1,0 +1,450 @@
+@use "./placeholders" as *;
+
+/* === _chart-modal.scss - Chart Modal & Tab System BEM === */
+
+/* === Chart Modal Backdrop === */
+.chart-modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.005); /* 极微弱背景色（0.5% 不透明度），诱骗浏览器渲染引擎进行背景像素采样，肉眼完全透明 */
+  z-index: var(--z-modal, 200);
+  pointer-events: auto;
+
+  &.is-hiding { pointer-events: none; }
+}
+
+/* === Chart Modal === */
+.chart-modal {
+  position: fixed;
+  left: calc(var(--left-panel-w) + 2 * var(--space));
+  right: calc(var(--property-w) + 2 * var(--space));
+  bottom: calc(var(--navbar-h) + 2 * var(--space));
+  top: calc(var(--navbar-h) + 2 * var(--space) + 22vh); // 向下降低高度以缩矮弹窗，避开顶部画布更多流程节点展示
+  width: auto !important;
+  height: calc(100vh - (2 * (var(--navbar-h) + 2 * var(--space)) + 22vh)) !important; /* 显式计算高度，防止绝对定位子元素引起高度塌陷 */
+  @include flex-col; overflow: hidden; opacity: 1; /* 默认显示状态，配合无 forwards 动画，解除合成层干扰 */
+  z-index: calc(var(--z-modal, 200) + 1);
+  pointer-events: auto;
+  transform: translateZ(0); /* 强行保持硬件加速合成层，防止静止后毛玻璃失效 */
+  will-change: transform, filter, backdrop-filter;
+
+  &.is-visible { animation: dropdown-in var(--duration-normal) var(--ease-out); } /* 去掉 forwards，在动画结束后完全恢复默认样式并卸载动画 */
+  &.is-hiding  { animation: dropdown-out var(--duration-fast) var(--ease-in) forwards; pointer-events: none; }
+}
+
+/* === Chart Modal Tab Layout === */
+.chart-modal__tab-container {
+  position: fixed;
+  left: calc(var(--left-panel-w) + 2 * var(--space) + 24px); // 整体右移 24px 以显露出卡片左边框并形成精致错落感
+  right: calc(var(--property-w) + 2 * var(--space));
+  top: calc(var(--navbar-h) + 2 * var(--space) + 22vh - 46px); // 精确对齐降低高度后的单层主 Tab 悬浮高度
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3xs);
+  background: transparent;
+  border-bottom: none;
+  flex-shrink: 0;
+  opacity: 1; /* 默认显示状态，配合无 forwards 动画，解除合成层干扰 */
+  z-index: calc(var(--z-modal, 200) + 2);
+  pointer-events: auto;
+
+  &.is-visible { animation: dropdown-in var(--duration-normal) var(--ease-out); } /* 去掉 forwards，在动画结束后完全恢复默认样式并卸载动画 */
+  &.is-hiding  { animation: dropdown-out var(--duration-fast) var(--ease-in) forwards; pointer-events: none; }
+}
+
+.chart-modal__tabs-primary {
+  display: flex;
+  align-items: center;
+  gap: var(--size-xs);
+  flex-wrap: wrap;
+  padding-bottom: var(--size-3xs);
+}
+
+.tab-primary-item {
+  display: flex;
+  align-items: center;
+  gap: var(--size-3xs);
+  padding: 0.45rem 1rem; /* 增大间距，符合 md 尺寸 */
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  font-size: 0.9rem; /* 升级为 md 字号 */
+  font-weight: 500;
+  cursor: default;
+  outline: none;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  transition: all var(--duration-fast) var(--ease-in-out);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateZ(0); /* 强行保持硬件加速合成层，保证 backdrop-filter 稳定生效 */
+  will-change: transform, filter, backdrop-filter;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  &.is-active {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem; /* 徽章微调增大以匹配 md 尺寸 */
+    height: 1.25rem;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+    transition: all var(--duration-fast) var(--ease-in-out);
+
+    .tab-primary-item.is-active & {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+  }
+}
+
+.chart-modal__tabs-secondary {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2) 0 var(--space-2); /* 垂直 0，水平留 8px 边距给小箭头 */
+  height: auto; /* 由内容自适应 */
+  min-height: 32px; /* 锁死最小高度 */
+  max-height: 32px; /* 未展开时最大限制为 32px */
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px; /* 胶囊圆角，高 32px 时刚好是完美药丸状；展开时是精致的圆角面板 */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateZ(0);
+  will-change: transform, filter, backdrop-filter, max-height;
+  cursor: default;
+  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.25s ease,
+              background var(--duration-fast) var(--ease-in-out),
+              border-color var(--duration-fast) var(--ease-in-out);
+  z-index: 100;
+  overflow: hidden;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  &.is-overflowing {
+    cursor: pointer;
+  }
+
+  // === 展开状态 (仅拉伸高度限制与垂直 padding，不改变底色、边框及圆角) ===
+  &.is-expanded {
+    max-height: 240px; /* 展开后拉伸最大高度限制，超出则支持垂直滚动 */
+    overflow-y: auto;
+    padding: var(--space-2); /* 展开后增加上下呼吸间距，平滑撑开 */
+    align-items: flex-start;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+
+  // 内部列表容器
+  &-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: nowrap; /* 默认单行 */
+    overflow-x: auto; /* 允许横向滚动 */
+    overflow-y: hidden;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+
+    /* 隐藏滚动条 */
+    &::-webkit-scrollbar { display: none; }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    // 展开状态下切换为折行平铺
+    .chart-modal__tabs-secondary.is-expanded & {
+      flex-wrap: wrap;
+      overflow-x: hidden;
+      overflow-y: visible;
+      height: auto;
+      align-items: flex-start;
+    }
+  }
+
+  &-bulk,
+  &-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: color var(--duration-fast) var(--ease-in-out);
+    flex-shrink: 0;
+    cursor: pointer;
+
+    .chart-modal__tabs-secondary.is-expanded & {
+      align-self: flex-start;
+      margin-top: var(--space-1);
+    }
+
+    &:hover {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  &-bulk {
+    width: 22px;
+    margin-left: var(--space-2);
+    padding: 0;
+    border: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    outline: none;
+
+    svg {
+      display: block;
+    }
+
+    &.is-active {
+      color: #ffd666;
+      filter: drop-shadow(0 0 5px rgba(255, 214, 102, 0.45));
+    }
+  }
+
+  &-arrow {
+    width: 20px;
+    margin-left: var(--space-1);
+  }
+
+}
+
+.tab-secondary-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  outline: none;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  transition: all var(--duration-fast) var(--ease-in-out);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateZ(0); /* 强行保持硬件加速合成层，保证 backdrop-filter 稳定生效 */
+  will-change: transform, filter, backdrop-filter;
+  flex-shrink: 0; /* 强制不被压缩挤扁 */
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: var(--text-secondary);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  &.is-active {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  &.is-running {
+    color: var(--color-success);
+    border-color: rgba(16, 185, 129, 0.25);
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 5px;
+      height: 5px;
+      background: var(--color-success);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--color-success);
+      animation: tab-pulse 1.5s infinite;
+    }
+  }
+
+  &.is-completed {
+    color: var(--text-secondary);
+  }
+}
+
+/* 嵌套在 secondary 容器内时，去掉独立毛玻璃（容器自身已有） */
+.chart-modal__tabs-secondary .tab-secondary-item {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  &.is-active {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+}
+
+/* ChartModal: 活动标签呼吸 */
+@keyframes tab-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.9); }
+}
+
+/* === Workspace Device Modal (unified style for furnace, mfc, and unroll view) === */
+.workspace-device-modal {
+  position: fixed;
+  left: calc(var(--left-panel-l));
+  top: calc(var(--canvas-t));
+  width: calc(100vw - 2 * var(--space));
+  height: calc(100vh - var(--canvas-t) - var(--canvas-b));
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--effect-xl);
+  backdrop-filter: blur(var(--effect-xl));
+  -webkit-backdrop-filter: blur(var(--effect-xl));
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: auto;
+  z-index: 2000;
+}
+
+/* Unroll View Specific Styles */
+.unroll-summary {
+  display: flex;
+  gap: var(--size-md);
+  align-items: center;
+  margin-left: auto;
+  margin-right: var(--size-md);
+}
+
+.unroll-badge {
+  padding: var(--space-1) var(--space-3);
+  border-radius: 9999px;
+  font-size: var(--size-xs);
+
+  &--indigo {
+    background: rgba(99, 102, 241, 0.2);
+    color: rgb(165, 180, 252);
+  }
+
+  &--success {
+    background: rgba(34, 197, 94, 0.2);
+    color: rgb(134, 239, 172);
+  }
+
+  &--warning {
+    background: rgba(251, 191, 36, 0.2);
+    color: rgb(253, 224, 71);
+  }
+}
+
+.unroll-view-body {
+  overflow: auto;
+  padding: var(--size-md);
+}
+
+.unroll-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: var(--size-md);
+}
+
+.unroll-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--size-xs);
+  align-content: start;
+}
+
+.unroll-step-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: var(--size-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3xs);
+  transition: all var(--transition-fast);
+  cursor: default;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: var(--size-xs);
+    font-size: var(--size-sm);
+    font-weight: 500;
+  }
+
+  &__index {
+    color: var(--text-muted);
+    font-size: var(--size-xs);
+    min-width: 1.5rem;
+  }
+
+  &__name {
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__iteration {
+    display: flex;
+    align-items: center;
+    gap: var(--size-3xs);
+    font-size: var(--size-xs);
+    color: var(--color-warning);
+  }
+
+  &__preview {
+    font-size: var(--size-xs);
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

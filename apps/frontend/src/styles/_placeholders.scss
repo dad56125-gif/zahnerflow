@@ -1,0 +1,176 @@
+/* === _placeholders.scss - SCSS %placeholder 共享模式 + 高频 mixin === */
+
+/* 玻璃态面板基类 */
+%glass-panel-base {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--blur-panel));
+}
+
+/* Flex 居中 */
+%flex-center {
+  display: flex;
+  align-items: center;
+}
+
+/* Flex 列布局 — 全站最高频模式，消除 30+ 处重复 */
+@mixin flex-col($gap: var(--size-sm)) {
+  display: flex;
+  flex-direction: column;
+  gap: $gap;
+}
+
+/* 玻璃态 hover 微升 — 卡片/面板通用 */
+@mixin glass-lift {
+  &:hover {
+    border-color: var(--glass-border-hover);
+    transform: translateY(-1px);
+  }
+}
+
+/* 轻量顶部模糊遮罩：只模糊，不画可见色块 */
+@mixin top-blur-veil($height, $z-index: 1, $blur: 6px) {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: $height;
+    z-index: $z-index;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.001);
+    backdrop-filter: blur($blur);
+    -webkit-backdrop-filter: blur($blur);
+    mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.84) 36%, rgba(0, 0, 0, 0.24) 68%, rgba(0, 0, 0, 0) 100%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.84) 36%, rgba(0, 0, 0, 0.24) 68%, rgba(0, 0, 0, 0) 100%);
+  }
+}
+
+/* Card header row — 左右分布 + 底部边框 */
+@mixin card-head-row($padding-bottom: var(--size-xs)) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: $padding-bottom;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* 参数标签样式 — 统一 param/flow label */
+@mixin param-label {
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* 参数值样式 — 统一 param/flow value */
+@mixin param-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow-body);
+}
+
+/* 文本省略号 */
+%text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 玻璃态列表项 */
+%list-item-base {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-button);
+  padding: var(--size-sm);
+  transition: var(--transition);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--glass-border-hover);
+  }
+}
+
+/* 红点角标 */
+%badge-base {
+  background: rgba(255, 107, 107, 0.9);
+  color: white;
+  font-size: var(--size-xs);
+  font-weight: bold;
+  padding: var(--size-3xs) var(--size-2xs);
+  border-radius: var(--radius-button);
+  box-shadow: 0 2px 4px var(--glass-shadow);
+  backdrop-filter: blur(var(--blur-1));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  min-width: var(--size-md);
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 面板头部 */
+%panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--size-sm) var(--size-xl);
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* 隐藏滚动条 */
+%hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 全屏遮罩 */
+%overlay-base {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 管理面板 */
+%manager-panel {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(var(--blur-overlay));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  width: 480px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 var(--glass-hover);
+}
+
+
+@keyframes favorite-sparkle-v {
+  0% { transform: scaleY(0); opacity: 0; }
+  30% { opacity: 0.8; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+
+@keyframes favorite-sparkle-h {
+  0% { transform: scaleX(0); opacity: 0; }
+  30% { opacity: 0.8; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+@keyframes favorite-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.6); }
+  100% { transform: scale(1); }
+}

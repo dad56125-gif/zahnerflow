@@ -1,26 +1,39 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { WorkstationType, Workflow } from './types/Interfaces';
-import { getNodeGroupsByWorkstation } from './types/NodeUtilities';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type { WorkstationType, WorkflowNode } from '@zahnerflow/types';
+import { getNodeGroupsByWorkstation } from './utils/nodeUtilities';
 
-import { TopNavbar } from './components/TopNavbar';
-import { Sidebar } from './components/Sidebar';
-import { PropertyPanel } from './components/PropertyPanel';
-import { StatusBar } from './components/StatusBar';
+import { TopBar } from './components/TopBar';
+import { LeftPanel } from './components/LeftPanel';
+import { RightPanel } from './components/property/RightPanel';
+import { BottomBar } from './components/BottomBar';
 import { MeasurementDashboard } from './components/measurement-dashboard/MeasurementDashboard';
-import { Canvas } from './canvas/Canvas';
-import { setupAutoGlassEffect } from './shared/glassEffect';
+import { Canvas } from './components/canvas/Canvas';
+import { setupAutoGlassEffect } from './utils/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
+import { runtimeClient, runtimeSocket } from './runtimeClient';
+import { ModalLayer } from './components/shared/OverlayLayer';
 
 import { useCanvasStore } from './state/canvasStore';
-import { useWorkflowStore, useExecutionStore, useSystemState } from './workflow';
-import { workflowWebSocketService } from './workflow/websocket.service';
+import { useWorkflowStore } from './state/currentWorkflowStore';
+import { useExecutionStore, useSystemState } from './state/executionStateBridge';
 // clearMeasurementCache 现在由 executionStore 的 nodesReset 监听统一处理
 
-import { MFCModal, useMfc } from './modules/mfc';
-import { useFurnace, DeviceModal } from './modules/furnace';
-import { ReportGeneratorModal } from './modules/report';
-import { UserProvider, useUser } from './shared/UserContext';
-import type { SimpleLoopInfo } from './canvas/useLoopDetection';
+import { MFCModal } from './components/mfc/MFCModal';
+import { useMfc } from './modules/mfc/useMfc';
+import { useFurnace } from './modules/furnace/useFurnace';
+import { DeviceModal } from './components/furnace/FurnaceDeviceModal';
+import { ReportGeneratorModal } from './components/report/ReportGeneratorModal';
+import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
+import { UserProvider, useUser } from './components/shared/UserContext';
+import type { SimpleLoopInfo } from './components/canvas/useLoopDetection';
+import {
+  SIMULATOR_SETTINGS_EVENT,
+  SimulatorSettings,
+  hasActiveSimulator,
+  loadSimulatorSettings,
+  simulatorHostForZahner,
+  simulatorProfileFor,
+} from './modules/simulator/simulatorSettings';
 
 // 内部应用内容组件（在 UserProvider 内部，可以使用 useUser）
 const AppContent: React.FC = () => {
@@ -31,14 +44,11 @@ const AppContent: React.FC = () => {
   const { nodes } = useCanvasStore();
 
   // Workflow Store
-  const { currentWorkflow, setCurrentWorkflow } = useWorkflowStore();
-
   // Execution Store
   const {
     isRunning,
     error: executionError,
-    startExecution,
-    stopExecution
+    startExecution
     // resetExecutionState 现在由 executionStore 的 nodesReset 监听统一处理
   } = useExecutionStore();
 
@@ -49,30 +59,86 @@ const AppContent: React.FC = () => {
   const [selectedWorkstation, setSelectedWorkstation] = useState<WorkstationType | null>(null);
   const [workstationNodeGroups, setWorkstationNodeGroups] = useState<any>({} as any);
 
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
-  const [showWorkflowManager, setShowWorkflowManager] = useState(false);
+  const [renderedDevice, setRenderedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
   const [showMeasurementDashboard, setShowMeasurementDashboard] = useState(false);
+  const [showSimulatorPanel, setShowSimulatorPanel] = useState(false);
+  const [simulatorSettings, setSimulatorSettings] = useState<SimulatorSettings>(() => loadSimulatorSettings());
+  const [suppressedEtaNodeFingerprint, setSuppressedEtaNodeFingerprint] = useState<string | null>(null);
+  const [blockedWorkflowBlockIds, setBlockedWorkflowBlockIds] = useState<string[]>([]);
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
-  const [lastExecution, setLastExecution] = useState<{
-    executionId: string;
-    workflowId: string;
-    status: 'completed' | 'failed' | 'cancelled';
-    startTime: string;
-    endTime?: string;
-    duration?: number;
-  } | null>(null);
-  const [lastNodeStatuses, setLastNodeStatuses] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (fixedDevice) {
+      setRenderedDevice(fixedDevice);
+    }
+  }, [fixedDevice]);
 
   // 获取实时系统状态
   const systemState = useSystemState();
+  const isCancelling = systemState?.status === 'cancelling';
+  const simulatorActive = hasActiveSimulator(simulatorSettings);
+
+  const applyWorkstation = useCallback((workstationType: WorkstationType | null) => {
+    setSelectedWorkstation(workstationType);
+    setWorkstationNodeGroups(workstationType ? getNodeGroupsByWorkstation(workstationType) : {});
+  }, []);
 
   // 派生状态：是否出错
   const hasError = !!executionError;
+  const nodeFingerprint = useMemo(
+    () => JSON.stringify(nodes.map((node) => ({ id: node.id, type: node.type, config: node.config }))),
+    [nodes]
+  );
+  const suppressPlannedEstimate = suppressedEtaNodeFingerprint === nodeFingerprint;
+  const workflowBlockRunBlocked = blockedWorkflowBlockIds.length > 0 || nodes.some((node) =>
+    node.type === 'workflow_block' && !String(node.config?.workflowId || '').trim()
+  );
+
+  useEffect(() => {
+    if (suppressedEtaNodeFingerprint && suppressedEtaNodeFingerprint !== nodeFingerprint) {
+      setSuppressedEtaNodeFingerprint(null);
+    }
+  }, [nodeFingerprint, suppressedEtaNodeFingerprint]);
+
+  useEffect(() => {
+    const workflowIds = Array.from(new Set(
+      nodes
+        .filter((node) => node.type === 'workflow_block')
+        .map((node) => String(node.config?.workflowId || '').trim())
+        .filter(Boolean)
+    ));
+
+    if (workflowIds.length === 0) {
+      setBlockedWorkflowBlockIds([]);
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(
+      workflowIds.map((workflowId) =>
+        runtimeClient.workflows
+          .definition<{ id: string; nodes?: WorkflowNode[] }>(workflowId)
+          .then((definition) => ({
+            workflowId,
+            blocked: (definition.nodes || []).some((child) => child.type === 'workflow_block'),
+          }))
+          .catch(() => ({ workflowId, blocked: true }))
+      )
+    ).then((results) => {
+      if (!cancelled) {
+        setBlockedWorkflowBlockIds(results.filter((result) => result.blocked).map((result) => result.workflowId));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [nodeFingerprint, nodes]);
 
   // 监听执行错误，自动打开通知面板
   useEffect(() => {
@@ -81,41 +147,37 @@ const AppContent: React.FC = () => {
     }
   }, [hasError]);
 
-  // 监听执行完成，记录最后一次执行信息（用于报告生成）
-  const prevIsRunning = React.useRef(isRunning);
-  useEffect(() => {
-    // 从运行中 -> 停止，说明执行完成
-    if (prevIsRunning.current && !isRunning) {
-      const executionState = useExecutionStore.getState();
-      const { executionId, workflowId, lastSnapshot, nodeStatuses } = executionState;
-
-      if (executionId && workflowId) {
-        setLastExecution({
-          executionId,
-          workflowId,
-          status: executionError ? 'failed' : 'completed',
-          startTime: lastSnapshot?.startTime || new Date().toISOString(),
-          endTime: new Date().toISOString(),
-          duration: lastSnapshot?.duration || 0
-        });
-        // 保存节点状态用于报告
-        setLastNodeStatuses([...nodeStatuses]);
-      }
-    }
-    prevIsRunning.current = isRunning;
-  }, [isRunning, executionError]);
-
   const handleWorkstationSelect = (workstation: any) => {
     const workstationType = workstation.id as WorkstationType;
-    setSelectedWorkstation(workstationType);
-    setWorkstationNodeGroups(getNodeGroupsByWorkstation(workstationType));
+    applyWorkstation(workstationType);
     useCanvasStore.getState().clearCanvas();
-    setCurrentWorkflow(null);  // 清空当前工作流
     useWorkflowStore.getState().setDraftWorkflowName(null);  // 清空草稿名称
   };
 
+  useEffect(() => {
+    if (!systemState || !['running', 'paused', 'cancelling'].includes(systemState.status)) return;
+    const snapshotNodes = systemState.nodes || [];
+    if (snapshotNodes.length === 0) return;
+
+    const currentNodes = useCanvasStore.getState().nodes;
+    const currentFingerprint = JSON.stringify(currentNodes.map((node: WorkflowNode) => ({ id: node.id, type: node.type, config: node.config })));
+    const snapshotFingerprint = JSON.stringify(snapshotNodes.map((node: WorkflowNode) => ({ id: node.id, type: node.type, config: node.config })));
+    if (currentFingerprint !== snapshotFingerprint) {
+      useCanvasStore.getState().setNodes(snapshotNodes);
+    }
+
+    const workstationType = (systemState.workstationType || 'zahner-zennium') as WorkstationType;
+    if (selectedWorkstation !== workstationType) {
+      applyWorkstation(workstationType);
+    }
+
+    if (systemState.workflowName) {
+      useWorkflowStore.getState().setDraftWorkflowName(systemState.workflowName);
+    }
+  }, [systemState, selectedWorkstation, applyWorkstation]);
+
   const handleFilePathSave = (config: any) => {
-    console.log('File path configuration saved:', config);
+    // filepath config saved
   };
 
   // 玻璃态效果
@@ -124,9 +186,22 @@ const AppContent: React.FC = () => {
     return () => observer?.disconnect();
   }, []);
 
+  useEffect(() => {
+    const handleSettings = (event: Event) => {
+      const customEvent = event as CustomEvent<SimulatorSettings>;
+      setSimulatorSettings(customEvent.detail || loadSimulatorSettings());
+    };
+    window.addEventListener(SIMULATOR_SETTINGS_EVENT, handleSettings);
+    window.addEventListener('storage', handleSettings);
+    return () => {
+      window.removeEventListener(SIMULATOR_SETTINGS_EVENT, handleSettings);
+      window.removeEventListener('storage', handleSettings);
+    };
+  }, []);
+
   // --- WebSocket 初始化 ---
   useEffect(() => {
-    workflowWebSocketService.connect();
+    runtimeSocket.connectSocket();
     return () => {
       // 保持连接或按需断开
     };
@@ -134,61 +209,38 @@ const AppContent: React.FC = () => {
 
   // --- 执行控制逻辑 ---
   const runFlow = async () => {
-    if (nodes.length === 0 || isRunning || !selectedWorkstation) {
+    if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
       setIsNotificationPanelOpen(true);
       return;
     }
     try {
       const workflowStore = useWorkflowStore.getState();
-      const workflowId = currentWorkflow?.id || null;
 
-      // ✅ 统一命名逻辑：如果还没有保存工作流，在这里生成一个与“保存”按钮一致的名称
-      let workflowName = currentWorkflow?.name;
-      if (!workflowId) {
-        const draftName = workflowStore.draftWorkflowName;
-        workflowName = draftName?.trim() || `工作流 ${new Date().toLocaleString('zh-CN', { hour12: false }).replace(/-/g, '/')}`;
+      // 后端按节点 fingerprint 归档，前端只传当前名称建议。
+      const draftName = workflowStore.draftWorkflowName;
+      const workflowName = draftName?.trim() || `工作流 ${new Date().toLocaleString('zh-CN', { hour12: false }).replace(/-/g, '/')}`;
 
-        // 🔥 修复点 1：立即同步到草稿名，让 WorkflowNameDisplay 实时显示
-        if (!draftName) {
-          workflowStore.setDraftWorkflowName(workflowName);
+      if (!draftName) {
+        workflowStore.setDraftWorkflowName(workflowName);
+      }
+
+      const simulatorProfile = simulatorProfileFor('zahner', simulatorSettings);
+      const autoStartupConfig = simulatorActive
+        ? {
+          host: simulatorHostForZahner(undefined, simulatorSettings),
+          ...(simulatorProfile && { simulatorProfile }),
         }
-      }
+        : { host: 'localhost' };
 
-      // ✅ 传递 workflowName，并获取返回的正式 ID
-      const result = await startExecution(workflowId, nodes, currentUser || undefined, workflowName);
-
-      // 🔥 修复点 2：立即更新 currentWorkflow，确保 UI 能够正确展示
-      if (result.workflowId && !currentWorkflow?.id) {
-        // 构造完整的 Workflow 对象
-        const newWorkflow: Workflow = {
-          id: result.workflowId,
-          name: workflowName || '新建工作流',
-          nodes: nodes,
-          ...(currentUser && { ownerName: currentUser }),
-          ...(filePathConfig.project_name && { project_name: filePathConfig.project_name }),
-        };
-
-        setCurrentWorkflow(newWorkflow);
-        console.log(`[RunFlow] 已建立工作流上下文: ${result.workflowId}, 名称: ${workflowName}`);
-      }
+      await startExecution(nodes, currentUser || undefined, workflowName, selectedWorkstation, autoStartupConfig);
     } catch (error) {
       console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);
     }
   };
 
-  const stopFlow = async () => {
-    if (!isRunning) return;
-    try {
-      await stopExecution();
-    } catch (error) {
-      console.error('停止失败:', error);
-    }
-  };
-
   const resetFlow = async () => {
     try {
-      console.log('[App] 重置工作流执行状态...');
       // 🔥 SSOT: 不再主动清空，完全依赖后端 WebSocket 广播 nodesReset 事件
       // clearMeasurementCache() 和 resetExecutionState() 现在由 executionStore 的事件监听统一处理
 
@@ -199,7 +251,7 @@ const AppContent: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('[App] 重置请求成功，等待 WebSocket nodesReset 事件:', result.message);
+        setSuppressedEtaNodeFingerprint(nodeFingerprint);
         // ✅ 不再在此处主动调用 resetExecutionState()，依赖 WebSocket 事件
       } else {
         console.error('[App] 重置失败:', response.status, response.statusText);
@@ -211,31 +263,9 @@ const AppContent: React.FC = () => {
 
   // 包装回调
   const handleRunFlow = useCallback(async () => {
+    setSuppressedEtaNodeFingerprint(null);
     await runFlow();
-  }, [nodes, isRunning, selectedWorkstation, currentWorkflow, startExecution, setCurrentWorkflow, currentUser, filePathConfig]);
-
-  const handleStopFlow = useCallback(stopFlow, [isRunning, stopExecution]);
-
-  // 缩放限制常量
-  const MIN_ZOOM = 0.6;
-  const MAX_ZOOM = 1.2;
-  const ZOOM_STEP = 0.1;
-
-  const handleZoomIn = useCallback(() => {
-    setZoomLevel((prev) => {
-      const next = prev + ZOOM_STEP;
-      return next > MAX_ZOOM ? MAX_ZOOM : parseFloat(next.toFixed(2));
-    });
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setZoomLevel((prev) => {
-      const next = prev - ZOOM_STEP;
-      return next < MIN_ZOOM ? MIN_ZOOM : parseFloat(next.toFixed(2));
-    });
-  }, []);
-
-  const handleResetZoom = useCallback(() => setZoomLevel(1), []);
+  }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, simulatorActive, simulatorSettings, workflowBlockRunBlocked]);
 
   const handleLoopDetected = useCallback((loops: SimpleLoopInfo[]) => {
     setDetectedLoops(loops);
@@ -244,14 +274,17 @@ const AppContent: React.FC = () => {
   return (
     <div className="app-root">
       <ParticleBackground />
-      <TopNavbar
+      <TopBar
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}
         onWorkstationSelect={handleWorkstationSelect}
+        selectedWorkstationId={selectedWorkstation}
+        simulatorActive={simulatorActive}
+        onSimulatorPanelOpen={() => setShowSimulatorPanel(true)}
       />
 
       <div className="leftbar-area">
-        <Sidebar
+        <LeftPanel
           activePanel={activePanel}
           onPanelChange={setActivePanel}
           nodeGroups={workstationNodeGroups}
@@ -263,63 +296,77 @@ const AppContent: React.FC = () => {
 
       <div className="canvas-area">
         <Canvas
-          zoomLevel={zoomLevel}
           selectedWorkstation={selectedWorkstation}
           isRunning={isRunning}
+          isCancelling={isCancelling}
           hasError={hasError}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onResetZoom={handleResetZoom}
-          showWorkflowManager={showWorkflowManager}
-          onToggleWorkflowManager={() => setShowWorkflowManager(!showWorkflowManager)}
           onRunFlow={handleRunFlow}
-          onStopFlow={handleStopFlow}
           onResetFlow={resetFlow}
+          workflowBlockRunBlocked={workflowBlockRunBlocked}
           onLoopDetected={handleLoopDetected}
           onGenerateReport={() => setShowReportModal(true)}
-          canGenerateReport={!!lastExecution}
         />
       </div>
 
       <div className="right-area">
-        <PropertyPanel selectedWorkstation={selectedWorkstation} mfcState={mfcState} />
+        <RightPanel selectedWorkstation={selectedWorkstation} mfcState={mfcState} />
       </div>
 
-      {fixedDevice && (
-        <div className="layout-overlay align-to-L align-to-canvas-top">
-          {fixedDevice === 'mfc' ? (
+      <ModalLayer
+        open={!!fixedDevice}
+        onOpenChange={(open) => {
+          if (!open) setFixedDevice(null);
+        }}
+        id="device-modal-overlay"
+      >
+        {({ close }) => (
+          renderedDevice === 'mfc' ? (
             <MFCModal
-              on_close={() => setFixedDevice(null)}
+              on_close={close}
               modal_top={0}
               modal_left={0}
               modal_width={500}
               modal_height={400}
               mfcState={mfcState}
               mfcControls={mfcControls}
+              simulatorSettings={simulatorSettings}
             />
           ) : (
             <DeviceModal
-              device={fixedDevice}
-              onClose={() => setFixedDevice(null)}
+              device="furnace"
+              onClose={close}
               modalTop={0}
               modalLeft={0}
               modalWidth={500}
               modalHeight={400}
               furnaceState={furnaceState}
               furnaceControls={furnaceControls}
+              simulatorSettings={simulatorSettings}
             />
-          )}
-        </div>
-      )}
+          )
+        )}
+      </ModalLayer>
 
-      <StatusBar
-        zoomLevel={zoomLevel}
+      <ModalLayer
+        open={showSimulatorPanel}
+        onOpenChange={setShowSimulatorPanel}
+        id="simulator-control-overlay"
+        centered
+        blur
+      >
+        {({ close }) => (
+          <SimulatorControlPanel onClose={close} />
+        )}
+      </ModalLayer>
+
+      <BottomBar
         isRunning={isRunning}
         isNotificationPanelOpen={isNotificationPanelOpen}
         setIsNotificationPanelOpen={setIsNotificationPanelOpen}
         detectedLoops={detectedLoops}
         systemState={systemState}
         onProgressBarClick={() => setShowMeasurementDashboard(true)}
+        suppressPlannedEstimate={suppressPlannedEstimate}
       />
 
       {/* 图表 Modal */}
@@ -330,14 +377,10 @@ const AppContent: React.FC = () => {
         nodes={nodes}
       />
 
-      {/* 实验报告 Modal */}
+      {/* 实验记录 Modal */}
       <ReportGeneratorModal
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
-        workflow={currentWorkflow}
-        execution={lastExecution}
-        user={currentUser || 'Unknown'}
-        nodeStatuses={lastNodeStatuses}
       />
     </div>
   );

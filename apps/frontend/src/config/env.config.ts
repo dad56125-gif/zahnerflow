@@ -1,3 +1,5 @@
+import { getDesktopRuntimeBaseUrl } from '../desktopBridge';
+
 // 环境配置
 export const config = {
   // 开发环境下，WebSocket 使用相对路径以便 Vite 代理工作
@@ -8,4 +10,4 @@ export const config = {
 };
 
 // 导出便捷函数
-export const getWsUrl = () => config.wsUrl;
+export const getWsUrl = () => getDesktopRuntimeBaseUrl() || config.wsUrl;

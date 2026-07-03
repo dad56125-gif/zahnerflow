@@ -1,0 +1,641 @@
+/* === _workflow-controls.scss - 工具栏/状态栏/工作流 BEM === */
+
+/* === Toolbar === */
+.toolbar {
+  position: absolute;
+  inset: 0;
+  --toolbar-edge-offset: calc(var(--size-md) + var(--size-2xs));
+  z-index: var(--z-toolbar);
+  pointer-events: none;
+
+  .btn {
+    color: white;
+  }
+
+  .btn--icon {
+    --btn-icon-box: var(--toolbar-icon-button-size);
+    width: var(--toolbar-icon-button-size);
+    min-width: var(--toolbar-icon-button-size);
+    height: var(--toolbar-icon-button-size);
+    min-height: var(--toolbar-icon-button-size);
+    padding: 0;
+  }
+
+  .btn-svg-icon__primary,
+  .btn-svg-icon__secondary {
+    stroke-width: 1.5;
+  }
+}
+
+.toolbar__group {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-2xs);
+  pointer-events: auto;
+}
+
+.toolbar__group--top-left {
+  top: var(--size-md);
+  left: var(--toolbar-edge-offset);
+}
+
+.toolbar__group--top-right {
+  top: var(--size-md);
+  right: var(--toolbar-edge-offset);
+}
+
+.toolbar__group--bottom-right {
+  right: var(--toolbar-edge-offset);
+  bottom: var(--size-md);
+}
+
+/* === Status 子组件 === */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--status-h, 2.5rem);
+  border-top: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 var(--glass-hover);
+  padding: 0;
+}
+
+.bottom-bar__left {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space);
+  gap: var(--space);
+  width: var(--left-panel-w);
+  min-width: var(--left-panel-w);
+  justify-content: flex-start;
+}
+
+.bottom-bar__right {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space);
+  gap: var(--size-lg);
+  width: var(--property-w);
+  min-width: var(--property-w);
+  justify-content: flex-end;
+}
+
+.bottom-bar__center {
+  @extend %flex-center;
+  flex: 1;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.bottom-bar__item {
+  @extend %flex-center;
+  gap: var(--size-2xs);
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+
+  strong {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-left: var(--size-3xs);
+  }
+}
+
+/* 状态栏胶囊型按钮悬停效果 */
+.notification-trigger {
+  cursor: pointer;
+  padding: var(--size-3xs) var(--size-sm);
+  border-radius: var(--radius-full);
+  transition: var(--transition);
+
+  &:hover {
+    background: var(--glass-bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+.bottom-bar__indicator {
+  @extend %flex-center;
+  gap: var(--size-sm);
+  white-space: nowrap;
+
+  &--running {
+    background: var(--color-primary);
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+    animation: pulse 2s infinite;
+  }
+}
+
+.bottom-bar__run-dot {
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+
+  &.is-running {
+    background: var(--color-primary);
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+    animation: pulse 2s infinite;
+  }
+
+  &.is-ready {
+    background: var(--color-success);
+    box-shadow: 0 0 6px var(--color-success);
+  }
+}
+
+.bottom-bar__message,
+.bottom-bar__stat,
+.bottom-bar__node-id,
+.bottom-bar__node-type {
+  color: var(--text-secondary);
+  font-size: var(--size-sm);
+}
+
+.bottom-bar__selected-node {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2xs);
+  min-width: 0;
+  padding: var(--size-3xs) var(--size-xs);
+  border-radius: var(--radius);
+}
+
+.bottom-bar__node-row { display: flex; align-items: center; min-width: 0; }
+.bottom-bar__node-id,
+.bottom-bar__node-type { @extend %text-ellipsis; max-width: 10rem; }
+.bottom-bar__node-divider {
+  width: 1px;
+  height: var(--size-md);
+  background: var(--glass-border);
+}
+.bottom-bar__stat {
+  white-space: nowrap;
+
+  strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+}
+
+/* === 设备/工作站连接状态指示器 === */
+.device-status__indicator,
+.workstation-status__indicator {
+  background: var(--color-danger);
+  box-shadow: 0 0 6px var(--color-danger);
+
+  &.is-connected {
+    background: var(--color-success);
+    box-shadow: 0 0 6px var(--color-success);
+  }
+
+  &.is-connecting {
+    background: var(--color-warning);
+    box-shadow: 0 0 6px var(--color-warning);
+  }
+}
+
+/* === 工作站选择器 === */
+.workstation-selector {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+
+/* === 节点库 / 属性面板 / 侧边栏 === */
+.left-panel,
+.right-panel {
+  --bar-header-h: clamp(3.25rem, 2.8rem + 1vw, 4.1rem);
+  --bar-blur-depth: clamp(4rem, 10vh, 7rem);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  @include top-blur-veil(calc(var(--bar-header-h) + var(--size-2xl)), 1, 6px);
+}
+
+.left-panel.glass,
+.right-panel.glass {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 var(--glass-hover);
+}
+
+.left-panel__header,
+.right-panel__header {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: var(--bar-header-h);
+  padding: var(--size-md) var(--size-lg) var(--size-xl);
+  border-bottom: 0;
+  flex-shrink: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: transparent;
+}
+
+.left-panel__content,
+.right-panel__content {
+  position: relative;
+  z-index: 0;
+  flex: 1;
+  padding: var(--space);
+  padding-top: calc(var(--bar-header-h) + var(--size-2xs));
+  overflow-y: auto;
+  scroll-padding-top: calc(var(--bar-header-h) + var(--space));
+  mask-image:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0.08) var(--size-xl),
+      rgba(0, 0, 0, 0.42) calc(var(--bar-header-h) * 0.86),
+      #000 calc(var(--bar-header-h) + var(--size-md))
+    );
+  -webkit-mask-image:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0.08) var(--size-xl),
+      rgba(0, 0, 0, 0.42) calc(var(--bar-header-h) * 0.86),
+      #000 calc(var(--bar-header-h) + var(--size-md))
+    );
+}
+
+.right-panel > .empty-state {
+  flex: 1;
+  padding: calc(var(--bar-header-h) + var(--space)) var(--space) var(--space);
+}
+
+.section-title {
+  font-size: var(--size-md);
+  font-weight: 600;
+  margin-bottom: var(--space);
+  color: white;
+}
+
+.property__tabs {
+  display: flex;
+  gap: var(--size-3xs);
+  padding-top: var(--size-2xs);
+
+  .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* === 属性面板内容 === */
+.properties-section {
+  padding-top: var(--size-sm);
+}
+
+.property-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3xs);
+  margin-bottom: var(--space);
+  padding: var(--size-sm);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.property-label {
+  font-size: var(--size-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-value-static {
+  font-size: var(--size-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.property-warning {
+  margin-bottom: var(--space);
+  padding: var(--size-xs) var(--size-sm);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning);
+  background: rgba(245, 158, 11, 0.08);
+  font-size: var(--size-xs);
+}
+
+.workflow-block-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-xs);
+}
+
+.workflow-block-preview__nodes {
+  display: grid;
+  gap: var(--size-3xs);
+  margin-bottom: var(--size-xs);
+}
+
+.workflow-block-preview__node {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: var(--size-xs);
+  align-items: center;
+  min-height: 2rem;
+  padding: var(--size-3xs) var(--size-xs);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+
+  strong {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+}
+
+/* === 进度条组件 === */
+.progress-bar__container {
+  @extend %flex-center;
+  gap: var(--size-md);
+  padding: var(--size-3xs) var(--size-md);
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+
+  &:hover { background: rgba(255, 255, 255, 0.05); }
+}
+
+.progress-bar__track {
+  flex: 1;
+  height: var(--size-3xs);
+  background: var(--glass-hover);
+  border-radius: var(--radius-xs);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  border-radius: var(--radius-xs);
+  background: var(--color-primary);
+  transition: width 0.3s ease-out;
+}
+
+.progress-bar__pulse {
+  position: absolute;
+  top: 0;
+  width: var(--size-lg);
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+.progress-bar__info {
+  @extend %flex-center;
+  gap: var(--size-sm);
+  flex-shrink: 0;
+  font-size: var(--size-xs);
+}
+
+.progress-bar__status {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.progress-bar__time {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ProgressBar: .progress-bar__pulse */
+@keyframes progressPulse {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translateX(200%); opacity: 0; }
+}
+
+/* === 辅助 === */
+.bar-header-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-2xs);
+  margin: 0;
+  font-size: var(--size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 1;
+}
+
+/* === 节点库网格布局与卡片项 (Node Grid & Items) === */
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: clamp(0.5rem, 1.2vw, 0.75rem);
+}
+
+.node-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 6 / 5;
+  min-width: 0;
+  padding: clamp(0.55rem, 1vw, 0.75rem);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-panel));
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  gap: clamp(0.25rem, 0.6vw, 0.5rem);
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    transform: translateY(-2px);
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .node-icon {
+    width: clamp(2rem, 4vw, 2.5rem);
+    height: clamp(2rem, 4vw, 2.5rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+    color: var(--text-primary);
+    opacity: 0.85;
+    transition: var(--transition);
+  }
+
+  .node-library-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+
+  .node-library-svg__primary,
+  .node-library-svg__secondary {
+    fill: none;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .node-library-svg__primary {
+    stroke: var(--text-primary);
+  }
+
+  .node-library-svg__label {
+    fill: var(--text-primary);
+    font-size: 0.56rem;
+    font-weight: 800;
+    line-height: 1;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .node-library-svg--eis_potentiostatic .node-library-svg__secondary,
+  .node-library-svg--eis_galvanostatic .node-library-svg__secondary,
+  .node-library-svg--voltage_ramp .node-library-svg__secondary,
+  .node-library-svg--current_ramp .node-library-svg__secondary,
+  .node-library-svg--chronoamperometry .node-library-svg__primary,
+  .node-library-svg--chronoamperometry .node-library-svg__secondary,
+  .node-library-svg--chronopotentiometry .node-library-svg__primary,
+  .node-library-svg--chronopotentiometry .node-library-svg__secondary,
+  .node-library-svg--galvanostatic_switching .node-library-svg__primary,
+  .node-library-svg--galvanostatic_switching .node-library-svg__secondary,
+  .node-library-svg--potentiostatic_switching .node-library-svg__primary,
+  .node-library-svg--potentiostatic_switching .node-library-svg__secondary,
+  .node-library-svg--galvanostatic_step_ramp .node-library-svg__primary,
+  .node-library-svg--galvanostatic_step_ramp .node-library-svg__secondary,
+  .node-library-svg--potentiostatic_step_ramp .node-library-svg__primary,
+  .node-library-svg--potentiostatic_step_ramp .node-library-svg__secondary,
+  .node-library-svg--ocp_measurement .node-library-svg__primary,
+  .node-library-svg--ocp_measurement .node-library-svg__secondary,
+  .node-library-svg--loop_start .node-library-svg__primary,
+  .node-library-svg--loop_start .node-library-svg__secondary,
+  .node-library-svg--loop_end .node-library-svg__primary,
+  .node-library-svg--loop_end .node-library-svg__secondary,
+  .node-library-svg--workflow_block .node-library-svg__primary,
+  .node-library-svg--workflow_block .node-library-svg__secondary {
+    stroke-width: 2;
+  }
+
+  .node-library-svg--eis_potentiostatic .node-library-svg__secondary {
+    stroke: var(--node-library-icon-eis-voltage);
+  }
+
+  .node-library-svg--eis_galvanostatic .node-library-svg__secondary {
+    stroke: var(--node-library-icon-eis-current);
+  }
+
+  .node-library-svg--voltage_ramp .node-library-svg__secondary {
+    stroke: var(--node-library-icon-ramp-voltage);
+  }
+
+  .node-library-svg--current_ramp .node-library-svg__secondary {
+    stroke: var(--node-library-icon-ramp-current);
+  }
+
+  .node-library-svg--chronopotentiometry .node-library-svg__secondary {
+    stroke: var(--node-library-icon-chrono-voltage);
+  }
+
+  .node-library-svg--chronoamperometry .node-library-svg__secondary {
+    stroke: var(--node-library-icon-chrono-current);
+  }
+
+  .node-library-svg--potentiostatic_switching .node-library-svg__secondary {
+    stroke: var(--node-library-icon-switching-voltage);
+  }
+
+  .node-library-svg--galvanostatic_switching .node-library-svg__secondary {
+    stroke: var(--node-library-icon-switching-current);
+  }
+
+  .node-library-svg--potentiostatic_step_ramp .node-library-svg__secondary {
+    stroke: var(--node-library-icon-ramp-voltage);
+  }
+
+  .node-library-svg--galvanostatic_step_ramp .node-library-svg__secondary {
+    stroke: var(--node-library-icon-ramp-current);
+  }
+
+  .node-library-svg--ocp_measurement .node-library-svg__secondary {
+    stroke: var(--node-library-icon-ocp);
+  }
+
+  .node-library-svg--change_temperature .node-library-svg__secondary {
+    stroke: var(--device-icon-furnace);
+  }
+
+  .node-library-svg--change_gas_flow .node-library-svg__secondary {
+    stroke: var(--device-icon-mfc);
+  }
+
+  .node-library-svg--wait_delay .node-library-svg__secondary,
+  .node-library-svg--scheduled_start .node-library-svg__secondary {
+    stroke: var(--node-library-icon-blue-gray);
+  }
+
+  .node-library-svg--loop_start .node-library-svg__secondary,
+  .node-library-svg--loop_end .node-library-svg__secondary {
+    stroke: var(--node-library-icon-loop);
+  }
+
+  .node-library-svg--workflow_block .node-library-svg__secondary {
+    stroke: var(--node-library-icon-workflow);
+  }
+
+  &:hover .node-icon {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  &.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.7);
+
+    &:hover {
+      transform: none;
+      background: var(--glass-bg);
+      border-color: var(--glass-border);
+      box-shadow: none;
+    }
+
+    .node-icon {
+      transform: none;
+    }
+  }
+
+  .node-name {
+    font-weight: 500;
+    font-size: var(--size-sm);
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

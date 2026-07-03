@@ -1,0 +1,77 @@
+@use "./placeholders" as *;
+
+/* === _chart.scss - Chart Container Base BEM === */
+/* 共享图表容器样式，被 furnace StatusPanel 和 ChartModal 共用 */
+
+.chart__container {
+  @extend %glass-panel-base;
+  backdrop-filter: blur(var(--blur-overlay));
+  flex: 1; min-height: 12rem;
+  @include flex-col;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.chart__header {
+  padding: var(--size-md); border-bottom: 1px solid var(--glass-hover);
+  display: flex; justify-content: space-between; align-items: center;
+
+  h4 { margin: 0; font-size: var(--size-md); font-weight: 600; color: white; text-shadow: var(--text-shadow-body); }
+
+  &--compact { padding: var(--size-xs); gap: var(--size-sm); }
+}
+
+.chart__title {
+  margin: 0; font-size: var(--size-sm); font-weight: 600; color: white; flex-shrink: 0;
+  .chart__header--compact & { margin: 0; font-size: var(--size-sm); font-weight: 600; color: white; flex-shrink: 0; }
+}
+
+.chart__legend {
+  display: flex; justify-content: center; gap: var(--size-lg);
+  padding: var(--size-xs) 0; font-size: var(--size-xs);
+
+  &--inline {
+    display: flex; gap: var(--size-sm); font-size: var(--size-xs);
+    flex: 1; justify-content: center;
+
+    span { white-space: nowrap; }
+  }
+}
+
+.chart__legend-item {
+  &::before { content: "● "; }
+  &--pv { color: var(--color-pv); }
+  &--sv { color: var(--color-sv); }
+  &--mv { color: var(--color-mv); }
+}
+
+.chart__main    { flex: 1; position: relative; min-height: 120px; }
+.chart__canvas  { display: block; }
+.chart__content { flex: 1; min-height: 0; overflow: hidden; }
+
+.chart__loading {
+  position: absolute; inset: 0;
+  @include flex-col(var(--size-xs));
+  align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.chart__tooltip {
+  position: absolute; pointer-events: none; z-index: 100;
+  padding: var(--size-2xs) var(--size-sm);
+  background: var(--glass-bg-active);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: var(--size-xs); white-space: nowrap;
+}
+
+/* === Temperature Chart === */
+.temperature-chart { @include flex-col; width: 100%; height: 100%; }
+
+.tooltip__time    { color: rgba(255, 255, 255, 0.7); margin-bottom: var(--size-3xs); font-weight: 500; }
+.tooltip__row     { line-height: 1.4; }
+.tooltip__segment { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--glass-hover); color: rgba(255, 255, 255, 0.6); font-size: var(--size-xs); }
+
+.loading__text { font-size: var(--size-xs); color: var(--text-secondary); }

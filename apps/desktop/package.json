@@ -1,0 +1,58 @@
+{
+  "name": "zahnerflow-desktop",
+  "version": "1.0.0",
+  "description": "ZahnerFlow Electron desktop shell",
+  "author": "ZahnerFlow Team",
+  "private": true,
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsc -p tsconfig.json && electron dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "pack": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --dir",
+    "dist": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder",
+    "dist:mac": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --mac",
+    "dist:win": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && echo '⚠️  Skipping backend:dist (PyInstaller cannot cross-compile). Place Windows backend binary in apps/python_backend/dist/ before running.' && electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "electron": "^38.0.0",
+    "electron-builder": "24.13.3",
+    "typescript": "^5.9.2"
+  },
+  "build": {
+    "appId": "com.zahnerflow.desktop",
+    "productName": "ZahnerFlow",
+    "files": [
+      "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../python_backend/dist",
+        "to": "python_backend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

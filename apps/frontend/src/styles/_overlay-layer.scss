@@ -1,0 +1,61 @@
+/* === Overlay Layer Infrastructure === */
+
+.overlay-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  pointer-events: auto;
+  isolation: isolate;
+}
+
+.overlay-layer[data-pointer-events='none'] {
+  pointer-events: none;
+}
+
+.overlay-layer--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-layer__backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: auto;
+  background: transparent;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    backdrop-filter var(--duration-fast) var(--ease-out);
+}
+
+.overlay-layer--blur .overlay-layer__backdrop {
+  backdrop-filter: blur(var(--blur-overlay));
+  -webkit-backdrop-filter: blur(var(--blur-overlay));
+}
+
+.overlay-layer__content {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.overlay-layer--entering .overlay-layer__backdrop,
+.overlay-layer--open .overlay-layer__backdrop {
+  opacity: 1;
+}
+
+.overlay-layer--closing {
+  pointer-events: none;
+}
+
+.overlay-layer--closing .overlay-layer__backdrop {
+  opacity: 0;
+}
+
+.overlay-layer__content--fill {
+  position: fixed;
+  inset: 0;
+}

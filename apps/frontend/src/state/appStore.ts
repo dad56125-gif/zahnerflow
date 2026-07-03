@@ -1,26 +1,24 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { workflowWebSocketService } from '../workflow/websocket.service';
+import type { NotificationMessage } from '@zahnerflow/types';
+import { runtimeSocket } from '../runtimeClient';
+
+type StoredNotification = NotificationMessage & {
+  read: boolean;
+};
 
 interface AppState {
-  sidebarOpen: boolean;
+  leftPanelOpen: boolean;
   notificationPanelOpen: boolean;
   theme: 'light' | 'dark';
-  notifications: Array<{
-    id: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    title: string;
-    message: string;
-    timestamp: string;
-    read: boolean;
-  }>;
+  notifications: StoredNotification[];
 
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
+  toggleLeftPanel: () => void;
+  setLeftPanelOpen: (open: boolean) => void;
   toggleNotificationPanel: () => void;
   setNotificationPanelOpen: (open: boolean) => void;
   setTheme: (theme: 'light' | 'dark') => void;
-  addNotification: (notification: Omit<AppState['notifications'][0], 'id' | 'timestamp' | 'read'>) => void;
+  addNotification: (notification: Omit<StoredNotification, 'id' | 'timestamp' | 'read'> & Partial<Pick<StoredNotification, 'id' | 'timestamp'>>) => void;
   markNotificationRead: (id: string) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
@@ -30,13 +28,13 @@ export const useAppStore = create<AppState>()(
   devtools(
     persist(
       (set) => ({
-        sidebarOpen: true,
+        leftPanelOpen: true,
         notificationPanelOpen: false,
         theme: 'light',
         notifications: [],
 
-        toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
-        setSidebarOpen: (open) => set({ sidebarOpen: open }),
+        toggleLeftPanel: () => set(state => ({ leftPanelOpen: !state.leftPanelOpen })),
+        setLeftPanelOpen: (open) => set({ leftPanelOpen: open }),
         toggleNotificationPanel: () => set(state => ({ notificationPanelOpen: !state.notificationPanelOpen })),
         setNotificationPanelOpen: (open) => set({ notificationPanelOpen: open }),
 
@@ -50,10 +48,10 @@ export const useAppStore = create<AppState>()(
         addNotification: (notification) => {
           const newNotification = {
             ...notification,
-            id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            timestamp: new Date().toISOString(),
+            id: notification.id || `notification_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+            timestamp: notification.timestamp || new Date().toISOString(),
             read: false,
-          };
+          } as StoredNotification;
           set(state => ({
             notifications: [newNotification, ...state.notifications],
             notificationPanelOpen: true,
@@ -74,7 +72,7 @@ export const useAppStore = create<AppState>()(
       }),
       {
         name: 'app-storage',
-        partialize: (state) => ({ theme: state.theme, sidebarOpen: state.sidebarOpen }),
+        partialize: (state) => ({ theme: state.theme, leftPanelOpen: state.leftPanelOpen }),
       }
     ),
     { name: 'app-store' }
@@ -83,11 +81,14 @@ export const useAppStore = create<AppState>()(
 
 // 初始化 WebSocket 通知监听
 if (typeof window !== 'undefined') {
-  workflowWebSocketService.onNotification((data) => {
+  runtimeSocket.on<NotificationMessage>('notification', (data) => {
     useAppStore.getState().addNotification({
-      type: data.type,
+      id: data.id,
+      type: data.type as StoredNotification['type'],
       title: data.title,
       message: data.message,
+      timestamp: data.timestamp,
+      details: data.details,
     });
   });
 }

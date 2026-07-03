@@ -4,10 +4,12 @@
  * 提供炉温控制器的状态管理，包括连接、控制、预设、历史数据等功能
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { FurnaceApi } from './furnaceApi';
-import { furnaceWebSocketService, FurnaceStatusUpdate } from './furnaceWebSocket.service';
-import type { DeviceError, LogEntry, DeviceConnectionStatus, HistoryQueryParams } from '../common/types';
+import { useState, useCallback, useEffect } from 'react';
+import { runtimeClient } from '../../runtimeClient';
+import type { DeviceError, LogEntry, DeviceConnectionStatus, HistoryQueryParams } from '@zahnerflow/types';
+import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
+import type { RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
+import { useRuntimeDeviceStatusSubscription } from '../common/useRuntimeDeviceStatusSubscription';
 import {
   FurnaceStatus,
   ProgramSegment,
@@ -15,6 +17,47 @@ import {
   FurnaceConnectRequest,
   SegmentProgress,
 } from './furnaceTypes';
+
+interface FurnaceHistoryRow {
+  timestamp: string;
+  pv: number;
+  sv?: number;
+  mv?: number;
+  statusCode?: number;
+  segment?: number;
+  segmentTime?: number;
+  segmentTimeSet?: number;
+}
+
+const toBackendHistoryParams = (params: HistoryQueryParams): Record<string, string | number | undefined> => ({
+  from_ts: params.from ?? undefined,
+  to: params.to ?? undefined,
+  limit: params.limit ?? undefined,
+  downsample: params.downsample ?? undefined,
+});
+
+const furnaceStatusText = (statusCode: unknown): string => {
+  const code = Number(statusCode);
+  if (code === 0) return 'running';
+  if (code === 4) return 'paused';
+  if (code === 12) return 'stopped';
+  return 'unknown';
+};
+
+const toFurnaceStatus = (envelope: RuntimeDeviceStatusEnvelope): FurnaceStatus | null => {
+  const status = envelope.payload;
+  if (!status || !envelope.connected) return null;
+  return {
+    ts: envelope.timestamp || new Date().toISOString(),
+    pv: Number(status.pv ?? 0),
+    sv: Number(status.sv ?? 0),
+    mv: Number(status.mv ?? 0),
+    status: typeof status.status === 'string' ? status.status : furnaceStatusText(status.statusCode),
+    segment: Number(status.segment ?? 0),
+    segmentTime: Number(status.segmentTime ?? 0),
+    segmentTimeSet: Number(status.segmentTimeSet ?? 0),
+  };
+};
 
 // ==================== 分梯度降采样 ====================
 
@@ -26,8 +69,8 @@ export interface HistorySample {
   mv?: number;
   status?: string;
   segment?: number;
-  segment_time?: number;
-  segment_time_set?: number;
+  segmentTime?: number;
+  segmentTimeSet?: number;
 }
 
 /** 分层历史数据结构 */
@@ -138,11 +181,13 @@ export interface FurnaceState {
   loading: boolean;
   error: DeviceError | null;
   logs: LogEntry[];
+  diagnostics: DeviceDiagnostics;
+  command_logs: CommandLogEntry[];
   segment_progress: SegmentProgress | null;
 }
 
 export interface FurnaceControls {
-  connect: (config: FurnaceConnectRequest) => Promise<void>;
+  connect: (config: FurnaceConnectRequest & { simulatorProfile?: string }) => Promise<void>;
   disconnect: () => Promise<void>;
   set_segment: (segment: number) => Promise<void>;
   run: () => Promise<void>;
@@ -162,6 +207,8 @@ export interface FurnaceControls {
   clear_error: () => void;
   add_log: (type: LogEntry['type'], message: string) => void;
   clear_logs: () => void;
+  load_command_logs: () => Promise<void>;
+  clear_command_logs: () => Promise<void>;
 }
 
 // ==================== 初始状态 ====================
@@ -177,6 +224,8 @@ const createInitialState = (): FurnaceState => ({
   loading: false,
   error: null,
   logs: [],
+  diagnostics: { mode: 'disconnected' },
+  command_logs: [],
   segment_progress: null,
 });
 
@@ -184,7 +233,6 @@ const createInitialState = (): FurnaceState => ({
 
 export function useFurnace(): [FurnaceState, FurnaceControls] {
   const [state, setState] = useState<FurnaceState>(createInitialState);
-  const wsConnected = useRef(false);
 
   // 状态更新辅助函数
   const updateState = useCallback((updates: Partial<FurnaceState>) => {
@@ -206,6 +254,16 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       ].slice(0, 100),
     }));
   }, []);
+
+  const load_command_logs = useCallback(async () => {
+    const response = await runtimeClient.devices.furnace.commandLogs<{ logs: CommandLogEntry[] }>();
+    updateState({ command_logs: response.logs || [] });
+  }, [updateState]);
+
+  const clear_command_logs = useCallback(async () => {
+    await runtimeClient.devices.furnace.clearCommandLogs();
+    updateState({ command_logs: [] });
+  }, [updateState]);
 
   // 错误处理
   const handleError = useCallback(
@@ -244,114 +302,74 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       try {
         if (!skipLoading) updateState({ loading: true, error: null });
         await fn();
+        await load_command_logs().catch(() => undefined);
         if (successMessage) addLog('success', successMessage);
       } catch (error) {
         handleError(error);
+        await load_command_logs().catch(() => undefined);
       } finally {
         if (!skipLoading) updateState({ loading: false });
       }
     },
-    [updateState, handleError, addLog]
+    [updateState, handleError, addLog, load_command_logs]
   );
 
-  // WebSocket 连接管理
-  const ensureWebSocket = useCallback(() => {
-    if (wsConnected.current) return;
+  const handleRuntimeStatusUpdate = useCallback((envelope: RuntimeDeviceStatusEnvelope) => {
+    setState((prev) => {
+      const deviceStatus = toFurnaceStatus(envelope);
+      const connectionStatus = (envelope.connectionState?.status as DeviceConnectionStatus | undefined)
+        ?? (envelope.connected ? 'connected' : 'disconnected');
+      const pv = envelope.payload?.pv;
+      const isValidPv = typeof pv === 'number' && Number.isFinite(pv) && pv > 0;
+      const diagnostics = {
+        ...(envelope.diagnostics || {}),
+        mode: envelope.mode,
+        profile: envelope.profile ?? envelope.connectionState?.profile,
+      } as DeviceDiagnostics;
 
-    wsConnected.current = true;
-    furnaceWebSocketService.connect();
-
-    furnaceWebSocketService.onStatusUpdate((update: FurnaceStatusUpdate) => {
-      // 更新设备状态
-      setState((prev) => {
-        // 只有当 pv 是有效数值时才追加到 history_data
-        const pv = update.status?.pv;
-        const isValidPv = typeof pv === 'number' && Number.isFinite(pv) && pv > 0;
-
-        if (!isValidPv) {
-          return {
-            ...prev,
-            device_status: update.status,
-            connection_status: update.connection_state?.status ?? prev.connection_status,
-          };
-        }
-
-        // 创建新样本
-        const newSample: HistorySample = {
-          timestamp: update.timestamp || new Date().toISOString(),
-          temperature: pv,
-          sv: update.status?.sv,
-          mv: update.status?.mv,
-          status: update.status?.status,
-          segment: update.status?.segment,
-          segment_time: update.status?.segment_time,
-          segment_time_set: update.status?.segment_time_set,
-        };
-
-        // 使用分层降采样
-        const newTieredHistory = addSampleToTiered(newSample, prev.tiered_history);
-        const newHistoryData = getFullHistory(newTieredHistory);
-
+      if (!isValidPv) {
         return {
           ...prev,
-          device_status: update.status,
-          connection_status: update.connection_state?.status ?? prev.connection_status,
-          tiered_history: newTieredHistory,
-          history_data: newHistoryData,
+          device_status: deviceStatus,
+          connection_status: connectionStatus,
+          diagnostics,
         };
-      });
-    });
+      }
 
-    // 保留 onSamplingData 监听（如果后端将来发送单独的采样事件）
-    furnaceWebSocketService.onSamplingData((data) => {
-      setState((prev) => {
-        const newSample: HistorySample = {
-          timestamp: data.timestamp,
-          temperature: data.temperature,
-          sv: data.sv,
-          mv: data.mv,
-        };
-        const newTieredHistory = addSampleToTiered(newSample, prev.tiered_history);
-        return {
-          ...prev,
-          tiered_history: newTieredHistory,
-          history_data: getFullHistory(newTieredHistory),
-        };
-      });
-    });
+      const newSample: HistorySample = {
+        timestamp: envelope.timestamp || new Date().toISOString(),
+        temperature: pv,
+        sv: Number(envelope.payload?.sv ?? 0),
+        mv: Number(envelope.payload?.mv ?? 0),
+        status: typeof envelope.payload?.status === 'string'
+          ? envelope.payload.status
+          : furnaceStatusText(envelope.payload?.statusCode),
+        segment: Number(envelope.payload?.segment ?? 0),
+        segmentTime: Number(envelope.payload?.segmentTime ?? 0),
+        segmentTimeSet: Number(envelope.payload?.segmentTimeSet ?? 0),
+      };
 
-    furnaceWebSocketService.onConnected(() => {
-      furnaceWebSocketService.subscribe();
-    });
+      const newTieredHistory = addSampleToTiered(newSample, prev.tiered_history);
+      const newHistoryData = getFullHistory(newTieredHistory);
 
-    furnaceWebSocketService.onReadProgress((data) => {
-      updateState({
-        segment_progress: {
-          active: true,
-          type: 'read',
-          progress: data.progress,
-          message: data.message || `读取中... ${data.progress}%`,
-        },
-      });
+      return {
+        ...prev,
+        device_status: deviceStatus,
+        connection_status: connectionStatus,
+        diagnostics,
+        tiered_history: newTieredHistory,
+        history_data: newHistoryData,
+      };
     });
+  }, []);
 
-    furnaceWebSocketService.onWriteProgress((data) => {
-      updateState({
-        segment_progress: {
-          active: true,
-          type: 'write',
-          progress: data.progress,
-          message: data.message || `写入中... ${data.progress}%`,
-        },
-      });
-    });
-  }, [updateState]);
+  const ensureRuntimeStatusSubscription = useRuntimeDeviceStatusSubscription('furnace', handleRuntimeStatusUpdate);
 
   // ==================== 程序段操作 ====================
 
   const get_segments = useCallback(async () => {
     await execute(async () => {
-      const segments = await FurnaceApi.getSegments();
+      const { segments } = await runtimeClient.devices.furnace.getProgramSegments<{ segments: ProgramSegment[] }>();
       updateState({ segments });
     }, 'Read 27 segments');
   }, [execute, updateState]);
@@ -359,7 +377,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const set_segments = useCallback(
     async (segments: ProgramSegment[]) => {
       await execute(async () => {
-        await FurnaceApi.setSegments(segments);
+        await runtimeClient.devices.furnace.setProgramSegments(segments);
         updateState({ segments });
       }, `Wrote ${segments.length} segments`);
     },
@@ -371,17 +389,17 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const connect = useCallback(
     async (config: FurnaceConnectRequest) => {
       await execute(async () => {
-        await FurnaceApi.connect(config);
+        await runtimeClient.devices.furnace.connect(config);
         updateState({ connection_status: 'connected' });
-        ensureWebSocket();
+        ensureRuntimeStatusSubscription();
       }, `Connected to ${config.port}`);
     },
-    [execute, updateState, ensureWebSocket]
+    [execute, updateState, ensureRuntimeStatusSubscription]
   );
 
   const disconnect = useCallback(async () => {
     await execute(async () => {
-      await FurnaceApi.disconnect();
+      await runtimeClient.devices.furnace.disconnectDevice();
       updateState({ connection_status: 'disconnected', device_status: null });
     }, 'Disconnected');
   }, [execute, updateState]);
@@ -390,28 +408,28 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
 
   const set_segment = useCallback(
     async (segment: number) => {
-      await execute(() => FurnaceApi.setSegment(segment), `Segment ${segment}`);
+      await execute(() => runtimeClient.devices.furnace.setSegment(segment), `Segment ${segment}`);
     },
     [execute]
   );
 
-  const run = useCallback(async () => execute(() => FurnaceApi.run(), 'Run'), [execute]);
-  const pause = useCallback(async () => execute(() => FurnaceApi.pause(), 'Pause'), [execute]);
-  const stop = useCallback(async () => execute(() => FurnaceApi.stop(), 'Stop'), [execute]);
+  const run = useCallback(async () => execute(() => runtimeClient.devices.furnace.run(), 'Run'), [execute]);
+  const pause = useCallback(async () => execute(() => runtimeClient.devices.furnace.pause(), 'Pause'), [execute]);
+  const stop = useCallback(async () => execute(() => runtimeClient.devices.furnace.stop(), 'Stop'), [execute]);
 
   // ==================== 预设管理 ====================
 
   const load_presets = useCallback(async () => {
     await execute(async () => {
-      updateState({ presets: await FurnaceApi.getPresets() });
+      updateState({ presets: await runtimeClient.devices.furnace.presets.list<FurnacePresetMeta[]>() });
     });
   }, [execute, updateState]);
 
   const create_preset = useCallback(
     async (preset: { name: string; segments: ProgramSegment[]; summary?: string }) => {
       await execute(async () => {
-        await FurnaceApi.createPreset(preset);
-        updateState({ presets: await FurnaceApi.getPresets() });
+        await runtimeClient.devices.furnace.presets.create(preset);
+        updateState({ presets: await runtimeClient.devices.furnace.presets.list<FurnacePresetMeta[]>() });
       });
     },
     [execute, updateState]
@@ -420,8 +438,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const update_preset = useCallback(
     async (name: string, segments: ProgramSegment[]) => {
       await execute(async () => {
-        await FurnaceApi.updatePreset(name, segments);
-        updateState({ presets: await FurnaceApi.getPresets() });
+        await runtimeClient.devices.furnace.presets.update(name, segments);
+        updateState({ presets: await runtimeClient.devices.furnace.presets.list<FurnacePresetMeta[]>() });
       });
     },
     [execute, updateState]
@@ -430,8 +448,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const delete_preset = useCallback(
     async (name: string) => {
       await execute(async () => {
-        await FurnaceApi.deletePreset(name);
-        updateState({ presets: await FurnaceApi.getPresets() });
+        await runtimeClient.devices.furnace.presets.delete(name);
+        updateState({ presets: await runtimeClient.devices.furnace.presets.list<FurnacePresetMeta[]>() });
       });
     },
     [execute, updateState]
@@ -440,8 +458,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const clone_preset = useCallback(
     async (name: string, new_name: string) => {
       await execute(async () => {
-        await FurnaceApi.clonePreset(name, new_name);
-        updateState({ presets: await FurnaceApi.getPresets() });
+        await runtimeClient.devices.furnace.presets.clone(name, new_name);
+        updateState({ presets: await runtimeClient.devices.furnace.presets.list<FurnacePresetMeta[]>() });
       });
     },
     [execute, updateState]
@@ -449,7 +467,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
 
   const apply_preset = useCallback(
     async (name: string) => {
-      await execute(() => FurnaceApi.applyPreset(name), `Applied ${name}`);
+      await execute(() => runtimeClient.devices.furnace.presets.apply(name), `Applied ${name}`);
     },
     [execute]
   );
@@ -460,7 +478,18 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     async (params?: HistoryQueryParams) => {
       await execute(async () => {
         const p = params || state.history_params;
-        updateState({ history_data: await FurnaceApi.getTemperatureHistory(p) });
+        const rows = await runtimeClient.devices.furnace.temperatureLogs<FurnaceHistoryRow[]>(toBackendHistoryParams(p));
+        updateState({
+          history_data: rows.map((row) => ({
+            timestamp: row.timestamp,
+            temperature: row.pv,
+            sv: row.sv,
+            mv: row.mv,
+            segment: row.segment,
+            segmentTime: row.segmentTime,
+            segmentTimeSet: row.segmentTimeSet,
+          })),
+        });
       });
     },
     [execute, updateState, state.history_params]
@@ -486,19 +515,19 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   }, [load_presets]);
 
   useEffect(() => {
+    ensureRuntimeStatusSubscription();
+    runtimeClient.devices.furnace
+      .runtimeStatus()
+      .then(handleRuntimeStatusUpdate)
+      .catch(() => undefined);
+    load_command_logs().catch(() => undefined);
+  }, [ensureRuntimeStatusSubscription, handleRuntimeStatusUpdate, load_command_logs]);
+
+  useEffect(() => {
     if (state.connection_status === 'connected') {
       get_segments();
     }
   }, [state.connection_status, get_segments]);
-
-  useEffect(() => {
-    return () => {
-      if (wsConnected.current) {
-        furnaceWebSocketService.disconnect();
-        wsConnected.current = false;  // 🔧 重置状态，允许重新连接时重新注册回调
-      }
-    };
-  }, []);
 
   // ==================== 导出 ====================
 
@@ -523,6 +552,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     clear_error,
     add_log: addLog,
     clear_logs,
+    load_command_logs,
+    clear_command_logs,
   };
 
   return [state, controls];

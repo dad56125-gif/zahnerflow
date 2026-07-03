@@ -9,8 +9,9 @@ TooltipComponent
 import { CanvasRenderer } from 'echarts/renderers';
 import { useMeasurementStream } from '../../hooks/useMeasurementStream';
 import { useEisData } from '../../hooks/useEisData';
-import { ExecutionSnapshot } from '../../types/Interfaces';
+import type { ExecutionSnapshot } from '@zahnerflow/types';
 import { EisLegendScheme, getEisLegendVisual, getIterationColor } from '../../utils/colorUtils';
+import { useAppStore } from '../../state/appStore';
 
 echarts.use([
 LineChart,
@@ -34,6 +35,63 @@ eisLegendScheme?: EisLegendScheme;
 // EIS 节点类型
 const EIS_NODE_TYPES = ['eis_potentiostatic', 'eis_galvanostatic'];
 
+// DOM Token 读取 CSS 变量辅助函数
+const getCssVariable = (varName: string, defaultValue: string = '') => {
+if (typeof window === 'undefined') return defaultValue;
+return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || defaultValue;
+};
+
+const formatPrecision = (value: number) => {
+if (value === 0) return '0';
+if (Math.abs(value) < 0.001 || Math.abs(value) > 1000) {
+return value.toExponential(1);
+}
+return value.toFixed(2);
+};
+
+const calcEisAxisRange = (dataMin: number, dataMax: number, clampMinToZero = false) => {
+if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) {
+return clampMinToZero ? { min: 0, max: 1 } : {};
+}
+const dataRange = dataMax - dataMin;
+const reference = Math.max(Math.abs(dataMin), Math.abs(dataMax), 1);
+const padding = Math.max(dataRange * 0.08, reference * 0.01);
+
+return {
+min: clampMinToZero ? 0 : dataMin - padding,
+max: dataMax + padding
+};
+};
+
+const calcAxisRange = (dataMin: number, dataMax: number) => {
+if (dataMin === Infinity) return { min: 0, max: 1 };
+
+let dataRange = dataMax - dataMin;
+const midPoint = (dataMax + dataMin) / 2;
+
+// 1. 噪声保护：如果波动极小（小于均值的 0.1%），强制设定一个最小观测范围
+const minDataRange = Math.abs(midPoint) * 0.001 || 0.01;
+if (dataRange < minDataRange) {
+dataRange = minDataRange;
+}
+
+// 2. 初步计算总坐标轴量程：默认让数据波动仅占据 10%
+let totalAxisRange = dataRange / 0.1;
+let axisMax = midPoint + totalAxisRange * 0.35;
+let axisMin = midPoint - totalAxisRange * 0.65;
+
+// 3. 零点锚定逻辑：如果数据是单向的，且 10% 缩放会导致越过 0，则吸附到 0
+if (dataMin >= 0 && axisMin < 0) {
+axisMin = 0;
+axisMax = midPoint / 0.65;
+} else if (dataMax <= 0 && axisMax > 0) {
+axisMax = 0;
+axisMin = midPoint / 0.35;
+}
+
+return { min: axisMin, max: axisMax };
+};
+
 const MeasurementChartComponent: React.FC<MeasurementChartProps> = ({
 nodeIndex,
 nodeConfig,
@@ -45,6 +103,7 @@ eisLegendScheme = 'palette'
 }) => {
 const chartRef = useRef<HTMLDivElement>(null);
 const chartInstance = useRef<echarts.ECharts | null>(null);
+const theme = useAppStore(state => state.theme);
 
 // 判断是否为 EIS 节点
 const isEisNode = nodeType ? EIS_NODE_TYPES.includes(nodeType) : false;
@@ -74,7 +133,7 @@ const isPending = currentStepIndex < nodeIndex;
 const isRunning = currentStepIndex === nodeIndex && systemState?.status === 'running';
 
 // IVT 流式数据 Hook
-const { consumeBuffer, getFullHistory, getIterationsForNode } = useMeasurementStream({
+const { consumeBuffer, getIterationsForNode } = useMeasurementStream({
 nodeIndex,
 activeExecutionId
 });
@@ -84,29 +143,7 @@ const eisNodeIndices = overlayNodes && overlayNodes.length > 0
 ? overlayNodes.map(node => node.nodeIndex)
 : [nodeIndex];
 const overlayKey = `${overlayNodes?.map(node => `${node.nodeIndex}:${node.label}`).join('|') || `${nodeIndex}`}:${eisLegendScheme}`;
-const { getEisIterationsForNode, getEisIterationsForNodes } = useEisData({ nodeIndex, nodeIndices: eisNodeIndices });
-
-const formatPrecision = (value: number) => {
-if (value === 0) return '0';
-if (Math.abs(value) < 0.001 || Math.abs(value) > 1000) {
-return value.toExponential(1);
-}
-return value.toFixed(2);
-};
-
-const calcEisAxisRange = (dataMin: number, dataMax: number, clampMinToZero = false) => {
-if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) {
-return clampMinToZero ? { min: 0, max: 1 } : {};
-}
-const dataRange = dataMax - dataMin;
-const reference = Math.max(Math.abs(dataMin), Math.abs(dataMax), 1);
-const padding = Math.max(dataRange * 0.08, reference * 0.01);
-
-return {
-min: clampMinToZero ? 0 : dataMin - padding,
-max: dataMax + padding
-};
-};
+const { getEisIterationsForNodes } = useEisData({ nodeIndex, nodeIndices: eisNodeIndices });
 
 // 初始化图表
 useEffect(() => {
@@ -136,6 +173,19 @@ chartInstance.current?.dispose();
 chartInstance.current = null;
 };
 }, [isEisNode, nodeType]);
+
+// 监听主题变化，刷新图表样式
+useEffect(() => {
+if (!chartInstance.current) return;
+const frameId = requestAnimationFrame(() => {
+const option = isEisNode ? getEisChartOption() : getIvtChartOption();
+chartInstance.current?.setOption(option, true);
+if (!isEisNode) {
+updateChartWithIterations();
+}
+});
+return () => cancelAnimationFrame(frameId);
+}, [theme, isEisNode]);
 
 // 🔥 修复：IVT 历史数据恢复（支持迭代）
 useEffect(() => {
@@ -188,36 +238,6 @@ const isCP = nodeType === 'chronopotentiometry' || nodeType?.includes('galvanost
 const VOLTAGE_HUE = 210;
 const CURRENT_HUE = 30;
 
-// 使用增量 range（避免每次扫描全部历史点）
-const calcAxisRange = (dataMin: number, dataMax: number) => {
-if (dataMin === Infinity) return { min: 0, max: 1 };
-
-let dataRange = dataMax - dataMin;
-const midPoint = (dataMax + dataMin) / 2;
-
-// 1. 噪声保护：如果波动极小（小于均值的 0.1%），强制设定一个最小观测范围
-const minDataRange = Math.abs(midPoint) * 0.001 || 0.01;
-if (dataRange < minDataRange) {
-dataRange = minDataRange;
-}
-
-// 2. 初步计算总坐标轴量程：默认让数据波动仅占据 10%
-let totalAxisRange = dataRange / 0.1;
-let axisMax = midPoint + totalAxisRange * 0.35;
-let axisMin = midPoint - totalAxisRange * 0.65;
-
-// 3. 零点锚定逻辑：如果数据是单向的，且 10% 缩放会导致越过 0，则吸附到 0
-if (dataMin >= 0 && axisMin < 0) {
-axisMin = 0;
-axisMax = midPoint / 0.65;
-} else if (dataMax <= 0 && axisMax > 0) {
-axisMax = 0;
-axisMin = midPoint / 0.35;
-}
-
-return { min: axisMin, max: axisMax };
-};
-
 const r = rangeRef.current;
 const vRange = calcAxisRange(r.vMin, r.vMax);
 const iRange = calcAxisRange(r.iMin, r.iMax);
@@ -238,8 +258,8 @@ const voltageSeries: any[] = [];
 const currentSeries: any[] = [];
 
 // 获取设定值用于 markLine
-const vSetpoint = nodeConfig.parameters?.polarization_voltage ?? nodeConfig.parameters?.potential;
-const iSetpoint = nodeConfig.parameters?.polarization_current ?? nodeConfig.parameters?.current;
+const vSetpoint = nodeConfig.parameters?.polarizationVoltage ?? nodeConfig.parameters?.potential;
+const iSetpoint = nodeConfig.parameters?.polarizationCurrent ?? nodeConfig.parameters?.current;
 
 // --- 逻辑：区分处理不变量和变量 ---
 
@@ -342,20 +362,12 @@ series: [...voltageSeries, ...currentSeries]
 
 // IVT 图表配置
 const getIvtChartOption = () => {
-// 逻辑：判断哪些变量是控制量，需要使用 step 连线和 markLine
-const isCA = nodeType === 'chronoamperometry' || nodeType?.includes('potentiostatic');
-const isCP = nodeType === 'chronopotentiometry' || nodeType?.includes('galvanostatic');
-
-// 获取设定值用于 markLine
-const vSetpoint = nodeConfig.parameters?.polarization_voltage ?? nodeConfig.parameters?.potential;
-const iSetpoint = nodeConfig.parameters?.polarization_current ?? nodeConfig.parameters?.current;
-
 return {
 tooltip: {
 trigger: 'axis',
-backgroundColor: 'rgba(20, 20, 26, 0.9)',
-borderColor: 'rgba(255, 255, 255, 0.15)',
-textStyle: { color: '#fff', fontSize: 12 },
+backgroundColor: getCssVariable('--glass-bg-active', 'rgba(20, 20, 26, 0.9)'),
+borderColor: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.15)'),
+textStyle: { color: getCssVariable('--text-primary', '#fff'), fontSize: 12 },
 formatter: (params: any[]) => {
 if (!params.length) return '';
 const t = params[0].value[0];
@@ -373,8 +385,8 @@ grid: { top: 45, bottom: 5, left: 45, right: 55, containLabel: true },
 xAxis: {
 type: 'value',
 splitLine: { show: false },
-axisLabel: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 14 },
-axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.25)', width: 3 } }
+axisLabel: { color: getCssVariable('--text-secondary', 'rgba(255, 255, 255, 0.5)'), fontSize: 14 },
+axisLine: { lineStyle: { color: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.25)'), width: 3 } }
 },
 yAxis: [
 {
@@ -385,7 +397,7 @@ scale: true,
 axisLine: { show: true, lineStyle: { color: '#40a9ff', width: 3 } },
 axisLabel: { color: '#40a9ff', fontSize: 14, formatter: formatPrecision, margin: 4 },
 nameTextStyle: { color: '#40a9ff', fontWeight: 'bold', fontSize: 16 },
-splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(255, 255, 255, 0.04)' } }
+splitLine: { show: true, lineStyle: { type: 'dashed', color: getCssVariable('--glass-border-muted', 'rgba(255, 255, 255, 0.04)') } }
 },
 {
 type: 'value',
@@ -406,9 +418,9 @@ series: []  // 🔥 初始化为空，由 updateChartWithIterations 完全控制
 const getEisChartOption = () => ({
 tooltip: {
 trigger: 'item',
-backgroundColor: 'rgba(20, 20, 26, 0.9)',
-borderColor: 'rgba(255, 255, 255, 0.15)',
-textStyle: { color: '#fff', fontSize: 12 },
+backgroundColor: getCssVariable('--glass-bg-active', 'rgba(20, 20, 26, 0.9)'),
+borderColor: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.15)'),
+textStyle: { color: getCssVariable('--text-primary', '#fff'), fontSize: 12 },
 formatter: (params: any) => {
 if (!params.data) return '';
 const [zReal, zImag, freq] = params.data;
@@ -423,15 +435,15 @@ name: "Re (Ω)",
 nameLocation: 'end',
 nameGap: 10,
 nameTextStyle: {
-color: 'rgba(255, 255, 255, 0.9)',
+color: getCssVariable('--text-primary', 'rgba(255, 255, 255, 0.9)'),
 fontWeight: 'bold',
 fontSize: 16,
 verticalAlign: 'bottom',
 padding: [0, 0, 12, -36]
 },
-splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(255, 255, 255, 0.04)' } },
-axisLabel: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 14, formatter: formatPrecision },
-axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.7)', width: 3 } }
+splitLine: { show: true, lineStyle: { type: 'dashed', color: getCssVariable('--glass-border-muted', 'rgba(255, 255, 255, 0.04)') } },
+axisLabel: { color: getCssVariable('--text-primary', 'rgba(255, 255, 255, 0.9)'), fontSize: 14, formatter: formatPrecision },
+axisLine: { lineStyle: { color: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.7)'), width: 3 } }
 },
 yAxis: {
 type: 'value',
@@ -439,10 +451,10 @@ name: "-Im (Ω)",
 min: 0,
 nameLocation: 'end',
 nameGap: 15,
-nameTextStyle: { color: 'rgba(255, 255, 255, 0.9)', fontWeight: 'bold', fontSize: 16 },
-splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(255, 255, 255, 0.04)' } },
-axisLabel: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 14, formatter: formatPrecision },
-axisLine: { show: true, lineStyle: { color: 'rgba(255, 255, 255, 0.7)', width: 3 } }
+nameTextStyle: { color: getCssVariable('--text-primary', 'rgba(255, 255, 255, 0.9)'), fontWeight: 'bold', fontSize: 16 },
+splitLine: { show: true, lineStyle: { type: 'dashed', color: getCssVariable('--glass-border-muted', 'rgba(255, 255, 255, 0.04)') } },
+axisLabel: { color: getCssVariable('--text-primary', 'rgba(255, 255, 255, 0.9)'), fontSize: 14, formatter: formatPrecision },
+axisLine: { show: true, lineStyle: { color: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.7)'), width: 3 } }
 },
 series: [{
 name: 'Nyquist',
@@ -463,7 +475,9 @@ if (!hasData) setHasData(true);
 
 // 🔥 关键：从 systemState 获取当前迭代路径
 const currentIterPath = systemState?.currentStep?.iterationPath || [];
-const iterKey = currentIterPath.length > 0 ? currentIterPath.join(',') : '0';
+const iterKey = currentIterPath.length > 0
+? currentIterPath.map(item => typeof item === 'number' ? item : `${item.loopStartIndex ?? item.loopNodeId}:${item.iteration}`).join(',')
+: '0';
 
 const newV = chunk.map(p => [p.t, p.v] as [number, number]);
 const newI = chunk.map(p => [p.t, p.i] as [number, number]);
@@ -563,9 +577,9 @@ chartInstance.current?.setOption({ series: [] });
 }, [activeExecutionId, isEisNode]);
 
 const getStatusTag = () => {
-if (isPending) return <span style={{ color: '#faad14' }}>⏳ 等待</span>;
-if (isRunning) return <span style={{ color: '#52c41a', fontWeight: 'bold' }}>▶ 测量中</span>;
-if (currentStepIndex > nodeIndex) return <span style={{ color: '#1890ff' }}>✅ 完成</span>;
+if (isPending) return <span style={{ color: 'var(--color-warning)' }}>⏳ 等待</span>;
+if (isRunning) return <span style={{ color: 'var(--color-success)', fontWeight: 'bold' }}>▶ 测量中</span>;
+if (currentStepIndex > nodeIndex) return <span style={{ color: 'var(--color-indigo-light)' }}>✅ 完成</span>;
 return null;
 };
 
@@ -593,12 +607,12 @@ return (
 <div
 className={height ? "" : "glass"}
 style={{
-border: height ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+border: height ? 'none' : '1px solid var(--glass-border)',
 borderRadius: height ? 0 : 8,
 padding: height ? '4px 0' : '10px 8px',
 marginBottom: height ? 0 : (isAdvancedNode ? 0 : 12),
-background: height ? 'transparent' : 'rgba(255, 255, 255, 0.02)',
-color: '#eee',
+background: height ? 'transparent' : 'var(--glass-bg)',
+color: 'var(--text-primary)',
 position: 'relative',
 height: height || (isAdvancedNode ? '100%' : 'auto'),
 display: 'flex',
@@ -608,9 +622,9 @@ overflow: 'hidden'
 >
 {!height && (
 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, padding: '0 4px', flexShrink: 0 }}>
-<strong style={{ color: '#fff', fontSize: '13px' }}>
+<strong style={{ color: 'var(--text-primary)', fontSize: '13px' }}>
 步骤{nodeIndex + 1}: {nodeConfig.name}
-<span style={{ marginLeft: 8, fontSize: '11px', color: isEisNode ? '#52c41a' : '#40a9ff', fontWeight: 'normal' }}>
+<span style={{ marginLeft: 8, fontSize: '11px', color: isEisNode ? 'var(--color-success)' : 'var(--color-indigo-light)', fontWeight: 'normal' }}>
 [{getChartTypeLabel()}]
 </span>
 </strong>
@@ -632,7 +646,7 @@ opacity: (isPending && !hasData) ? 0.5 : 1
 {!hasData && isPending && (
 <div style={{
 textAlign: 'center',
-color: 'rgba(255, 255, 255, 0.3)',
+color: 'var(--text-muted)',
 position: 'absolute',
 top: '55%',
 left: '50%',

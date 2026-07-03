@@ -1,0 +1,385 @@
+@use "./placeholders" as *;
+
+/**
+ * _furnace.scss - Furnace 温度控制器 BEM
+ *
+ * 职责边界：
+ * ✅ .monitoring__* — 监控标签页组件
+ * ✅ .status__* — 状态显示组件
+ * ✅ .control-panel / .control-bar — 控制面板组件
+ * ✅ .segments__* / .segment__* — 程序段编辑器组件
+ * ✅ .file-path-manager__* — 文件路径管理器组件
+ * ✅ .project__* — 项目配置组件
+ * ✅ .recording__* — 实时/历史曲线标签页布局（仅限 Furnace 使用）
+ * ✅ .furnace-modal — Furnace 设备模态框布局
+ */
+
+/* ==========================================================================
+   1. Monitoring Tab & Status Display
+   ========================================================================== */
+
+.monitoring__tab { @include flex-col(1rem); height: 100%; }
+
+.status__display {
+  @extend %glass-panel-base;
+  backdrop-filter: blur(var(--blur-overlay));
+  padding: var(--size-md);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.status__row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: var(--size-md); margin-bottom: var(--size-md);
+
+  &:last-child { margin-bottom: 0; }
+  &--temp    { display: flex; justify-content: space-between; align-items: center; gap: var(--size-md); margin-bottom: var(--size-lg); }
+  &--program { display: flex; justify-content: space-between; align-items: center; gap: var(--size-md); margin-bottom: 0; }
+}
+
+.status__label {
+  font-size: var(--size-sm); font-weight: 600; color: rgba(255, 255, 255, 0.9);
+  min-width: 6rem; text-shadow: var(--text-shadow-body);
+}
+
+.status__value {
+  font-size: var(--size-sm); font-weight: 700;
+  text-shadow: var(--text-shadow-body);
+  padding: var(--size-3xs) var(--size-2xs); background: var(--glass-shadow);
+  border-radius: var(--radius-sm); min-width: 4rem; text-align: center; flex: 1;
+
+  &--pv      { color: var(--color-pv); }
+  &--sv      { color: var(--color-sv); }
+  &--mv      { color: var(--color-mv); }
+  &--program { color: rgba(255, 255, 255, 0.9); }
+  &--segment { color: var(--color-segment); }
+  &--time    { color: rgba(255, 255, 255, 0.9); }
+  &--running { color: var(--color-success); }
+  &--paused  { color: var(--color-warning); }
+  &--stopped { color: var(--text-secondary); }
+  &--error   { color: var(--color-danger); }
+}
+
+/* ==========================================================================
+   2. Control Panel, Control Bar, Preset, Segments
+   ========================================================================== */
+
+.control-panel {
+  @extend %flex-center; gap: var(--size-xs);
+
+  > .btn, > .input { flex: 1; text-align: center; justify-content: center; height: var(--size-3xl); }
+}
+
+.control-bar {
+  @extend %flex-center;
+  gap: var(--size-xs); padding: var(--size-xs);
+  background: var(--glass-hover);
+  backdrop-filter: blur(var(--blur-overlay));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  margin-bottom: var(--size-md);
+  box-shadow: 0 var(--size-sm) var(--size-3xl) var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.segments__editor {
+  flex: 1; overflow-y: auto; padding: var(--size-3xs);
+  background: var(--glass-hover);
+  backdrop-filter: blur(var(--blur-overlay));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 var(--size-sm) var(--size-3xl) var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.segments__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); grid-auto-flow: dense; gap: var(--size-3xs); padding: 0; }
+
+.segment__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  grid-template-areas: "clabel temp-group tlabel time-group";
+  gap: 0; align-items: center;
+  padding: var(--size-3xs);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-hover);
+  transition: var(--transition);
+
+  &:hover { background: var(--glass-hover); border-color: rgba(255, 255, 255, 0.2); }
+}
+
+.segment__label {
+  font-size: var(--size-sm); font-weight: 600; color: var(--text-secondary);
+  text-align: left; font-family: 'Courier New', monospace; min-width: 2rem;
+
+  &:nth-child(1) { grid-area: clabel; }
+  &:nth-child(3) { grid-area: tlabel; margin-left: var(--size-2xs); }
+}
+
+.segment__input {
+  min-width: 0;
+  text-align: center;
+
+  &.has-error {
+    border-color: var(--color-danger);
+    background: var(--color-danger-bg);
+  }
+}
+
+.monitoring-segment-input {
+  width: 5rem;
+  text-align: center;
+}
+
+.preset__selector,
+.preset__name-input {
+  flex: 1;
+  min-width: 0;
+  height: var(--size-2xl);
+  min-height: var(--size-2xl);
+  max-height: var(--size-2xl);
+}
+
+.input-group {
+  @extend %flex-center; grid-area: temp-group; gap: 0;
+  &:last-of-type { grid-area: time-group; }
+}
+
+.unit { font-size: var(--size-xs); color: var(--text-secondary); text-align: center; }
+
+/* ==========================================================================
+   3. File Path Manager & Project (Furnace 专属)
+   ========================================================================== */
+
+.panel__header { @extend %panel-header;
+  h2 { font-size: var(--size-lg); font-weight: 600; color: var(--text-primary); margin: 0; text-shadow: var(--text-shadow-body); }
+}
+.panel__content { padding: var(--size-xl); max-height: 80vh; overflow-y: auto; }
+
+.project-input__group {
+  display: flex; gap: var(--size-2xs); align-items: flex-start;
+  input { flex: 1; }
+}
+
+/* ==========================================================================
+   4. Recording Tab Layout (实时/历史曲线标签页布局)
+   ========================================================================== */
+
+.recording__tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.recording__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--size-sm);
+  flex-shrink: 0;
+}
+
+.recording__title {
+  margin: 0;
+  font-size: var(--size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recording__subtitle {
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+}
+
+.recording__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recording__empty {
+  flex: 1;
+  min-height: 14rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+
+.chart__container--full {
+  flex: 1;
+  min-height: 0;
+}
+
+.history-insight {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--size-md);
+}
+
+.activity-map {
+  padding: var(--size-md);
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 var(--glass-hover);
+}
+
+.activity-map__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-md);
+  margin-bottom: var(--size-sm);
+}
+
+.activity-map__title {
+  margin: 0;
+  font-size: var(--size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.activity-map__subtitle {
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+}
+
+.activity-map__grid {
+  --activity-cell: clamp(0.75rem, 1.05vw, 1rem);
+  display: grid;
+  grid-template-rows: repeat(7, var(--activity-cell));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--activity-cell);
+  grid-template-columns: repeat(var(--activity-columns), var(--activity-cell));
+  gap: clamp(0.18rem, 0.28vw, 0.32rem);
+  width: max-content;
+  min-width: 100%;
+}
+
+.activity-map__day {
+  min-width: 0;
+  width: var(--activity-cell);
+  height: var(--activity-cell);
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-sm) * 0.8);
+  background: rgba(255, 255, 255, 0.055);
+  color: transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  padding: 0;
+
+  span {
+    display: none;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+
+  &.is-padding {
+    visibility: hidden;
+  }
+
+  &:hover:not(:disabled),
+  &.is-selected {
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px var(--color-primary-bg), 0 0 var(--effect-lg) var(--color-primary-bg);
+  }
+
+  &--level-1 { background: rgba(59, 130, 246, 0.28); }
+  &--level-2 { background: rgba(59, 130, 246, 0.42); }
+  &--level-3 { background: rgba(59, 130, 246, 0.62); }
+  &--level-4 { background: rgba(59, 130, 246, 0.86); }
+}
+
+.activity-map__canvas {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--size-2xs);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.activity-map__months {
+  --activity-cell: clamp(0.75rem, 1.05vw, 1rem);
+  display: grid;
+  grid-template-columns: repeat(var(--activity-columns), var(--activity-cell));
+  gap: clamp(0.18rem, 0.28vw, 0.32rem);
+  width: max-content;
+  min-width: 100%;
+  margin-top: var(--size-xs);
+}
+
+.activity-map__month {
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   5. Furnace Modal 布局
+   ========================================================================== */
+
+.furnace-modal {
+  display: flex; flex: 1; gap: var(--space); min-height: 0; height: 100%;
+
+  &__main {
+    flex: 2; min-width: 0;
+    @include flex-col(0); height: 100%;
+
+    > .tabs__content {
+      @extend %glass-panel-base;
+      backdrop-filter: blur(var(--blur-overlay));
+      flex: 1; min-height: 0;
+      @include flex-col(0);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      overflow: hidden; padding: var(--size-xl);
+
+      > .tabs__panel {
+        flex: 1; min-height: 0; overflow-y: auto;
+        scrollbar-width: none; -ms-overflow-style: none;
+        &::-webkit-scrollbar { display: none; }
+      }
+    }
+  }
+
+  &__sidebar {
+    flex: 1; min-width: 0;
+    @include flex-col(0); height: 100%;
+
+    > .card {
+      flex: 1; min-height: 0;
+      @include flex-col(0);
+
+      > .card__body { flex: 1; min-height: 0; overflow-y: auto; @include flex-col(var(--size-lg)); }
+    }
+  }
+}
+
+/* ==========================================================================
+   6. Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .control-bar { flex-wrap: wrap; gap: var(--size-2xs); }
+  .preset__selector,
+  .preset__name-input { flex: 1; min-width: 10rem; }
+  .segments__grid { grid-template-columns: 1fr; gap: var(--size-3xs); padding: 0; }
+  .segment__item { grid-template-columns: auto 1fr; grid-template-areas: "clabel temp-group" "tlabel time-group"; gap: 0; padding: var(--size-2xs); }
+}
+
+@media (max-width: 640px) {
+  .panel__header, .panel__content { padding: var(--size-md); }
+}

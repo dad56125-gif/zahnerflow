@@ -2,7 +2,7 @@
 /* 仅保留被其他 CSS/TSX 文件实际引用的 @keyframes */
 /* 未使用的工具类动画已移除 (详见 _components.css 拆分记录) */
 
-/* === 节点状态动画 === */
+/* === 节点状态动画 — NodeRenderer: .node.status-running === */
 @keyframes running_status_pulse {
   0%, 100% {
     opacity: 0.7;
@@ -22,6 +22,7 @@
   }
 }
 
+/* NodeRenderer: .node.status-failed */
 @keyframes failed_status_glow {
   0%, 100% {
     box-shadow:
@@ -43,6 +44,7 @@
   }
 }
 
+/* NodeRenderer: .node.status-completed */
 @keyframes completed_status_success {
   0% {
     box-shadow:
@@ -61,22 +63,7 @@
   }
 }
 
-/* === 设备连接动画 === */
-@keyframes device_connecting {
-  0% {
-    border-color: var(--device-connecting);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
-  }
-  50% {
-    border-color: var(--device-connecting);
-    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
-  }
-  100% {
-    border-color: var(--device-connecting);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
-  }
-}
-
+/* === 设备状态动画 — TopBar: .status__dot.is-connected === */
 @keyframes device_online_pulse {
   0%, 100% {
     border-color: var(--device-online);
@@ -88,6 +75,7 @@
   }
 }
 
+/* TopBar: .status__dot.is-error */
 @keyframes device_error_blink {
   0%, 50%, 100% {
     border-color: var(--device-error);
@@ -99,17 +87,7 @@
   }
 }
 
-/* === 数据流动画 === */
-@keyframes data_flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
-  }
-}
-
-/* === 下拉菜单动画 === */
+/* === 下拉菜单动画 — Dropdown/ChartModal/Notification === */
 @keyframes dropdown-in {
   from {
     opacity: 0;
@@ -121,6 +99,7 @@
   }
 }
 
+/* Dropdown/ChartModal/Notification */
 @keyframes dropdown-out {
   from {
     opacity: 1;
@@ -132,21 +111,32 @@
   }
 }
 
-/* === 模态框动画 === */
-
+/* === 模态框动画 — ModalLayer: .modal__content === */
 
 @keyframes modal_scale_in {
-  0% {
-    transform: scale(0.8);
+  from {
     opacity: 0;
+    transform: var(--modal-panel-transform, translateZ(0)) scale(0.96);
   }
-  100% {
-    transform: scale(1);
+  to {
     opacity: 1;
+    transform: var(--modal-panel-transform, translateZ(0)) scale(1);
   }
 }
 
-/* === 加载动画 === */
+/* ModalLayer: .modal__content.is-hiding */
+@keyframes modal_scale_out {
+  from {
+    opacity: 1;
+    transform: var(--modal-panel-transform, translateZ(0)) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: var(--modal-panel-transform, translateZ(0)) scale(0.96);
+  }
+}
+
+/* === 加载动画 — .spinner / .btn.is-loading === */
 @keyframes loader_spin {
   0% {
     transform: rotate(0deg);
@@ -156,17 +146,10 @@
   }
 }
 
-/* === pulse 动画（在StatusBar中使用） === */
+/* === pulse 动画 — BottomBar: .status__run-dot.is-running === */
 @keyframes pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
 
-/* === 可访问性：减少动画偏好 === */
-@media (prefers-reduced-motion: reduce) {
-  .respect-motion {
-    animation: none !important;
-    transition: none !important;
-  }
-}

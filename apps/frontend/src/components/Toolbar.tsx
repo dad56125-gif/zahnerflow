@@ -1,337 +1,237 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
-import { ScheduleRunner } from './ScheduleRunner';
-import { SaveDropdown } from './SaveDropdown';
-import { SaveAsDropdown } from './SaveAsDropdown';
+import { useExecutionStore } from '../state/executionStateBridge';
 import { UnrollViewModal } from './UnrollViewModal';
-import { formatDuration } from '../workflow/timelineCalculator';
 
 interface ToolbarProps {
   onRunFlow: () => void;
-  onStopFlow: () => void;
-  onResetFlow?: () => void;  // --- ✅ 确保传入此回调 ---
+  onResetFlow?: () => void;
   selectedWorkstation: string | null;
   isRunning: boolean;
+  isCancelling?: boolean;
   hasError: boolean;
-  onToggleWorkflowManager?: () => void;
-  showWorkflowManager?: boolean;
-  // 新增：报告生成
+  workflowBlockRunBlocked?: boolean;
   onGenerateReport?: () => void;
-  canGenerateReport?: boolean;  // 是否有可生成报告的执行记录
 }
+
+type PrimaryAction = 'run' | 'reset';
+type ToolbarIconName = 'clear' | 'expand' | 'records' | 'reset' | 'start';
+
+const ToolbarIcon: React.FC<{ name: ToolbarIconName }> = ({ name }) => {
+  const commonProps = {
+    className: 'btn-svg-icon',
+    viewBox: '0 0 24 24',
+    'aria-hidden': true,
+    focusable: false,
+  } as const;
+
+  switch (name) {
+    case 'clear':
+      return (
+        <svg {...commonProps}>
+          <rect className="btn-svg-icon__primary" x="7" y="3.69" width="10" height="16.63" rx="1" transform="translate(-4.97 12) rotate(-45.01)" />
+          <path className="btn-svg-icon__secondary" d="M20.71,13.64,17.17,10.1l-7.06,7.07,3.53,3.54a1,1,0,0,0,1.41,0l5.66-5.66A1,1,0,0,0,20.71,13.64ZM6,21h8" />
+        </svg>
+      );
+    case 'records':
+      return (
+        <svg {...commonProps}>
+          <path className="btn-svg-icon__primary" d="M14,5h3a1,1,0,0,1,1,1v9" />
+          <path className="btn-svg-icon__primary" d="M8,5H5A1,1,0,0,0,4,6V20a1,1,0,0,0,1,1h7" />
+          <path className="btn-svg-icon__secondary" d="M14,4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7h6ZM8,17h4M8,13h6m2,6h4" />
+        </svg>
+      );
+    case 'expand':
+      return (
+        <svg {...commonProps}>
+          <circle className="btn-svg-icon__primary" cx="10.5" cy="10.5" r="5.5" />
+          <path className="btn-svg-icon__secondary" d="M14.5,14.5,20,20" />
+          <path className="btn-svg-icon__primary" d="M10.5,8v5M8,10.5h5" />
+        </svg>
+      );
+    case 'reset':
+      return (
+        <svg {...commonProps}>
+          <path className="btn-svg-icon__primary" d="M4,12A8,8,0,0,1,18.93,8" />
+          <path className="btn-svg-icon__primary" d="M20,12A8,8,0,0,1,5.07,16" />
+          <polyline className="btn-svg-icon__secondary" points="14 8 19 8 19 3" />
+          <polyline className="btn-svg-icon__secondary" points="10 16 5 16 5 21" />
+        </svg>
+      );
+    case 'start':
+      return (
+        <svg {...commonProps}>
+          <polygon className="btn-svg-icon__secondary" points="16 12 10 16 10 8 16 12" />
+          <circle className="btn-svg-icon__primary" cx="12" cy="12" r="9" />
+        </svg>
+      );
+  }
+};
 
 export const Toolbar: React.FC<ToolbarProps> = ({
   onRunFlow,
-  onStopFlow,
-  onResetFlow, // 解构出 reset 回调
+  onResetFlow,
   selectedWorkstation,
   isRunning,
+  isCancelling = false,
   hasError,
-  onToggleWorkflowManager,
-  showWorkflowManager = false,
+  workflowBlockRunBlocked = false,
   onGenerateReport,
-  canGenerateReport = false
 }) => {
-  const {
-    clearCanvas,
-    nodes
-  } = useCanvasStore();
-
-  const {
-    setCurrentWorkflow,
-    setDraftWorkflowName
-  } = useWorkflowStore();
-
-  // 定时运行状态
-  const [showScheduler, setShowScheduler] = useState(false);
-  const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState<string>(''); // 倒计时显示
-  const scheduleButtonRef = useRef<HTMLButtonElement>(null);
-  const scheduleTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 展开视图状态
+  const { clearCanvas, nodes } = useCanvasStore();
+  const { setDraftWorkflowName } = useWorkflowStore();
+  const nodeStatuses = useExecutionStore((state) => state.nodeStatuses);
   const [showUnrollView, setShowUnrollView] = useState(false);
 
-  // 定时触发逻辑
-  useEffect(() => {
-    // 清除之前的定时器
-    if (scheduleTimerRef.current) {
-      clearTimeout(scheduleTimerRef.current);
-      scheduleTimerRef.current = null;
-    }
+  const hasFinishedStatus = nodeStatuses.some((status) =>
+    ['completed', 'failed', 'cancelled'].includes(String(status || ''))
+  );
 
-    if (scheduledTime) {
-      const now = new Date();
-      const delay = scheduledTime.getTime() - now.getTime();
-
-      if (delay > 0) {
-        console.log(`[定时运行] 将在 ${Math.round(delay / 1000)} 秒后执行`);
-        scheduleTimerRef.current = setTimeout(() => {
-          console.log('[定时运行] 时间到达，开始执行工作流！');
-          setScheduledTime(null); // 清除定时状态
-          setCountdown(''); // 清除倒计时
-          onRunFlow(); // 执行运行
-        }, delay);
-      } else {
-        // 时间已过，立即执行
-        console.log('[定时运行] 时间已过，立即执行');
-        setScheduledTime(null);
-        setCountdown('');
-        onRunFlow();
-      }
-    }
-
-    return () => {
-      if (scheduleTimerRef.current) {
-        clearTimeout(scheduleTimerRef.current);
-      }
-    };
-  }, [scheduledTime, onRunFlow]);
-
-  // 倒计时显示更新（每秒刷新）
-  useEffect(() => {
-    if (!scheduledTime) {
-      setCountdown('');
-      return;
-    }
-
-    const updateCountdown = () => {
-      const now = Date.now();
-      const remaining = Math.max(0, scheduledTime.getTime() - now);
-
-      if (remaining <= 0) {
-        setCountdown('');
-        return;
-      }
-
-      const seconds = Math.floor(remaining / 1000);
-      setCountdown(formatDuration(seconds));
-    };
-
-    updateCountdown(); // 立即更新一次
-    const interval = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(interval);
-  }, [scheduledTime]);
-
-  // 计算按钮状态 - 基于四种状态模式
   const getButtonStates = () => {
-    // 1. 初始化状态：未选择工作站
     if (!selectedWorkstation) {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
-        runButtonDisabled: true,
-        runButtonText: '运行',
-        stopButtonDisabled: true,
-        stopButtonText: '停止',
-        stopButtonVariant: 'btn_secondary' as const,
-        isResetMode: false // 标记当前是否为重置模式
+        primaryButtonDisabled: true,
+        primaryButtonText: '运行',
+        primaryButtonVariant: 'btn--primary' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
       };
     }
 
-    // 2. 出错状态 -> 显示重置 (原有逻辑)
     if (hasError) {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
-        runButtonDisabled: true,
-        runButtonText: '运行',
-        stopButtonDisabled: false,
-        stopButtonText: '重置',
-        stopButtonVariant: 'btn_warning' as const,
-        isResetMode: true // ✅ 是重置模式
+        primaryButtonDisabled: false,
+        primaryButtonText: '重置',
+        primaryButtonVariant: 'btn--warning' as const,
+        primaryButtonIcon: 'reset' as const,
+        primaryAction: 'reset' as PrimaryAction
       };
     }
 
-    // 3. 运行中状态 -> 显示停止 (原有逻辑)
+    if (isCancelling) {
+      return {
+        fileOperationsDisabled: true,
+        workflowDisabled: true,
+        primaryButtonDisabled: true,
+        primaryButtonText: '停止中',
+        primaryButtonVariant: 'btn--warning' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
+      };
+    }
+
     if (isRunning) {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
-        runButtonDisabled: true,
-        runButtonText: '运行中',
-        stopButtonDisabled: false,
-        stopButtonText: '停止',
-        stopButtonVariant: 'btn_danger' as const,
-        isResetMode: false // 是停止模式
+        primaryButtonDisabled: true,
+        primaryButtonText: '运行中',
+        primaryButtonVariant: 'btn--primary' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
       };
     }
 
-    // 4. 空闲状态：已选择工作站，未运行
-    // --- 💡 改进：允许在此状态下重置，以便清除上一轮运行的成功(绿色)状态 ---
+    if (workflowBlockRunBlocked) {
+      return {
+        fileOperationsDisabled: false,
+        workflowDisabled: false,
+        primaryButtonDisabled: true,
+        primaryButtonText: '不可运行',
+        primaryButtonVariant: 'btn--secondary' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
+      };
+    }
+
     return {
       fileOperationsDisabled: false,
       workflowDisabled: false,
-      runButtonDisabled: false,
-      runButtonText: '运行',
-      stopButtonDisabled: false, // ✅ 改为 false，允许点击
-      stopButtonText: '重置',    // ✅ 改为 '重置'，允许用户手动清空状态
-      stopButtonVariant: 'btn_secondary' as const,
-      isResetMode: true          // ✅ 是重置模式
+      primaryButtonDisabled: false,
+      primaryButtonText: hasFinishedStatus ? '重置' : '运行',
+      primaryButtonVariant: hasFinishedStatus ? 'btn--secondary' as const : 'btn--primary' as const,
+      primaryButtonIcon: hasFinishedStatus ? 'reset' as const : 'start' as const,
+      primaryAction: hasFinishedStatus ? 'reset' as PrimaryAction : 'run' as PrimaryAction
     };
   };
 
   const buttonStates = getButtonStates();
 
-  // --- 处理点击逻辑：根据模式分发给 Stop 或 Reset ---
-  const handleStopOrReset = () => {
-    if (buttonStates.isResetMode) {
-      // 如果是重置模式，调用重置 (如果传入了)
-      if (onResetFlow) onResetFlow();
-    } else {
-      // 否则调用停止
-      onStopFlow();
+  const handlePrimaryAction = () => {
+    if (buttonStates.primaryAction === 'reset') {
+      onResetFlow?.();
+      return;
     }
+    onRunFlow();
   };
 
-  // 新建工作流：清空画布 + 重置工作流状态
-  const handleNewWorkflow = () => {
+  const handleClearCanvas = () => {
     clearCanvas();
-    setCurrentWorkflow(null);
     setDraftWorkflowName(null);
   };
 
   return (
     <>
-      <div className="toolbar glass">
-        {/* 左侧：文件操作 */}
-        <div className="flex items-center gap_sm">
-          <div className="flex gap_sm">
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass btn_primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''
-                }`}
-              onClick={handleNewWorkflow}
-              title="新建流程"
-              disabled={buttonStates.fileOperationsDisabled}
-            >
-              <span className="btn-icon">📄</span>
-              <span className="btn-text">新建</span>
-            </button>
-
-            {/* 保存按钮 */}
-            <SaveDropdown disabled={buttonStates.fileOperationsDisabled} />
-
-            {/* 另存为按钮 */}
-            <SaveAsDropdown disabled={buttonStates.fileOperationsDisabled} />
-          </div>
-        </div>
-
-        {/* 中间：展开所有 + 工作流管理 + 报告生成 */}
-        <div className="flex items-center gap_sm">
-          {/* 展开所有按钮 */}
+      <div className="toolbar" aria-label="画布工具栏">
+        <div className="toolbar__group toolbar__group--top-left">
           <button
-            className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled || nodes.length === 0 ? 'disabled' : 'btn_secondary'
-              }`}
-            onClick={() => setShowUnrollView(true)}
-            title="查看展开后的所有执行步骤"
-            disabled={buttonStates.workflowDisabled || nodes.length === 0}
+            className={`btn btn--md btn--icon btn--round glass btn--primary ${buttonStates.fileOperationsDisabled ? 'disabled' : ''}`}
+            onClick={handleClearCanvas}
+            title="清空画布"
+            aria-label="清空画布"
+            disabled={buttonStates.fileOperationsDisabled}
           >
-            <span className="btn-icon">🔍</span>
-            <span className="btn-text">展开所有</span>
+            <span className="btn-icon"><ToolbarIcon name="clear" /></span>
           </button>
 
-          {onToggleWorkflowManager && (
-            <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.workflowDisabled ? 'disabled' : (showWorkflowManager ? 'btn_primary' : 'btn_secondary')
-                }`}
-              onClick={onToggleWorkflowManager}
-              title={showWorkflowManager ? "关闭工作流管理" : "打开工作流管理"}
-              disabled={buttonStates.workflowDisabled}
-            >
-              <span className="btn-icon">{showWorkflowManager ? '📋' : '📄'}</span>
-              <span className="btn-text">工作流</span>
-            </button>
-          )}
-
-          {/* 生成报告按钮 */}
           {onGenerateReport && (
             <button
-              className={`btn_base btn_layout btn_style_common btn_mini glass ${canGenerateReport ? 'btn_accent' : 'btn_secondary disabled'
-                }`}
+              className="btn btn--md btn--icon btn--round glass btn--accent"
               onClick={onGenerateReport}
-              title={canGenerateReport ? "生成实验报告" : "执行工作流后可生成报告"}
-              disabled={!canGenerateReport || isRunning}
+              title="查看实验记录"
+              aria-label="查看实验记录"
             >
-              <span className="btn-icon">📊</span>
-              <span className="btn-text">报告</span>
+              <span className="btn-icon"><ToolbarIcon name="records" /></span>
             </button>
           )}
         </div>
 
-        {/* 右侧：运行和设置 */}
-        <div className="flex items-center gap_sm">
+        <div className="toolbar__group toolbar__group--top-right">
           <button
-            className={`btn_base btn_layout btn_style_common btn_mini glass btn_primary ${buttonStates.runButtonDisabled ? 'disabled' : ''
-              }`}
-            onClick={onRunFlow}
-            title="运行流程 (F5)"
-            disabled={buttonStates.runButtonDisabled}
+            className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled ? 'disabled' : ''}`}
+            onClick={handlePrimaryAction}
+            title={workflowBlockRunBlocked ? '工作流块未选择子工作流，或子工作流包含嵌套工作流块' : buttonStates.primaryButtonText === '运行' ? '运行流程 (F5)' : buttonStates.primaryButtonText}
+            aria-label={buttonStates.primaryButtonText}
+            disabled={buttonStates.primaryButtonDisabled}
           >
-            <span className="btn-icon">▶️</span>
-            <span className="btn-text">{buttonStates.runButtonText}</span>
+            <span className="btn-icon"><ToolbarIcon name={buttonStates.primaryButtonIcon} /></span>
           </button>
+        </div>
 
-          {/* 定时运行按钮 */}
+        <div className="toolbar__group toolbar__group--bottom-right">
           <button
-            ref={scheduleButtonRef}
-            className={`btn_base btn_layout btn_style_common btn_mini glass ${scheduledTime ? 'btn_warning' : 'btn_secondary'
-              } ${buttonStates.runButtonDisabled && !scheduledTime ? 'disabled' : ''}`}
-            onClick={() => {
-              if (scheduledTime) {
-                // 已有定时任务，点击取消
-                setScheduledTime(null);
-                setCountdown('');
-                console.log('[定时运行] 已取消');
-              } else {
-                setShowScheduler(!showScheduler);
-              }
-            }}
-            title={scheduledTime ? `点击取消定时（${scheduledTime.toLocaleTimeString()}）` : "定时运行"}
-            disabled={buttonStates.runButtonDisabled && !scheduledTime}
+            className={`btn btn--md btn--icon btn--round glass ${buttonStates.workflowDisabled || nodes.length === 0 ? 'disabled' : 'btn--secondary'}`}
+            onClick={() => setShowUnrollView(true)}
+            title="查看展开后的所有执行步骤"
+            aria-label="查看展开后的所有执行步骤"
+            disabled={buttonStates.workflowDisabled || nodes.length === 0}
           >
-            <span className="btn-text">
-              {scheduledTime && countdown
-                ? `启动于 ${countdown}`
-                : '定时运行'
-              }
-            </span>
-          </button>
-
-          <button
-            className={`btn_base btn_layout btn_style_common btn_mini glass ${buttonStates.stopButtonVariant} ${buttonStates.stopButtonDisabled ? 'disabled' : ''
-              }`}
-            onClick={handleStopOrReset}
-            title={buttonStates.stopButtonText === '重置' ? "重置系统" : "停止运行"}
-            disabled={buttonStates.stopButtonDisabled}
-          >
-            <span className="btn-icon">{buttonStates.stopButtonText === '重置' ? '🔄' : '⏹️'}</span>
-            <span className="btn-text">{buttonStates.stopButtonText}</span>
+            <span className="btn-icon"><ToolbarIcon name="expand" /></span>
           </button>
         </div>
       </div>
 
-
-
-      {/* 定时运行弹窗 */}
-      <ScheduleRunner
-        isOpen={showScheduler}
-        onClose={() => setShowScheduler(false)}
-        onSchedule={(time) => {
-          setScheduledTime(time);
-          console.log(`定时运行设置为: ${time.toLocaleString()}`);
-          // TODO: 实现定时触发逻辑
-        }}
-        anchorRect={scheduleButtonRef.current?.getBoundingClientRect()}
-      />
-
-      {/* 展开视图弹窗 */}
       <UnrollViewModal
         isOpen={showUnrollView}
         onClose={() => setShowUnrollView(false)}
         nodes={nodes}
       />
+
     </>
   );
 };

@@ -1,7 +1,11 @@
-// ZahnerFlow API协议类型包导出
+/**
+ * @zahnerflow/types
+ *
+ * 共享契约优先从 contracts 导出；其余手写辅助类型在此集中补充导出。
+ */
 
-// API通信协议类型
-export * from './api.types.js';
+export * from './contracts/index.js';
 
-// 设备通信协议类型
-export * from './device.types.js';
+export type {
+  RuntimeDeviceStatusEnvelope
+} from './contracts/runtimeDevice.js';

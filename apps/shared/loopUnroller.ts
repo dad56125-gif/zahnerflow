@@ -137,7 +137,7 @@ function unrollRecursive(
 
         // 情况 1：遇到 loop_start，递归展开循环体
         if (node.type === 'loop_start') {
-            const loopCount = node.config?.loop_count ?? 1;
+            const loopCount = node.config?.loopCount ?? 1;
             const loopEndIdx = findMatchingLoopEnd(nodes, i);
 
             if (loopEndIdx === -1) {

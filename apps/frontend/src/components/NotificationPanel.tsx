@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Portal } from './Portal';
+import React from 'react';
+import { ModalLayer } from './shared/OverlayLayer';
 import { useAppStore } from '../state/appStore';
 
 interface NotificationPanelProps {
@@ -13,50 +13,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
   const removeNotification = useAppStore(state => state.removeNotification);
   const clearNotifications = useAppStore(state => state.clearNotifications);
 
-  const [isHiding, setIsHiding] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  // 开始关闭动画
-  const startClose = useCallback(() => {
-    setIsHiding(true);
-  }, []);
-
-  // 处理关闭动画结束
-  useEffect(() => {
-    if (!isHiding) return;
-
-    const panel = panelRef.current;
-    if (!panel) return;
-
-    let animationCompleted = false;
-    const fallbackTimer = setTimeout(() => {
-      if (!animationCompleted) {
-        setIsHiding(false);
-        onClose();
-      }
-    }, 300);
-
-    const handleAnimationEnd = (e: AnimationEvent) => {
-      if (e.animationName === 'dropdownOut') {
-        animationCompleted = true;
-        clearTimeout(fallbackTimer);
-        setIsHiding(false);
-        onClose();
-      }
-    };
-
-    const timer = setTimeout(() => {
-      panel.addEventListener('animationend', handleAnimationEnd);
-    }, 0);
-
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(fallbackTimer);
-      panel.removeEventListener('animationend', handleAnimationEnd);
-    };
-  }, [isHiding, onClose]);
-
-  const getNotificationIcon = (type: 'info' | 'success' | 'warning' | 'error') => {
+  const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'success': return '✅';
       case 'error': return '❌';
@@ -66,7 +23,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
     }
   };
 
-  const getNotificationColor = (type: 'info' | 'success' | 'warning' | 'error') => {
+  const getNotificationColor = (type: string) => {
     switch (type) {
       case 'success': return 'var(--color-success)';
       case 'error': return 'var(--color-error)';
@@ -81,37 +38,47 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
     return new Date(timestamp).toLocaleTimeString();
   };
 
+  const formatDetails = (details: unknown) => {
+    if (details == null) {
+      return null;
+    }
+
+    return typeof details === 'string' ? details : JSON.stringify(details, null, 2);
+  };
+
   return (
-    <Portal isOpen={isOpen || isHiding} onClose={startClose} pointerEvents="none">
-      {/* ✅ 遮罩层：覆盖视口 */}
-      <div
-        onClick={startClose}
-        style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
-      >
-        {/* ✅ 内容区：阻止冒泡 */}
+    <ModalLayer
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      id="notification-panel-overlay"
+      blur={false}
+    >
+      {({ state, close }) => {
+        const isHiding = state === 'closing';
+        return (
         <div
-          ref={panelRef}
-          className={`overlay_base notification-panel ${isHiding ? 'hiding' : 'show'}`}
-          onClick={e => e.stopPropagation()}
+          className={`overlay-base notification ${isHiding ? 'is-hiding' : 'is-visible'}`}
         >
-          <div className="notification-panel-header">
-            <div className="notification-panel-title">
+          <div className="notification__header">
+            <div className="notification__title">
               <span>通知中心</span>
               {notifications.length > 0 && (
-                <span className="notification-badge">{notifications.length}</span>
+                <span className="notification__badge">{notifications.length}</span>
               )}
             </div>
-            <div className="notification-panel-actions">
+            <div className="notification__actions">
               <button
-                className="notification-action-btn"
+                className="btn btn--sm btn--ghost btn--icon btn--rounded notification__action-btn"
                 onClick={clearNotifications}
                 title="清空所有通知"
               >
                 🗑️
               </button>
               <button
-                className="notification-action-btn"
-                onClick={startClose}
+                className="btn btn--sm btn--ghost btn--icon btn--rounded notification__action-btn"
+                onClick={close}
                 title="关闭"
               >
                 ✕
@@ -119,30 +86,33 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
             </div>
           </div>
 
-          <div className="notification-panel-content">
+          <div className="notification__content">
             {notifications.length === 0 ? (
-              <div className="notification-empty">
-                <div className="notification-empty-icon">📭</div>
-                <div className="notification-empty-text">暂无通知</div>
+              <div className="notification__empty">
+                <div className="notification__empty-icon">📭</div>
+                <div className="notification__empty-text">暂无通知</div>
               </div>
             ) : (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`notification-item type-${notification.type} ${notification.read ? '' : 'unread'}`}
+                  className={`notification__item notification__item--${notification.type} ${notification.read ? '' : 'is-unread'}`}
                 >
-                  <div className="notification-icon" style={{ color: getNotificationColor(notification.type) }}>
+                  <div className="notification__icon" style={{ color: getNotificationColor(notification.type) }}>
                     {getNotificationIcon(notification.type)}
                   </div>
-                  <div className="notification-content">
-                    <div className="notification-title">{notification.title}</div>
-                    <div className="notification-message">{notification.message}</div>
-                    <div className="notification-time">
-                      {formatTimestamp(notification.timestamp)}
-                    </div>
+                    <div className="notification__body">
+                      <div className="notification__item-title">{notification.title}</div>
+                      <div className="notification__message">{notification.message}</div>
+                      {notification.details != null && (
+                        <pre className="notification__details">{formatDetails(notification.details)}</pre>
+                      )}
+                      <div className="notification__time">
+                        {formatTimestamp(notification.timestamp)}
+                      </div>
                   </div>
                   <button
-                    className="notification-delete-btn"
+                    className="btn btn--xs btn--ghost btn--icon btn--rounded notification__delete-btn"
                     onClick={(e) => {
                       e.stopPropagation();
                       removeNotification(notification.id);
@@ -156,7 +126,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
             )}
           </div>
         </div>
-      </div>
-    </Portal>
+        );
+      }}
+    </ModalLayer>
   );
 };

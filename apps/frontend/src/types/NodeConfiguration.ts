@@ -1,4 +1,16 @@
-import { NodeType, NodeConfig, NodeCategory } from './Interfaces';
+import { NodeType, NodeCategory } from '@zahnerflow/types';
+
+type NodeIconKey = string;
+
+// 节点配置元数据（静态配置，非运行时数据）
+export interface NodeConfig {
+  type: NodeType;
+  name: string;
+  category: NodeCategory;
+  description: string;
+  icon: NodeIconKey;
+  defaultParameters?: Record<string, any>;
+}
 
 // 分组名称映射
 export const NODE_CATEGORY_NAMES: Record<NodeCategory, string> = {
@@ -38,12 +50,12 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: 'Furnace自动温度控制节点',
     icon: '🌡️',
     defaultParameters: {
-      target_temperature: 25,
+      targetTemperature: 25,
       rate: 5.0,
-      current_temperature: 0,
-      calculated_duration: 0,
+      currentTemperature: 0,
+      calculatedDuration: 0,
       tolerance: 0.5,
-      stabilization_time: 30
+      stabilizationTime: 30
     }
   },
 
@@ -54,13 +66,13 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: 'MFC气体流量控制节点',
     icon: '💨',
     defaultParameters: {
-      device_selection: '1:N2',
-      device_address: 1,
-      gas_type: 'N2',
-      target_flow_rate: 50,
-      current_flow_rate: 0,
-      max_flow_sccm: 200,
-      stabilization_time: 10
+      deviceSelection: '1:N2',
+      deviceAddress: 1,
+      gasType: 'N2',
+      targetFlowRate: 50,
+      currentFlowRate: 0,
+      maxFlowSccm: 200,
+      stabilizationTime: 10
     }
   },
 
@@ -72,18 +84,18 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '恒电位电化学阻抗谱测量 (FastAPI)',
     icon: '📊',
     defaultParameters: {
-      eis_lower_frequency: 0.1,
-      eis_upper_frequency: 300000,
-      eis_start_frequency: 0.1,
-      enable_dc_bias: false,
-      eis_potential: 0.0,
+      eisLowerFrequency: 0.1,
+      eisUpperFrequency: 300000,
+      eisStartFrequency: 0.1,
+      enableDcBias: false,
+      eisPotential: 0.0,
       eis_amplitude: 0.025,
-      eis_lower_periods: 4,
-      eis_upper_periods: 20,
-      eis_lower_steps: 5,
-      eis_upper_steps: 10,
-      eis_scan_direction: 'START_TO_MAX',
-      eis_scan_strategy: 'SINGLE_SINE'
+      eisLowerPeriods: 4,
+      eisUpperPeriods: 20,
+      eisLowerSteps: 5,
+      eisUpperSteps: 10,
+      eisScanDirection: 'START_TO_MAX',
+      eisScanStrategy: 'SINGLE_SINE'
     }
   },
 
@@ -94,17 +106,17 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '恒电流电化学阻抗谱测量 (FastAPI)',
     icon: '📊',
     defaultParameters: {
-      eis_lower_frequency: 0.05,
-      eis_upper_frequency: 300000,
-      eis_start_frequency: 0.05,
+      eisLowerFrequency: 0.05,
+      eisUpperFrequency: 300000,
+      eisStartFrequency: 0.05,
       eis_amplitude: 0.02,
-      eis_current: 0.0,
-      eis_lower_periods: 4,
-      eis_upper_periods: 20,
-      eis_lower_steps: 5,
-      eis_upper_steps: 10,
-      eis_scan_direction: 'START_TO_MAX',
-      eis_scan_strategy: 'SINGLE_SINE'
+      eisCurrent: 0.0,
+      eisLowerPeriods: 4,
+      eisUpperPeriods: 20,
+      eisLowerSteps: 5,
+      eisUpperSteps: 10,
+      eisScanDirection: 'START_TO_MAX',
+      eisScanStrategy: 'SINGLE_SINE'
     }
   },
 
@@ -116,8 +128,8 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     icon: '🔋',
     defaultParameters: {
       check_battery_health: false,
-      measurement_duration: 60.0,
-      sampling_interval: 1.0
+      measurementDuration: 60.0,
+      samplingInterval: 1.0
     }
   },
 
@@ -128,9 +140,9 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '计时安培法测量 (FastAPI)',
     icon: '⏱️',
     defaultParameters: {
-      polarization_voltage: 1.0,
-      measurement_duration: 60.0,
-      sampling_interval: 0.1,
+      polarizationVoltage: 1.0,
+      measurementDuration: 60.0,
+      samplingInterval: 0.1,
       min_current: -1.0,
       max_current: 1.0
     }
@@ -143,9 +155,9 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '计时电位法测量 (FastAPI)',
     icon: '⏰',
     defaultParameters: {
-      polarization_current: 10e-3,
-      measurement_duration: 60.0,
-      sampling_interval: 0.1,
+      polarizationCurrent: 10e-3,
+      measurementDuration: 60.0,
+      samplingInterval: 0.1,
       min_voltage: -4.0,
       max_voltage: 4.0
     }
@@ -159,11 +171,11 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     icon: '📈',
     defaultParameters: {
       start_voltage: -0.5,
-      start_voltage_reference: 'absolute',
+      startVoltageReference: 'absolute',
       end_voltage: 0.8,
-      end_voltage_reference: 'absolute',
-      measurement_duration: 130.0,
-      sampling_interval: 1.0,
+      endVoltageReference: 'absolute',
+      measurementDuration: 130.0,
+      samplingInterval: 1.0,
       min_current: -1.0,
       max_current: 1.0
     }
@@ -176,10 +188,10 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '电流斜坡测量 (电位动态扫描)',
     icon: '📉',
     defaultParameters: {
-      start_current: -10e-3,
-      end_current: 10e-3,
-      measurement_duration: 60.0,
-      sampling_interval: 1.0,
+      startCurrent: -10e-3,
+      endCurrent: 10e-3,
+      measurementDuration: 60.0,
+      samplingInterval: 1.0,
       min_voltage: -4.0,
       max_voltage: 4.0
     }
@@ -193,10 +205,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '定义循环参数和开始位置',
     icon: '🔄',
     defaultParameters: {
-      loop_count: 1,
-      loop_variable: 'i',
-      start_value: 0,
-      step: 1
+      loopCount: 1
     }
   },
 
@@ -211,15 +220,40 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
 
   wait_delay: {
     type: 'wait_delay',
-    name: '等待/延时',
+    name: '等待',
     category: 'flow_control',
     description: '在工作流执行过程中插入指定时间的等待',
     icon: '⏱️',
     defaultParameters: {
-      duration: 1.0,
-      description: '',
-      allow_cancel: true,
-      progress_updates: true
+      duration: 1.0
+    }
+  },
+
+  scheduled_start: {
+    type: 'scheduled_start',
+    name: '定时',
+    category: 'flow_control',
+    description: '等待到指定时间后继续执行工作流',
+    icon: '⏱️',
+    defaultParameters: {
+      hour: 0,
+      minute: 0,
+      nextDay: false
+    }
+  },
+
+  workflow_block: {
+    type: 'workflow_block',
+    name: '工作流块',
+    category: 'flow_control',
+    description: '引用一个已归档工作流作为组合步骤',
+    icon: '▣',
+    defaultParameters: {
+      workflowId: '',
+      workflowName: '',
+      workflowShortId: '',
+      nodeCount: 0,
+      hasNestedWorkflowBlock: false
     }
   },
 
@@ -233,10 +267,10 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     defaultParameters: {
       current_1: 0.0,
       current_2: 10e-3,
-      hold_time_1: 30.0,
-      hold_time_2: 30.0,
+      holdTime1: 30.0,
+      holdTime2: 30.0,
       cycles: 5,
-      sampling_interval: 0.5,
+      samplingInterval: 0.5,
       min_voltage: -4.0,
       max_voltage: 4.0
     }
@@ -251,10 +285,10 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     defaultParameters: {
       potential_1: 0.0,
       potential_2: 0.5,
-      hold_time_1: 30.0,
-      hold_time_2: 30.0,
+      holdTime1: 30.0,
+      holdTime2: 30.0,
       cycles: 5,
-      sampling_interval: 0.5,
+      samplingInterval: 0.5,
       min_current: -1.0,
       max_current: 1.0
     }
@@ -267,11 +301,11 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '电流阶梯式变化，每阶保持固定时间',
     icon: '▁▂▃▄',
     defaultParameters: {
-      start_current: 0.1,
-      end_current: 1.0,
-      step_current: 0.1,
+      startCurrent: 0.1,
+      endCurrent: 1.0,
+      stepCurrent: 0.1,
       hold_time: 30.0,
-      sampling_interval: 1.0,
+      samplingInterval: 1.0,
       min_voltage: -4.0,
       max_voltage: 4.0
     }
@@ -286,9 +320,9 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     defaultParameters: {
       start_potential: 0.0,
       end_potential: 1.0,
-      step_potential: 0.1,
+      stepPotential: 0.1,
       hold_time: 30.0,
-      sampling_interval: 1.0,
+      samplingInterval: 1.0,
       min_current: -1.0,
       max_current: 1.0
     }
@@ -297,23 +331,23 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
 
 // 节点分组列表
 export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {
-  device: ['startup', 'shutdown', 'change_temperature', 'change_gas_flow'],
+  device: ['change_temperature', 'change_gas_flow'],
   basic_measurement: [
     'eis_potentiostatic',
     'eis_galvanostatic',
-    'ocp_measurement',
-    'chronoamperometry',
     'chronopotentiometry',
+    'chronoamperometry',
     'voltage_ramp',
-    'current_ramp'
+    'current_ramp',
+    'ocp_measurement'
   ],
   advanced_measurement: [
-    'galvanostatic_switching',
     'potentiostatic_switching',
-    'galvanostatic_step_ramp',
-    'potentiostatic_step_ramp'
+    'galvanostatic_switching',
+    'potentiostatic_step_ramp',
+    'galvanostatic_step_ramp'
   ],
-  flow_control: ['loop_start', 'loop_end', 'wait_delay']
+  flow_control: ['loop_start', 'loop_end', 'wait_delay', 'scheduled_start', 'workflow_block']
 };
 
 // Zahner 特有配置 (复用通用配置)

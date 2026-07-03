@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ts-tools": {
+      "command": "/Users/a0/.bun/bin/bun",
+      "args": ["run", "/Users/a0/.claude/mcp-typescript-tools/dist/index.js"],
+      "cwd": "/Users/a0/模型/Code/Zahnerflow/apps/frontend"
+    }
+  }
+}

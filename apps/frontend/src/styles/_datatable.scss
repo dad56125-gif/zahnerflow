@@ -1,0 +1,202 @@
+/**
+ * DataTable 样式 — BEM 规范
+ */
+
+.datatable__wrapper {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* === Block === */
+.datatable {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+
+  thead {
+    background: var(--glass-bg-hover);
+  }
+
+  th {
+    padding: var(--size-xs) var(--size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--glass-border);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: clamp(0.625rem, 1.2vw, 0.6875rem);
+  }
+
+  td {
+    @extend %text-ellipsis;
+    padding: var(--size-2xs) var(--size-sm);
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  tbody tr {
+    &:last-child td {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    &:first-child {
+      animation: datatable-new-row 0.3s ease-out;
+    }
+  }
+}
+
+/* === Elements === */
+.datatable__row--clickable {
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.datatable__empty-row td {
+  text-align: center;
+  padding: var(--size-xl);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.datatable__loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(var(--blur-1));
+}
+
+/* === Modifiers === */
+.datatable--sm th {
+  padding: var(--size-2xs) var(--size-xs);
+  font-size: clamp(0.5625rem, 1vw, 0.625rem);
+}
+.datatable--sm td {
+  padding: var(--size-3xs) var(--size-xs);
+  font-size: clamp(0.5625rem, 1vw, 0.625rem);
+}
+
+.datatable--sticky-header thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--glass-bg-hover);
+  backdrop-filter: blur(var(--blur-panel));
+}
+
+/* === State: loading === */
+.datatable.is-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* === 历史数据选项卡布局 === */
+.history__tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* === 分页控件 === */
+.history__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-xs);
+  margin-top: var(--size-sm);
+}
+
+.history__pagination-info {
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+}
+
+.history__pagination-buttons {
+  @extend %flex-center;
+  gap: var(--size-xs);
+}
+
+.history__page-info {
+  font-size: var(--size-sm);
+  color: var(--text-secondary);
+  padding: 0 var(--size-sm);
+  min-width: 4rem;
+  text-align: center;
+}
+
+/* === 数据栏 Tab 切换 === */
+.data-viewer__tabs {
+  display: flex;
+  gap: var(--size-xs);
+  margin-bottom: var(--size-sm);
+  flex-shrink: 0;
+
+  .btn {
+    flex: 1;
+    font-size: var(--text-xs);
+  }
+}
+
+.data-viewer__placeholder {
+  @include flex-col(var(--size-sm));
+  align-items: center;
+  justify-content: center;
+  min-height: 10rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.data-viewer__placeholder-icon {
+  color: var(--text-muted);
+  line-height: 1;
+
+  &--sm {
+    font-size: var(--size-2xl);
+  }
+}
+
+.data-viewer__placeholder-subtext {
+  color: var(--text-muted);
+  font-size: var(--size-xs);
+}
+
+.data-viewer__summary {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--size-sm);
+  margin-bottom: var(--size-sm);
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+}
+
+/* @keyframes — DataTable: tbody tr:first-child 新行高亮 */
+@keyframes datatable-new-row {
+  from { background: rgba(59, 130, 246, 0.2); }
+  to   { background: transparent; }
+}
+
+@media (max-width: 768px) {
+  .datatable th,
+  .datatable td {
+    padding: var(--size-3xs) var(--size-2xs);
+    font-size: clamp(0.5rem, 1vw, 0.5625rem);
+  }
+}

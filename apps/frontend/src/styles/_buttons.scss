@@ -1,0 +1,267 @@
+/* === _buttons.scss - 按钮组件样式 === */
+
+@mixin btn-variant($border-var, $bg-var, $r, $g, $b) {
+  --btn-r: #{$r};
+  --btn-g: #{$g};
+  --btn-b: #{$b};
+  background: linear-gradient(135deg, $bg-var, rgba($r, $g, $b, 0.05));
+  border: 1px solid $border-var;
+  color: white;
+  box-shadow:
+    0 4px var(--effect-md) rgba($r, $g, $b, 0.2),
+    inset 0 1px 0 var(--glass-hover);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba($r, $g, $b, 0.15), rgba($r, $g, $b, 0.08));
+  }
+}
+
+/* === .btn — 主按钮基类 === */
+.btn {
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  border: none;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  text-shadow: var(--text-shadow-body);
+  border-radius: var(--radius-full);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* === 按钮尺寸 === */
+.btn--md {
+  --btn-icon-box: var(--size-3xl);
+  gap: var(--size-sm);
+  padding: var(--size-2xs) var(--size-lg);
+  font-size: var(--size-md);
+  min-height: var(--size-3xl);
+}
+
+.btn--sm {
+  --btn-icon-box: var(--size-2xl);
+  gap: var(--size-xs);
+  padding: var(--size-3xs) var(--size-md);
+  font-size: var(--size-sm);
+  height: var(--size-2xl);
+  min-width: clamp(3.5rem, 5.5vw, 5rem);
+  flex-shrink: 0;
+}
+
+.btn--xs {
+  --btn-icon-box: var(--size-xl);
+  gap: var(--size-2xs);
+  padding: var(--size-2xs) var(--size-md);
+  font-size: var(--size-xs);
+  height: var(--size-xl);
+  min-width: var(--size-5xl);
+  flex-shrink: 0;
+}
+
+/* === 按钮颜色变体 === */
+.btn--primary   { @include btn-variant(var(--color-primary), var(--color-primary-bg), 59, 130, 246); }
+.btn--secondary {
+  @extend %glass-panel-base;
+  --btn-r: 0; --btn-g: 0; --btn-b: 0;
+  color: var(--text-primary);
+  box-shadow:
+    0 4px var(--effect-md) var(--glass-shadow),
+    inset 0 1px 0 var(--glass-hover);
+
+  &:hover:not(:disabled) {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+  }
+}
+.btn--success   { @include btn-variant(var(--color-success), var(--color-success-bg), 16, 185, 129); }
+.btn--warning   { @include btn-variant(var(--color-warning), var(--color-warning-bg), 245, 158, 11); }
+.btn--danger    { @include btn-variant(var(--color-danger), var(--color-danger-bg), 239, 68, 68); }
+.btn--accent    { @include btn-variant(var(--color-accent, var(--color-primary)), var(--color-accent-bg, var(--color-primary-bg)), 168, 85, 247); }
+.btn--ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+
+  &:hover:not(:disabled) {
+    background: var(--glass-hover);
+    color: var(--text-primary);
+  }
+}
+
+/* === 按钮修饰符 === */
+.btn--icon {
+  min-width: var(--btn-icon-box, var(--size-xl));
+  width: var(--btn-icon-box, var(--size-xl));
+  padding-inline: 0;
+}
+
+.btn--rounded {
+  border-radius: var(--radius-button);
+}
+
+.btn--round {
+  &.btn--icon {
+    border-radius: 50%;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+.btn--block {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* === 按钮加载状态 === */
+.btn.is-loading {
+  color: transparent;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: var(--size-lg);
+    height: var(--size-lg);
+    border: 2px solid white;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: loader_spin 0.8s linear infinite;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* === .is-prominent — 视觉权重增强 === */
+.btn.is-prominent {
+  overflow: visible;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px var(--effect-xl) rgba(var(--btn-r, 0), var(--btn-g, 0), var(--btn-b, 0), 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--size-5xl);
+    height: var(--size-5xl);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 40%, transparent 70%);
+    filter: blur(var(--blur-6));
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    transform: translate(-50%, -50%);
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+}
+
+/* btn--secondary.is-prominent 使用暗色阴影（玻璃态风格） */
+.btn--secondary.is-prominent {
+  &:hover:not(:disabled) {
+    box-shadow:
+      0 8px var(--effect-xl) rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-svg-icon {
+  width: 1.08rem;
+  height: 1.08rem;
+  display: block;
+  overflow: visible;
+}
+
+.btn--icon .btn-svg-icon {
+  width: 1.32rem;
+  height: 1.32rem;
+}
+
+.btn-svg-icon__primary,
+.btn-svg-icon__secondary {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.btn-svg-icon__primary {
+  stroke: currentColor;
+}
+
+.btn-svg-icon__secondary {
+  stroke: var(--text-secondary);
+}
+
+.btn-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === Toolbar 响应式按钮 === */
+.toolbar {
+  container-type: inline-size;
+  container-name: toolbar;
+}
+
+/* 宽度 < 1000px: 只显示文字，隐藏图标 */
+@container toolbar (max-width: 1000px) {
+  .btn--xs .btn-icon {
+    display: none;
+  }
+}
+
+/* 宽度 < 700px: 只显示图标，隐藏文字 */
+@container toolbar (max-width: 700px) {
+  .btn--xs .btn-icon {
+    display: inline-flex;
+  }
+  .btn--xs .btn-text {
+    display: none;
+  }
+  .btn--xs {
+    min-width: auto;
+    padding-inline: var(--size-2xs);
+  }
+}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
-import { useSystemState } from '../workflow';
+import { useSystemState } from '../state/executionStateBridge';
 import { useMeasurementStream } from '../hooks/useMeasurementStream';
 import { useEisData, EisDataPoint } from '../hooks/useEisData';
-import { RawStreamData } from '../types/Interfaces';
+import type { RawStreamData } from '@zahnerflow/types';
+import { DataTable, TableColumn } from './shared/DataTable';
 
 interface DataViewerProps {
   isVisible?: boolean;
@@ -84,96 +85,63 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     return () => clearInterval(interval);
   }, [consumeBuffer, isIvtNode]);
 
-  // 格式化数值
-  const formatValue = (val: number) => {
+  // 格式化数值（科学数据通用）
+  const formatSci = (val: number) => {
     if (val === 0) return '0';
     if (Math.abs(val) < 0.001 || Math.abs(val) > 1000) return val.toExponential(4);
     return val.toFixed(4);
   };
 
-  // 渲染 IVT 表格
-  const renderIvtTable = () => {
-    if (tableData.length === 0) {
-      return (
-        <div className="data-viewer-placeholder">
-          <div className="data-viewer-placeholder-icon-sm">📝</div>
-          <div>暂无测量数据</div>
-          <div className="data-viewer-placeholder-subtext">运行时将实时显示数据</div>
-        </div>
-      );
-    }
+  // IVT 列定义
+  const ivtColumns: TableColumn<RawStreamData>[] = [
+    { key: 't', title: '时间 (s)', format: (v: number) => v.toFixed(4) },
+    { key: 'v', title: '电压 (V)', format: formatSci },
+    { key: 'i', title: '电流 (A)', format: formatSci },
+  ];
 
-    return (
-      <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div className="data-viewer-summary">
-          <div><strong>数据点数:</strong> {tableData.length}</div>
-          <div><strong>最新时间:</strong> {tableData.length > 0 ? tableData[tableData.length - 1].t.toFixed(2) + 's' : '-'}</div>
-        </div>
-        <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>时间 (s)</th>
-                <th>电压 (V)</th>
-                <th>电流 (A)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...tableData].reverse().map((row, idx) => (
-                <tr key={tableData.length - 1 - idx}>
-                  <td>{row.t.toFixed(4)}</td>
-                  <td>{formatValue(row.v)}</td>
-                  <td>{formatValue(row.i)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  // EIS 列定义
+  const eisColumns: TableColumn<EisDataPoint>[] = [
+    { key: 'frequency', title: '频率 (Hz)', format: (v: number) => v.toExponential(3) },
+    { key: 'zReal', title: "Z' (Ω)", format: formatSci },
+    { key: 'zImag', title: "-Z'' (Ω)", format: (v: number) => formatSci(-v) },
+  ];
+
+  // 渲染 IVT 表格
+  const renderIvtTable = () => (
+    <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="data-viewer__summary">
+        <div><strong>数据点数:</strong> {tableData.length}</div>
+        <div><strong>最新时间:</strong> {tableData.length > 0 ? tableData[tableData.length - 1].t.toFixed(2) + 's' : '-'}</div>
       </div>
-    );
-  };
+      <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
+        <DataTable
+          columns={ivtColumns}
+          data={[...tableData].reverse()}
+          rowKey={(_row, idx) => String(tableData.length - 1 - idx)}
+          size="small"
+          emptyText="暂无测量数据"
+        />
+      </div>
+    </div>
+  );
 
   // 渲染 EIS 表格
-  const renderEisTable = () => {
-    if (!eisData || eisData.points.length === 0) {
-      return (
-        <div className="data-viewer-placeholder">
-          <div className="data-viewer-placeholder-icon-sm">�</div>
-          <div>暂无 EIS 数据</div>
-          <div className="data-viewer-placeholder-subtext">EIS 测量完成后将显示阻抗数据</div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div className="data-viewer-summary">
-          <div><strong>数据点数:</strong> {eisData.pointCount}</div>
-          <div><strong>频率范围:</strong> {eisData.points[eisData.points.length - 1]?.frequency.toExponential(2)} - {eisData.points[0]?.frequency.toExponential(2)} Hz</div>
-        </div>
-        <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>频率 (Hz)</th>
-                <th>Z' (Ω)</th>
-                <th>-Z'' (Ω)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {eisData.points.map((row, idx) => (
-                <tr key={idx}>
-                  <td>{row.frequency.toExponential(3)}</td>
-                  <td>{formatValue(row.zReal)}</td>
-                  <td>{formatValue(-row.zImag)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  const renderEisTable = () => (
+    <div className="table-viewer-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="data-viewer__summary">
+        <div><strong>数据点数:</strong> {eisData?.pointCount ?? 0}</div>
+        <div><strong>频率范围:</strong> {eisData?.points[eisData.points.length - 1]?.frequency.toExponential(2)} - {eisData?.points[0]?.frequency.toExponential(2)} Hz</div>
       </div>
-    );
-  };
+      <div className="table-scroll-area glass-inset" style={{ flex: 1, overflow: 'auto' }}>
+        <DataTable
+          columns={eisColumns}
+          data={eisData?.points ?? []}
+          size="small"
+          emptyText="暂无 EIS 数据"
+        />
+      </div>
+    </div>
+  );
 
   // 渲染电池健康状态
   const renderHealthStatus = () => {
@@ -181,10 +149,10 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
 
     if (!healthData) {
       return (
-        <div className="data-viewer-placeholder">
-          <div className="data-viewer-placeholder-icon-sm">🔋</div>
+        <div className="data-viewer__placeholder">
+          <div className="data-viewer__placeholder-icon data-viewer__placeholder-icon--sm">🔋</div>
           <div>暂无健康分析数据</div>
-          <div className="data-viewer-placeholder-subtext">测量完成后将显示电池健康状况</div>
+          <div className="data-viewer__placeholder-subtext">测量完成后将显示电池健康状况</div>
         </div>
       );
     }
@@ -247,7 +215,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
   if (!isMeasurementNode) {
     return (
       <div className="data-viewer" style={{ padding: 'var(--size-md)' }}>
-        <div className="data-viewer-placeholder">
+        <div className="data-viewer__placeholder">
           <div>该节点不支持数据表格</div>
         </div>
       </div>
@@ -270,15 +238,15 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     >
       {/* 数据栏 Tab 切换 (仅在健康检测模式下显示) */}
       {isHealthMode && (
-        <div className="data-viewer-tabs">
+        <div className="data-viewer__tabs">
           <button
-            className={`btn_base btn_layout btn_style_common btn_small glass ${viewMode === 'table' ? 'btn_primary' : 'btn_secondary'}`}
+            className={`btn btn--sm glass ${viewMode === 'table' ? 'btn--primary' : 'btn--secondary'}`}
             onClick={() => setViewMode('table')}
           >
             数据表格
           </button>
           <button
-            className={`btn_base btn_layout btn_style_common btn_small glass ${viewMode === 'health' ? 'btn_primary' : 'btn_secondary'}`}
+            className={`btn btn--sm glass ${viewMode === 'health' ? 'btn--primary' : 'btn--secondary'}`}
             onClick={() => setViewMode('health')}
           >
             健康状态
@@ -293,4 +261,3 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     </div>
   );
 };
-

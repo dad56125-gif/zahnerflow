@@ -1,0 +1,163 @@
+/**
+ * ScheduleRunner 样式 — 复古翻页钟 BEM
+ */
+
+/* === Block === */
+.schedule-runner {
+  @extend %glass-panel-base;
+  width: 11rem;
+  padding: var(--size-md);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--size-sm);
+  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: schedule-runner-appear var(--duration-fast) var(--ease-out);
+
+  &__clock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-3xs);
+    position: relative;
+    perspective: 500px;
+  }
+
+  &__digit {
+    --card-height: var(--size-4xl);
+    --card-width: var(--size-3xl);
+    position: relative;
+    width: var(--card-width);
+    height: var(--card-height);
+    background: var(--glass-bg-active);
+    border-radius: var(--radius-xs);
+    box-shadow: 0 4px 10px var(--glass-shadow);
+    cursor: ns-resize;
+    overflow: hidden;
+    user-select: none;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(to bottom, var(--glass-hover), var(--glass-bg-hover));
+      border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+      border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(to bottom, var(--glass-bg-hover), var(--glass-bg-active));
+      border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+    }
+
+    &:hover {
+      box-shadow: 0 4px 15px var(--glass-shadow-hover), 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+
+    &.flipping .schedule-runner__value {
+      animation: schedule-runner-flip var(--duration-normal) var(--ease-in-out);
+    }
+  }
+
+  &__value {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-family: 'Roboto Mono', monospace;
+    font-size: var(--size-2xl);
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-shadow: var(--text-shadow-body);
+    line-height: 1;
+  }
+
+  &__label {
+    display: block;
+    font-size: var(--size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-top: var(--size-3xs);
+  }
+
+  &__separator {
+    font-family: 'Roboto Mono', monospace;
+    font-size: var(--size-2xl);
+    font-weight: 700;
+    color: var(--text-muted);
+    animation: schedule-runner-blink 1s step-end infinite;
+    text-shadow: var(--text-shadow-body);
+    margin: 0 var(--size-3xs);
+  }
+
+  &__next-day {
+    position: absolute;
+    top: -var(--size-2xs);
+    right: calc(-1 * var(--size-2xl));
+    font-size: var(--size-xs);
+    font-weight: 700;
+    color: var(--color-danger);
+    background: var(--color-danger-bg);
+    padding: var(--size-3xs) var(--size-2xs);
+    border-radius: var(--radius-xs);
+    animation: schedule-runner-pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+    white-space: nowrap;
+  }
+
+  &__confirm {
+    width: 100%;
+    padding: var(--size-2xs) var(--size-xs) !important;
+    font-size: var(--size-xs) !important;
+    border-radius: var(--radius-xs);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary));
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+
+    &:hover {
+      background: linear-gradient(135deg, #60a5fa, var(--color-primary));
+      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+/* @keyframes — ScheduleRunner 组件 */
+
+/* ScheduleRunner: .schedule-runner 面板出现 */
+@keyframes schedule-runner-appear {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ScheduleRunner: .schedule-runner__separator 冒号闪烁 */
+@keyframes schedule-runner-blink {
+  50% { opacity: 0.3; }
+}
+
+/* ScheduleRunner: .schedule-runner__digit 数字脉冲 */
+@keyframes schedule-runner-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+/* ScheduleRunner: .schedule-runner__digit.flipping 翻牌效果 */
+@keyframes schedule-runner-flip {
+  0%   { transform: rotateX(0deg); }
+  50%  { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}

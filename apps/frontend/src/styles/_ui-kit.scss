@@ -1,0 +1,389 @@
+/* === _ui-kit.scss - 原子UI组件 === */
+
+/* === .input / .select — 统一输入组件（胶囊型） === */
+
+.input,
+.select {
+  @extend %glass-panel-base;
+  width: 100%;
+  height: var(--size-3xl);
+  padding: 0 var(--size-md);
+  border-radius: var(--radius-panel);
+  font-size: var(--size-md);
+  font-family: inherit;
+  line-height: 1;
+  color: var(--text-primary);
+  transition: var(--transition);
+  text-shadow: var(--text-shadow-body);
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:disabled,
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--glass-bg);
+}
+
+/* Size */
+.input--sm {
+  height: var(--size-2xl);
+  padding: 0 var(--size-sm);
+  font-size: var(--size-sm);
+}
+
+/* Error */
+.input--error {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+
+  &:focus {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  }
+}
+
+/* === .select — 统一选择器 === */
+
+.select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -6 20 12'%3e%3cpath d='M -8 -3 L 0 5 L 8 -3' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right var(--size-sm) center;
+  background-size: var(--size-lg);
+  padding-right: var(--size-4xl);
+}
+
+.select option {
+  background: rgba(0, 0, 0, 0.95);
+  color: white;
+  padding: var(--size-2xs);
+}
+
+/* === 标签组件 === */
+.label {
+  display: block;
+  font-size: var(--size-md);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--size-3xs);
+  line-height: 1.4;
+  text-shadow: var(--text-shadow-body);
+}
+
+/* === 卡片组件 === */
+.card {
+  @extend %glass-panel-base;
+  border-radius: var(--radius-panel);
+  box-shadow:
+    0 4px var(--effect-md) var(--glass-shadow),
+    inset 0 1px 0 var(--glass-hover);
+  transition: var(--transition);
+  overflow: hidden;
+
+  &:hover {
+    border-color: var(--glass-border-hover);
+    box-shadow:
+      0 8px var(--effect-xl) rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+  }
+}
+
+.card__body {
+  padding: var(--size-xl);
+}
+
+/* === 徽章组件 === */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--size-3xs) var(--size-2xs);
+  border-radius: var(--radius-badge);
+  font-size: var(--size-xs);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* === Overlay Base === */
+.overlay-base {
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(var(--blur-3));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px var(--glass-shadow);
+}
+
+/* === 警告框组件 === */
+.alert {
+  padding: var(--size-md);
+  border-radius: var(--radius-panel);
+  margin-bottom: var(--size-lg);
+  backdrop-filter: blur(var(--blur-panel));
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-2xs);
+}
+
+.alert--danger {
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  color: var(--text-primary);
+}
+
+.alert__message {
+  font-size: var(--size-md);
+  line-height: 1.5;
+}
+
+/* === Progress Bar === */
+.progress {
+  width: 100%;
+  height: var(--size-2xs);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-badge);
+  overflow: hidden;
+  backdrop-filter: blur(var(--effect-md));
+}
+
+/* === Spinner === */
+.spinner {
+  display: inline-block;
+  width: var(--size-xl);
+  height: var(--size-xl);
+  border: 2px solid var(--glass-border);
+  border-radius: 50%;
+  border-top-color: var(--color-primary);
+  animation: loader_spin 0.8s linear infinite;
+}
+
+.spinner--sm {
+  width: var(--size-sm);
+  height: var(--size-sm);
+  border-width: 1.5px;
+}
+
+/* === 状态指示点 === */
+.status__dot {
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  background: var(--color-neutral);
+
+  &.is-connected { background: var(--color-success); }
+  &.is-disconnected { background: var(--color-neutral); }
+  &.is-status-ready { background: var(--color-success); }
+  &.is-status-error { background: var(--color-danger); }
+}
+
+.status__text {
+  color: var(--text-secondary);
+  font-size: var(--size-sm);
+  font-weight: 500;
+}
+
+/* === 工具提示组件 === */
+.tooltip {
+  position: relative;
+
+  &::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: var(--size-3xs) var(--size-xs);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    font-size: var(--size-xs);
+    border-radius: var(--radius-badge);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    z-index: var(--z-tooltip);
+    margin-bottom: var(--size-3xs);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    margin-bottom: var(--size-3xs);
+  }
+
+  &:hover::before,
+  &:hover::after {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* === Switch === */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: var(--size-3xl);
+  height: var(--size-xl);
+
+  input {
+    display: none;
+  }
+}
+
+.switch__track {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  background: var(--glass-hover);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px var(--glass-shadow);
+}
+
+.switch input:checked + .switch__track {
+  background: var(--color-indigo-bg);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+
+.switch input:checked + .switch__track .switch__thumb {
+  left: 20px;
+  background: #a5b4fc;
+  box-shadow: 0 0 10px rgba(165, 180, 252, 0.5);
+}
+
+.switch__label {
+  font-size: var(--size-md);
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.switch--sub .switch__label {
+  font-size: var(--size-sm);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* === Error Message 通用错误消息 === */
+.error__message {
+  @extend %flex-center;
+  gap: var(--size-sm);
+  padding: var(--size-md);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space);
+
+  &-icon { font-size: var(--size-lg); color: var(--color-danger); flex-shrink: 0; }
+  &-text { flex: 1; font-size: var(--size-md); color: var(--color-danger); line-height: 1.5; }
+}
+
+/* === Error Banner 通用错误横幅 === */
+.error-banner {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius); padding: var(--size-md);
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: var(--size-md);
+}
+
+/* === Scanning/Loading Overlay 通用加载遮罩层 === */
+.scanning__overlay,
+.loading__overlay {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(var(--blur-2));
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+
+.scanning__content,
+.loading__content {
+  text-align: center; color: var(--text-primary);
+
+  p { margin: var(--size-sm) 0; font-size: var(--size-md); font-weight: 500; }
+}
+
+/* === Accessibility === */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .input,
+  .select,
+  .card,
+  .badge,
+  .progress {
+    transition: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+}
+
+/* === 设备模态框容器 === */
+.device-modal {
+  position: fixed;
+  left: calc(var(--left-panel-l));
+  top: calc(var(--canvas-t));
+  width: calc(100vw - 2 * var(--space));
+  height: calc(100vh - var(--canvas-t) - var(--canvas-b));
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--effect-xl);
+  backdrop-filter: blur(var(--effect-xl));
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: auto;
+}
+
+/* === 响应式工具类 === */
+@media (max-width: 768px) {
+  .btn {
+    padding: var(--size-2xs) var(--size-md);
+    font-size: var(--size-md);
+  }
+
+  .card__body {
+    padding: var(--size-lg);
+  }
+}

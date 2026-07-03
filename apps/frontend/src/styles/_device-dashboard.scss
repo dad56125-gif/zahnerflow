@@ -1,0 +1,620 @@
+/* === _device-dashboard.scss - Furnace/MFC 共享设备仪表盘组件 === */
+
+.device-dashboard {
+  --device-dashboard-tile: calc(var(--size-3xl) * 1.9);
+  @extend %glass-panel-base;
+  @include flex-col(var(--size-xs));
+  padding: var(--size-xs);
+  border-radius: var(--radius);
+  box-shadow:
+    0 var(--size-sm) var(--size-3xl) var(--glass-shadow),
+    inset 0 1px 0 var(--glass-hover);
+
+  &--compact {
+    gap: var(--size-sm);
+    padding: var(--size-sm);
+  }
+}
+
+.device-dashboard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--size-sm);
+}
+
+.device-dashboard__heading {
+  @include flex-col(var(--size-3xs));
+  min-width: 0;
+}
+
+.device-dashboard__eyebrow,
+.device-dashboard__subtitle,
+.device-dashboard__metric-label,
+.device-dashboard__metric-meta,
+.device-dashboard__status-label,
+.device-dashboard__gauge-label {
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+}
+
+.device-dashboard__eyebrow {
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.device-dashboard__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--size-lg);
+  font-weight: 700;
+  text-shadow: var(--text-shadow-body);
+}
+
+.device-dashboard__actions {
+  @extend %flex-center;
+  justify-content: flex-end;
+  gap: var(--size-xs);
+  flex-wrap: wrap;
+}
+
+.device-dashboard__body {
+  @include flex-col(var(--size-xs));
+}
+
+.device-dashboard__metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--device-dashboard-tile));
+  justify-content: start;
+  align-items: start;
+  gap: var(--size-2xs);
+  grid-auto-flow: dense;
+
+  &--three {
+    grid-template-columns: repeat(auto-fill, var(--device-dashboard-tile));
+  }
+
+  &--four {
+    grid-template-columns: repeat(auto-fill, var(--device-dashboard-tile));
+  }
+}
+
+.device-dashboard__metric {
+  @include flex-col(calc(var(--size-3xs) * 0.5));
+  justify-content: space-between;
+  min-width: 0;
+  width: var(--device-dashboard-tile);
+  aspect-ratio: 1;
+  padding: var(--size-3xs);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+    var(--glass-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.device-dashboard__metric-value {
+  color: var(--text-primary);
+  font-size: var(--size-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.device-dashboard__metric-unit {
+  margin-left: calc(var(--size-3xs) * 0.35);
+  color: var(--text-secondary);
+  font-size: var(--size-2xs);
+  font-weight: 600;
+}
+
+.device-dashboard__metric-label,
+.device-dashboard__metric-meta {
+  line-height: 1.15;
+}
+
+.device-dashboard__metric-progress {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: calc(var(--size-3xs) * 0.6);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+
+  &::-webkit-progress-bar {
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  &::-webkit-progress-value {
+    border-radius: var(--radius-xs);
+    background: currentColor;
+  }
+
+  &::-moz-progress-bar {
+    border-radius: var(--radius-xs);
+    background: currentColor;
+  }
+}
+
+.device-dashboard__metric--primary .device-dashboard__metric-value,
+.device-dashboard__gauge--primary .device-dashboard__gauge-value {
+  color: var(--color-primary);
+}
+
+.device-dashboard__metric--success .device-dashboard__metric-value,
+.device-dashboard__status-item--success .device-dashboard__status-value,
+.device-dashboard__gauge--success .device-dashboard__gauge-value {
+  color: var(--color-success);
+}
+
+.device-dashboard__metric--warning .device-dashboard__metric-value,
+.device-dashboard__status-item--warning .device-dashboard__status-value,
+.device-dashboard__gauge--warning .device-dashboard__gauge-value {
+  color: var(--color-warning);
+}
+
+.device-dashboard__metric--danger .device-dashboard__metric-value,
+.device-dashboard__status-item--danger .device-dashboard__status-value,
+.device-dashboard__gauge--danger .device-dashboard__gauge-value {
+  color: var(--color-danger);
+}
+
+.device-dashboard__metric--muted .device-dashboard__metric-value,
+.device-dashboard__status-item--muted .device-dashboard__status-value {
+  color: var(--text-muted);
+}
+
+.device-dashboard__furnace-layout {
+  display: grid;
+  grid-template-columns: repeat(5, var(--device-dashboard-tile));
+  grid-template-areas:
+    "pv pv curve curve curve"
+    "sv mv curve curve curve"
+    "runtime runtime phase state state";
+  gap: var(--size-2xs);
+  align-items: stretch;
+  justify-content: start;
+}
+
+.device-dashboard__pv-card,
+.device-dashboard__mini-card,
+.device-dashboard__runtime-card,
+.device-dashboard__status-badge {
+  min-width: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018)),
+    var(--glass-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.device-dashboard__pv-card {
+  grid-area: pv;
+  @include flex-col(var(--size-3xs));
+  justify-content: space-between;
+  min-height: calc(var(--device-dashboard-tile) * 0.95);
+  padding: var(--size-xs);
+  border-color: var(--glass-border-hover);
+  background:
+    radial-gradient(circle at top left, var(--color-primary-bg), transparent 52%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.022)),
+    var(--glass-hover);
+}
+
+.device-dashboard__tile-label,
+.device-dashboard__tile-meta {
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+  line-height: 1.15;
+}
+
+.device-dashboard__pv-value {
+  color: var(--color-pv);
+  font-size: var(--size-2xl);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+
+  span {
+    margin-left: calc(var(--size-3xs) * 0.5);
+    color: var(--text-secondary);
+    font-size: var(--size-sm);
+    font-weight: 700;
+  }
+}
+
+.device-dashboard__mini-card {
+  @include flex-col(calc(var(--size-3xs) * 0.5));
+  justify-content: space-between;
+  aspect-ratio: 1;
+  padding: var(--size-3xs);
+
+  &--sv {
+    grid-area: sv;
+  }
+
+  &--mv {
+    grid-area: mv;
+  }
+
+  &--phase {
+    grid-area: phase;
+  }
+}
+
+.device-dashboard__mini-value {
+  color: var(--text-primary);
+  font-size: var(--size-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.device-dashboard__mini-card--sv .device-dashboard__mini-value {
+  color: var(--color-sv);
+}
+
+.device-dashboard__mini-card--mv .device-dashboard__mini-value {
+  color: var(--color-mv);
+}
+
+.device-dashboard__runtime-card {
+  grid-area: runtime;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--size-xs);
+  padding: var(--size-3xs) var(--size-xs);
+}
+
+.device-dashboard__runtime-value {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--size-sm);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin-top: calc(var(--size-3xs) * 0.5);
+}
+
+.device-dashboard__runtime-track {
+  @include flex-col(calc(var(--size-3xs) * 0.5));
+  min-width: 0;
+
+  progress {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: calc(var(--size-3xs) * 0.65);
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+  }
+
+  progress::-webkit-progress-bar {
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  progress::-webkit-progress-value {
+    border-radius: var(--radius-xs);
+    background: var(--color-primary);
+  }
+
+  progress::-moz-progress-bar {
+    border-radius: var(--radius-xs);
+    background: var(--color-primary);
+  }
+
+  span {
+    color: var(--text-secondary);
+    font-size: var(--size-2xs);
+  }
+}
+
+.device-dashboard__status-badge {
+  grid-area: state;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-3xs);
+  padding: var(--size-3xs) var(--size-xs);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--size-xs);
+  font-weight: 800;
+  letter-spacing: 0;
+  white-space: nowrap;
+
+  &--success {
+    color: var(--color-success);
+    border-color: var(--color-success);
+  }
+
+  &--warning {
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+  }
+}
+
+.device-dashboard__status-dot {
+  width: var(--size-3xs);
+  height: var(--size-3xs);
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.device-dashboard__chart-tile {
+  @include flex-col(var(--size-3xs));
+  grid-column: span 3;
+  width: calc(var(--device-dashboard-tile) * 3 + var(--size-2xs) * 2);
+  height: calc(var(--device-dashboard-tile) * 2 + var(--size-2xs));
+  min-width: 0;
+  padding: var(--size-3xs);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018)),
+    var(--glass-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.device-dashboard__chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--size-2xs);
+  flex-shrink: 0;
+}
+
+.device-dashboard__chart-title-group {
+  @include flex-col(calc(var(--size-3xs) * 0.5));
+  min-width: 0;
+}
+
+.device-dashboard__chart-title {
+  color: var(--text-primary);
+  font-size: var(--size-xs);
+  font-weight: 700;
+}
+
+.device-dashboard__chart-subtitle,
+.device-dashboard__chart-legend {
+  color: var(--text-secondary);
+  font-size: var(--size-2xs);
+}
+
+.device-dashboard__chart-legend {
+  display: flex;
+  gap: var(--size-3xs);
+  white-space: nowrap;
+}
+
+.device-dashboard__chart-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  .chart__main {
+    min-height: 0;
+  }
+
+  .chart__tooltip {
+    font-size: var(--size-2xs);
+  }
+}
+
+.device-dashboard__curve-tile {
+  @include flex-col(var(--size-3xs));
+  grid-column: span 3;
+  grid-area: curve;
+  width: calc(var(--device-dashboard-tile) * 3 + var(--size-2xs) * 2);
+  height: calc(var(--device-dashboard-tile) * 2 + var(--size-2xs));
+  min-width: 0;
+  padding: var(--size-2xs);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at top left, var(--color-primary-bg), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+
+  &--main {
+    border-color: var(--glass-border-hover);
+  }
+}
+
+.device-dashboard__curve-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--size-2xs);
+}
+
+.device-dashboard__curve-title,
+.device-dashboard__curve-subtitle {
+  display: block;
+}
+
+.device-dashboard__curve-title {
+  color: var(--text-primary);
+  font-size: var(--size-sm);
+  font-weight: 800;
+}
+
+.device-dashboard__curve-subtitle {
+  color: var(--text-secondary);
+  font-size: var(--size-2xs);
+  margin-top: calc(var(--size-3xs) * 0.5);
+}
+
+.device-dashboard__curve-readout {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: var(--size-3xs);
+  align-items: start;
+  flex-shrink: 0;
+}
+
+.device-dashboard__curve-value {
+  font-size: var(--size-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+
+  &--pv { color: var(--color-pv); }
+  &--sv { color: var(--color-sv); }
+  &--mv { color: var(--color-mv); }
+}
+
+.device-dashboard__curve-svg {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.device-dashboard__curve-grid {
+  fill: none;
+  stroke: var(--glass-border-hover);
+  stroke-width: 0.35;
+  opacity: 0.6;
+}
+
+.device-dashboard__curve-line {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  &--pv {
+    stroke: var(--color-pv);
+    stroke-width: 1.8;
+  }
+
+  &--sv {
+    stroke: var(--color-sv);
+    stroke-width: 1.6;
+  }
+
+  &--mv {
+    stroke: var(--color-mv);
+    stroke-width: 1.2;
+    stroke-dasharray: 3 2;
+  }
+}
+
+.device-dashboard__status-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--device-dashboard-tile) * 1.8), 1fr));
+  gap: var(--size-sm);
+}
+
+.device-dashboard__status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--size-sm);
+  min-width: 0;
+  padding: var(--size-xs) var(--size-sm);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.device-dashboard__status-value {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.device-dashboard__gauge {
+  @include flex-col(var(--size-xs));
+  min-width: 0;
+}
+
+.device-dashboard__gauge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--size-sm);
+}
+
+.device-dashboard__gauge-value {
+  color: var(--text-primary);
+  font-size: var(--size-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.device-dashboard__gauge-progress {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: var(--size-2xs);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+
+  &::-webkit-progress-bar {
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  &::-webkit-progress-value {
+    border-radius: var(--radius-xs);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+    transition: width var(--duration-normal) var(--ease-out);
+  }
+
+  &::-moz-progress-bar {
+    border-radius: var(--radius-xs);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+    transition: width var(--duration-normal) var(--ease-out);
+  }
+}
+
+.device-dashboard__gauge--success .device-dashboard__gauge-progress {
+  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-success), rgba(16, 185, 129, 0.62)); }
+  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-success), rgba(16, 185, 129, 0.62)); }
+}
+
+.device-dashboard__gauge--warning .device-dashboard__gauge-progress {
+  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-warning), rgba(245, 158, 11, 0.62)); }
+  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-warning), rgba(245, 158, 11, 0.62)); }
+}
+
+.device-dashboard__gauge--danger .device-dashboard__gauge-progress {
+  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-danger), rgba(239, 68, 68, 0.62)); }
+  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-danger), rgba(239, 68, 68, 0.62)); }
+}
+
+@media (max-width: 900px) {
+  .device-dashboard__metric-grid--three,
+  .device-dashboard__metric-grid--four {
+    grid-template-columns: repeat(auto-fill, var(--device-dashboard-tile));
+  }
+}
+
+@media (max-width: 640px) {
+  .device-dashboard__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .device-dashboard__actions {
+    justify-content: flex-start;
+  }
+}

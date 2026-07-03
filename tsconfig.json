@@ -1,0 +1,11 @@
+{
+  "include": ["apps/frontend/src/**/*", "apps/shared/**/*"],
+  "exclude": ["node_modules", "apps/*/node_modules"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@zahnerflow/*": ["apps/shared/*"],
+      "@/*": ["apps/frontend/src/*"]
+    }
+  }
+}

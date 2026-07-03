@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { executionService } from '../workflow/workflowService';
-import { workflowWebSocketService } from '../workflow/websocket.service';
-import { ExecutionSnapshot, LoopIterationEvent } from '../types/Interfaces';
+import { runtimeClient, runtimeSocket } from '../runtimeClient';
+import type { ExecutionSnapshot, LoopIterationEvent } from '@zahnerflow/types';
 // clearMeasurementCache 已解耦，现在由 useMeasurementStream 自己监听 nodesReset 事件
 
 interface ExecutionState {
@@ -31,7 +30,13 @@ interface ExecutionState {
   };
 
   // Actions
-  startExecution: (workflowId: string | null, nodes: any[], ownerName?: string, workflowName?: string) => Promise<{ executionId: string; workflowId: string }>;
+  startExecution: (
+    nodes: any[],
+    ownerName?: string,
+    workflowName?: string,
+    workstationType?: string | null,
+    autoStartupConfig?: Record<string, any>
+  ) => Promise<{ executionId: string; workflowId: string }>;
   stopExecution: () => Promise<void>;
   pauseExecution: () => Promise<void>;
   resumeExecution: () => Promise<void>;
@@ -45,12 +50,12 @@ export const useExecutionStore = create<ExecutionState>()(
       // 在 Store 创建时仅初始化一次 WebSocket 监听
       if (typeof window !== 'undefined') {
         // 确保 WebSocket 连接已建立
-        workflowWebSocketService.connect();
+        runtimeSocket.connectSocket();
 
         // 1. 监听节点细粒度更新 (用于UI实时反馈：节点变色、数据更新)
         // 注意：这里使用 any 类型，因为实际传输的是简写格式以优化带宽
         // 预期格式: { i: index, s: status, d?: data } 而非完整的 NodeStatusUpdate
-        workflowWebSocketService.onNodeStatusUpdate((update: any) => {
+        runtimeSocket.on('nodeStatusUpdate', (update: any) => {
           // update 格式是 { i: number, s: string, d?: any } (简化的索引更新)
 
           const state = get();
@@ -81,8 +86,7 @@ export const useExecutionStore = create<ExecutionState>()(
 
         // 🔥 SSOT: 监听后端 nodesReset 事件，统一处理状态重置
         // clearMeasurementCache 已解耦到 useMeasurementStream 自己监听
-        workflowWebSocketService.onNodesReset((event) => {
-          console.log('[ExecutionStateBridge] 收到 nodesReset 事件:', event);
+        runtimeSocket.on('nodesReset', (event) => {
           // 重置节点状态
           set({
             nodeStatuses: [],
@@ -92,14 +96,14 @@ export const useExecutionStore = create<ExecutionState>()(
             executionId: null,
             isRunning: false,
             isPaused: false,
+            lastSnapshot: null,
             loopProgress: {}
           });
         });
 
         // ✅ 监听循环迭代开始事件（重置循环内节点状态为 idle）
-        workflowWebSocketService.onLoopIterationStart((event: LoopIterationEvent) => {
+        runtimeSocket.on('loopiteration_start', (event: LoopIterationEvent) => {
           const state = get();
-          console.log('[ExecutionStateBridge] 循环迭代开始:', event);
 
           // 重置循环内节点状态为 idle
           const newNodeStatuses = [...state.nodeStatuses];
@@ -124,13 +128,19 @@ export const useExecutionStore = create<ExecutionState>()(
 
         // 2. 监听全量系统快照 (作为执行状态的单一真理源 SSOT)
         // 替代了原本不存在的 onExecutionComplete，统一处理开始、暂停、完成、失败
-        workflowWebSocketService.onSystemStateSnapshot((snapshot: ExecutionSnapshot) => {
+        runtimeSocket.on('systemStateSnapshot', (snapshot: ExecutionSnapshot) => {
           const state = get();
 
           // ✅ 核心改动：直接把快照存入 Store
           const updates: any = { lastSnapshot: snapshot };
 
           const { status, executionId, error, currentStep, workflowId } = snapshot;
+          const etaTotal = snapshot.eta
+            ? snapshot.eta.elapsedSeconds + snapshot.eta.estimatedRemainingSeconds
+            : 0;
+          if (etaTotal > 0) {
+            updates.progress = Math.round((snapshot.eta!.elapsedSeconds / etaTotal) * 100);
+          }
 
           // 如果当前没有运行，但收到了运行中的快照（例如页面刷新后重连），则同步状态
           // 或者如果当前正在运行，根据快照更新状态
@@ -148,8 +158,9 @@ export const useExecutionStore = create<ExecutionState>()(
           }
 
           // 情况 B: 正在运行或暂停 (Running / Paused)
-          else if (status === 'running' || status === 'paused') {
+          else if (status === 'running' || status === 'paused' || status === 'cancelling') {
             const isPaused = status === 'paused';
+            updates.error = error || null;
 
 
             // 强制同步运行状态
@@ -206,40 +217,45 @@ export const useExecutionStore = create<ExecutionState>()(
         lastSnapshot: null, // ✅ 初始化为空
         loopProgress: {}, // ✅ 初始化循环进度
 
-        startExecution: async (workflowId, nodes, ownerName, workflowName) => {
-          // 【日志】前端传递的节点列表 - 记录完整信息
-          console.log(`[前端执行] 前端传递节点列表 - 数量: ${nodes.length}, 用户: ${ownerName}, 名称: ${workflowName}`);
-          nodes.forEach((node, index) => {
-            console.log(`[前端节点] 索引: ${index}, 类型: ${node.type}, 参数: ${JSON.stringify(node.config || {})}`);
-          });
-
+        startExecution: async (nodes, ownerName, workflowName, workstationType, autoStartupConfig) => {
           // 初始化状态
           set({
             isRunning: true,
             isPaused: false,
-            workflowId,
+            workflowId: null,
             executionId: null, // 先置空，等待 API 返回
             error: null,
             progress: 0,
             nodeStatuses: new Array(nodes.length).fill('idle'),
             nodeResults: new Array(nodes.length).fill(null),
             currentNodeIndex: null,
-            loopProgress: {} // 重置循环进度
+            loopProgress: {}, // 重置循环进度
+            lastSnapshot: null
           });
 
           try {
             // 调用 HTTP API 启动，传递 ownerName 和 workflowName
-            const result = await executionService.executeWorkflow(workflowId, nodes, { ownerName, workflowName });
+            const result = await runtimeClient.executions.start<{
+              executionId: string;
+              workflowId: string;
+              status: string;
+            }>({
+              nodes,
+              ownerName,
+              workflowName,
+              workstationType,
+              autoStartupConfig,
+            });
 
             // 更新返回的 executionId
             set({
               executionId: result.executionId,
-              workflowId: result.workflowId || workflowId
+              workflowId: result.workflowId
             });
 
             return {
               executionId: result.executionId,
-              workflowId: result.workflowId || (workflowId as string)
+              workflowId: result.workflowId
             };
 
             // 注意：后续的状态更新将由 WebSocket 的 snapshot 事件接管
@@ -256,10 +272,9 @@ export const useExecutionStore = create<ExecutionState>()(
           const { executionId } = get();
           if (!executionId) return;
           try {
-            await executionService.stopExecution(executionId);
-            // 这里不立即 set isRunning: false，而是等待 snapshot 确认状态变为 cancelled/idle
-            // 但为了 UI 响应速度，可以先乐观更新，snapshot 会修正它
-            set({ isRunning: false, isPaused: false, currentNodeIndex: null });
+            await runtimeClient.executions.cancel(executionId);
+            // 等待后端 snapshot 从 cancelling 过渡到 cancelled，避免前端误以为已经完全停止。
+            set({ isRunning: true, isPaused: false, error: null });
           } catch (error) {
             set({ error: '停止失败' });
           }
@@ -269,7 +284,7 @@ export const useExecutionStore = create<ExecutionState>()(
           const { executionId } = get();
           if (!executionId) return;
           try {
-            await executionService.pauseExecution(executionId);
+            await runtimeClient.executions.pause(executionId);
             set({ isPaused: true }); // 乐观更新
           } catch (e) { console.error(e); }
         },
@@ -278,7 +293,7 @@ export const useExecutionStore = create<ExecutionState>()(
           const { executionId } = get();
           if (!executionId) return;
           try {
-            await executionService.resumeExecution(executionId);
+            await runtimeClient.executions.resume(executionId);
             set({ isPaused: false }); // 乐观更新
           } catch (e) { console.error(e); }
         },
@@ -289,10 +304,13 @@ export const useExecutionStore = create<ExecutionState>()(
           isRunning: false,
           isPaused: false,
           executionId: null,
+          workflowId: null,
           nodeStatuses: [],
           nodeResults: [],
           currentNodeIndex: null,
           error: null,
+          lastSnapshot: null,
+          progress: 0,
           loopProgress: {}
         })
       };

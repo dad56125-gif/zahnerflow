@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useCallback } from 'react';
-import { WorkflowNode } from '../../types/Interfaces';
+import type { WorkflowNode } from '@zahnerflow/types';
 
 export type BulkDisplayMode = 'none' | 'first' | 'sample';
 

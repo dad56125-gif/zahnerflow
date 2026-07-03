@@ -4,7 +4,7 @@
 * 用于 Nyquist 图一次性绘制 + 持久保存
 */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { workflowWebSocketService } from '../workflow/websocket.service';
+import { runtimeSocket } from '../runtimeClient';
 
 // EIS 数据点结构
 export interface EisDataPoint {
@@ -28,32 +28,28 @@ csvPath?: string;
 // 全局 EIS 数据缓存（nodeIndex -> iterationKey -> data）
 const GlobalEisCache = new Map<number, Map<string, EisData>>();
 
-const getIterationKey = (iterationPath: number[]) => {
-return iterationPath.length > 0 ? iterationPath.join(',') : '0';
+const getIterationKey = (iterationPath: Array<number | Record<string, any>>) => {
+return iterationPath.length > 0
+? iterationPath.map(item => typeof item === 'number' ? item : `${item.loopStartIndex ?? item.loopNodeId}:${item.iteration}`).join(',')
+: '0';
 };
 
 // 全局监听器设置
 let isEisListenerSetup = false;
-type EisHandler = (nodeIndex: number, iterationPath: number[], data: EisData) => void;
+type EisHandler = (nodeIndex: number, iterationPath: Array<number | Record<string, any>>, data: EisData) => void;
 const eisListeners = new Set<EisHandler>();
 
 const setupEisListener = () => {
 if (isEisListenerSetup) return;
 
-// 确保 WebSocket 已连接
-workflowWebSocketService.connect();
+// 确保 Socket 已连接
+runtimeSocket.connectSocket();
 
-workflowWebSocketService.onEisDataReady((payload) => {
+runtimeSocket.on<any>('eisDataReady', (payload) => {
 if (!payload.data || payload.nodeIndex === undefined) return;
 
 const { frequency, z_real, z_imag, point_count, csv_path } = payload.data;
 const iterationPath = payload.iterationPath || [];
-console.log('[useEisData] Received EIS data:', {
-nodeIndex: payload.nodeIndex,
-iterationPath,
-pointCount: point_count,
-csvPath: csv_path
-});
 
 // 转换为数据点数组，同时预生成 ECharts 可直接使用的数据和范围元数据
 const points: EisDataPoint[] = [];
@@ -100,23 +96,16 @@ eisListeners.forEach(handler => handler(payload.nodeIndex, iterationPath, eisDat
 });
 
 // 监听重置事件，清空缓存
-workflowWebSocketService.onNodesReset(() => {
-console.log('[useEisData] nodesReset, clearing EIS cache');
+runtimeSocket.on('nodesReset', () => {
 GlobalEisCache.clear();
 });
 
 isEisListenerSetup = true;
-console.log('[useEisData] Global EIS listener initialized');
 };
 
 // 🔥 关键修复：模块加载时立即初始化全局监听器
 // 这样即使 MeasurementDashboard 未打开，EIS 数据也会被缓存
 setupEisListener();
-
-// 导出清空方法
-export const clearEisCache = () => {
-GlobalEisCache.clear();
-};
 
 interface UseEisDataProps {
 nodeIndex: number;

@@ -134,6 +134,10 @@ $RECYCLE.BIN/
 *.jsonl
 
 .claude/
+.codex-run/
+.agents/output/
+.playwright-mcp/
+.git_backup_*/
 
 # Claude Code 配置文件
 CLAUDE.md
@@ -143,3 +147,18 @@ nul
 **/nul
 
 *.pyc
+
+# Python 虚拟环境与缓存
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Gemini / Antigravity 本地数据与缓存
+.gemini/
+.antigravity/

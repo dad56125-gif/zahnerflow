@@ -1,0 +1,285 @@
+/* === _mfc.scss - MFC 质量流量控制器 BEM === */
+
+/* ==========================================================================
+   1. MFC Card System
+   ========================================================================== */
+
+.mfc__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--size-md);
+  height: 100%;
+  align-content: start;
+  padding: var(--size-md);
+}
+
+/* === Compact Card === */
+.mfc__card {
+  @extend %glass-panel-base;
+  border-radius: var(--radius);
+  padding: var(--size-md);
+  transition: var(--transition);
+  @include flex-col(var(--size-sm));
+
+  @include glass-lift;
+
+  &.is-disabled { opacity: 0.6; pointer-events: none; }
+  &.is-loading { opacity: 0.75; }
+}
+
+/* === Card Elements === */
+.mfc__card-head    { @include card-head-row; }
+.mfc__card-title   { @extend %flex-center; gap: var(--size-sm); }
+
+.mfc__card-main { display: flex; gap: var(--size-sm); flex: 1; }
+
+/* === Device Info === */
+.mfc__addr        { font-size: var(--size-lg); font-weight: 700; color: var(--text-primary); }
+.mfc__gas         { font-size: var(--size-md); color: var(--color-primary); font-weight: 500; }
+.mfc__max         { font-size: var(--size-sm); color: var(--text-muted); }
+.mfc__status      { font-size: var(--size-lg); line-height: 1; }
+
+/* === Flow Display === */
+.mfc__values       { @include flex-col(var(--size-2xs)); }
+.mfc__value-row    { display: flex; align-items: baseline; gap: var(--size-3xs); }
+
+.mfc__label { font-size: var(--size-sm); color: var(--text-muted); width: 2.5rem; flex-shrink: 0; }
+.mfc__flow  { font-size: var(--size-xl); font-weight: 700; color: var(--color-success); font-variant-numeric: tabular-nums;
+  &--set { color: var(--color-primary); }
+}
+.mfc__unit  { font-size: var(--size-sm); color: var(--text-muted); }
+
+%bar-fill-base {
+  position: absolute; bottom: 0; width: 100%;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: height var(--duration-normal) var(--ease-out);
+  min-height: 2px;
+}
+
+/* === Controls === */
+.mfc__control     { flex: 1; @include flex-col(var(--size-sm)); }
+
+.mfc__input-row     { display: flex; gap: var(--size-2xs); margin-top: auto; max-width: 10rem; }
+.mfc__input         { min-width: 0; }
+.mfc__error         { font-size: var(--size-2xs); color: var(--color-danger); margin-top: var(--size-3xs); }
+
+/* === Bar Chart (compact card) === */
+.mfc__bars     { display: flex; gap: var(--size-sm); flex-shrink: 0; }
+.mfc__bar-col  { @include flex-col(var(--size-3xs)); align-items: center; width: 2rem; }
+.mfc__bar-wrap { flex: 1; width: 100%; min-height: 3rem; }
+
+.mfc__bar-bg   {
+  width: 100%; height: 100%;
+  background: var(--glass-hover);
+  border-radius: var(--radius-sm);
+  position: relative; overflow: hidden;
+}
+
+.mfc__bar-fill {
+  @extend %bar-fill-base;
+  &--actual   { background: linear-gradient(to top, var(--color-success), rgba(16, 185, 129, 0.6)); }
+  &--setpoint { background: linear-gradient(to top, var(--color-primary), rgba(59, 130, 246, 0.6)); }
+}
+
+.mfc__bar-label { font-size: var(--size-sm); color: var(--text-secondary); font-weight: 500; }
+
+/* ==========================================================================
+   2. Empty State
+   ========================================================================== */
+
+.mfc__empty {
+  @include flex-col(var(--size-xs));
+  align-items: center; justify-content: center;
+  padding: var(--size-xl);
+  text-align: center; color: var(--text-secondary);
+
+  &-icon { font-size: var(--size-5xl); opacity: 0.6; margin-bottom: var(--size-xs); }
+
+  h4 { margin: 0; font-size: var(--size-md); color: var(--text-primary); font-weight: 600; }
+  p  { margin: 0; font-size: var(--size-sm); color: var(--text-secondary); }
+
+  &-hint { font-size: var(--size-xs); color: var(--text-muted); margin-top: var(--size-xs); }
+}
+
+/* ==========================================================================
+   3. Device Sections
+   ========================================================================== */
+
+.mfc__sections { @include flex-col; height: 100%; overflow-y: auto; padding: var(--size-md); }
+.mfc__section  { @include flex-col; }
+
+.mfc__section-title {
+  font-size: var(--size-lg); font-weight: 600; color: var(--color-success);
+  padding: var(--size-sm) var(--size-md);
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; gap: var(--size-2xs);
+  width: fit-content;
+
+  &--idle { color: var(--text-muted); background: rgba(255, 255, 255, 0.05); }
+}
+
+/* ==========================================================================
+   4. Connection Section
+   ========================================================================== */
+
+.connection__header {
+  @include card-head-row;
+  margin-bottom: var(--size-xl);
+  padding-bottom: var(--space);
+
+  h4 { font-size: var(--size-lg); font-weight: 600; color: var(--text-primary); margin: 0; text-shadow: var(--text-shadow-body); }
+}
+
+.connection__status { @extend %flex-center; gap: var(--size-sm); flex-wrap: wrap; }
+
+/* === Error Message === */
+.error__message {
+  @extend %flex-center;
+  gap: var(--size-sm);
+  padding: var(--size-md);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space);
+
+  &-icon { font-size: var(--size-lg); color: var(--color-danger); flex-shrink: 0; }
+  &-text { flex: 1; font-size: var(--size-md); color: var(--color-danger); line-height: 1.5; }
+}
+
+/* ==========================================================================
+   5. Scanning Overlay & Progress
+   ========================================================================== */
+
+.scanning__overlay,
+.loading__overlay {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(var(--blur-2));
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+
+.scanning__content,
+.loading__content {
+  text-align: center; color: var(--text-primary);
+
+  p { margin: var(--size-sm) 0; font-size: var(--size-md); font-weight: 500; }
+}
+
+.mfc__scan-progress {
+  @extend %flex-center;
+  gap: var(--size-sm);
+  padding: var(--size-xs) var(--size-md);
+  background: rgba(59, 130, 246, 0.1);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+
+  &-bar  { flex: 1; height: var(--size-3xs); background: rgba(255, 255, 255, 0.15); border-radius: var(--radius-xs); overflow: hidden; }
+  &-fill { height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-success)); border-radius: var(--radius-xs); transition: width 0.3s ease-out; }
+  &-text { font-size: var(--size-xs); color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
+
+  @media (max-width: 640px) {
+    align-items: stretch;
+    flex-direction: column;
+
+    &-text { white-space: normal; }
+  }
+}
+
+/* ==========================================================================
+   6. Settings (User Settings Modal)
+   ========================================================================== */
+
+.settings {
+  width: 45rem; height: 35rem;
+  max-width: 90vw; max-height: 80vh;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-5));
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 20px 60px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  @include flex-col;
+  overflow: hidden;
+  animation: settings-panel-in 0.25s ease-out;
+
+  &__header { @extend %flex-center; padding: var(--space-4) var(--space-5); background: var(--glass-shadow);
+    h2 { margin: 0; font-size: var(--space-4); font-weight: 600; color: #fff; }
+  }
+
+  &__body   { display: flex; flex: 1; overflow: hidden; }
+  &__footer { padding: var(--space-3) var(--space-5); text-align: right; background: var(--glass-shadow); }
+}
+
+.settings__nav {
+  width: 160px; padding: var(--space-3);
+  background: var(--glass-shadow);
+  @include flex-col(var(--space-1));
+
+  &-item {
+    @extend %flex-center;
+    gap: var(--space-3); padding: var(--space-3) var(--space-4);
+    border: none; background: transparent;
+    border-radius: var(--space-2); cursor: pointer;
+    transition: all 0.2s; text-align: left;
+
+    &:hover { background: var(--glass-hover); }
+
+    &.is-active {
+      background: var(--glass-bg-active);
+      border: 1px solid var(--glass-border-hover);
+      .settings__nav-label { color: var(--color-indigo-light); }
+    }
+  }
+
+  &-icon  { font-size: var(--space-4); }
+  &-label { font-size: var(--size-sm); color: rgba(255, 255, 255, 0.8); }
+}
+
+.settings__content { flex: 1; padding: var(--space-5) var(--space-6); overflow-y: auto; background: rgba(0, 0, 0, 0.1); }
+
+.settings__loading,
+.settings__error,
+.settings__empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 200px; color: rgba(255, 255, 255, 0.5); font-size: 14px;
+}
+.settings__error { color: var(--color-danger); }
+
+/* === Checkbox Group === */
+.checkbox__group { margin-bottom: var(--space-3); }
+
+.checkbox__label {
+  @extend %flex-center;
+  gap: var(--space-3); cursor: pointer;
+
+  input[type="checkbox"] { width: var(--space-4); height: var(--space-4); accent-color: var(--color-indigo); }
+  span { font-size: var(--size-sm); color: rgba(255, 255, 255, 0.8); }
+}
+
+/* === Empty Users === */
+.empty-users {
+  padding: var(--space-3) var(--space-4);
+  height: var(--user-option-height);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); font-size: 0.9rem;
+  font-style: italic; cursor: default; user-select: none;
+}
+
+/* ==========================================================================
+   7. Animations
+   ========================================================================== */
+
+/* UserSettingsModal: .settings 面板进入 */
+@keyframes settings-panel-in  { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ==========================================================================
+   8. Responsive
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .mfc__cards          { grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--size-lg); }
+}
+
+@media (max-width: 768px) {
+  .mfc__cards          { grid-template-columns: 1fr; gap: var(--space); padding: var(--space); }
+}

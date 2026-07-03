@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { WorkflowNode, ExecutionSnapshot } from '../../types/Interfaces';
+import type { WorkflowNode, ExecutionSnapshot } from '@zahnerflow/types';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme, IterationSymbol, getEisLegendVisual } from '../../utils/colorUtils';
 import { getBulkIconCells, BulkDisplayMode } from './useBulkSelection';
@@ -114,7 +114,7 @@ function renderPrimaryTabs(props: MeasurementTabBarProps) {
         return (
           <button
             key={group.key}
-            className={`tab-primary-item ${isActive ? 'active' : ''}`}
+            className={`tab-primary-item ${isActive ? 'is-active' : ''}`}
             onClick={() => onTypeClick(group.key)}
           >
             <span>{group.label}</span>
@@ -216,7 +216,7 @@ function renderModalHeader(props: MeasurementTabBarProps) {
         >
           <div
             ref={secondaryTabsRef}
-            className={`chart-modal__tabs-secondary ${isSecondaryExpanded ? 'expanded' : ''} ${isSecondaryOverflowing ? 'overflowing' : 'fit-content'}`}
+            className={`chart-modal__tabs-secondary ${isSecondaryExpanded ? 'is-expanded' : ''} ${isSecondaryOverflowing ? 'is-overflowing' : 'is-fit-content'}`}
             onClick={() => {
               if (!isSecondaryExpanded && onSecondaryExpandedChange) {
                 onSecondaryExpandedChange(true);
@@ -233,9 +233,9 @@ function renderModalHeader(props: MeasurementTabBarProps) {
                 const isNodeRunning = activeNodeIndex === globalIndex && systemState?.status === 'running';
 
                 let stateClass = '';
-                if (isNodeRunning) stateClass = 'running';
-                else if (!isNodePending) stateClass = 'completed';
-                else stateClass = 'pending';
+                if (isNodeRunning) stateClass = 'is-running';
+                else if (!isNodePending) stateClass = 'is-completed';
+                else stateClass = 'is-pending';
 
                 const visibleIndex = visibleNodeIndexMap.get(node.id) ?? -1;
                 const markerVisual = visibleIndex >= 0
@@ -245,7 +245,7 @@ function renderModalHeader(props: MeasurementTabBarProps) {
                 return (
                   <button
                     key={node.id}
-                    className={`tab-secondary-item ${isActive ? 'active' : ''} ${stateClass}`}
+                    className={`tab-secondary-item ${isActive ? 'is-active' : ''} ${stateClass}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onNodeClick?.(node.id);
@@ -266,7 +266,7 @@ function renderModalHeader(props: MeasurementTabBarProps) {
             {/* 批量显示按钮 */}
             <button
               type="button"
-              className={`chart-modal__tabs-secondary-bulk ${bulkMode !== 'none' ? 'active' : ''}`}
+              className={`chart-modal__tabs-secondary-bulk ${bulkMode !== 'none' ? 'is-active' : ''}`}
               aria-label="批量显示子标签"
               onClick={(e) => {
                 e.stopPropagation();

@@ -4,10 +4,12 @@
  * 提供质量流量控制器的状态管理，包括连接、设备发现、流量控制等功能
  */
 
-import { useState, useCallback } from 'react';
-import { MfcApi } from './mfcApi';
-import { mfcWebSocketService, MfcDeviceDiscovered, MfcStatusUpdate, MfcScanProgress } from './mfcWebSocket.service';
-import type { DeviceError, DeviceConnectionStatus, HistoryQueryParams, LogEntry } from '../common/types';
+import { useState, useCallback, useRef } from 'react';
+import { runtimeClient } from '../../runtimeClient';
+import type { DeviceError, DeviceConnectionStatus, HistoryQueryParams, LogEntry } from '@zahnerflow/types';
+import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
+import type { RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
+import { useRuntimeDeviceStatusSubscription } from '../common/useRuntimeDeviceStatusSubscription';
 import {
   MfcDeviceInfo,
   MfcStatus,
@@ -15,6 +17,73 @@ import {
   MfcSample,
   MfcScanRequest,
 } from './mfcTypes';
+
+type RuntimeMfcDeviceStatus = {
+  address: number;
+  flowSccm?: number;
+  flowPercent?: number;
+  setpointSccm?: number;
+  digitalSetpointPercent?: number;
+  activeSetpointPercent?: number;
+  gasType?: string;
+  maxFlowSccm?: number;
+  name?: string;
+  port?: string | null;
+  connectionStatus?: 'connected' | 'disconnected' | 'warning' | 'error';
+};
+
+type MfcScanParams = MfcScanRequest & { address?: number };
+
+const getDefaultHistoryParams = (): HistoryQueryParams => {
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  return {
+    from: oneHourAgo.toISOString(),
+    to: now.toISOString(),
+    limit: 1000,
+    downsample: 10,
+  };
+};
+
+const toBackendHistoryParams = (address: number, params: HistoryQueryParams): Record<string, string | number | undefined> => ({
+  address,
+  from_ts: params.from ?? undefined,
+  to: params.to ?? undefined,
+  limit: params.limit ?? undefined,
+  downsample: params.downsample ?? undefined,
+});
+
+const toMfcDevice = (statusData: RuntimeMfcDeviceStatus, existing?: MfcDevice): MfcDevice => {
+  const maxFlowSccm = statusData.maxFlowSccm ?? existing?.maxFlowSccm ?? 0;
+  const activeSetpointPercent = statusData.activeSetpointPercent ?? existing?.activeSetpointPercent ?? 0;
+  const setFlow = statusData.setpointSccm ?? existing?.setFlow ?? (maxFlowSccm * activeSetpointPercent / 100);
+  return {
+    address: statusData.address,
+    gasType: statusData.gasType ?? existing?.gasType ?? 'Unknown',
+    maxFlowSccm,
+    name: statusData.name ?? existing?.name ?? 'MFC',
+    port: statusData.port ?? existing?.port,
+    timeout: existing?.timeout,
+    pollingInterval: existing?.pollingInterval,
+    flowSccm: statusData.flowSccm ?? existing?.flowSccm ?? 0,
+    setFlow,
+    flowPercent: statusData.flowPercent ?? (maxFlowSccm ? ((statusData.flowSccm ?? 0) / maxFlowSccm) * 100 : 0),
+    digitalSetpointPercent: statusData.digitalSetpointPercent ?? existing?.digitalSetpointPercent ?? activeSetpointPercent,
+    activeSetpointPercent,
+    mode: existing?.mode ?? 'follow',
+    status: statusData.connectionStatus ?? existing?.status ?? 'connected',
+  };
+};
+
+const toMfcDeviceInfo = (device: MfcDevice): MfcDeviceInfo => ({
+  address: device.address,
+  gasType: device.gasType,
+  maxFlowSccm: device.maxFlowSccm,
+  name: device.name,
+  port: device.port,
+  timeout: device.timeout,
+  pollingInterval: device.pollingInterval,
+});
 
 // ==================== 状态类型 ====================
 
@@ -29,19 +98,24 @@ export interface MfcState {
   historyParams: HistoryQueryParams;
   isLoading: boolean;
   isScanning: boolean;
+  isScanStopping: boolean;
   error: DeviceError | null;
   lastUpdate: Date | null;
   pollCount: number;
   loading: boolean;
   logs: LogEntry[];
-  scanProgress: { current: number; start: number; end: number; percent: number; found_count: number } | null;
+  diagnostics: DeviceDiagnostics;
+  commandLogs: CommandLogEntry[];
+  scanProgress: { current: number; start: number; end: number; percent: number; foundCount: number } | null;
 }
 
 export interface MfcControls {
   ensureConnection: () => void;
   scanDevices: (params?: MfcScanRequest) => Promise<void>;
+  stopScan: () => Promise<void>;
   refreshDevices: () => Promise<void>;
-  connect: (port?: string, baudrate?: number, timeout?: number) => Promise<void>;
+  selectPort: (port: string) => void;
+  connect: (port?: string, baudrate?: number, timeout?: number, simulatorProfile?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   get_available_ports: () => Promise<string[]>;
   setFlowRate: (address: number, sccm: number) => Promise<void>;
@@ -57,6 +131,9 @@ export interface MfcControls {
   refresh: () => Promise<void>;
   updateDeviceStatus: (address: number, data: unknown) => void;
   updateFlowData: (address: number, data: unknown) => void;
+  clearLogs: () => void;
+  loadCommandLogs: () => Promise<void>;
+  clearCommandLogs: () => Promise<void>;
 }
 
 // ==================== 初始状态 ====================
@@ -69,14 +146,17 @@ const createInitialState = (): MfcState => ({
   selected_port: '',
   available_ports: [],
   historyData: new Map(),
-  historyParams: MfcApi.getDefaultHistoryParams(),
+  historyParams: getDefaultHistoryParams(),
   isLoading: false,
   isScanning: false,
+  isScanStopping: false,
   error: null,
   lastUpdate: null,
   pollCount: 0,
   loading: false,
   logs: [],
+  diagnostics: { mode: 'disconnected' },
+  commandLogs: [],
   scanProgress: null,
 });
 
@@ -84,6 +164,7 @@ const createInitialState = (): MfcState => ({
 
 export function useMfc(): [MfcState, MfcControls] {
   const [state, setState] = useState<MfcState>(createInitialState);
+  const scanStopRequestedRef = useRef(false);
 
   // 状态更新辅助函数
   const updateState = useCallback((updates: Partial<MfcState>) => {
@@ -93,22 +174,51 @@ export function useMfc(): [MfcState, MfcControls] {
   const setLoading = useCallback((loading: boolean) => updateState({ loading, isLoading: loading }), [updateState]);
   const clearError = useCallback(() => updateState({ error: null }), [updateState]);
 
+  const addLog = useCallback((type: LogEntry['type'], message: string) => {
+    setState((prev) => ({
+      ...prev,
+      logs: [
+        {
+          id: Math.random().toString(36).slice(2),
+          timestamp: new Date().toLocaleTimeString(),
+          type,
+          message,
+        },
+        ...prev.logs,
+      ].slice(0, 100),
+    }));
+  }, []);
+
+  const clearLogs = useCallback(() => updateState({ logs: [] }), [updateState]);
+
+  const loadCommandLogs = useCallback(async () => {
+    const response = await runtimeClient.devices.mfc.commandLogs<{ logs: CommandLogEntry[] }>();
+    updateState({ commandLogs: response.logs || [] });
+  }, [updateState]);
+
+  const clearCommandLogs = useCallback(async () => {
+    await runtimeClient.devices.mfc.clearCommandLogs();
+    updateState({ commandLogs: [] });
+  }, [updateState]);
+
   const handleError = useCallback(
     (error: unknown) => {
       const deviceError: DeviceError =
         error && typeof error === 'object' && 'message' in error
           ? (error as DeviceError)
           : { code: 'UNKNOWN', message: String(error), status: 0 };
-      updateState({ error: deviceError, loading: false, isLoading: false, isScanning: false });
+      scanStopRequestedRef.current = false;
+      updateState({ error: deviceError, loading: false, isLoading: false, isScanning: false, isScanStopping: false, scanProgress: null });
+      addLog('error', deviceError.message);
     },
-    [updateState]
+    [updateState, addLog]
   );
 
   // ==================== 端口与设备发现 ====================
 
   const get_available_ports = useCallback(async (): Promise<string[]> => {
     try {
-      const ports = await MfcApi.getPorts();
+      const ports = await runtimeClient.devices.mfc.ports();
       updateState({ available_ports: ports });
       return ports;
     } catch (error) {
@@ -120,14 +230,14 @@ export function useMfc(): [MfcState, MfcControls] {
   const refreshDevices = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-      const devices = await MfcApi.getDevices();
+      const devices = await runtimeClient.devices.mfc.devices<MfcDeviceInfo[]>();
       const mfcDevices: MfcDevice[] = devices.map((device) => ({
         ...device,
-        flow_sccm: 0,
-        set_flow: 0,
-        flow_percent: 0,
-        digital_setpoint_percent: 0,
-        active_setpoint_percent: 0,
+        flowSccm: 0,
+        setFlow: 0,
+        flowPercent: 0,
+        digitalSetpointPercent: 0,
+        activeSetpointPercent: 0,
         mode: 'follow' as const,
         status: 'connected' as const,
       }));
@@ -145,80 +255,50 @@ export function useMfc(): [MfcState, MfcControls] {
 
   // ==================== WebSocket 事件处理 ====================
 
-  const handleDeviceDiscovered = useCallback(
-    (discovered: MfcDeviceDiscovered) => {
-      const d = discovered.data;
-      setState((prev) => {
-        const newDevice: MfcDevice = {
-          address: d.device_address,
-          gas_type: d.gas_type,
-          max_flow_sccm: d.max_flow_sccm,
-          flow_sccm: 0,
-          set_flow: 0,
-          flow_percent: 0,
-          digital_setpoint_percent: 0,
-          active_setpoint_percent: 0,
-          mode: 'follow',
-          status: 'connected',
-        };
+  const handleRuntimeStatusUpdate = useCallback((envelope: RuntimeDeviceStatusEnvelope) => {
+    const statusDevices = Array.isArray(envelope.payload?.devices)
+      ? envelope.payload.devices as RuntimeMfcDeviceStatus[]
+      : [];
 
-        const devices = [...prev.devices];
-        const idx = devices.findIndex((x) => x.address === newDevice.address);
-        if (idx >= 0) devices[idx] = newDevice;
-        else devices.push(newDevice);
-
-        return { ...prev, devices, lastUpdate: new Date() };
-      });
-    },
-    []
-  );
-
-  const handleStatusUpdate = useCallback((update: MfcStatusUpdate) => {
     setState((prev) => {
-      const updatedDevices = prev.devices.map((device) => {
-        const statusData = update.data.find((d) => d.device_address === device.address);
-        if (!statusData) return device;
-
-        const max = device.max_flow_sccm || 1;
-        return {
-          ...device,
-          flow_sccm: statusData.flow_sccm,
-          set_flow: statusData.setpoint_sccm,
-          flow_percent: (statusData.flow_sccm / max) * 100,
-          status: statusData.connection_status as MfcDevice['status'],
-        };
-      });
-      return { ...prev, devices: updatedDevices, lastUpdate: new Date() };
+      const previousByAddress = new Map(prev.devices.map((device) => [device.address, device]));
+      const updatedDevices = statusDevices.length > 0
+        ? statusDevices.map((device) => toMfcDevice(device, previousByAddress.get(device.address)))
+        : prev.devices;
+      const availableDevices = statusDevices.length > 0
+        ? updatedDevices.map(toMfcDeviceInfo)
+        : prev.availableDevices;
+      return {
+        ...prev,
+        connection_status: envelope.connected ? 'connected' : 'disconnected',
+        devices: envelope.connected ? updatedDevices : [],
+        availableDevices: envelope.connected ? availableDevices : [],
+        diagnostics: {
+          ...(envelope.diagnostics || {}),
+          mode: envelope.mode,
+          profile: envelope.profile ?? envelope.connectionState?.profile,
+        },
+        lastUpdate: new Date(),
+      };
     });
   }, []);
+
+  const ensureRuntimeStatusSubscription = useRuntimeDeviceStatusSubscription('mfc', handleRuntimeStatusUpdate);
 
   // ==================== 智能初始化 ====================
 
   const ensureConnection = useCallback(async () => {
-    // 建立 WebSocket 连接
-    if (!mfcWebSocketService.connected) {
-      mfcWebSocketService.onDeviceDiscovered(handleDeviceDiscovered);
-      mfcWebSocketService.onStatusUpdate(handleStatusUpdate);
-      mfcWebSocketService.onScanProgress((progress) => {
-        updateState({
-          scanProgress: progress.data,
-          isScanning: progress.data.percent < 100
-        });
-      });
-      mfcWebSocketService.onConnected(() => mfcWebSocketService.subscribe());
-      mfcWebSocketService.connect();
-    }
+    ensureRuntimeStatusSubscription();
 
     try {
-      const statusData = await MfcApi.getConnectionStatus();
-      console.log('Synced status:', statusData);
+      const statusData = await runtimeClient.devices.mfc.runtimeStatus();
+      handleRuntimeStatusUpdate(statusData);
 
-      if (statusData.status === 'connected') {
+      if (statusData.connected) {
         updateState({
           connection_status: 'connected',
-          selected_port: (statusData.connection_info as { port?: string })?.port || state.selected_port,
         });
-        if (statusData.device_count > 0) {
+        if (statusData.deviceCount > 0) {
           refreshDevices();
         }
       } else {
@@ -230,25 +310,105 @@ export function useMfc(): [MfcState, MfcControls] {
       updateState({ connection_status: 'disconnected' });
       get_available_ports();
     }
-  }, [get_available_ports, refreshDevices, updateState, state.selected_port, handleDeviceDiscovered, handleStatusUpdate]);
+  }, [get_available_ports, refreshDevices, updateState, state.selected_port, handleRuntimeStatusUpdate, ensureRuntimeStatusSubscription]);
 
   // ==================== 连接与断开 ====================
 
+  const selectPort = useCallback((port: string) => {
+    updateState({ selected_port: port });
+  }, [updateState]);
+
+  const runDeviceScan = useCallback(
+    async (params: MfcScanRequest = {}): Promise<{ devices: MfcDeviceInfo[]; cancelled: boolean } | null> => {
+      if (state.isScanning) return null;
+
+      const scanParams = params as MfcScanParams;
+      const requestedAddress = scanParams.address;
+      const rawStart = requestedAddress ?? scanParams.startAddress ?? 32;
+      const rawEnd = requestedAddress ?? scanParams.endAddress ?? 80;
+      const start = Math.min(rawStart, rawEnd);
+      const end = Math.max(rawStart, rawEnd);
+      const total = end - start + 1;
+      const port = scanParams.port || state.selected_port;
+      const foundByAddress = new Map<number, MfcDeviceInfo>();
+
+      scanStopRequestedRef.current = false;
+      updateState({
+        isScanning: true,
+        isScanStopping: false,
+        scanProgress: { current: start, start, end, percent: 0, foundCount: 0 },
+      });
+
+      try {
+        for (let address = start; address <= end; address += 1) {
+          if (scanStopRequestedRef.current) break;
+
+          const completedBefore = address - start;
+          updateState({
+            scanProgress: {
+              current: address,
+              start,
+              end,
+              percent: Math.round((completedBefore / total) * 100),
+              foundCount: foundByAddress.size,
+            },
+          });
+
+          const scannedDevices = await runtimeClient.devices.mfc.scan<MfcDeviceInfo[]>({
+            ...scanParams,
+            port,
+            address,
+            scanStartAddress: start,
+            scanEndAddress: end,
+          });
+          scannedDevices.forEach((device) => foundByAddress.set(device.address, device));
+
+          const devices = Array.from(foundByAddress.values());
+          updateState({
+            availableDevices: devices,
+            devices: devices.map((device) => toMfcDevice(device)),
+            scanProgress: {
+              current: address,
+              start,
+              end,
+              percent: Math.round(((completedBefore + 1) / total) * 100),
+              foundCount: foundByAddress.size,
+            },
+          });
+        }
+
+        return { devices: Array.from(foundByAddress.values()), cancelled: scanStopRequestedRef.current };
+      } finally {
+        scanStopRequestedRef.current = false;
+        updateState({ isScanning: false, isScanStopping: false, scanProgress: null });
+      }
+    },
+    [state.isScanning, state.selected_port, updateState]
+  );
+
   const connect = useCallback(
-    async (port: string = 'COM1', baudrate: number = 19200, timeout: number = 1.0): Promise<void> => {
+    async (port: string = 'COM1', baudrate: number = 19200, timeout: number = 1.0, simulatorProfile?: string): Promise<void> => {
       try {
         setLoading(true);
         clearError();
         updateState({ connection_status: 'connecting', selected_port: port });
+        ensureRuntimeStatusSubscription();
 
-        await MfcApi.connect(port, baudrate, timeout);
+        await runtimeClient.devices.mfc.connect({ port, baudrate, timeout, ...(simulatorProfile && { simulatorProfile }) });
         updateState({ connection_status: 'connected' });
+        addLog('success', `Connected to ${port}`);
 
         // 连接成功后自动扫描设备
-        updateState({ isScanning: true });
-        const devices = await MfcApi.scanDevices({ port });
-        updateState({ availableDevices: devices });
-        setTimeout(() => updateState({ isScanning: false }), 1000);
+        const scanResult = await runDeviceScan({ port });
+        if (scanResult) {
+          addLog(
+            scanResult.cancelled ? 'warning' : (scanResult.devices.length > 0 ? 'success' : 'warning'),
+            scanResult.cancelled
+              ? `Scan stopped; found ${scanResult.devices.length} MFC device(s)`
+              : `Scanned ${scanResult.devices.length} MFC device(s)`
+          );
+        }
+        await loadCommandLogs().catch(() => undefined);
       } catch (error) {
         handleError(error);
         updateState({ connection_status: 'error', selected_port: '', isScanning: false });
@@ -258,13 +418,14 @@ export function useMfc(): [MfcState, MfcControls] {
         setLoading(false);
       }
     },
-    [setLoading, clearError, handleError, updateState, get_available_ports]
+    [setLoading, clearError, handleError, updateState, get_available_ports, ensureRuntimeStatusSubscription, addLog, loadCommandLogs, runDeviceScan]
   );
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-      await MfcApi.disconnect();
+      await runtimeClient.devices.mfc.disconnectDevice();
+      addLog('info', 'Disconnected');
       updateState({
         connection_status: 'disconnected',
         selected_port: '',
@@ -273,13 +434,14 @@ export function useMfc(): [MfcState, MfcControls] {
         deviceStatuses: new Map(),
       });
       await get_available_ports();
+      await loadCommandLogs().catch(() => undefined);
     } catch (error) {
       handleError(error);
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [setLoading, handleError, updateState, get_available_ports]);
+  }, [setLoading, handleError, updateState, get_available_ports, addLog, loadCommandLogs]);
 
   // ==================== 扫描与控制 ====================
 
@@ -288,47 +450,65 @@ export function useMfc(): [MfcState, MfcControls] {
       if (state.isScanning) return;
 
       try {
-        updateState({ isScanning: true });
         clearError();
 
-        const scanParams = { ...params, port: params.port || state.selected_port };
-        const currentDevices = await MfcApi.scanDevices(scanParams);
-        updateState({ availableDevices: currentDevices });
-        setTimeout(() => updateState({ isScanning: false }), 1000);
+        const scanResult = await runDeviceScan({ ...params, port: params.port || state.selected_port });
+        if (!scanResult) return;
+        addLog(
+          scanResult.cancelled ? 'warning' : (scanResult.devices.length > 0 ? 'success' : 'warning'),
+          scanResult.cancelled
+            ? `Scan stopped; found ${scanResult.devices.length} MFC device(s)`
+            : `Scanned ${scanResult.devices.length} MFC device(s)`
+        );
+        await loadCommandLogs().catch(() => undefined);
       } catch (error) {
         handleError(error);
-        updateState({ isScanning: false });
       }
     },
-    [state.isScanning, state.selected_port, updateState, clearError, handleError]
+    [state.isScanning, state.selected_port, clearError, handleError, addLog, loadCommandLogs, runDeviceScan]
   );
+
+  const stopScan = useCallback(async (): Promise<void> => {
+    if (!state.isScanning || state.isScanStopping) return;
+
+    scanStopRequestedRef.current = true;
+    updateState({ isScanStopping: true });
+    addLog('warning', 'Stopping MFC scan after the current address');
+
+    await runtimeClient.devices.mfc.stopScan().catch(() => undefined);
+    await loadCommandLogs().catch(() => undefined);
+  }, [state.isScanning, state.isScanStopping, updateState, addLog, loadCommandLogs]);
 
   const setFlowRate = useCallback(
     async (address: number, sccm: number): Promise<void> => {
       try {
         setLoading(true);
-        await MfcApi.setFlowRate(address, sccm);
+        await runtimeClient.devices.mfc.setpoint({ address, sccm });
+        addLog('success', `Set MFC ${address} to ${sccm} sccm`);
+        await loadCommandLogs().catch(() => undefined);
       } catch (error) {
         handleError(error);
       } finally {
         setLoading(false);
       }
     },
-    [setLoading, handleError]
+    [setLoading, handleError, addLog, loadCommandLogs]
   );
 
   const setAllFlowRates = useCallback(
     async (settings: { address: number; sccm: number }[]): Promise<void> => {
       try {
         setLoading(true);
-        await Promise.all(settings.map((s) => MfcApi.setFlowRate(s.address, s.sccm)));
+        await Promise.all(settings.map((s) => runtimeClient.devices.mfc.setpoint({ address: s.address, sccm: s.sccm })));
+        addLog('success', `Set ${settings.length} MFC flow rates`);
+        await loadCommandLogs().catch(() => undefined);
       } catch (error) {
         handleError(error);
       } finally {
         setLoading(false);
       }
     },
-    [setLoading, handleError]
+    [setLoading, handleError, addLog, loadCommandLogs]
   );
 
   // ==================== 历史数据 ====================
@@ -337,7 +517,10 @@ export function useMfc(): [MfcState, MfcControls] {
     async (address: number, params?: HistoryQueryParams): Promise<void> => {
       try {
         const finalParams = params || state.historyParams;
-        const data = await MfcApi.getFlowHistory(address, finalParams);
+        const response = await runtimeClient.devices.mfc.flowLogs<{ samples: MfcSample[] }>(
+          toBackendHistoryParams(address, finalParams)
+        );
+        const data = response.samples;
 
         const newMap = new Map(state.historyData);
         newMap.set(address, data);
@@ -353,10 +536,21 @@ export function useMfc(): [MfcState, MfcControls] {
     async (addresses: number[], params?: HistoryQueryParams): Promise<void> => {
       try {
         const finalParams = params || state.historyParams;
-        const dataMap = await MfcApi.getMultipleDevicesFlowHistory(addresses, finalParams);
+        const entries = await Promise.all(
+          addresses.map(async (address) => {
+            try {
+              const response = await runtimeClient.devices.mfc.flowLogs<{ samples: MfcSample[] }>(
+                toBackendHistoryParams(address, finalParams)
+              );
+              return [address, response.samples] as const;
+            } catch {
+              return [address, [] as MfcSample[]] as const;
+            }
+          })
+        );
 
         const newMap = new Map(state.historyData);
-        Object.entries(dataMap).forEach(([k, v]) => newMap.set(parseInt(k), v));
+        entries.forEach(([address, samples]) => newMap.set(address, samples));
         updateState({ historyData: newMap, historyParams: finalParams });
       } catch (error) {
         handleError(error);
@@ -403,7 +597,9 @@ export function useMfc(): [MfcState, MfcControls] {
   const controls: MfcControls = {
     ensureConnection,
     scanDevices,
+    stopScan,
     refreshDevices,
+    selectPort,
     connect,
     disconnect,
     get_available_ports,
@@ -420,6 +616,9 @@ export function useMfc(): [MfcState, MfcControls] {
     refresh,
     updateDeviceStatus,
     updateFlowData,
+    clearLogs,
+    loadCommandLogs,
+    clearCommandLogs,
   };
 
   return [state, controls];
