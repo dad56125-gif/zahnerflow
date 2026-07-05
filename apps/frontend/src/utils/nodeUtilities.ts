@@ -6,26 +6,67 @@ import { NODE_CONFIGS, NODE_CATEGORY_NAMES, ZAHNER_NODE_CONFIGS, NODE_GROUPS, ZA
 
 // --- 1. 存储相关的常量与逻辑 ---
 const STORAGE_KEY_PREFIX = 'zahner_workflow_defaults_';
+const sessionNodeDefaults = new Map<NodeType, Record<string, any>>();
+
+function getCurrentUserForDefaults(): string {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem('currentUser') || '';
+}
+
+function getDefaultsStorageKey(type: NodeType, user: string): string {
+  return `${STORAGE_KEY_PREFIX}${user}::${type}`;
+}
+
+function cloneDefaults<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
+export function getSavedDefaultParameters(type: NodeType, user?: string): Record<string, any> | null {
+  const resolvedUser = user ?? getCurrentUserForDefaults();
+
+  if (!resolvedUser) {
+    const sessionDefaults = sessionNodeDefaults.get(type);
+    return sessionDefaults ? cloneDefaults(sessionDefaults) : null;
+  }
+
+  try {
+    const savedDefaultsJson = window.localStorage.getItem(getDefaultsStorageKey(type, resolvedUser));
+    if (!savedDefaultsJson) return null;
+    return JSON.parse(savedDefaultsJson);
+  } catch (e) {
+    console.warn(`[NodeUtilities] 读取节点默认参数失败 (${resolvedUser}/${type})`, e);
+    return null;
+  }
+}
+
+export function saveDefaultParameters(type: NodeType, params: Record<string, any>, user?: string): void {
+  const resolvedUser = user ?? getCurrentUserForDefaults();
+  const normalizedParams = cloneDefaults(params);
+
+  if (!resolvedUser) {
+    sessionNodeDefaults.set(type, normalizedParams);
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      getDefaultsStorageKey(type, resolvedUser),
+      JSON.stringify(normalizedParams)
+    );
+  } catch (e) {
+    console.warn(`[NodeUtilities] 保存节点默认参数失败 (${resolvedUser}/${type})`, e);
+  }
+}
 
 /**
  * 获取生效的默认参数
- * 逻辑：静态配置 -> 合并 LocalStorage 用户偏好
+ * 逻辑：静态配置 -> 合并用户默认参数
  */
 export function getEffectiveDefaultParameters(type: NodeType): Record<string, any> {
   const config = getNodeConfig(type);
   const staticDefaults = config.defaultParameters || {};
-
-  try {
-    const savedDefaultsJson = localStorage.getItem(`${STORAGE_KEY_PREFIX}${type}`);
-    if (savedDefaultsJson) {
-      const savedDefaults = JSON.parse(savedDefaultsJson);
-      return { ...staticDefaults, ...savedDefaults };
-    }
-  } catch (e) {
-    console.warn(`[NodeUtilities] 读取自定义默认参数失败 (${type})`, e);
-  }
-
-  return staticDefaults;
+  const savedDefaults = getSavedDefaultParameters(type);
+  return savedDefaults ? { ...staticDefaults, ...savedDefaults } : staticDefaults;
 }
 
 // --- 2. 配置获取逻辑 ---

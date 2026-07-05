@@ -223,50 +223,34 @@ export const TopBar: React.FC<TopBarProps> = ({
   return (
     <div className="top-bar glass-layout">
       <div className="top-bar__brand">
-          <div className="logo">
-            <span className="logo-text" aria-label="ZAHNERFLOW">
-              <span className="logo-text__cluster logo-text__cluster--zahner" aria-hidden="true">
-                <span className="logo-text__letter logo-text__letter--z" data-letter="Z">Z</span>
-                <span className="logo-text__letter logo-text__letter--a" data-letter="A">A</span>
-                <span className="logo-text__letter logo-text__letter--h" data-letter="H">H</span>
-                <span className="logo-text__letter logo-text__letter--n" data-letter="N">N</span>
-                <span className="logo-text__letter logo-text__letter--e" data-letter="E">E</span>
-                <span className="logo-text__letter logo-text__letter--r" data-letter="R">R</span>
-              </span>
-              <span className="logo-text__cluster logo-text__cluster--flow" aria-hidden="true">
-                <span className="logo-text__letter logo-text__letter--f" data-letter="F">F</span>
-                <span className="logo-text__letter logo-text__letter--l" data-letter="L">L</span>
-                <span className="logo-text__letter logo-text__letter--o" data-letter="O">O</span>
-                <span className="logo-text__letter logo-text__letter--w" data-letter="W">W</span>
-              </span>
-            </span>
-          </div>
-          <div className="flex items-center gap-sm">
-            <button
-              type="button"
-              className={`app-version app-version--hidden-trigger ${developerMode ? 'is-developer' : ''} ${simulatorActive ? 'is-simulator' : ''}`}
-              onClick={handleVersionClick}
-              title={developerMode ? '开发者模式已启用' : undefined}
-            />
-            {developerHint && <span className="developer-hint">{renderCjkText(developerHint)}</span>}
-            {developerMode && (
-              <button
-                type="button"
-                className={`sim-status-pill ${simulatorActive ? 'is-active' : ''}`}
-                onClick={onSimulatorPanelOpen}
-                title={simulatorActive ? '模拟模式已启用' : '打开模拟控制面板'}
-              >
-                SIM
-              </button>
-            )}
-          </div>
-      </div>
-
-      <div className="top-bar__canvas-start">
         <div className="user-section">
           <UserSelector
             currentUser={currentUser}
             onUserChange={setCurrentUser}
+            developerControls={(
+              <>
+                <span className="developer-mode-trigger-slot">
+                  <button
+                    type="button"
+                    className={`app-version app-version--hidden-trigger ${developerMode ? 'is-developer' : ''} ${simulatorActive ? 'is-simulator' : ''}`}
+                    onClick={handleVersionClick}
+                    aria-label="开发者模式入口"
+                    title={developerMode ? '开发者模式已启用' : undefined}
+                  />
+                </span>
+                {developerHint && <span className="developer-hint">{renderCjkText(developerHint)}</span>}
+                {developerMode && (
+                  <button
+                    type="button"
+                    className={`sim-status-pill ${simulatorActive ? 'is-active' : ''}`}
+                    onClick={onSimulatorPanelOpen}
+                    title={simulatorActive ? '模拟模式已启用' : '打开模拟控制面板'}
+                  >
+                    SIM
+                  </button>
+                )}
+              </>
+            )}
           />
         </div>
       </div>

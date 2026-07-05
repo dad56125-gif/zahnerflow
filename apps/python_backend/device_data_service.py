@@ -197,6 +197,65 @@ class FurnaceDataService:
 
         return result
 
+    def query_activity_summary(self, from_ts: str = None, to_ts: str = None, slot_hours: int = 4) -> list:
+        slot_hours = slot_hours if slot_hours and slot_hours > 0 else 4
+        slot_hours = max(1, min(24, int(slot_hours)))
+        conditions = []
+        params = []
+
+        if from_ts:
+            conditions.append("timestamp >= ?")
+            params.append(to_db_timestamp(from_ts))
+        if to_ts:
+            conditions.append("timestamp <= ?")
+            params.append(to_db_timestamp(to_ts))
+
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+        sql = f"""
+            WITH ordered AS (
+                SELECT
+                    timestamp,
+                    pv,
+                    status_code,
+                    date(timestamp, 'unixepoch', 'localtime') AS day_key,
+                    CAST(CAST(strftime('%H', timestamp, 'unixepoch', 'localtime') AS INTEGER) / ? AS INTEGER) AS slot_index,
+                    LEAD(timestamp) OVER (ORDER BY timestamp ASC) AS next_timestamp,
+                    LEAD(date(timestamp, 'unixepoch', 'localtime')) OVER (ORDER BY timestamp ASC) AS next_day_key
+                FROM furnace_history_view
+                {where_clause}
+            )
+            SELECT
+                day_key,
+                slot_index,
+                COUNT(*) AS sample_count,
+                MAX(pv) AS max_temperature,
+                SUM(
+                    CASE
+                        WHEN status_code = 0
+                             AND next_timestamp IS NOT NULL
+                             AND next_day_key = day_key
+                             AND next_timestamp - timestamp > 0
+                             AND next_timestamp - timestamp <= 3600
+                        THEN (next_timestamp - timestamp) * 1000
+                        ELSE 0
+                    END
+                ) AS running_ms
+            FROM ordered
+            GROUP BY day_key, slot_index
+            ORDER BY day_key ASC, slot_index ASC
+        """
+        rows = db.conn.execute(sql, [slot_hours, *params]).fetchall()
+        return [
+            {
+                "day": row["day_key"],
+                "slotIndex": int(row["slot_index"]),
+                "count": int(row["sample_count"] or 0),
+                "maxTemperature": row["max_temperature"],
+                "runningMs": int(row["running_ms"] or 0),
+            }
+            for row in rows
+        ]
+
 # ============================================================
 # MFC 数据服务
 # ============================================================

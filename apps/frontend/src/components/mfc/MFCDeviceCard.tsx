@@ -4,7 +4,7 @@
  * 显示单个MFC设备的状态和控制界面，集成真实的API调用
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { MfcDevice, DeviceCardProps } from '../../modules/mfc/mfcTypes';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 
@@ -14,6 +14,8 @@ interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   loading?: boolean;
   disabled?: boolean;
 }
+
+const SET_FLOW_WAITING_DELAY_MS = 350;
 
 /**
  * MFC 设备卡片组件
@@ -26,7 +28,22 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
 }) => {
   const [flowInputValue, setFlowInputValue] = useState<string>('');
   const [isSettingFlow, setIsSettingFlow] = useState(false);
+  const [showSetFlowWaiting, setShowSetFlowWaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const settingFlowRef = useRef(false);
+
+  useEffect(() => {
+    if (!isSettingFlow) {
+      setShowSetFlowWaiting(false);
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowSetFlowWaiting(true);
+    }, SET_FLOW_WAITING_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isSettingFlow]);
 
   // 计算流量柱状图高度
   const getFlowBarHeight = useCallback(() => {
@@ -51,7 +68,10 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
 
   // 处理流量设定
   const handleSetFlow = useCallback(async () => {
-    const sccm = parseFloat(flowInputValue);
+    if (settingFlowRef.current) return;
+
+    const submittedValue = flowInputValue.trim();
+    const sccm = parseFloat(submittedValue);
 
     if (isNaN(sccm)) {
       setError('请输入有效数字');
@@ -62,16 +82,18 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
       return;
     }
 
+    settingFlowRef.current = true;
     setIsSettingFlow(true);
     setError(null);
 
     try {
       await onSetFlow?.(device.address, sccm);
-      setFlowInputValue(''); // 设置成功后清空输入框
+      setFlowInputValue((current) => current.trim() === submittedValue ? '' : current);
     } catch (err) {
       setError(`失败: ${err instanceof Error ? err.message : '未知'}`);
       setFlowInputValue(device.setFlow.toString());
     } finally {
+      settingFlowRef.current = false;
       setIsSettingFlow(false);
     }
   }, [flowInputValue, device.address, device.maxFlowSccm, device.setFlow, onSetFlow]);
@@ -130,7 +152,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               value={flowInputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              disabled={disabled || isSettingFlow || loading}
+              disabled={disabled || loading}
               min="0"
               max={device.maxFlowSccm}
               step="0.1"
@@ -138,11 +160,13 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               placeholder="sccm"
             />
             <button
-              className={`btn btn--sm btn--primary ${isSettingFlow ? 'is-loading' : ''}`}
+              className="btn btn--sm btn--primary"
               onClick={handleSetFlow}
-              disabled={disabled || loading || isSettingFlow}
+              disabled={disabled || loading}
+              aria-busy={isSettingFlow}
+              aria-disabled={disabled || loading || isSettingFlow}
             >
-              <SpacedCjkText text="设置" />
+              <SpacedCjkText text={showSetFlowWaiting ? '等待' : '设置'} />
             </button>
           </div>
           {error && <div className="mfc__error"><SpacedCjkText text={error} /></div>}

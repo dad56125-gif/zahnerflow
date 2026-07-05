@@ -301,6 +301,26 @@
   }
 }
 
+.property-defaults-btn {
+  align-self: center;
+  align-items: center;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+
+  .btn-text {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+.properties-section > .flex.items-center.justify-between.gap-sm > .flex.items-center.gap-sm > .section-title,
+.properties-section > .flex.items-center.justify-between.gap-sm > .section-title {
+  margin-bottom: 0;
+}
+
 /* === 属性面板内容 === */
 .properties-section {
   padding-top: var(--size-sm);

@@ -19,6 +19,11 @@ def get_furnace_samples(from_ts: str = None, to: str = None, limit: int = None, 
     return furnace_data.query_samples(from_ts=from_ts, to_ts=to, limit=limit, downsample=downsample)
 
 
+@router.get("/api/devices/furnace/activity-summary")
+def get_furnace_activity_summary(from_ts: str = None, to: str = None, slot_hours: int = 4):
+    return furnace_data.query_activity_summary(from_ts=from_ts, to_ts=to, slot_hours=slot_hours)
+
+
 @router.get("/api/devices/furnace/logs/temperature")
 def get_furnace_temperature_logs(from_ts: str = None, to: str = None, limit: int = None, downsample: int = None):
     return furnace_data.query_samples(from_ts=from_ts, to_ts=to, limit=limit, downsample=downsample)

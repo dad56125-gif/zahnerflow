@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sqlite3
+import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -284,6 +287,73 @@ def test_app_runtime_device_status_envelope_and_sampling_side_effects(monkeypatc
         assert "diagnostics" in envelope
     finally:
         runtime.devices.disconnect_all()
+
+
+def test_furnace_activity_summary_uses_aggregated_slots(monkeypatch):
+    import device_data_service
+    from device_data_service import FurnaceDataService
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(
+        """
+        CREATE TABLE furnace_metrics_recent (
+          timestamp INTEGER PRIMARY KEY,
+          pv REAL,
+          sv REAL,
+          mv REAL,
+          status_code INTEGER,
+          segment INTEGER,
+          segment_time REAL,
+          segment_time_set REAL
+        );
+        CREATE TABLE furnace_metrics_archive (
+          timestamp INTEGER PRIMARY KEY,
+          pv REAL,
+          tier INTEGER DEFAULT 1
+        );
+        CREATE VIEW furnace_history_view AS
+        SELECT timestamp, pv, sv, mv, status_code, segment, segment_time, segment_time_set, 0 as tier
+        FROM furnace_metrics_recent
+        UNION ALL
+        SELECT timestamp, pv, NULL, NULL, NULL, NULL, NULL, NULL, tier
+        FROM furnace_metrics_archive;
+        """
+    )
+
+    base = int(time.mktime((2026, 1, 2, 8, 0, 0, 0, 0, -1)))
+    conn.executemany(
+        "INSERT INTO furnace_metrics_recent (timestamp, pv, sv, mv, status_code, segment, segment_time, segment_time_set) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            (base, 100.0, 100.0, 0.0, 0, 1, 0, 10),
+            (base + 600, 120.0, 120.0, 0.0, 0, 1, 10, 10),
+            (base + 5 * 3600, 80.0, 80.0, 0.0, 2, 1, 0, 10),
+        ],
+    )
+    monkeypatch.setattr(device_data_service, "db", SimpleNamespace(conn=conn))
+
+    rows = FurnaceDataService().query_activity_summary(
+        from_ts=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(base - 60)),
+        to_ts=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(base + 6 * 3600)),
+        slot_hours=4,
+    )
+
+    assert rows == [
+        {
+            "day": time.strftime("%Y-%m-%d", time.localtime(base)),
+            "slotIndex": int(time.strftime("%H", time.localtime(base))) // 4,
+            "count": 2,
+            "maxTemperature": 120.0,
+            "runningMs": 600000,
+        },
+        {
+            "day": time.strftime("%Y-%m-%d", time.localtime(base + 5 * 3600)),
+            "slotIndex": int(time.strftime("%H", time.localtime(base + 5 * 3600))) // 4,
+            "count": 1,
+            "maxTemperature": 80.0,
+            "runningMs": 0,
+        },
+    ]
 
 
 def test_mfc_runtime_exposes_diagnostics_and_command_logs():

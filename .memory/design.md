@@ -226,7 +226,7 @@ ETA 规则：
 
 ## [数据-SQLite]
 
-当前规则：SQLite 是本地数据库。运行时代码通过现有数据库辅助层直接写入工作流定义、执行、设备采样和报告状态。`workflows.fingerprint` 是不可变工作流定义的去重身份，`workflows.based_on_workflow_id` 记录由旧工作流派生的新定义来源，`workflows.feature_json` 与 `workflow_similarity_edges` 是实验地图的本地派生索引。Furnace 历史预览当前读取 `furnace_metrics_recent` / `furnace_metrics_archive` 中的采样事实；实时采样中的 `status_code` 是当前状态来源。`furnace_events` 当前没有活跃写入者，也不再对前端暴露查询路由，不能把它当作仍在增长的事件流。Furnace 和 MFC 原始采样只保留最近 30 天，新采样写入时会清理更老的原始点，避免本地数据库因连续采样无限增长。
+当前规则：SQLite 是本地数据库。运行时代码通过现有数据库辅助层直接写入工作流定义、执行、设备采样和报告状态。`workflows.fingerprint` 是不可变工作流定义的去重身份，`workflows.based_on_workflow_id` 记录由旧工作流派生的新定义来源，`workflows.feature_json` 与 `workflow_similarity_edges` 是实验地图的本地派生索引。Furnace 历史预览当前读取 `furnace_metrics_recent` / `furnace_metrics_archive` 中的采样事实；历史活动概览由 `device_data_service.py` 在 SQLite 查询侧按本地日期和固定时段聚合点数、最高温度和运行时长，前端不应为了概览拉取长时间范围原始点。实时采样中的 `status_code` 是当前状态来源。`furnace_events` 当前没有活跃写入者，也不再对前端暴露查询路由，不能把它当作仍在增长的事件流。Furnace 和 MFC 原始采样只保留最近 30 天，新采样写入时会清理更老的原始点，避免本地数据库因连续采样无限增长。
 
 归属文件：
 
@@ -260,7 +260,7 @@ ETA 规则：
 10. Furnace 用户可设温度上限统一为 `1100℃`。共享契约的 `ProgramSegment.temperature` 与 `FurnaceConfig.max_temperature`、前端工作流 `targetTemperature` 输入、Furnace 程序段编辑器、后端执行温度节点、程序段写入和预设保存都必须使用同一上限；不得在任一路径保留 `900℃`、`1000℃` 或 `1200℃` 的旧上限。
 11. 属性面板的参数默认值操作是“恢复默认值”：当当前可见参数与生效默认值一致时按钮禁用；当存在差异时按钮启用，点击后用生效默认值整体替换当前节点参数。该入口不得再写入新的自定义默认参数。
 12. 工作流数值输入允许智能后缀解析：普通数字、科学计数法以及 `k/K`、`m`、`M`、`u/U/μ`、`n/N` 后缀必须在前端归一化为数值后再进入节点配置和后端执行路径。
-13. Furnace 设备页的实时采样和历史查询以图形为主视图，前端页面不再展示原始采样表格；用户需要原始数据时，通过当前选中时间范围的导出按钮下载 CSV。历史查询的宽时间范围先展示按天聚合的采样活动概览，用于快速判断哪天做过测试；用户选中有采样的日期后，再展示该日期内的温度曲线。历史图不能把相隔多天的测试段直接连成一条连续曲线。
+13. Furnace 设备页的实时采样和历史查询以图形为主视图，前端页面不再展示原始采样表格；用户需要原始数据时，通过当前选中时间范围的导出按钮下载 CSV。历史查询的宽时间范围先通过 `/api/devices/furnace/activity-summary` 展示按天和固定时段聚合的采样活动概览，用于快速判断哪天做过测试；用户选中有采样的日期后，前端才通过 `/api/devices/furnace/samples` 拉取该日期内原始点并展示温度曲线。历史图不能把相隔多天的测试段直接连成一条连续曲线。
 14. 工作流循环运行时由后端发送 `loopiteration_start` 事件；`CurrentStep.iterationPath` 和 `ExecutionEtaStep.iterationPath` 是对象数组，不再是只有序号的数字数组。
 15. 已归档工作流名称只在实验记录中修改，通过 `POST /api/workflows/{id}/name` 更新后端展示元数据；画布不显示工作流标题输入框，也不维护可写回旧 workflow 的来源绑定。
 16. 主工具栏运行控制收敛为一个主按钮：空闲时显示“运行”，执行成功或失败后显示“重置”，重置完成后清空执行状态并回到“运行”；运行过程中不显示停止按钮。定时运行不再是工具栏按钮，而是流程控制节点 `scheduled_start`，其参数页复用同一套翻页钟时间选择控件。

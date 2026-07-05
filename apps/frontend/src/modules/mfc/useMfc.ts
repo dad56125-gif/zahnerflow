@@ -498,17 +498,14 @@ export function useMfc(): [MfcState, MfcControls] {
   const setFlowRate = useCallback(
     async (address: number, sccm: number): Promise<void> => {
       try {
-        setLoading(true);
         await runtimeClient.devices.mfc.setpoint({ address, sccm });
         addLog('success', `Set MFC ${address} to ${sccm} sccm`);
         await loadCommandLogs().catch(() => undefined);
       } catch (error) {
         handleError(error);
-      } finally {
-        setLoading(false);
       }
     },
-    [setLoading, handleError, addLog, loadCommandLogs]
+    [handleError, addLog, loadCommandLogs]
   );
 
   const setAllFlowRates = useCallback(

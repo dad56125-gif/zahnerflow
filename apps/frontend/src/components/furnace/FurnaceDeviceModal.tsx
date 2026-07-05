@@ -45,6 +45,13 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
 
   // 当前选项卡状态
   const [activeTab, setActiveTab] = useState<'monitoring' | 'segments' | 'history'>('monitoring');
+  const [contentTab, setContentTab] = useState<'monitoring' | 'segments' | 'history'>('monitoring');
+  const [mountedTabs, setMountedTabs] = useState({
+    monitoring: true,
+    segments: false,
+    history: false,
+  });
+  const pendingContentTabRef = useRef<number | null>(null);
   const isConnected = furnaceState.connection_status === 'connected';
   const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
 
@@ -105,7 +112,80 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     '--device-tab-index': activeTabIndex,
     '--device-tab-count': 3,
   } as React.CSSProperties;
-  const isFullWidthTab = activeTab === 'segments' || activeTab === 'history';
+  const isFullWidthTab = contentTab === 'segments' || contentTab === 'history';
+  const activateTab = (tab: 'monitoring' | 'segments' | 'history') => {
+    if (pendingContentTabRef.current !== null) {
+      window.clearTimeout(pendingContentTabRef.current);
+      pendingContentTabRef.current = null;
+    }
+    setMountedTabs((current) => (
+      current[tab]
+        ? current
+        : { ...current, [tab]: true }
+    ));
+    setActiveTab(tab);
+    if (tab === 'segments' && contentTab !== 'segments') {
+      pendingContentTabRef.current = window.setTimeout(() => {
+        setContentTab('segments');
+        pendingContentTabRef.current = null;
+      }, 240);
+      return;
+    }
+    setContentTab(tab);
+  };
+
+  useEffect(() => () => {
+    if (pendingContentTabRef.current !== null) {
+      window.clearTimeout(pendingContentTabRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const browserWindow = typeof window !== 'undefined' ? window : null;
+    let timeoutIds: number[] = [];
+    let idleIds: number[] = [];
+
+    const scheduleMount = (tab: 'segments', delay: number) => {
+      const mountTab = () => {
+        setMountedTabs((current) => (
+          current[tab]
+            ? current
+            : { ...current, [tab]: true }
+        ));
+      };
+
+      if (browserWindow && 'requestIdleCallback' in browserWindow) {
+        const timeoutId = browserWindow.setTimeout(() => {
+          const idleId = browserWindow.requestIdleCallback(() => {
+            mountTab();
+          }, { timeout: 240 });
+          idleIds.push(idleId);
+        }, delay);
+        timeoutIds.push(timeoutId);
+        return;
+      }
+
+      if (!browserWindow) {
+        mountTab();
+        return;
+      }
+
+      const timeoutId = browserWindow.setTimeout(mountTab, delay);
+      timeoutIds.push(timeoutId);
+    };
+
+    scheduleMount('segments', 80);
+
+    return () => {
+      if (!browserWindow) {
+        return;
+      }
+      timeoutIds.forEach((id) => browserWindow.clearTimeout(id));
+      if ('cancelIdleCallback' in browserWindow) {
+        idleIds.forEach((id) => browserWindow.cancelIdleCallback(id));
+      }
+    };
+  }, []);
 
   return (
       <div
@@ -121,19 +201,19 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
             <div className="tabs__list" style={tabListStyle}>
               <button
                 className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'monitoring' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('monitoring')}
+                onClick={() => activateTab('monitoring')}
               >
                 <SpacedCjkText text="实时监控" />
               </button>
               <button
                 className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'segments' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('segments')}
+                onClick={() => activateTab('segments')}
               >
                 <SpacedCjkText text="程序段" />
               </button>
               <button
                 className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'history' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('history')}
+                onClick={() => activateTab('history')}
               >
                 <SpacedCjkText text="历史曲线" />
               </button>
@@ -149,16 +229,14 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
             <div className="furnace-modal__main">
               {/* 选项卡内容 */}
               <div className="tabs__content">
-                {activeTab === 'monitoring' && (
-                  <div className="tabs__panel is-active">
-                    <StatusPanel
-                      furnaceState={furnaceState}
-                      furnaceControls={furnaceControls}
-                    />
-                  </div>
-                )}
-                {activeTab === 'segments' && (
-                  <div className="tabs__panel is-active">
+                <div className={`tabs__panel ${contentTab === 'monitoring' ? 'is-active' : 'is-inactive'}`}>
+                  <StatusPanel
+                    furnaceState={furnaceState}
+                    furnaceControls={furnaceControls}
+                  />
+                </div>
+                {mountedTabs.segments && (
+                  <div className={`tabs__panel ${contentTab === 'segments' ? 'is-active' : 'is-inactive'}`}>
                     <div className="furnace-segments-combo">
                       <section className="furnace-segments-combo__pane">
                         <ProgramEditor
@@ -175,27 +253,26 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                     </div>
                   </div>
                 )}
-                {activeTab === 'history' && (
-                  <div className="tabs__panel is-active">
-                    <HistoryTab />
+                {mountedTabs.history && (
+                  <div className={`tabs__panel ${contentTab === 'history' ? 'is-active' : 'is-inactive'}`}>
+                    <HistoryTab isActive={contentTab === 'history'} />
                   </div>
                 )}
               </div>
             </div>
 
             {/* 右侧区域 (1/3宽度) */}
-            {!isFullWidthTab && (
-            <div className="furnace-modal__sidebar">
-                  <DeviceConnectionPanel
-                    deviceName="炉子"
-                    connectionStatus={furnaceState.connection_status}
-                    availablePorts={effectivePorts}
-                    selectedPort={effectiveSelectedPort}
-                    onPortChange={setSelectedPort}
-                    onRefreshPorts={loadPorts}
-                    onConnect={handleConnect}
-                    onDisconnect={furnaceControls.disconnect}
-                  />
+            <div className={`furnace-modal__sidebar ${isFullWidthTab ? 'is-collapsed' : ''}`}>
+              <DeviceConnectionPanel
+                deviceName="炉子"
+                connectionStatus={furnaceState.connection_status}
+                availablePorts={effectivePorts}
+                selectedPort={effectiveSelectedPort}
+                onPortChange={setSelectedPort}
+                onRefreshPorts={loadPorts}
+                onConnect={handleConnect}
+                onDisconnect={furnaceControls.disconnect}
+              />
               {developerMode && (
                 <>
                   <DeviceDiagnosticsPanel
@@ -212,7 +289,6 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                 </>
               )}
             </div>
-            )}
           </div>
         </div>
       </div>
@@ -239,8 +315,15 @@ type ActivityDaySummary = {
   runningMs: number;
 };
 
+type FurnaceActivitySummaryRow = {
+  day: string;
+  slotIndex: number;
+  count: number;
+  maxTemperature: number | null;
+  runningMs: number;
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
 const MAX_ACTIVITY_DAYS = 60;
 const ACTIVITY_COLUMN_WIDTH_PX = 21;
 const ACTIVITY_MONTH_GAP_WIDTH_PX = 12;
@@ -285,10 +368,6 @@ const formatActivitySlotLabel = (slotIndex: number) => {
   const startHour = slotIndex * ACTIVITY_SLOT_HOURS;
   const endHour = startHour + ACTIVITY_SLOT_HOURS;
   return `${String(startHour).padStart(2, '0')}-${String(endHour).padStart(2, '0')}h`;
-};
-
-const isRunningSample = (sample: FurnaceChartSample) => {
-  return Number(sample.statusCode) === 0;
 };
 
 const shouldShowActivityMonth = (days: Array<{ date: Date }>, index: number) => {
@@ -357,7 +436,7 @@ const calculateActivityLayoutWidth = (
 
 const buildActivitySummaries = (
   days: Array<{ key: string; date: Date }>,
-  samples: FurnaceChartSample[]
+  rows: FurnaceActivitySummaryRow[]
 ) => {
   const summaries = new Map<string, ActivityDaySummary>();
   const slots = new Map<string, number[]>();
@@ -373,33 +452,24 @@ const buildActivitySummaries = (
     slots.set(day.key, Array.from({ length: ACTIVITY_SLOT_COUNT }, () => 0));
   });
 
-  const sortedSamples = [...samples].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  sortedSamples.forEach((sample, index) => {
-    const sampleDate = new Date(sample.timestamp);
-    if (!Number.isFinite(sampleDate.getTime())) return;
-    const key = toDateKey(sampleDate);
-    const summary = summaries.get(key);
-    const daySlots = slots.get(key);
+  rows.forEach((row) => {
+    const summary = summaries.get(row.day);
+    const daySlots = slots.get(row.day);
     if (!summary || !daySlots) return;
 
-    summary.count += 1;
-    const temperature = Number(sample.temperature);
+    const count = Number(row.count);
+    summary.count += Number.isFinite(count) ? count : 0;
+    const temperature = Number(row.maxTemperature);
     if (Number.isFinite(temperature)) {
       summary.maxTemperature = summary.maxTemperature === null ? temperature : Math.max(summary.maxTemperature, temperature);
     }
 
-    const slotIndex = Math.max(0, Math.min(ACTIVITY_SLOT_COUNT - 1, Math.floor(sampleDate.getHours() / ACTIVITY_SLOT_HOURS)));
-    daySlots[slotIndex] += 1;
-
-    const nextSample = sortedSamples[index + 1];
-    if (!isRunningSample(sample) || !nextSample) return;
-    const nextDate = new Date(nextSample.timestamp);
-    if (!Number.isFinite(nextDate.getTime()) || toDateKey(nextDate) !== key) return;
-    const delta = nextDate.getTime() - sampleDate.getTime();
-    if (delta > 0 && delta <= HOUR_MS) {
-      summary.runningMs += delta;
-    }
+    const rawSlotIndex = Number(row.slotIndex);
+    const slotIndex = Number.isFinite(rawSlotIndex)
+      ? Math.max(0, Math.min(ACTIVITY_SLOT_COUNT - 1, Math.floor(rawSlotIndex)))
+      : 0;
+    daySlots[slotIndex] += Number.isFinite(count) ? count : 0;
+    summary.runningMs += Number(row.runningMs) || 0;
   });
 
   return { summaries, slots };
@@ -414,12 +484,15 @@ type ActivityHoverState = {
   y: number;
 };
 
-function HistoryTab() {
+function HistoryTab({ isActive }: { isActive: boolean }) {
   const [rangeEnd, setRangeEnd] = useState(() => new Date());
-  const [samples, setSamples] = useState<FurnaceChartSample[]>([]);
+  const [summaryRows, setSummaryRows] = useState<FurnaceActivitySummaryRow[]>([]);
+  const [chartSamples, setChartSamples] = useState<FurnaceChartSample[]>([]);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [hoveredSlot, setHoveredSlot] = useState<ActivityHoverState | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [hasLoadedSummary, setHasLoadedSummary] = useState(false);
   const [visibleDayCount, setVisibleDayCount] = useState(30);
   const chartSectionRef = useRef<HTMLDivElement>(null);
   const activityMapRef = useRef<HTMLElement>(null);
@@ -437,8 +510,8 @@ function HistoryTab() {
     return end;
   }, [rangeEnd]);
 
-  const loadRecentHistory = async () => {
-    setLoading(true);
+  const loadActivitySummary = async () => {
+    setSummaryLoading(true);
     const now = new Date();
     const days = buildRecentActivityDays(now, MAX_ACTIVITY_DAYS);
     const start = days[0]?.date ?? new Date(now.getTime() - (MAX_ACTIVITY_DAYS - 1) * DAY_MS);
@@ -446,56 +519,33 @@ function HistoryTab() {
     end.setDate(end.getDate() + 1);
 
     try {
-      const sampleData = await runtimeClient.devices.furnace.samples<Array<{
-        timestamp: string;
-        pv: number;
-        sv?: number;
-        mv?: number;
-        status?: string;
-        statusCode?: number;
-        segment?: number;
-        segmentTime?: number;
-        segmentTimeSet?: number;
-      }>>({
+      const rows = await runtimeClient.devices.furnace.activitySummary<FurnaceActivitySummaryRow[]>({
         from_ts: start.toISOString(),
         to: end.toISOString(),
-        limit: 10000,
+        slot_hours: ACTIVITY_SLOT_HOURS,
       });
 
-      const normalizedSamples = sampleData.map(sample => ({
-        timestamp: sample.timestamp,
-        temperature: Number(sample.pv ?? 0),
-        sv: sample.sv,
-        mv: sample.mv,
-        status: sample.status,
-        statusCode: sample.statusCode,
-        segment: sample.segment,
-        segmentTime: sample.segmentTime,
-        segmentTimeSet: sample.segmentTimeSet,
-      }));
-
       setRangeEnd(now);
-      setSamples(normalizedSamples);
-
-      const dayKeys = new Set(days.map(day => day.key));
-      const latestSample = [...normalizedSamples]
-        .reverse()
-        .find(sample => dayKeys.has(toDateKey(new Date(sample.timestamp))));
-      setSelectedDay(latestSample ? toDateKey(new Date(latestSample.timestamp)) : null);
+      setSummaryRows(rows);
+      setHasLoadedSummary(true);
     } catch (error) {
-      console.error('Failed to query furnace history:', error);
-      setSamples([]);
+      console.error('Failed to query furnace activity summary:', error);
+      setSummaryRows([]);
       setSelectedDay(null);
+      setChartSamples([]);
+      setHasLoadedSummary(true);
     } finally {
-      setLoading(false);
+      setSummaryLoading(false);
     }
   };
 
   useEffect(() => {
-    void loadRecentHistory();
-  }, []);
+    if (!isActive || hasLoadedSummary) return;
+    void loadActivitySummary();
+  }, [hasLoadedSummary, isActive]);
 
   useEffect(() => {
+    if (!isActive) return;
     const updateVisibleDayCount = () => {
       const element = activityCanvasRef.current;
       if (!element) return;
@@ -529,41 +579,26 @@ function HistoryTab() {
       observer.disconnect();
       window.removeEventListener('resize', updateVisibleDayCount);
     };
-  }, [loading, rangeEnd, samples.length]);
+  }, [isActive, summaryLoading, rangeEnd, summaryRows.length]);
 
   useEffect(() => {
+    if (!isActive) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setHoveredSlot(null);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    const visibleDayKeys = new Set(activityDays.map(day => day.key));
-    if (selectedDay && visibleDayKeys.has(selectedDay)) return;
-    const latestVisibleSample = [...samples]
-      .reverse()
-      .find(sample => visibleDayKeys.has(toDateKey(new Date(sample.timestamp))));
-    setSelectedDay(latestVisibleSample ? toDateKey(new Date(latestVisibleSample.timestamp)) : null);
-  }, [activityDays, samples, selectedDay]);
+  }, [isActive]);
 
   const { summaries, slots } = useMemo(
-    () => buildActivitySummaries(activityDays, samples),
-    [activityDays, samples]
+    () => buildActivitySummaries(activityDays, summaryRows),
+    [activityDays, summaryRows]
   );
 
   const maxSlotCount = useMemo(() => {
     const allCounts = Array.from(slots.values()).flat();
     return Math.max(1, ...allCounts);
   }, [slots]);
-
-  const selectedDaySamples = useMemo(
-    () => selectedDay
-      ? samples.filter(sample => toDateKey(new Date(sample.timestamp)) === selectedDay)
-      : [],
-    [samples, selectedDay]
-  );
 
   const selectedActivityDay = selectedDay ? summaries.get(selectedDay) : undefined;
   const selectedDateStart = selectedActivityDay
@@ -574,6 +609,7 @@ function HistoryTab() {
     : rangeEndExclusive.toISOString();
   const hoveredSummary = hoveredSlot ? summaries.get(hoveredSlot.key) : undefined;
   const hoveredSlotCount = hoveredSlot ? slots.get(hoveredSlot.key)?.[hoveredSlot.slotIndex] ?? 0 : 0;
+  const hasActivity = summaryRows.some(row => row.count > 0);
   const activityGridLayout = useMemo(() => {
     const dayColumns = new Map<string, number>();
     const columns: string[] = [];
@@ -596,8 +632,53 @@ function HistoryTab() {
     };
   }, [activityDays]);
 
+  const loadDaySamples = async (dayKey: string) => {
+    const day = activityDays.find(item => item.key === dayKey);
+    if (!day) return;
+    const start = startOfDay(day.date);
+    const end = new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate() + 1);
+
+    setChartLoading(true);
+    try {
+      const sampleData = await runtimeClient.devices.furnace.samples<Array<{
+        timestamp: string;
+        pv: number;
+        sv?: number;
+        mv?: number;
+        status?: string;
+        statusCode?: number;
+        segment?: number;
+        segmentTime?: number;
+        segmentTimeSet?: number;
+      }>>({
+        from_ts: start.toISOString(),
+        to: end.toISOString(),
+        limit: 10000,
+      });
+
+      setChartSamples(sampleData.map(sample => ({
+        timestamp: sample.timestamp,
+        temperature: Number(sample.pv ?? 0),
+        sv: sample.sv,
+        mv: sample.mv,
+        status: sample.status,
+        statusCode: sample.statusCode,
+        segment: sample.segment,
+        segmentTime: sample.segmentTime,
+        segmentTimeSet: sample.segmentTimeSet,
+      })));
+    } catch (error) {
+      console.error('Failed to query furnace daily samples:', error);
+      setChartSamples([]);
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
   const handleSelectActivitySlot = (dayKey: string) => {
     setSelectedDay(dayKey);
+    setChartSamples([]);
+    void loadDaySamples(dayKey);
     requestAnimationFrame(() => {
       chartSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -632,9 +713,9 @@ function HistoryTab() {
   return (
     <div className="history__tab">
       <div className="recording__body">
-        {loading ? (
+        {summaryLoading || !hasLoadedSummary ? (
           <div className="recording__empty"><SpacedCjkText text={'\u6b63\u5728\u52a0\u8f7d\u6700\u8fd1\u6700\u591a60\u5929\u91c7\u6837\u6d3b\u52a8...'} /></div>
-        ) : samples.length === 0 ? (
+        ) : !hasActivity ? (
           <div className="recording__empty"><SpacedCjkText text={'\u6700\u8fd1\u6700\u591a60\u5929\u6682\u65e0\u91c7\u6837\u6d3b\u52a8'} /></div>
         ) : (
           <div className="history-insight">
@@ -720,7 +801,7 @@ function HistoryTab() {
               <div className="chart__header chart__header--compact">
                 <h5 className="chart__title">
                   {selectedActivityDay
-                    ? <SpacedCjkText text={formatActivityLabel(selectedActivityDay.date) + ' \u66f2\u7ebf \u00b7 ' + selectedDaySamples.length + ' \u70b9'} />
+                    ? <SpacedCjkText text={formatActivityLabel(selectedActivityDay.date) + ' \u66f2\u7ebf \u00b7 ' + chartSamples.length + ' \u70b9'} />
                     : <SpacedCjkText text={'\u9009\u62e9\u6709\u6570\u636e\u7684\u65e5\u671f'} />}
                 </h5>
                 <div className="chart__legend chart__legend--inline">
@@ -730,12 +811,16 @@ function HistoryTab() {
                 </div>
               </div>
               <div className="chart__content">
-                <TemperatureChart
-                  data={selectedDaySamples as any}
-                  is_loading={false}
-                  xDomainStart={selectedDateStart}
-                  xDomainEnd={selectedDateEnd}
-                />
+                {selectedActivityDay ? (
+                  <TemperatureChart
+                    data={chartSamples as any}
+                    is_loading={chartLoading}
+                    xDomainStart={selectedDateStart}
+                    xDomainEnd={selectedDateEnd}
+                  />
+                ) : (
+                  <div className="recording__empty"><SpacedCjkText text={'\u70b9\u51fb\u4e0a\u65b9\u65f6\u6bb5\u540e\u52a0\u8f7d\u5f53\u5929\u66f2\u7ebf'} /></div>
+                )}
               </div>
             </div>
           </div>

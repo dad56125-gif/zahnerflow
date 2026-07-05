@@ -439,6 +439,7 @@
 /* === User Selector === */
 .user-selector__container {
   @extend %flex-center; gap: var(--size-2xs); position: relative;
+  justify-content: flex-start;
 }
 
 .user-selector__action-btn {
@@ -452,6 +453,24 @@
   color: white;
 
   .btn-icon { font-size: var(--size-lg); }
+}
+
+.user-selector__developer-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2xs);
+  flex-shrink: 0;
+  min-height: var(--toolbar-icon-button-size);
+}
+
+.developer-mode-trigger-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: var(--toolbar-icon-button-size);
+  min-width: var(--toolbar-icon-button-size);
+  height: var(--toolbar-icon-button-size);
 }
 
 .user-selector__delete-btn {

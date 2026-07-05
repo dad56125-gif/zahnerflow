@@ -2,6 +2,18 @@
 
 本文记录会影响设计判断的变化。每条记录都必须使用 `design.md` 中的锚点。
 
+## 2026-07-06 - Furnace 历史概览改为聚合加载
+
+锚点：[数据-SQLite]，[接口-前端契约]
+
+原因：Furnace modal 打开后后台挂载历史页会立刻拉取最近最多 60 天原始采样点，并在前端计算活动概览和默认曲线，造成实时监控首屏卡顿。历史概览只需要点数、最高温度和运行时长，不应依赖长时间范围原始点加载。
+
+变更：新增 `/api/devices/furnace/activity-summary`，由 `device_data_service.py` 在 SQLite 查询侧按本地日期和 4 小时时段聚合采样点数、最高温度和运行时长。`FurnaceDeviceModal.tsx` 不再后台预挂载历史页；历史 tab 首次激活时只请求聚合概览；下方曲线默认不加载，用户点击有采样的日期后才请求当天原始点。
+
+设计影响：Furnace 历史页的概览路径和曲线路径分离。宽时间范围概览使用聚合接口，日内曲线才使用原始采样接口，避免前端为了概览做大数组扫描和默认 Canvas 绘制。
+
+验证：执行 `PYTHONPATH=. uv run pytest tests/test_simulator_contracts.py::test_furnace_activity_summary_uses_aggregated_slots -q` 通过；执行 `uv run python -m compileall apps/python_backend` 通过；执行 `pnpm --dir apps/frontend build` 通过，仍只有既有 Sass `@import` 弃用提示和 chunk 体积提示。执行 `PYTHONPATH=. uv run pytest tests/test_simulator_contracts.py -q` 时，两个既有输出路径测试仍因把相对路径分隔符 `/` 纳入非法字符检查而失败，本次新增聚合测试已通过。
+
 ## 2026-07-03 - 修正测量输出路径与 MFC 打开刷新
 
 锚点：[接口-前端契约]，[执行-状态机]，[设备-runtime状态契约]

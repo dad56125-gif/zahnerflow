@@ -5,12 +5,15 @@ import type { WorkstationType, WorkflowNode, NodeType } from '@zahnerflow/types'
 import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
 import { DataViewer } from '../DataViewer';
+import { useUser } from '../shared/UserContext';
 // 确保 useSystemState 来自正确的执行 Store
 import { useSystemState } from '../../state/executionStateBridge'; // 直接从源文件导入
 
 // 导入工具函数
 import {
-  getEffectiveDefaultParameters
+  getEffectiveDefaultParameters,
+  getSavedDefaultParameters,
+  saveDefaultParameters,
 } from '../../utils/nodeUtilities';
 
 import {
@@ -115,8 +118,9 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
   ({ selectedWorkstation, mfcState }, ref) => {
     // 1. 从 Store 获取选中节点
     // 使用 selectedNodeId 从 nodes 数组中查找，确保数据是最新的
-    const { nodes, selectedNodeId, updateNodeConfig, replaceNodeConfig, setNodes, selectNode } = useCanvasStore();
+    const { nodes, selectedNodeId, updateNodeConfig, setNodes, selectNode } = useCanvasStore();
     const node = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
+    const { currentUser } = useUser();
 
     // 2. 获取实时系统状态
     const systemState = useSystemState();
@@ -125,6 +129,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     const [workflowBlockDefinition, setWorkflowBlockDefinition] = useState<WorkflowDefinitionPayload | null>(null);
     const [workflowBlockLoading, setWorkflowBlockLoading] = useState(false);
     const [workflowBlockMessage, setWorkflowBlockMessage] = useState<string | null>(null);
+    const [, setDefaultsVersion] = useState(0);
 
     // 3. 判断图表支持
     const supportsChart = useMemo(() => {
@@ -353,13 +358,24 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       return JSON.stringify(normalizeComparableValue(left)) === JSON.stringify(normalizeComparableValue(right));
     };
 
-    const currentMatchesDefaults = (visibleParams: [string, any][]) => {
+    const currentMatchesSavedDefaults = (visibleParams: [string, any][], savedDefaults: Record<string, any> | null) => {
+      if (!savedDefaults) return false;
+
       const current = node.config || {};
-      return visibleParams.every(([key, defaultValue]) => valuesEqual(current[key] ?? defaultValue, defaultValue));
+      return visibleParams.every(([key, fallbackDefault]) => {
+        const currentValue = current[key] ?? fallbackDefault;
+        const savedValue = key in savedDefaults ? savedDefaults[key] : fallbackDefault;
+        return valuesEqual(currentValue, savedValue);
+      });
     };
 
-    const restoreDefaults = () => {
-      replaceNodeConfig(node.id, getEffectiveDefaultParameters(node.type as NodeType));
+    const saveVisibleDefaults = (visibleParams: [string, any][]) => {
+      const current = node.config || {};
+      const nextDefaults = Object.fromEntries(
+        visibleParams.map(([key, fallbackDefault]) => [key, current[key] ?? fallbackDefault])
+      );
+      saveDefaultParameters(node.type as NodeType, nextDefaults, currentUser);
+      setDefaultsVersion(version => version + 1);
     };
 
     const collapseCurrentWorkflowGroup = () => {
@@ -464,9 +480,10 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     const renderParameters = () => {
       const effectiveDefaults = getEffectiveDefaultParameters(node.type as NodeType);
+      const savedDefaults = getSavedDefaultParameters(node.type as NodeType, currentUser);
       const hiddenParams = getHiddenParameters(node.type as NodeType);
       const visibleParams = Object.entries(effectiveDefaults).filter(([k]) => !hiddenParams.includes(k));
-      const isAtDefault = currentMatchesDefaults(visibleParams);
+      const matchesSavedDefaults = currentMatchesSavedDefaults(visibleParams, savedDefaults);
 
       if (node.type === 'scheduled_start') {
         const currentConfig = node.config || {};
@@ -641,14 +658,13 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
             </div>
             <div className="flex items-center justify-end gap-sm">
               <button
-                onClick={restoreDefaults}
-                disabled={isAtDefault}
-                className="btn btn--xs btn--secondary"
-                title={isAtDefault ? "当前参数已是默认值" : "恢复当前节点的默认参数"}
+                onClick={() => saveVisibleDefaults(visibleParams)}
+                disabled={matchesSavedDefaults}
+                className={`btn btn--xs ${matchesSavedDefaults ? 'btn--success' : 'btn--secondary'} property-defaults-btn`}
+                title={matchesSavedDefaults ? "当前可见参数已是节点默认值" : "将当前可见参数设定为后续新增节点的默认值"}
               >
-                <span className="btn-icon">↺</span>
                 <span className="btn-text">
-                  恢复默认
+                  {matchesSavedDefaults ? '已是节点默认值' : '设定为节点默认值'}
                 </span>
               </button>
             </div>

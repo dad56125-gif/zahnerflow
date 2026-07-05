@@ -179,6 +179,7 @@ export const runtimeClient = {
           post<T>(`/api/devices/furnace/presets/${encodeURIComponent(name)}/clone`, { newName }),
         apply: <T>(name: string) => post<T>(`/api/devices/furnace/presets/${encodeURIComponent(name)}/apply`),
       },
+      activitySummary: <T>(params?: QueryParams) => get<T>('/api/devices/furnace/activity-summary', params),
       samples: <T>(params?: QueryParams) => get<T>('/api/devices/furnace/samples', params),
       temperatureLogs: <T>(params?: QueryParams) => get<T>('/api/devices/furnace/logs/temperature', params),
     },

@@ -36,7 +36,6 @@
 }
 
 .top-bar__brand,
-.top-bar__canvas-start,
 .top-bar__actions {
   display: flex;
   align-items: center;
@@ -44,24 +43,14 @@
 }
 
 .top-bar__brand {
-  flex: 0 0 var(--left-panel-w);
-  padding-left: clamp(1rem, 0.72rem + 0.75vw, 1.65rem);
-  justify-content: flex-start;
-  position: relative;
-}
-
-.top-bar__brand .logo {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: calc(var(--navbar-h) * 0.5);
-  padding: 0;
-  isolation: isolate;
-}
-
-.top-bar__canvas-start {
   flex: 0 0 auto;
+  padding-left: var(--space);
   justify-content: flex-start;
+  position: relative;
+}
+
+.user-section {
+  min-width: 0;
 }
 
 .top-bar__actions {

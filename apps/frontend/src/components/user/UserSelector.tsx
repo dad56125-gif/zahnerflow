@@ -9,6 +9,7 @@ import { renderCjkText, SpacedCjkText } from '../common/SpacedCjkText';
 interface UserSelectorProps {
   currentUser: string;
   onUserChange: (user: string) => void;
+  developerControls?: React.ReactNode;
 }
 
 type UserActionIconName = 'createUser' | 'userSettings';
@@ -44,7 +45,8 @@ const UserActionIcon: React.FC<{ name: UserActionIconName }> = ({ name }) => {
 
 export const UserSelector: React.FC<UserSelectorProps> = ({
   currentUser,
-  onUserChange
+  onUserChange,
+  developerControls
 }) => {
   const { users, createUser, deleteUser } = useUser();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -150,6 +152,12 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       >
         <span className="btn-icon"><UserActionIcon name="createUser" /></span>
       </button>
+
+      {developerControls && (
+        <div className="user-selector__developer-controls">
+          {developerControls}
+        </div>
+      )}
 
       {/* 用户下拉菜单 - 使用Portal渲染到body下，绕过层叠上下文限制 */}
       <Dropdown
