@@ -132,38 +132,47 @@ export const MFCModal: React.FC<MFCModalProps> = ({
             <SpacedCjkText text="质量流量控制器" className="device-title__name cjk-spaced" />
             <span className="device-title__model" aria-hidden="true">(MFC)</span>
           </h3>
-          <div className="connection__status">
-            <span className={`connection__status-dot ${runtimeSocket.connected ? 'is-connected' : 'is-disconnected'}`}></span>
-            <span className="status__text">
-              {runtimeSocket.connected ? <SpacedCjkText text="实时连接" /> : <SpacedCjkText text="离线" />}
-            </span>
-            <span className={`connection-state-indicator ${mfcState.connection_status}`}>
-              ({mfcState.connection_status === 'connected' ? <SpacedCjkText text="设备已连接" /> :
-                mfcState.connection_status === 'connecting' ? <SpacedCjkText text="连接中..." /> :
-                  mfcState.connection_status === 'error' ? <SpacedCjkText text="连接错误" /> : <SpacedCjkText text="未连接" />})
-            </span>
-            {isConnected && (
-              <>
-                {mfcState.isScanning && (
+          <div className="mfc-modal__header-actions">
+            <div className="connection__status">
+              <span className={`connection__status-dot ${runtimeSocket.connected ? 'is-connected' : 'is-disconnected'}`}></span>
+              <span className="status__text">
+                {runtimeSocket.connected ? <SpacedCjkText text="实时连接" /> : <SpacedCjkText text="离线" />}
+              </span>
+              <span className={`connection-state-indicator ${mfcState.connection_status}`}>
+                ({mfcState.connection_status === 'connected' ? <SpacedCjkText text="设备已连接" /> :
+                  mfcState.connection_status === 'connecting' ? <SpacedCjkText text="连接中..." /> :
+                    mfcState.connection_status === 'error' ? <SpacedCjkText text="连接错误" /> : <SpacedCjkText text="未连接" />})
+              </span>
+              {isConnected && (
+                <>
+                  {mfcState.isScanning && (
+                    <button
+                      className="btn btn--sm btn--danger"
+                      onClick={() => mfcControls.stopScan()}
+                      disabled={mfcState.isScanStopping}
+                    >
+                      {mfcState.isScanStopping ? <SpacedCjkText text="停止中" /> : <SpacedCjkText text="停止扫描" />}
+                    </button>
+                  )}
+                  <button
+                    className={`btn btn--sm btn--secondary mfc__header-scan ${mfcState.isScanning ? 'is-loading' : ''}`}
+                    onClick={() => mfcControls.scanDevices({ port: effectiveSelectedPort })}
+                    disabled={mfcState.isLoading || mfcState.isScanning}
+                  >
+                    {mfcState.isScanning ? <SpacedCjkText text="扫描中" /> : <SpacedCjkText text="重新扫描" />}
+                  </button>
                   <button
                     className="btn btn--sm btn--danger"
-                    onClick={() => mfcControls.stopScan()}
-                    disabled={mfcState.isScanStopping}
+                    onClick={() => mfcControls.disconnect()}
+                    disabled={mfcState.isLoading || mfcState.isScanning}
                   >
-                    {mfcState.isScanStopping ? <SpacedCjkText text="停止中" /> : <SpacedCjkText text="停止扫描" />}
+                    <SpacedCjkText text="断开" />
                   </button>
-                )}
-                <button
-                  className="btn btn--sm btn--danger"
-                  onClick={() => mfcControls.disconnect()}
-                  disabled={mfcState.isLoading || mfcState.isScanning}
-                >
-                  <SpacedCjkText text="断开" />
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </div>
+            <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={on_close}>✕</button>
           </div>
-          <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={on_close}>✕</button>
         </div>
 
         {mfcState.isScanning && mfcState.scanProgress && (
@@ -237,7 +246,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                       )}
                       {idleDevices.length > 0 && (
                         <div className="mfc__section" aria-label="空闲设备">
-                          <div className="mfc__cards">
+                          <div className="mfc__cards mfc__cards--idle">
                             {idleDevices.map((device) => (
                               <MFCDeviceCard
                                 key={device.address}
@@ -275,12 +284,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                       </div>
                     </div>
                     <div className="device-dashboard__segment-card">
-                      <span className="device-dashboard__tile-label"><SpacedCjkText text="设备数" /></span>
-                      <span className="device-dashboard__segment-value">{mfcState.devices.length}</span>
-                    </div>
-                    <div className="device-dashboard__total-card">
                       <span className="device-dashboard__tile-label"><SpacedCjkText text="激活通道" /></span>
-                      <span className="device-dashboard__total-value">{flowSummary.activeDevices}</span>
+                      <span className="device-dashboard__segment-value">{flowSummary.activeDevices}/{mfcState.devices.length}</span>
                     </div>
                     <div className="device-dashboard__runtime-card">
                       <span className="device-dashboard__tile-label"><SpacedCjkText text="设定占用" /></span>
@@ -302,14 +307,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                     </div>
                   </div>
                 </section>
-
-                <button
-                  className={`btn btn--sm btn--secondary ${mfcState.isScanning ? 'is-loading' : ''}`}
-                  onClick={() => mfcControls.scanDevices({ port: effectiveSelectedPort })}
-                  disabled={mfcState.isLoading || mfcState.isScanning}
-                >
-                  {mfcState.isScanning ? <SpacedCjkText text="扫描中" /> : <SpacedCjkText text="重新扫描" />}
-                </button>
 
                 {developerMode && (
                   <>

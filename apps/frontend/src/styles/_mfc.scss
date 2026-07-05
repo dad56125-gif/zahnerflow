@@ -5,18 +5,28 @@
    ========================================================================== */
 
 .mfc__cards {
+  --mfc-active-card-height: 13.5rem;
+  --mfc-idle-card-size: calc(var(--mfc-active-card-height) * 0.9);
+
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 20rem));
   gap: var(--size-md);
   height: auto;
   align-content: start;
+  align-items: start;
   justify-content: start;
   padding: 0;
+
+  &--idle {
+    grid-template-columns: repeat(auto-fill, var(--mfc-idle-card-size));
+    gap: var(--size-sm);
+  }
 }
 
 /* === Compact Card === */
 .mfc__card {
   @extend %glass-panel-base;
+  position: relative;
   width: 100%;
   max-width: 20rem;
   border-radius: var(--radius);
@@ -27,21 +37,90 @@
   @include glass-lift;
 
   &.is-active-device {
-    border-color: rgba(16, 185, 129, 0.26);
+    min-height: var(--mfc-active-card-height);
+    border-color: transparent;
     background:
       radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 46%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018)),
       var(--glass-hover);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.11),
-      0 0 var(--size-xl) rgba(16, 185, 129, 0.1);
+      0 0 var(--size-xl) rgba(16, 185, 129, 0.06);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      padding: 1px;
+      pointer-events: none;
+      border-radius: inherit;
+      background:
+        radial-gradient(circle at 0 0, rgba(151, 255, 223, 0.6) 0%, rgba(16, 185, 129, 0.22) 20%, rgba(16, 185, 129, 0.05) 34%, rgba(16, 185, 129, 0) 48%),
+        linear-gradient(90deg, rgba(129, 255, 217, 0.32) 0%, rgba(16, 185, 129, 0.1) 16%, rgba(16, 185, 129, 0) 34%),
+        linear-gradient(180deg, rgba(129, 255, 217, 0.3) 0%, rgba(16, 185, 129, 0.1) 16%, rgba(16, 185, 129, 0) 34%);
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      mask-composite: exclude;
+    }
   }
 
   &.is-idle-device {
+    width: var(--mfc-idle-card-size);
+    height: var(--mfc-idle-card-size);
+    max-width: var(--mfc-idle-card-size);
+    aspect-ratio: 1 / 1;
+    gap: var(--size-xs);
+    padding: var(--size-sm);
+    overflow: hidden;
     border-color: rgba(148, 163, 184, 0.12);
     background:
       linear-gradient(135deg, rgba(148, 163, 184, 0.055), rgba(255, 255, 255, 0.012)),
       rgba(0, 0, 0, 0.12);
+
+    .mfc__card-head {
+      gap: var(--size-xs);
+    }
+
+    .mfc__card-title {
+      gap: var(--size-xs);
+    }
+
+    .mfc__card-main {
+      gap: var(--size-xs);
+      min-height: 0;
+    }
+
+    .mfc__control {
+      gap: var(--size-xs);
+      min-width: 0;
+    }
+
+    .mfc__values {
+      gap: 0;
+    }
+
+    .mfc__label {
+      width: 2rem;
+    }
+
+    .mfc__flow {
+      font-size: var(--size-lg);
+    }
+
+    .mfc__unit,
+    .mfc__max {
+      font-size: var(--size-xs);
+    }
+
+    .mfc__input-row {
+      gap: var(--size-3xs);
+      max-width: 100%;
+    }
   }
 
   &.is-disabled { opacity: 0.6; pointer-events: none; }
@@ -166,6 +245,27 @@
 
 .connection__status { @extend %flex-center; gap: var(--size-sm); flex-wrap: wrap; }
 
+.workspace-device-modal--mfc .modal__header {
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 1fr) max-content;
+}
+
+.mfc-modal__header-actions {
+  display: flex;
+  grid-column: 3;
+  align-items: center;
+  justify-self: end;
+  gap: var(--size-lg);
+  min-width: 0;
+}
+
+.mfc-modal__header-actions .connection__status {
+  justify-content: flex-end;
+}
+
+.mfc__header-scan {
+  white-space: nowrap;
+}
+
 .workspace-device-modal--mfc > .modal__body {
   min-height: 0;
   padding: 0;
@@ -254,21 +354,26 @@
   }
 
   .device-dashboard__mfc-layout {
-    grid-template-columns: repeat(2, minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--size-2xs);
+    justify-content: start;
+    align-items: stretch;
+
+    > * {
+      width: 100%;
+    }
   }
 
   .device-dashboard__pv-card {
-    grid-column: span 2;
+    grid-column: auto;
   }
 
   .device-dashboard__pill-stack {
-    grid-column: span 2;
-    aspect-ratio: 8 / 3;
+    grid-column: auto;
   }
 
   .device-dashboard__status-badge {
-    grid-column: span 2;
+    grid-column: auto;
   }
 
   .device-dashboard__pv-value,
@@ -343,85 +448,6 @@
 }
 
 /* ==========================================================================
-   6. Settings (User Settings Modal)
-   ========================================================================== */
-
-.settings {
-  width: 45rem; height: 35rem;
-  max-width: 90vw; max-height: 80vh;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-5));
-  border-radius: 16px;
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 20px 60px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  @include flex-col;
-  overflow: hidden;
-  animation: settings-panel-in 0.25s ease-out;
-
-  &__header { @extend %flex-center; padding: var(--space-4) var(--space-5); background: var(--glass-shadow);
-    h2 { margin: 0; font-size: var(--space-4); font-weight: 600; color: #fff; }
-  }
-
-  &__body   { display: flex; flex: 1; overflow: hidden; }
-  &__footer { padding: var(--space-3) var(--space-5); text-align: right; background: var(--glass-shadow); }
-}
-
-.settings__nav {
-  width: 160px; padding: var(--space-3);
-  background: var(--glass-shadow);
-  @include flex-col(var(--space-1));
-
-  &-item {
-    @extend %flex-center;
-    gap: var(--space-3); padding: var(--space-3) var(--space-4);
-    border: none; background: transparent;
-    border-radius: var(--space-2); cursor: pointer;
-    transition: all 0.2s; text-align: left;
-
-    &:hover { background: var(--glass-hover); }
-
-    &.is-active {
-      background: var(--glass-bg-active);
-      border: 1px solid var(--glass-border-hover);
-      .settings__nav-label { color: var(--color-indigo-light); }
-    }
-  }
-
-  &-icon  { font-size: var(--space-4); }
-  &-label { font-size: var(--size-sm); color: rgba(255, 255, 255, 0.8); }
-}
-
-.settings__content { flex: 1; padding: var(--space-5) var(--space-6); overflow-y: auto; background: rgba(0, 0, 0, 0.1); }
-
-.settings__loading,
-.settings__error,
-.settings__empty {
-  display: flex; align-items: center; justify-content: center;
-  height: 200px; color: rgba(255, 255, 255, 0.5); font-size: 14px;
-}
-.settings__error { color: var(--color-danger); }
-
-/* === Checkbox Group === */
-.checkbox__group { margin-bottom: var(--space-3); }
-
-.checkbox__label {
-  @extend %flex-center;
-  gap: var(--space-3); cursor: pointer;
-
-  input[type="checkbox"] { width: var(--space-4); height: var(--space-4); accent-color: var(--color-indigo); }
-  span { font-size: var(--size-sm); color: rgba(255, 255, 255, 0.8); }
-}
-
-/* === Empty Users === */
-.empty-users {
-  padding: var(--space-3) var(--space-4);
-  height: var(--user-option-height);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-secondary); font-size: 0.9rem;
-  font-style: italic; cursor: default; user-select: none;
-}
-
-/* ==========================================================================
    7. Animations
    ========================================================================== */
 
@@ -434,6 +460,7 @@
 
 @media (max-width: 1200px) {
   .mfc__cards          { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 20rem)); gap: var(--size-lg); }
+  .mfc__cards--idle    { grid-template-columns: repeat(auto-fill, var(--mfc-idle-card-size)); gap: var(--size-sm); }
 }
 
 @media (max-width: 768px) {
@@ -452,12 +479,13 @@
   }
 
   .mfc__cards          { grid-template-columns: minmax(0, 1fr); gap: var(--space); }
+  .mfc__cards--idle    { grid-template-columns: repeat(auto-fill, var(--mfc-idle-card-size)); gap: var(--size-sm); }
   .mfc__card           { max-width: none; }
   .mfc__sections       { padding: var(--space); }
 
   .mfc-modal__sidebar {
     .device-dashboard__mfc-layout {
-      grid-template-columns: repeat(2, minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 }

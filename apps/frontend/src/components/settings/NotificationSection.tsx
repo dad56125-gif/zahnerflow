@@ -54,20 +54,69 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
 
     return (
         <div className="settings__section-content">
-            <div className="settings__form-group">
-                <label className="switch">
-                    <input
-                        type="checkbox"
-                        checked={settings.enabled}
-                        onChange={(e) => onChange('enabled', e.target.checked)}
-                    />
-                    <div className="switch__track">
-                        <div className="switch__thumb"></div>
-                    </div>
-                    <span className="switch__label">
-                        {settings.enabled ? '启用' : '不启用'}
+            <div className="settings__notification-row">
+                <div className="settings__toggle-row">
+                    <span className="settings__smtp-title">
+                        启用
                     </span>
-                </label>
+                    <label className="switch">
+                        <input
+                            type="checkbox"
+                            checked={settings.enabled}
+                            onChange={(e) => onChange('enabled', e.target.checked)}
+                            aria-label="启用通知"
+                        />
+                        <div className="switch__track">
+                            <div className="switch__thumb"></div>
+                        </div>
+                    </label>
+                </div>
+
+                {settings.enabled && (
+                    <div className="settings__timing-row">
+                        <span className="settings__smtp-title">
+                            发送时机
+                        </span>
+
+                        <div className="settings__toggle-group">
+                            <label className="switch switch--sub">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.onComplete}
+                                    onChange={(e) => onChange('onComplete', e.target.checked)}
+                                />
+                                <div className="switch__track">
+                                    <div className="switch__thumb"></div>
+                                </div>
+                                <span className="switch__label">完成时</span>
+                            </label>
+
+                            <label className="switch switch--sub">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.onError}
+                                    onChange={(e) => onChange('onError', e.target.checked)}
+                                />
+                                <div className="switch__track">
+                                    <div className="switch__thumb"></div>
+                                </div>
+                                <span className="switch__label">失败时</span>
+                            </label>
+
+                            <label className="switch switch--sub">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.onWarning}
+                                    onChange={(e) => onChange('onWarning', e.target.checked)}
+                                />
+                                <div className="switch__track">
+                                    <div className="switch__thumb"></div>
+                                </div>
+                                <span className="switch__label">警告时</span>
+                            </label>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {settings.enabled && (
@@ -146,53 +195,6 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
                         </p>
                     </div>
 
-                    <h4 className="settings__smtp-title">
-                        发送时机
-                    </h4>
-
-                    <div className="settings__toggle-group">
-                        <div className="settings__form-group settings__form-group--no-margin">
-                            <label className="switch switch--sub">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.onComplete}
-                                    onChange={(e) => onChange('onComplete', e.target.checked)}
-                                />
-                                <div className="switch__track">
-                                    <div className="switch__thumb"></div>
-                                </div>
-                                <span className="switch__label">完成时</span>
-                            </label>
-                        </div>
-
-                        <div className="settings__form-group settings__form-group--no-margin">
-                            <label className="switch switch--sub">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.onError}
-                                    onChange={(e) => onChange('onError', e.target.checked)}
-                                />
-                                <div className="switch__track">
-                                    <div className="switch__thumb"></div>
-                                </div>
-                                <span className="switch__label">失败时</span>
-                            </label>
-                        </div>
-
-                        <div className="settings__form-group settings__form-group--no-margin">
-                            <label className="switch switch--sub">
-                                <input
-                                    type="checkbox"
-                                    checked={settings.onWarning}
-                                    onChange={(e) => onChange('onWarning', e.target.checked)}
-                                />
-                                <div className="switch__track">
-                                    <div className="switch__thumb"></div>
-                                </div>
-                                <span className="switch__label">警告时</span>
-                            </label>
-                        </div>
-                    </div>
                 </div>
             )}
         </div>
