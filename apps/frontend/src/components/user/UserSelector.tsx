@@ -4,6 +4,7 @@ import { UserSettingsModal } from './UserSettingsModal';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
 import { Dropdown } from '../shared/Dropdown';
 import { ModalLayer } from '../shared/OverlayLayer';
+import { renderCjkText, SpacedCjkText } from '../common/SpacedCjkText';
 
 interface UserSelectorProps {
   currentUser: string;
@@ -114,7 +115,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         onClick={() => dropdown.toggle()}
       >
         <span className="btn-icon">👤</span>
-        <span className="btn-text">{currentUser || '选择用户'}</span>
+        <span className="btn-text">{renderCjkText(currentUser || '选择用户')}</span>
         <svg className={`dropdown__arrow ${dropdown.isOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
           <path
             d="M -8 -3 L 0 5 L 8 -3"
@@ -189,7 +190,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                 </div>
               ))
             ) : (
-              <div className="dropdown__empty">暂无用户</div>
+              <div className="dropdown__empty"><SpacedCjkText text="暂无用户" /></div>
             )}
         </div>
       </Dropdown>
@@ -205,7 +206,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         {({ close }) => (
           <div className="create-user__dialog overlay-base">
             <div className="dialog__content">
-              <h3>创建新用户</h3>
+              <h3><SpacedCjkText text="创建新用户" /></h3>
               <input
                 type="text" autoComplete="off" spellCheck={false}
                 className="input"
@@ -227,7 +228,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                   className="btn btn--sm btn--secondary"
                   onClick={close}
                 >
-                  取消
+                  <SpacedCjkText text="取消" />
                 </button>
                 <button
                   className="btn btn--sm btn--primary"
@@ -239,7 +240,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                         '创建新用户'
                   }
                 >
-                  确认
+                  <SpacedCjkText text="确认" />
                 </button>
               </div>
             </div>
@@ -259,25 +260,25 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           <div className="create-user__dialog overlay-base">
             <div className="dialog__content">
               <div className="delete-confirm__icon">⚠️</div>
-              <h3>确认删除用户</h3>
+              <h3><SpacedCjkText text="确认删除用户" /></h3>
               <p className="delete-confirm__text">
-                确定要删除用户 <strong>"{userToDelete}"</strong> 吗？
+                <SpacedCjkText text="确定要删除用户" /> <strong>"{userToDelete}"</strong> <SpacedCjkText text="吗" />？
               </p>
               <p className="delete-confirm__subtext">
-                此操作无法撤销，用户相关数据将被永久删除。
+                <SpacedCjkText text="此操作无法撤销，用户相关数据将被永久删除。" />
               </p>
               <div className="dialog__buttons">
                 <button
                   className="btn btn--sm btn--secondary"
                   onClick={close}
                 >
-                  取消
+                  <SpacedCjkText text="取消" />
                 </button>
                 <button
                   className="btn btn--sm btn--danger"
                   onClick={confirmDeleteUser}
                 >
-                  删除用户
+                  <SpacedCjkText text="删除用户" />
                 </button>
               </div>
             </div>

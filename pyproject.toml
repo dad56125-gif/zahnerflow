@@ -9,6 +9,9 @@ dependencies = [
   "pyserial",
   "pydantic",
   "zahner-analysis>=1.1.5",
+  "thales-remote>=1.2.8",
+  "aiosmtplib>=5.1.2",
+  "tzdata>=2026.2",
 ]
 
 [dependency-groups]

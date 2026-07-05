@@ -67,7 +67,7 @@ function startBackend(): void {
     if (!backendPath) {
       writeHarnessLog('packaged backend not found');
       dialog.showErrorBox(
-        'ZahnerFlow backend not found',
+        'ZAHNERFLOW backend not found',
         'The packaged Python backend artifact is missing from app resources/python_backend.'
       );
       return;
@@ -95,13 +95,13 @@ function startBackend(): void {
     backendProcess = null;
     writeHarnessLog(`backend exit code=${code} signal=${signal}`);
     if (!appQuitting) {
-      console.error(`ZahnerFlow backend exited with code=${code} signal=${signal}`);
+      console.error(`ZAHNERFLOW backend exited with code=${code} signal=${signal}`);
     }
   });
   backendProcess.on('error', (error) => {
     backendProcess = null;
     writeHarnessLog(`backend spawn error=${error.stack || error.message}`);
-    dialog.showErrorBox('Failed to start ZahnerFlow backend', error.message);
+    dialog.showErrorBox('Failed to start ZAHNERFLOW backend', error.message);
   });
 }
 
@@ -133,6 +133,7 @@ async function createWindow(): Promise<void> {
     minWidth: 1180,
     minHeight: 760,
     show: false,
+    frame: false,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -3,6 +3,7 @@
 保留 build_output_path、normalize_path 等路径构建工具。
 """
 from datetime import datetime
+import re
 
 
 # ============================================================
@@ -11,6 +12,15 @@ from datetime import datetime
 
 def normalize_path(p: str) -> str:
     return p.replace('/', '\\').rstrip('\\')
+
+
+def safe_path_segment(value, fallback: str = "_unnamed") -> str:
+    text = str(value or "").strip()
+    if not text:
+        text = fallback
+    text = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", text)
+    text = re.sub(r"\s+", " ", text).strip(" .")
+    return text or fallback
 
 
 def get_test_type_from_measurement(measurement_type: str) -> str:
@@ -92,20 +102,23 @@ def build_output_path(options: dict) -> str:
         final_test_type = get_test_type_from_measurement(measurement_type)
     else:
         final_test_type = 'general'
+    final_test_type = safe_path_segment(final_test_type, "general")
 
     normalized_base = normalize_path(basePath)
+    project_segment = safe_path_segment(projectName) if projectName else ""
+    individual_segment = safe_path_segment(individualName) if individualName else ""
+    workflow_segment = safe_path_segment(workflow_id or workflow_name or 'unknown_workflow', "unknown_workflow")
 
-    if projectName and individualName:
-        basePath_res = f"{normalized_base}\\{projectName}\\{individualName}\\{final_test_type}"
-    elif projectName:
-        basePath_res = f"{normalized_base}\\{projectName}\\_unnamed\\{final_test_type}"
+    if project_segment and individual_segment:
+        basePath_res = f"{normalized_base}\\{project_segment}\\{individual_segment}\\{final_test_type}"
+    elif project_segment:
+        basePath_res = f"{normalized_base}\\{project_segment}\\_unnamed\\{final_test_type}"
     else:
-        timestamp = workflow_timestamp or datetime.utcnow().strftime('%y%m%d_%H%M%S')
-        wf_id_for_path = workflow_id or workflow_name or 'unknown_workflow'
-        basePath_res = f"{normalized_base}\\_unassigned\\{wf_id_for_path}\\{timestamp}\\{final_test_type}"
+        timestamp = safe_path_segment(workflow_timestamp or datetime.utcnow().strftime('%y%m%d_%H%M%S'))
+        basePath_res = f"{normalized_base}\\_unassigned\\{workflow_segment}\\{timestamp}\\{final_test_type}"
 
     if parent_node_type:
-        folder_name = build_advanced_node_folder_name(parent_node_type, options)
+        folder_name = safe_path_segment(build_advanced_node_folder_name(parent_node_type, options))
         basePath_res = f"{basePath_res}\\{folder_name}"
 
     return basePath_res

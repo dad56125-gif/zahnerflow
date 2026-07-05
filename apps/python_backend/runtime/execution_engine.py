@@ -42,6 +42,7 @@ class ExecutionEngine:
         self._workflow_name = ""
         self._workstation_type = None
         self._auto_startup_config: dict = {}
+        self._path_config: dict = {}
 
     @property
     def is_running(self) -> bool:
@@ -62,6 +63,7 @@ class ExecutionEngine:
         self._workflow_name = payload.get("workflowName", "")
         self._workstation_type = payload.get("workstationType")
         self._auto_startup_config = payload.get("autoStartupConfig") or {}
+        self._path_config = payload.get("pathConfig") or {}
         self.current_step_index = 0
         self._cancel_requested = False
         self._pause_requested = False
@@ -407,12 +409,14 @@ class ExecutionEngine:
         from experiment_worker import build_output_path
 
         timestamp = time.strftime("%y%m%d_%H%M%S")
+        path_config = self._path_config if isinstance(self._path_config, dict) else {}
         options = {
-            "basePath": params.get("outputPath", "C:\\data\\archive"),
-            "projectName": params.get("projectName", self._workflow_name),
-            "individualName": params.get("individualName", ""),
+            "basePath": params.get("outputPath") or path_config.get("basePath") or "C:\\data\\archive",
+            "projectName": params.get("projectName") or path_config.get("projectName") or "",
+            "individualName": params.get("individualName") or path_config.get("individualName") or "",
             "measurementType": meas_type,
             "workflowId": self.workflow_id,
+            "workflowName": self._workflow_name,
             "workflowTimestamp": timestamp,
         }
         if params.get("parentNodeType"):

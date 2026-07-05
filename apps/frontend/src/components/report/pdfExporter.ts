@@ -180,7 +180,7 @@ export function generateReportHtml(reportData: ReportData): string {
       </div>
       ` : ''}
       <div class="report-footer">
-        <p>生成时间: ${formatDateTime(reportData.generatedAt)} | ZahnerFlow 实验报告系统</p>
+        <p>生成时间: ${formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
       </div>
     </div>
   `;
@@ -195,8 +195,16 @@ export function exportToHtml(reportData: ReportData): void {
   <meta charset="utf-8">
   <title>实验报告_${escapeHtml(reportData.workflowName)}</title>
   <style>
+    :root {
+      --font-latin: "Oxanium", sans-serif;
+      --font-number: "Oxanium", sans-serif;
+      --font-cjk: "Noto Sans SC Variable", "Microsoft YaHei UI", sans-serif;
+      --font-ui: "Oxanium", "Noto Sans SC Variable", "Microsoft YaHei UI", sans-serif;
+      --font-ui-tracking: 0.018em;
+    }
     body {
-      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      font-family: var(--font-ui);
+      letter-spacing: var(--font-ui-tracking);
       background: #f3f4f6;
       margin: 0;
       padding: 32px;

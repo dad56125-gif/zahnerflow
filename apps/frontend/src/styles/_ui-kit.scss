@@ -292,7 +292,7 @@
   font-size: var(--size-md);
   font-weight: 600;
   color: #fff;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--font-ui-tracking);
 }
 
 .switch--sub .switch__label {

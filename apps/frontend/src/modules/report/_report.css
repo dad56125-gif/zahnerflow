@@ -103,7 +103,8 @@
     background: #252526;
     padding: 40px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+    font-family: var(--font-ui);
+    letter-spacing: var(--font-ui-tracking);
     border-radius: 8px;
     color: #d4d4d4;
 }

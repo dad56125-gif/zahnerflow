@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserSelector } from './user/UserSelector';
 import { useUser } from './shared/UserContext';
 import { Dropdown } from './shared/Dropdown';
+import { renderCjkText, SpacedCjkText } from './common/SpacedCjkText';
 import { useRafWindowEvent } from '../hooks/useRafWindowEvent';
 import {
   DEVELOPER_MODE_EVENT,
@@ -152,7 +153,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const workstations: Workstation[] = [
     {
       id: 'zahner-zennium',
-      name: 'Zahner Zennium',
+      name: 'ZAHNER ZENNIUM',
       type: '电化学工作站',
       status: 'connected',
     },
@@ -223,7 +224,22 @@ export const TopBar: React.FC<TopBarProps> = ({
     <div className="top-bar glass-layout">
       <div className="top-bar__brand">
           <div className="logo">
-            <span className="logo-text">ZahnerFlow</span>
+            <span className="logo-text" aria-label="ZAHNERFLOW">
+              <span className="logo-text__cluster logo-text__cluster--zahner" aria-hidden="true">
+                <span className="logo-text__letter logo-text__letter--z" data-letter="Z">Z</span>
+                <span className="logo-text__letter logo-text__letter--a" data-letter="A">A</span>
+                <span className="logo-text__letter logo-text__letter--h" data-letter="H">H</span>
+                <span className="logo-text__letter logo-text__letter--n" data-letter="N">N</span>
+                <span className="logo-text__letter logo-text__letter--e" data-letter="E">E</span>
+                <span className="logo-text__letter logo-text__letter--r" data-letter="R">R</span>
+              </span>
+              <span className="logo-text__cluster logo-text__cluster--flow" aria-hidden="true">
+                <span className="logo-text__letter logo-text__letter--f" data-letter="F">F</span>
+                <span className="logo-text__letter logo-text__letter--l" data-letter="L">L</span>
+                <span className="logo-text__letter logo-text__letter--o" data-letter="O">O</span>
+                <span className="logo-text__letter logo-text__letter--w" data-letter="W">W</span>
+              </span>
+            </span>
           </div>
           <div className="flex items-center gap-sm">
             <button
@@ -232,7 +248,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               onClick={handleVersionClick}
               title={developerMode ? '开发者模式已启用' : undefined}
             />
-            {developerHint && <span className="developer-hint">{developerHint}</span>}
+            {developerHint && <span className="developer-hint">{renderCjkText(developerHint)}</span>}
             {developerMode && (
               <button
                 type="button"
@@ -261,7 +277,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={() => handleDeviceClick('furnace')}
         >
           <span className="btn-icon"><TopBarDeviceIcon type="furnace" /></span>
-          <span className="btn-text">管式炉</span>
+          <span className="btn-text"><SpacedCjkText text="管式炉" /></span>
           <span className="device-status__indicator is-disconnected" />
         </div>
 
@@ -270,7 +286,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={() => handleDeviceClick('mfc')}
         >
           <span className="btn-icon"><TopBarDeviceIcon type="mfc" /></span>
-          <span className="btn-text">流量计</span>
+          <span className="btn-text"><SpacedCjkText text="流量计" /></span>
           <span className="device-status__indicator is-disconnected" />
         </div>
 
@@ -281,7 +297,9 @@ export const TopBar: React.FC<TopBarProps> = ({
             onClick={handleToggleDropdown}
           >
             <span className="btn-icon"><WorkstationIcon /></span>
-            <span className="btn-text">{selectedWorkstation ? selectedWorkstation.name : '选择工作站'}</span>
+            <span className={`btn-text ${selectedWorkstation ? 'workstation-model-text' : ''}`}>
+              {renderCjkText(selectedWorkstation ? selectedWorkstation.name : '选择工作站')}
+            </span>
             <span className={`workstation-status__indicator is-${selectedWorkstation?.status || 'disconnected'}`} />
             <svg className={`dropdown__arrow ${isWorkstationDropdownOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
               <path
@@ -315,12 +333,12 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="dropdown__workstation-content">
                   <div className="dropdown__workstation-icon"><WorkstationIcon /></div>
                   <div className="dropdown__workstation-info">
-                    <div className="dropdown__workstation-name">{workstation.name}</div>
-                    <div className="dropdown__workstation-type">{workstation.type}</div>
+                    <div className="dropdown__workstation-name workstation-model-text">{workstation.name}</div>
+                    <div className="dropdown__workstation-type">{renderCjkText(workstation.type)}</div>
                   </div>
                   <div className={`dropdown__workstation-status is-${workstation.status}`}>
                     <span className={`status__dot is-${workstation.status}`} />
-                    <span className="status__text">{workstation.status === 'connected' ? '已连接' : '未连接'}</span>
+                    <span className="status__text">{workstation.status === 'connected' ? <SpacedCjkText text="已连接" /> : <SpacedCjkText text="未连接" />}</span>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 repo_root = Path(SPECPATH).parents[1]
 backend_root = repo_root / "apps" / "python_backend"
@@ -10,10 +11,19 @@ a = Analysis(
     [str(backend_root / "main.py")],
     pathex=[str(backend_root), str(repo_root / "apps")],
     binaries=[],
-    datas=[],
+    datas=[
+        *collect_data_files("aiosmtplib"),
+        *collect_data_files("thales_remote"),
+        *collect_data_files("zahner_analysis"),
+        *collect_data_files("zahner_potentiostat"),
+    ],
     hiddenimports=[
         "engineio.async_drivers.asgi",
         "serial.tools.list_ports",
+        *collect_submodules("aiosmtplib"),
+        *collect_submodules("thales_remote"),
+        *collect_submodules("zahner_analysis"),
+        *collect_submodules("zahner_potentiostat"),
     ],
     hookspath=[],
     hooksconfig={},

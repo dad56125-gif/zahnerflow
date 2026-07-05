@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { Dropdown } from '../shared/Dropdown';
 import type { DeviceConnectionStatus } from '@zahnerflow/types';
+import { SpacedCjkText } from './SpacedCjkText';
 
 export interface DeviceConnectionPanelProps {
     /** 设备名称（用于显示） */
@@ -92,7 +93,7 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
         return (
             <div className={`device-connection ${isError ? 'error' : ''}`}>
                 <div className="connection__header">
-                    <h4>{deviceName}设备连接</h4>
+                    <h4><SpacedCjkText text={`${deviceName}设备连接`} /></h4>
                 </div>
 
                 <div className="device-connection__control-group" style={{ justifyContent: 'space-between' }}>
@@ -105,7 +106,7 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
                             disabled={isConnecting || availablePorts.length === 0}
                             style={{ width: '100%', justifyContent: 'space-between' }}
                         >
-                            <span>{selectedPort || '-- 选择端口 --'}</span>
+                            <span>{selectedPort || <SpacedCjkText text="-- 选择端口 --" />}</span>
                             <svg className={`dropdown__arrow ${dropdownOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
                                 <path d="M -8 -3 L 0 5 L 8 -3" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
@@ -126,7 +127,7 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
                                 </div>
                             ))}
                             {availablePorts.length === 0 && (
-                                <div className="dropdown__option is-disabled">无可用端口</div>
+                                <div className="dropdown__option is-disabled"><SpacedCjkText text="无可用端口" /></div>
                             )}
                         </Dropdown>
                     </div>
@@ -139,7 +140,7 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
                                 className="btn btn--md btn--secondary"
                                 disabled={isLoading}
                             >
-                                刷新
+                                <SpacedCjkText text="刷新" />
                             </button>
                         )}
 
@@ -148,7 +149,7 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
                             disabled={!selectedPort || isConnecting || isLoading}
                             className="btn btn--md btn--primary"
                         >
-                            {isConnecting ? '连接中...' : '连接'}
+                            {isConnecting ? <SpacedCjkText text="连接中..." /> : <SpacedCjkText text="连接" />}
                         </button>
                     </div>
                 </div>
@@ -159,15 +160,15 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
     // === 已连接状态 ===
     return (
         <div className="device-connection is-connected">
-            <span className="device-connection__status">{deviceName}设备已连接</span>
-            <span className="device-connection__port">端口: <strong>{selectedPort}</strong></span>
+            <span className="device-connection__status"><SpacedCjkText text={`${deviceName}设备已连接`} /></span>
+            <span className="device-connection__port"><SpacedCjkText text="端口" />: <strong>{selectedPort}</strong></span>
             {connectionInfo}
             <button
                 onClick={onDisconnect}
                 className="btn btn--sm btn--danger"
                 disabled={isLoading}
             >
-                断开连接
+                <SpacedCjkText text="断开连接" />
             </button>
         </div>
     );

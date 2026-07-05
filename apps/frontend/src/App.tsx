@@ -218,7 +218,7 @@ const AppContent: React.FC = () => {
 
       // 后端按节点 fingerprint 归档，前端只传当前名称建议。
       const draftName = workflowStore.draftWorkflowName;
-      const workflowName = draftName?.trim() || `工作流 ${new Date().toLocaleString('zh-CN', { hour12: false }).replace(/-/g, '/')}`;
+      const workflowName = draftName?.trim() || `工作流_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`;
 
       if (!draftName) {
         workflowStore.setDraftWorkflowName(workflowName);
@@ -244,17 +244,12 @@ const AppContent: React.FC = () => {
       // 🔥 SSOT: 不再主动清空，完全依赖后端 WebSocket 广播 nodesReset 事件
       // clearMeasurementCache() 和 resetExecutionState() 现在由 executionStore 的事件监听统一处理
 
-      const response = await fetch('/api/executions/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
+      const result = await runtimeClient.executions.reset();
+      if (result?.success) {
         setSuppressedEtaNodeFingerprint(nodeFingerprint);
         // ✅ 不再在此处主动调用 resetExecutionState()，依赖 WebSocket 事件
       } else {
-        console.error('[App] 重置失败:', response.status, response.statusText);
+        console.error('[App] 重置失败:', result?.message || '未知错误');
       }
     } catch (error) {
       console.error('Reset flow failed:', error);

@@ -6,6 +6,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { MfcDevice, DeviceCardProps } from '../../modules/mfc/mfcTypes';
+import { SpacedCjkText } from '../common/SpacedCjkText';
 
 interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   device: MfcDevice;
@@ -92,9 +93,10 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
     if (!device.maxFlowSccm) return '0';
     return ((flow / device.maxFlowSccm) * 100).toFixed(0);
   }, [device.maxFlowSccm]);
+  const isActiveDevice = Number(device.setFlow) > 0;
 
   return (
-    <div className={`mfc__card ${loading ? 'is-loading' : ''} ${disabled ? 'is-disabled' : ''}`}>
+    <div className={`mfc__card ${isActiveDevice ? 'is-active-device' : 'is-idle-device'} ${loading ? 'is-loading' : ''} ${disabled ? 'is-disabled' : ''}`}>
       {/* 头部：地址 + 气体 + 最大流量 + 状态 */}
       <div className="mfc__card-head">
         <div className="mfc__card-title">
@@ -111,12 +113,12 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
         <div className="mfc__control">
           <div className="mfc__values">
             <div className="mfc__value-row">
-              <span className="mfc__label">实际</span>
+              <span className="mfc__label"><SpacedCjkText text="实际" /></span>
               <span className="mfc__flow">{formatFlow(device.flowSccm)}</span>
               <span className="mfc__unit">sccm</span>
             </div>
             <div className="mfc__value-row">
-              <span className="mfc__label">设定</span>
+              <span className="mfc__label"><SpacedCjkText text="设定" /></span>
               <span className="mfc__flow mfc__flow--set">{formatFlow(device.setFlow)}</span>
               <span className="mfc__unit">sccm</span>
             </div>
@@ -140,31 +142,32 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               onClick={handleSetFlow}
               disabled={disabled || loading || isSettingFlow}
             >
-              设置
+              <SpacedCjkText text="设置" />
             </button>
           </div>
-          {error && <div className="mfc__error">{error}</div>}
+          {error && <div className="mfc__error"><SpacedCjkText text={error} /></div>}
         </div>
 
-        {/* 右侧：双柱状图水平并排 */}
-        <div className="mfc__bars">
-          <div className="mfc__bar-col">
-            <div className="mfc__bar-wrap">
-              <div className="mfc__bar-bg">
-                <div className="mfc__bar-fill mfc__bar-fill--actual" style={{ height: `${getFlowBarHeight()}%` }} />
+        {isActiveDevice && (
+          <div className="mfc__bars">
+            <div className="mfc__bar-col">
+              <div className="mfc__bar-wrap">
+                <div className="mfc__bar-bg">
+                  <div className="mfc__bar-fill mfc__bar-fill--actual" style={{ height: `${getFlowBarHeight()}%` }} />
+                </div>
               </div>
+              <span className="mfc__bar-label">{getPercent(device.flowSccm)}%</span>
             </div>
-            <span className="mfc__bar-label">{getPercent(device.flowSccm)}%</span>
-          </div>
-          <div className="mfc__bar-col">
-            <div className="mfc__bar-wrap">
-              <div className="mfc__bar-bg">
-                <div className="mfc__bar-fill mfc__bar-fill--setpoint" style={{ height: `${getSetFlowBarHeight()}%` }} />
+            <div className="mfc__bar-col">
+              <div className="mfc__bar-wrap">
+                <div className="mfc__bar-bg">
+                  <div className="mfc__bar-fill mfc__bar-fill--setpoint" style={{ height: `${getSetFlowBarHeight()}%` }} />
+                </div>
               </div>
+              <span className="mfc__bar-label">{getPercent(device.setFlow)}%</span>
             </div>
-            <span className="mfc__bar-label">{getPercent(device.setFlow)}%</span>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

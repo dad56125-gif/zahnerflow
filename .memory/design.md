@@ -60,6 +60,8 @@
 - MFC：`port == "COM_SIMULATOR"` 使用模拟器。
 - Zahner：`host == "simulator"` 使用模拟器。
 
+串口设备连接由 `DeviceManager` 统一记录当前连接端口和连接开始时间。除 `COM_SIMULATOR` 外，同一个真实串口不能同时被 Furnace 与 MFC 复用；运行时发现端口已被本进程内其他设备占用时必须在连接前拒绝，并提示先断开占用设备。如果 Windows 在打开串口时返回拒绝访问，应作为操作系统/外部进程串口占用或权限问题上报，而不是推断为前后端通信异常。
+
 归属文件：
 
 - `apps/python_backend/runtime/device_manager.py`
@@ -68,7 +70,7 @@
 
 禁止事项：禁止把 `FURNACE_MODE`、`MFC_MODE`、`ZAHNER_MODE` 等全局环境变量作为主要路由机制。
 
-最近复核：2026-06-18，完成参数驱动路由后复核。
+最近复核：2026-07-03，补充真实串口占用校验与连接事实记录后复核。
 
 ## [设备-真机驱动]
 
@@ -91,6 +93,8 @@
 
 当前规则：Furnace、MFC 和 Zahner 的实时状态统一通过 `deviceStatusUpdate` Socket.IO 事件和 `/api/devices/{device}/runtime/status` REST 路由暴露。统一外壳由 `RuntimeDeviceStatusEnvelope` 描述，包含 `device`、`connected`、`mode`、`timestamp`、`payload`、`connectionState`、`capabilities`、`deviceCount` 和 `error`。`payload` 只承载设备专属状态，不在统一外壳中强行抹平设备业务差异。
 
+`connectionState` 是设备连接事实的承载位置。后端应在其中返回当前连接的 `port`、`connectedAt`、`mode` 和模拟器 `profile` 等信息；前端设备面板的连接时长、已选端口恢复等展示应以后端 runtime status 为准，不能用 modal 局部状态伪造连接开始时间。
+
 归属文件：
 
 - `apps/shared/contracts/runtime_device.py`
@@ -107,7 +111,7 @@
 
 禁止事项：禁止重新引入 `furnaceStatusUpdate`、`mfcStatusUpdate`、`mfcConnectionUpdate` 或 Furnace/MFC 专用 WebSocket service；禁止为了“统一”而把 Furnace 的温度程序、MFC 的多地址流量设备等业务差异塞进一个大 hook；禁止在业务 hook 中直接硬编码设备状态事件名。
 
-最近复核：2026-06-21，统一 Furnace/MFC runtime 状态契约并删除旧设备专用事件后复核。
+最近复核：2026-07-03，补充 connectionState 连接端口与连接开始时间后复核。
 
 ## [执行-状态机]
 
@@ -262,6 +266,7 @@ ETA 规则：
 16. 主工具栏运行控制收敛为一个主按钮：空闲时显示“运行”，执行成功或失败后显示“重置”，重置完成后清空执行状态并回到“运行”；运行过程中不显示停止按钮。定时运行不再是工具栏按钮，而是流程控制节点 `scheduled_start`，其参数页复用同一套翻页钟时间选择控件。
 17. 工作流块节点 `workflow_block` 在前端作为流程控制节点出现。属性面板只提供已归档工作流选择、只读预览和“展开到当前位置”；展开时用子工作流的可执行节点替换当前工作流块，并保留父工作流块前后的节点。展开后的节点带顶层 `group` 元数据，选中同一连续分组内任意节点时可收缩回原工作流块。`group` 不属于节点执行参数，不参与 workflow fingerprint。v1 不提供块内直接编辑器，不新增公开保存式 workflow CRUD。当前画布引用的子工作流如果包含 `workflow_block`，主运行按钮必须禁用，原位展开按钮也必须禁用。
 18. `startup` 和 `shutdown` 是后端自动测量边界，不在节点库中展示，也不应由用户在新工作流里手动创建。前端启动执行时只通过 `autoStartupConfig` 传递 Zahner 自动启动连接参数；该字段是执行请求上下文，不是节点配置，不参与工作流定义归档或 fingerprint。
+19. 用户设置中的文件路径配置是测量输出路径的默认来源。`basePath`、`projectName` 和 `individualName` 随执行请求进入后端执行引擎；测量节点可用显式节点参数覆盖这些默认值。项目名和样品名输入层限制为英文、数字和下划线，但后端在最终构建目录时仍必须清洗每一个路径片段，避免工作流名、时间戳或外部输入中的 Windows 非法字符进入真实目录名。
 
 归属文件：
 

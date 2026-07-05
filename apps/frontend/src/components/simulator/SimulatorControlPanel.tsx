@@ -131,7 +131,7 @@ export const SimulatorControlPanel: React.FC<SimulatorControlPanelProps> = ({ on
             })}
           />
           <DeviceProfileCard
-            title="Zahner"
+            title="ZAHNER"
             description="启动工作流时改用 host=simulator，并控制连接/测量故障。"
             enabled={settings.devices.zahner.enabled}
             profile={settings.devices.zahner.profile}

@@ -47,7 +47,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
           <span className="left-panel-text">节点</span>
           {selectedWorkstation && (
             <span className="workstation-indicator">
-              ({selectedWorkstation === 'zahner-zennium' ? 'Zahner Zennium' : 'PP242'})
+              ({selectedWorkstation === 'zahner-zennium' ? 'ZAHNER ZENNIUM' : 'PP242'})
             </span>
           )}
         </h3>

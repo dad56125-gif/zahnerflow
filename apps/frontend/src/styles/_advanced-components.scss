@@ -208,7 +208,7 @@
 .console__log {
   display: flex; gap: var(--size-sm); padding: var(--size-2xs) var(--size-sm);
   border-radius: var(--radius-sm); font-size: var(--size-xs);
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: var(--font-number);
   background: rgba(255, 255, 255, 0.03);
 
   &--success { color: var(--color-log-success); background: var(--color-success-bg); }

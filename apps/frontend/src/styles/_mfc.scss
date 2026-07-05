@@ -6,16 +6,19 @@
 
 .mfc__cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 20rem));
   gap: var(--size-md);
-  height: 100%;
+  height: auto;
   align-content: start;
-  padding: var(--size-md);
+  justify-content: start;
+  padding: 0;
 }
 
 /* === Compact Card === */
 .mfc__card {
   @extend %glass-panel-base;
+  width: 100%;
+  max-width: 20rem;
   border-radius: var(--radius);
   padding: var(--size-md);
   transition: var(--transition);
@@ -23,12 +26,36 @@
 
   @include glass-lift;
 
+  &.is-active-device {
+    border-color: rgba(16, 185, 129, 0.26);
+    background:
+      radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 46%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018)),
+      var(--glass-hover);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.11),
+      0 0 var(--size-xl) rgba(16, 185, 129, 0.1);
+  }
+
+  &.is-idle-device {
+    border-color: rgba(148, 163, 184, 0.12);
+    background:
+      linear-gradient(135deg, rgba(148, 163, 184, 0.055), rgba(255, 255, 255, 0.012)),
+      rgba(0, 0, 0, 0.12);
+  }
+
   &.is-disabled { opacity: 0.6; pointer-events: none; }
   &.is-loading { opacity: 0.75; }
 }
 
 /* === Card Elements === */
-.mfc__card-head    { @include card-head-row; }
+.mfc__card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--size-sm);
+  min-width: 0;
+}
 .mfc__card-title   { @extend %flex-center; gap: var(--size-sm); }
 
 .mfc__card-main { display: flex; gap: var(--size-sm); flex: 1; }
@@ -105,8 +132,14 @@
    3. Device Sections
    ========================================================================== */
 
-.mfc__sections { @include flex-col; height: 100%; overflow-y: auto; padding: var(--size-md); }
-.mfc__section  { @include flex-col; }
+.mfc__sections {
+  @include flex-col(var(--size-xl));
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--size-xl);
+}
+
+.mfc__section  { @include flex-col; min-height: 0; }
 
 .mfc__section-title {
   font-size: var(--size-lg); font-weight: 600; color: var(--color-success);
@@ -132,6 +165,129 @@
 }
 
 .connection__status { @extend %flex-center; gap: var(--size-sm); flex-wrap: wrap; }
+
+.workspace-device-modal--mfc > .modal__body {
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.mfc-modal {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(20rem, 0.95fr);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 13, 28, 0) 0%,
+      rgba(0, 0, 0, 0.045) 22%,
+      rgba(0, 0, 0, 0.08) 100%
+    );
+
+  &.is-disconnected {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mfc-modal__main {
+  min-width: 0;
+  min-height: 0;
+  @include flex-col(0);
+  height: 100%;
+  overflow: hidden;
+
+  > .device-connection,
+  > .error-banner {
+    margin: var(--size-xl);
+  }
+}
+
+.mfc-modal__sidebar {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--size-xl);
+  @include flex-col(var(--size-lg));
+  overflow-y: auto;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(20, 30, 64, 0) 0%,
+      rgba(20, 30, 64, 0.05) 22%,
+      rgba(0, 0, 0, 0.08) 100%
+    );
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 1px;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0) 10%,
+        var(--glass-border) 28%,
+        var(--glass-border) 100%
+      );
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .device-dashboard--mfc-strip {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .device-dashboard__mfc-layout {
+    grid-template-columns: repeat(2, minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr));
+    gap: var(--size-2xs);
+  }
+
+  .device-dashboard__pv-card {
+    grid-column: span 2;
+  }
+
+  .device-dashboard__pill-stack {
+    grid-column: span 2;
+    aspect-ratio: 8 / 3;
+  }
+
+  .device-dashboard__status-badge {
+    grid-column: span 2;
+  }
+
+  .device-dashboard__pv-value,
+  .device-dashboard__pill-value,
+  .device-dashboard__runtime-value,
+  .device-dashboard__segment-value,
+  .device-dashboard__total-value {
+    font-family: var(--device-number-font);
+    font-feature-settings: "tnum" 1;
+    font-weight: 800;
+    transform: scaleY(0.9);
+    transform-origin: center;
+  }
+
+  > .btn {
+    align-self: stretch;
+    justify-content: center;
+  }
+}
 
 /* === Error Message === */
 .error__message {
@@ -277,9 +433,31 @@
    ========================================================================== */
 
 @media (max-width: 1200px) {
-  .mfc__cards          { grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--size-lg); }
+  .mfc__cards          { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 20rem)); gap: var(--size-lg); }
 }
 
 @media (max-width: 768px) {
-  .mfc__cards          { grid-template-columns: 1fr; gap: var(--space); padding: var(--space); }
+  .mfc-modal {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+
+    &__sidebar {
+      max-height: 18rem;
+      border-top: 1px solid var(--glass-border);
+
+      &::before {
+        display: none;
+      }
+    }
+  }
+
+  .mfc__cards          { grid-template-columns: minmax(0, 1fr); gap: var(--space); }
+  .mfc__card           { max-width: none; }
+  .mfc__sections       { padding: var(--space); }
+
+  .mfc-modal__sidebar {
+    .device-dashboard__mfc-layout {
+      grid-template-columns: repeat(2, minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr));
+    }
+  }
 }

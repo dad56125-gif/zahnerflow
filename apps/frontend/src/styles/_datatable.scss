@@ -28,7 +28,7 @@
     border-bottom: 1px solid var(--glass-border);
     white-space: nowrap;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: var(--font-ui-tracking);
     font-size: clamp(0.625rem, 1.2vw, 0.6875rem);
   }
 

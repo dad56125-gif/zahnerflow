@@ -155,6 +155,7 @@ async def create_execution(body: dict):
                 "workflowName": workflow_name or "",
                 "workstationType": workstation_type,
                 "autoStartupConfig": auto_startup_config,
+                "pathConfig": path_config or {},
             }
         )
     except Exception as e:

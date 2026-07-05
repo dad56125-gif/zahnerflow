@@ -149,6 +149,7 @@ export const runtimeClient = {
     pause: <T = { message: string }>(id: string) => put<T>(`/api/executions/${encodeURIComponent(id)}/pause`),
     resume: <T = { message: string }>(id: string) => put<T>(`/api/executions/${encodeURIComponent(id)}/resume`),
     cancel: <T = { message: string }>(id: string) => del<T>(`/api/executions/${encodeURIComponent(id)}`),
+    reset: <T = { success: boolean; message: string; timestamp: string }>() => post<T>('/api/executions/reset'),
   },
 
   devices: {

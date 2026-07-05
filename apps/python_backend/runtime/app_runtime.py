@@ -415,6 +415,7 @@ class AppRuntime:
         device_count = len(status.get("devices", [])) if device == "mfc" else (1 if connected else 0)
         profile = self.devices.device_profile(device)
         diagnostics = self.devices.device_diagnostics(device)
+        connection_info = self.devices.device_connection_info(device)
         return {
             "device": device,
             "connected": connected,
@@ -426,6 +427,7 @@ class AppRuntime:
                 "status": "connected" if connected else "disconnected",
                 "mode": self.devices.device_mode(device),
                 "profile": profile,
+                **connection_info,
             },
             "diagnostics": diagnostics,
             "capabilities": DEVICE_CAPABILITIES.get(device, []),

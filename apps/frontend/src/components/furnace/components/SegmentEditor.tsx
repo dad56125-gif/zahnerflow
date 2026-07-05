@@ -66,7 +66,7 @@ export const SegmentEditor: React.FC<SegmentEditorProps> = ({
                       disabled={!is_connected}
                       title={validation_errors[`temp_${id}`] || ''}
                     />
-                    <span className="unit">℃</span>
+                    <span className="unit">°C</span>
                   </div>
 
                   <div className="segment__label">

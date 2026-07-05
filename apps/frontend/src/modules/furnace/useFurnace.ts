@@ -511,8 +511,11 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   // ==================== Effects ====================
 
   useEffect(() => {
-    load_presets();
-  }, [load_presets]);
+    runtimeClient.devices.furnace.presets
+      .list<FurnacePresetMeta[]>()
+      .then((presets) => updateState({ presets }))
+      .catch(() => undefined);
+  }, [updateState]);
 
   useEffect(() => {
     ensureRuntimeStatusSubscription();

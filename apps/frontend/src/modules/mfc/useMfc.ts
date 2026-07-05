@@ -92,6 +92,7 @@ export interface MfcState {
   availableDevices: MfcDeviceInfo[];
   deviceStatuses: Map<number, MfcStatus>;
   connection_status: DeviceConnectionStatus;
+  connection_started_at: string | null;
   selected_port: string;
   available_ports: string[];
   historyData: Map<number, MfcSample[]>;
@@ -143,6 +144,7 @@ const createInitialState = (): MfcState => ({
   availableDevices: [],
   deviceStatuses: new Map(),
   connection_status: 'disconnected',
+  connection_started_at: null,
   selected_port: '',
   available_ports: [],
   historyData: new Map(),
@@ -227,9 +229,11 @@ export function useMfc(): [MfcState, MfcControls] {
     }
   }, [updateState, handleError]);
 
-  const refreshDevices = useCallback(async (): Promise<void> => {
+  const refreshDevices = useCallback(async (options?: { silent?: boolean }): Promise<void> => {
     try {
-      setLoading(true);
+      if (!options?.silent) {
+        setLoading(true);
+      }
       const devices = await runtimeClient.devices.mfc.devices<MfcDeviceInfo[]>();
       const mfcDevices: MfcDevice[] = devices.map((device) => ({
         ...device,
@@ -249,7 +253,9 @@ export function useMfc(): [MfcState, MfcControls] {
     } catch (error) {
       handleError(error);
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   }, [setLoading, handleError, updateState]);
 
@@ -261,6 +267,12 @@ export function useMfc(): [MfcState, MfcControls] {
       : [];
 
     setState((prev) => {
+      const connectedAt = typeof envelope.connectionState?.connectedAt === 'string'
+        ? envelope.connectionState.connectedAt
+        : prev.connection_started_at;
+      const connectedPort = typeof envelope.connectionState?.port === 'string'
+        ? envelope.connectionState.port
+        : prev.selected_port;
       const previousByAddress = new Map(prev.devices.map((device) => [device.address, device]));
       const updatedDevices = statusDevices.length > 0
         ? statusDevices.map((device) => toMfcDevice(device, previousByAddress.get(device.address)))
@@ -271,6 +283,8 @@ export function useMfc(): [MfcState, MfcControls] {
       return {
         ...prev,
         connection_status: envelope.connected ? 'connected' : 'disconnected',
+        connection_started_at: envelope.connected ? connectedAt : null,
+        selected_port: envelope.connected ? connectedPort : prev.selected_port,
         devices: envelope.connected ? updatedDevices : [],
         availableDevices: envelope.connected ? availableDevices : [],
         diagnostics: {
@@ -298,8 +312,9 @@ export function useMfc(): [MfcState, MfcControls] {
         updateState({
           connection_status: 'connected',
         });
-        if (statusData.deviceCount > 0) {
-          refreshDevices();
+        const statusDevices = Array.isArray(statusData.payload?.devices) ? statusData.payload.devices : [];
+        if (statusData.deviceCount > 0 && statusDevices.length === 0 && state.devices.length === 0) {
+          refreshDevices({ silent: true });
         }
       } else {
         updateState({ connection_status: 'disconnected' });
@@ -310,7 +325,7 @@ export function useMfc(): [MfcState, MfcControls] {
       updateState({ connection_status: 'disconnected' });
       get_available_ports();
     }
-  }, [get_available_ports, refreshDevices, updateState, state.selected_port, handleRuntimeStatusUpdate, ensureRuntimeStatusSubscription]);
+  }, [get_available_ports, refreshDevices, updateState, state.devices.length, handleRuntimeStatusUpdate, ensureRuntimeStatusSubscription]);
 
   // ==================== 连接与断开 ====================
 
@@ -428,6 +443,7 @@ export function useMfc(): [MfcState, MfcControls] {
       addLog('info', 'Disconnected');
       updateState({
         connection_status: 'disconnected',
+        connection_started_at: null,
         selected_port: '',
         devices: [],
         availableDevices: [],

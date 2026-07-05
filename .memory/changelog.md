@@ -2,6 +2,39 @@
 
 本文记录会影响设计判断的变化。每条记录都必须使用 `design.md` 中的锚点。
 
+## 2026-07-03 - 修正测量输出路径与 MFC 打开刷新
+
+锚点：[接口-前端契约]，[执行-状态机]，[设备-runtime状态契约]
+
+原因：执行失败提示 Windows 文件名、目录名或卷标语法不正确，实际路径中包含自动工作流名产生的 `/` 与 `:`。用户设置中项目名和样品名已有输入约束，但测量节点实际构建路径时没有使用用户文件路径配置，而是把工作流名作为项目名兜底；同时 MFC 已连接时每次打开 modal 仍触发一次带 loading overlay 的设备刷新，造成页面整体刷新感。
+
+变更：
+1. `experiment_worker.build_output_path()` 新增路径片段清洗，对项目名、样品名、测试类型、工作流名、时间戳和高级节点文件夹名统一替换 Windows 非法字符。
+2. 执行创建时把用户文件路径配置传入执行引擎；测量输出路径按“节点显式参数、用户设置、默认值”的顺序取 `basePath`、`projectName` 和 `individualName`。
+3. 前端自动工作流名改为不含 `/` 和 `:` 的安全时间格式，避免兜底名称进入路径或历史记录时产生非法目录名。
+4. MFC 打开 modal 时仍同步 runtime status，但已连接且 runtime status 已带设备列表时不再额外刷新设备列表；只有缺少设备明细时才静默后台补拉，不显示整面 loading。
+
+设计影响：用户文件路径配置是测量输出目录的默认事实来源，后端路径构建层是最终防线。MFC modal 打开只做状态接管，不应在连接未断开的情况下制造整页刷新感。
+
+验证：执行 `uv run python -m compileall apps/python_backend apps/shared/contracts`、`PYTHONPATH=. uv run pytest tests/test_simulator_contracts.py -q`、`pnpm --dir apps/frontend build` 通过；新增测试覆盖项目/样品配置优先生效和未分配工作流名清洗。
+
+## 2026-07-03 - 设备连接状态记录真实端口与连接时间
+
+锚点：[设备-连接路由]，[设备-runtime状态契约]，[接口-前端契约]
+
+原因：Furnace 连接真实串口时出现 Windows `PermissionError(13, 拒绝访问)`，需要区分前后端通信问题与操作系统串口占用/权限问题；同时 MFC modal 关闭后会重建组件，导致本地 `connectedAt` 状态丢失，连接时长被重置。
+
+变更：
+1. `DeviceManager` 为 Furnace、MFC 和 Zahner 记录连接事实，包括 `port`、`connectedAt`、`mode` 和模拟器 `profile`。
+2. Furnace 与 MFC 连接真实串口前检查本进程内已有设备占用，除 `COM_SIMULATOR` 外禁止两个设备复用同一串口。
+3. 真实串口打开失败时包装为更明确的错误信息，提示可能被外部串口工具、另一个 ZahnerFlow 实例或驱动占用，而不是把它归因于前后端通信。
+4. 设备 runtime status 的 `connectionState` 返回连接端口和连接开始时间；MFC 前端 hook 从后端状态恢复已选端口和连接开始时间。
+5. MFC modal 删除局部 `connectedAt` 状态，连接时长改由后端 `connectionState.connectedAt` 计算，因此关闭并重新打开 modal 不会重置连接时长。
+
+设计影响：串口连接事实由后端运行时统一持有，设备面板只展示后端事实。真实串口拒绝访问属于 OS/驱动/外部进程占用层面的打开失败；前端不应通过重建 modal 改写连接开始时间。
+
+验证：执行 `uv run python -m compileall apps/python_backend apps/shared/contracts`、`PYTHONPATH=. uv run pytest tests/test_simulator_contracts.py -q`、`pnpm --dir apps/frontend build` 通过；串口模拟器冒烟确认 MFC 连接后 `connectionState` 包含 `connectedAt` 与 `port`，断开后清空。
+
 ## 2026-07-01 - 启动停止改为测量自动边界
 
 锚点：[执行-状态机]，[执行-ETA与事实记录]，[接口-前端契约]

@@ -2,6 +2,7 @@
 
 .device-dashboard {
   --device-dashboard-tile: calc(var(--size-3xl) * 1.9);
+  --device-dashboard-furnace-radius: calc(var(--device-dashboard-tile) * 0.24);
   @extend %glass-panel-base;
   @include flex-col(var(--size-xs));
   padding: var(--size-xs);
@@ -13,6 +14,10 @@
   &--compact {
     gap: var(--size-sm);
     padding: var(--size-sm);
+  }
+
+  &--furnace-strip {
+    padding: var(--size-xs);
   }
 }
 
@@ -40,7 +45,7 @@
 
 .device-dashboard__eyebrow {
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: var(--font-ui-tracking);
   text-transform: uppercase;
 }
 
@@ -173,23 +178,33 @@
 
 .device-dashboard__furnace-layout {
   display: grid;
-  grid-template-columns: repeat(5, var(--device-dashboard-tile));
-  grid-template-areas:
-    "pv pv curve curve curve"
-    "sv mv curve curve curve"
-    "runtime runtime phase state state";
+  grid-template-columns:
+    minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr)
+    minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr)
+    minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr)
+    minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr)
+    minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr)
+    minmax(calc(var(--device-dashboard-tile) * 1.05), 1fr);
   gap: var(--size-2xs);
   align-items: stretch;
-  justify-content: start;
+  justify-content: stretch;
+
+  > * {
+    grid-area: auto;
+  }
 }
 
 .device-dashboard__pv-card,
 .device-dashboard__mini-card,
+.device-dashboard__pill-stack,
+.device-dashboard__pill-meter,
+.device-dashboard__segment-card,
+.device-dashboard__total-card,
 .device-dashboard__runtime-card,
 .device-dashboard__status-badge {
   min-width: 0;
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
+  border-radius: var(--device-dashboard-furnace-radius);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018)),
     var(--glass-hover);
@@ -197,11 +212,10 @@
 }
 
 .device-dashboard__pv-card {
-  grid-area: pv;
   @include flex-col(var(--size-3xs));
   justify-content: space-between;
-  min-height: calc(var(--device-dashboard-tile) * 0.95);
-  padding: var(--size-xs);
+  aspect-ratio: 4 / 3;
+  padding: var(--size-sm) var(--size-sm) var(--size-xs);
   border-color: var(--glass-border-hover);
   background:
     radial-gradient(circle at top left, var(--color-primary-bg), transparent 52%),
@@ -212,8 +226,9 @@
 .device-dashboard__tile-label,
 .device-dashboard__tile-meta {
   color: var(--text-secondary);
-  font-size: var(--size-xs);
+  font-size: var(--size-sm);
   line-height: 1.15;
+  font-weight: 750;
 }
 
 .device-dashboard__pv-value {
@@ -234,20 +249,56 @@
 .device-dashboard__mini-card {
   @include flex-col(calc(var(--size-3xs) * 0.5));
   justify-content: space-between;
-  aspect-ratio: 1;
+  min-height: calc(var(--device-dashboard-tile) * 0.9);
   padding: var(--size-3xs);
+}
 
-  &--sv {
-    grid-area: sv;
-  }
+.device-dashboard__pill-stack {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--size-2xs);
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
 
-  &--mv {
-    grid-area: mv;
-  }
+.device-dashboard__pill-meter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-xs);
+  min-height: 0;
+  padding: var(--size-2xs) var(--size-sm);
+  border-radius: var(--radius-full);
 
-  &--phase {
-    grid-area: phase;
+  .device-dashboard__tile-label {
+    font-size: var(--size-md);
   }
+}
+
+.device-dashboard__pv-card .device-dashboard__tile-label {
+  color: var(--text-primary);
+  font-size: var(--size-md);
+}
+
+.device-dashboard__pill-value {
+  color: var(--text-primary);
+  font-size: var(--size-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.device-dashboard__pill-meter--sv .device-dashboard__pill-value {
+  color: var(--color-sv);
+}
+
+.device-dashboard__pill-meter--mv .device-dashboard__pill-value {
+  color: var(--color-mv);
 }
 
 .device-dashboard__mini-value {
@@ -267,21 +318,49 @@
 }
 
 .device-dashboard__runtime-card {
-  grid-area: runtime;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: var(--size-xs);
-  padding: var(--size-3xs) var(--size-xs);
+  @include flex-col(var(--size-3xs));
+  justify-content: space-between;
+  padding: var(--size-sm);
+  aspect-ratio: 4 / 3;
 }
 
 .device-dashboard__runtime-value {
   display: block;
   color: var(--text-primary);
-  font-size: var(--size-sm);
+  font-size: var(--size-lg);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  margin-top: calc(var(--size-3xs) * 0.5);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.device-dashboard__segment-card {
+  @include flex-col(var(--size-3xs));
+  justify-content: space-between;
+  aspect-ratio: 4 / 3;
+  padding: var(--size-sm);
+}
+
+.device-dashboard__total-card {
+  @include flex-col(var(--size-3xs));
+  justify-content: space-between;
+  aspect-ratio: 4 / 3;
+  padding: var(--size-sm);
+}
+
+.device-dashboard__segment-card .device-dashboard__tile-label,
+.device-dashboard__total-card .device-dashboard__tile-label,
+.device-dashboard__runtime-card .device-dashboard__tile-label {
+  font-size: var(--size-md);
+}
+
+.device-dashboard__segment-value,
+.device-dashboard__total-value {
+  color: var(--text-primary);
+  font-size: var(--size-2xl);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .device-dashboard__runtime-track {
@@ -321,17 +400,17 @@
 }
 
 .device-dashboard__status-badge {
-  grid-area: state;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--size-3xs);
-  padding: var(--size-3xs) var(--size-xs);
-  border-radius: var(--radius-full);
+  padding: var(--size-sm);
+  aspect-ratio: 4 / 3;
+  border-radius: var(--device-dashboard-furnace-radius);
   color: var(--text-secondary);
-  font-size: var(--size-xs);
+  font-size: var(--size-sm);
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: var(--font-ui-tracking);
   white-space: nowrap;
 
   &--success {
@@ -602,6 +681,10 @@
 }
 
 @media (max-width: 900px) {
+  .device-dashboard__furnace-layout {
+    grid-template-columns: repeat(2, minmax(calc(var(--device-dashboard-tile) * 1.1), 1fr));
+  }
+
   .device-dashboard__metric-grid--three,
   .device-dashboard__metric-grid--four {
     grid-template-columns: repeat(auto-fill, var(--device-dashboard-tile));
@@ -609,6 +692,10 @@
 }
 
 @media (max-width: 640px) {
+  .device-dashboard__furnace-layout {
+    grid-template-columns: 1fr;
+  }
+
   .device-dashboard__header {
     align-items: stretch;
     flex-direction: column;

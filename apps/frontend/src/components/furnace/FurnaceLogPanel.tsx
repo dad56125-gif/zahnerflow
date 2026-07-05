@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { SpacedCjkText } from '../common/SpacedCjkText';
 
 interface LogEntry {
   id: string | number;
@@ -23,21 +24,21 @@ export const FurnaceLogPanel: React.FC<FurnaceLogPanelProps> = ({ logs, onClear,
   return (
     <div className="console">
       <div className="console__header">
-        <h4>{title}</h4>
+        <h4><SpacedCjkText text={title} /></h4>
         <div className="console__controls">
           <button
             onClick={onClear}
             className="btn btn--sm btn--secondary"
             title="清空日志"
           >
-            清空
+            <SpacedCjkText text="清空" />
           </button>
         </div>
       </div>
       <div className="console__content">
         {logs.length === 0 ? (
           <div className="console__log info">
-            <span className="log-message">暂无操作记录</span>
+            <span className="log-message"><SpacedCjkText text="暂无操作记录" /></span>
           </div>
         ) : (
           <div className="log-list">

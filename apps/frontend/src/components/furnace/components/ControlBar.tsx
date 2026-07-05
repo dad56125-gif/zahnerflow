@@ -2,6 +2,7 @@ import React, { useRef, useCallback } from 'react';
 import type { FurnaceState } from '../../../modules/furnace/useFurnace';
 import { Dropdown } from '../../shared/Dropdown';
 import { useDropdownPosition } from '../../shared/useDropdownPosition';
+import { renderCjkText, SpacedCjkText } from '../../common/SpacedCjkText';
 
 interface ControlBarProps {
   furnace_state: FurnaceState;
@@ -58,7 +59,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={() => dropdown.toggle()}
         disabled={!is_connected || is_loading}
       >
-        {selectedLabel}
+        {renderCjkText(selectedLabel)}
       </button>
 
       <Dropdown
@@ -73,7 +74,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
             className={`dropdown__item ${!selected_preset_name ? 'is-active' : ''}`}
             onClick={() => handleSelect('')}
           >
-            选择预设程序段
+            <SpacedCjkText text="选择预设程序段" />
           </div>
           {furnace_state.presets.map(preset => (
             <div
@@ -93,7 +94,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={on_write}
         disabled={!is_connected || is_loading}
       >
-        写入
+        <SpacedCjkText text="写入" />
       </button>
 
       {/* 预设名称输入框 */}
@@ -112,7 +113,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={on_new}
         disabled={!is_connected || is_loading}
       >
-        新建
+        <SpacedCjkText text="新建" />
       </button>
 
       {/* 保存按钮 */}
@@ -121,7 +122,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={on_save}
         disabled={!canSave || is_loading}
       >
-        保存
+        <SpacedCjkText text="保存" />
       </button>
 
       {/* 读取运行按钮 */}
@@ -130,7 +131,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={on_load_run}
         disabled={!is_connected || is_loading}
       >
-        读取运行
+        <SpacedCjkText text="读取运行" />
       </button>
     </div>
   );

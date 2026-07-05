@@ -176,8 +176,23 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
       return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || defaultValue;
     };
 
-    const gridColor = getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.08)');
-    const textColor = getCssVariable('--text-secondary', 'rgba(255, 255, 255, 0.7)');
+    const resolveCssFontSize = (varName: string, defaultValue: string) => {
+      const probe = document.createElement('span');
+      probe.style.position = 'absolute';
+      probe.style.visibility = 'hidden';
+      probe.style.pointerEvents = 'none';
+      probe.style.fontSize = `var(${varName})`;
+      document.body.appendChild(probe);
+      const fontSize = window.getComputedStyle(probe).fontSize;
+      probe.remove();
+      return fontSize || defaultValue;
+    };
+
+    const gridColor = 'rgba(255, 255, 255, 0.1)';
+    const textColor = getCssVariable('--text-secondary', 'rgba(255, 255, 255, 0.62)');
+    const axisFontSize = resolveCssFontSize('--size-md', '14px');
+    const axisFontFamily = getCssVariable('--font-ui', '"Oxanium", "Noto Sans SC Variable", "Microsoft YaHei UI", sans-serif');
+    const axisFont = `760 ${axisFontSize} ${axisFontFamily}`;
 
     // 获取设备像素比
     const dpr = window.devicePixelRatio || 1;
@@ -190,7 +205,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
 
     const width = rect.width;
     const height = rect.height;
-    const padding = { top: 10, right: 40, bottom: 25, left: 45 };
+    const padding = { top: 14, right: 32, bottom: 30, left: 54 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -200,7 +215,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
     if (displayData.length === 0) {
       // 无数据提示
       ctx.fillStyle = textColor;
-      ctx.font = '12px sans-serif';
+      ctx.font = `760 12px ${axisFontFamily}`;
       ctx.textAlign = 'center';
       ctx.fillText('暂无数据', width / 2, height / 2);
       return;
@@ -231,17 +246,19 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
     // 水平网格线 (5条)
     for (let i = 0; i <= 4; i++) {
       const y = padding.top + (chartHeight / 4) * i;
+      ctx.globalAlpha = i === 0 || i === 4 ? 0.7 : 0.45;
       ctx.beginPath();
       ctx.moveTo(padding.left, y);
       ctx.lineTo(width - padding.right, y);
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
       // Y轴刻度值
       const value = maxValue - (valueRange / 4) * i;
       ctx.fillStyle = textColor;
-      ctx.font = '11px sans-serif';
+      ctx.font = axisFont;
       ctx.textAlign = 'right';
-      ctx.fillText(value.toFixed(0), padding.left - 5, y + 3);
+      ctx.fillText(value.toFixed(0), padding.left - 9, y + 4);
     }
 
     // X轴时间刻度使用查询范围的线性时间轴。
@@ -255,16 +272,18 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
 
       // 垂直网格线
       ctx.strokeStyle = gridColor;
+      ctx.globalAlpha = time === minTime || time === maxTime ? 0.62 : 0.36;
       ctx.beginPath();
       ctx.moveTo(x, padding.top);
       ctx.lineTo(x, height - padding.bottom);
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
       // X轴时间标签
       ctx.fillStyle = textColor;
-      ctx.font = '10px sans-serif';
+      ctx.font = axisFont;
       ctx.textAlign = 'center';
-      ctx.fillText(timeFormatter.format(time), x, height - 5);
+      ctx.fillText(timeFormatter.format(time), x, height - 7);
     }
 
     // 绘制折线的辅助函数
@@ -273,7 +292,9 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
       color: string
     ) => {
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 4;
       ctx.beginPath();
 
       let started = false;
@@ -295,6 +316,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
       });
 
       ctx.stroke();
+      ctx.shadowBlur = 0;
     };
 
     // 绘制三条线
@@ -304,8 +326,10 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
     const mvData = displayData.filter(d => d.mv !== null);
     if (mvData.length > 0) {
       ctx.strokeStyle = CHART_COLORS.mv;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.8;
       ctx.setLineDash([4, 2]);
+      ctx.shadowColor = CHART_COLORS.mv;
+      ctx.shadowBlur = 3;
       ctx.beginPath();
 
       let started = false;
@@ -326,6 +350,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
       });
 
       ctx.stroke();
+      ctx.shadowBlur = 0;
       ctx.setLineDash([]);
     }
 

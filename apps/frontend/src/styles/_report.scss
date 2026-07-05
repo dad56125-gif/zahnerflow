@@ -408,7 +408,7 @@
   color: var(--text-muted);
   font-size: var(--size-sm);
   font-weight: 500;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-number);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -417,7 +417,7 @@
 .report__node-params {
   overflow-wrap: anywhere;
   word-break: break-word;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-number);
   font-size: var(--size-xs);
 }
 
@@ -806,7 +806,7 @@
 .report__artifact-path {
   max-width: 28rem;
   overflow-wrap: anywhere;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-number);
   font-size: var(--size-xs);
   line-height: 1.45;
 }

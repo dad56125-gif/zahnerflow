@@ -1,4 +1,5 @@
 import React from 'react';
+import { renderCjkText } from '../common/SpacedCjkText';
 
 type DashboardTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'muted';
 
@@ -25,8 +26,8 @@ export const DeviceDashboardPanel: React.FC<DeviceDashboardPanelProps> = ({
     <div className="device-dashboard__header">
       <div className="device-dashboard__heading">
         {eyebrow && <span className="device-dashboard__eyebrow">{eyebrow}</span>}
-        <h4 className="device-dashboard__title">{title}</h4>
-        {subtitle && <span className="device-dashboard__subtitle">{subtitle}</span>}
+        <h4 className="device-dashboard__title">{renderCjkText(title)}</h4>
+        {subtitle && <span className="device-dashboard__subtitle">{renderCjkText(subtitle)}</span>}
       </div>
       {actions && <div className="device-dashboard__actions">{actions}</div>}
     </div>
@@ -52,12 +53,12 @@ export const DeviceMetricTile: React.FC<DeviceMetricTileProps> = ({
   progressPercent,
 }) => (
   <div className={`device-dashboard__metric device-dashboard__metric--${tone}`}>
-    <span className="device-dashboard__metric-label">{label}</span>
+    <span className="device-dashboard__metric-label">{renderCjkText(label)}</span>
     <span className="device-dashboard__metric-value">
       {value}
       {unit && <span className="device-dashboard__metric-unit">{unit}</span>}
     </span>
-    {meta && <span className="device-dashboard__metric-meta">{meta}</span>}
+    {meta && <span className="device-dashboard__metric-meta">{renderCjkText(meta)}</span>}
     {progressPercent !== undefined && (
       <progress
         className="device-dashboard__metric-progress"
@@ -95,8 +96,8 @@ export const DeviceChartTile: React.FC<DeviceChartTileProps> = ({
   <div className="device-dashboard__chart-tile">
     <div className="device-dashboard__chart-head">
       <div className="device-dashboard__chart-title-group">
-        <span className="device-dashboard__chart-title">{title}</span>
-        {subtitle && <span className="device-dashboard__chart-subtitle">{subtitle}</span>}
+        <span className="device-dashboard__chart-title">{renderCjkText(title)}</span>
+        {subtitle && <span className="device-dashboard__chart-subtitle">{renderCjkText(subtitle)}</span>}
       </div>
       {legend && <div className="device-dashboard__chart-legend">{legend}</div>}
     </div>
@@ -118,8 +119,8 @@ export const DeviceStatusRail: React.FC<DeviceStatusRailProps> = ({ items }) => 
   <div className="device-dashboard__status-rail">
     {items.map((item) => (
       <div key={item.label} className={`device-dashboard__status-item device-dashboard__status-item--${item.tone || 'neutral'}`}>
-        <span className="device-dashboard__status-label">{item.label}</span>
-        <span className="device-dashboard__status-value">{item.value}</span>
+        <span className="device-dashboard__status-label">{renderCjkText(item.label)}</span>
+        <span className="device-dashboard__status-value">{renderCjkText(item.value)}</span>
       </div>
     ))}
   </div>
@@ -148,8 +149,8 @@ export const DeviceLinearGauge: React.FC<DeviceLinearGaugeProps> = ({
       aria-valuenow={Math.round(clampedPercent)}
     >
       <div className="device-dashboard__gauge-header">
-        <span className="device-dashboard__gauge-label">{label}</span>
-        <span className="device-dashboard__gauge-value">{value}</span>
+        <span className="device-dashboard__gauge-label">{renderCjkText(label)}</span>
+        <span className="device-dashboard__gauge-value">{renderCjkText(value)}</span>
       </div>
       <progress className="device-dashboard__gauge-progress" value={clampedPercent} max={100} />
     </div>

@@ -1,8 +1,8 @@
 {
   "name": "zahnerflow-desktop",
   "version": "1.0.0",
-  "description": "ZahnerFlow Electron desktop shell",
-  "author": "ZahnerFlow Team",
+  "description": "ZAHNERFLOW Electron desktop shell",
+  "author": "ZAHNERFLOW Team",
   "private": true,
   "main": "dist/main.js",
   "type": "module",
@@ -22,7 +22,7 @@
   },
   "build": {
     "appId": "com.zahnerflow.desktop",
-    "productName": "ZahnerFlow",
+    "productName": "ZAHNERFLOW",
     "files": [
       "dist/**/*"
     ],

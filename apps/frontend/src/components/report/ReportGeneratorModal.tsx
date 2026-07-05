@@ -838,7 +838,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
         )}
 
         <div className="report__footer">
-          <p>生成时间: {formatDateTime(reportData.generatedAt)} | ZahnerFlow 实验报告系统</p>
+          <p>生成时间: {formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
         </div>
       </div>
     );

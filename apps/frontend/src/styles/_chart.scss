@@ -13,6 +13,37 @@
   overflow: hidden;
 }
 
+.chart__container--dashboard {
+  flex: 1;
+  min-height: calc(var(--device-dashboard-tile, 4rem) * 2.45);
+  padding: var(--size-sm);
+  border-color: var(--glass-border-hover);
+  border-radius: var(--device-dashboard-furnace-radius, var(--radius));
+  background:
+    radial-gradient(circle at 10% 22%, rgba(56, 189, 248, 0.1), transparent 30%),
+    radial-gradient(circle at 82% 82%, rgba(236, 72, 153, 0.08), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    0 var(--size-sm) var(--size-2xl) rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
+
+  .chart__content {
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: calc(var(--device-dashboard-furnace-radius, var(--radius)) * 0.68);
+    background:
+      linear-gradient(180deg, rgba(6, 10, 24, 0.26), rgba(8, 10, 24, 0.12)),
+      rgba(255, 255, 255, 0.018);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  }
+
+  .chart__main {
+    min-height: 0;
+  }
+}
+
 .chart__header {
   padding: var(--size-md); border-bottom: 1px solid var(--glass-hover);
   display: flex; justify-content: space-between; align-items: center;

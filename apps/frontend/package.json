@@ -17,6 +17,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans-sc": "^5.2.10",
+    "@fontsource/oxanium": "^5.2.8",
     "@types/node": "^24.5.2",
     "@zahnerflow/types": "workspace:*",
     "autoprefixer": "^10.4.0",

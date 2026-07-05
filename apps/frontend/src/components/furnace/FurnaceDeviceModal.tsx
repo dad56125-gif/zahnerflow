@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
-import { FurnaceDashboardPanel, StatusPanel } from './StatusPanel';
+import { StatusPanel } from './StatusPanel';
 import { ProgramEditor } from './ProgramEditor';
 import { PresetManager } from './PresetManager';
 import { FurnaceLogPanel } from './FurnaceLogPanel';
@@ -14,6 +14,8 @@ import {
   simulatorPortFor,
   simulatorProfileFor,
 } from '../../modules/simulator/simulatorSettings';
+import { readDeveloperMode, DEVELOPER_MODE_EVENT } from '../../modules/simulator/developerMode';
+import { SpacedCjkText } from '../common/SpacedCjkText';
 
 
 interface DeviceModalProps {
@@ -42,14 +44,22 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   if (!device) return null;
 
   // 当前选项卡状态
-  const [activeTab, setActiveTab] = useState<'monitoring' | 'dashboard' | 'program' | 'presets' | 'recording' | 'history'>('monitoring');
+  const [activeTab, setActiveTab] = useState<'monitoring' | 'segments' | 'history'>('monitoring');
   const isConnected = furnaceState.connection_status === 'connected';
+  const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
 
   useEffect(() => {
-    if (!isConnected && activeTab === 'dashboard') {
-      setActiveTab('monitoring');
-    }
-  }, [activeTab, isConnected]);
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<boolean>;
+      setDeveloperMode(typeof ce.detail === 'boolean' ? ce.detail : readDeveloperMode());
+    };
+    window.addEventListener(DEVELOPER_MODE_EVENT, handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener(DEVELOPER_MODE_EVENT, handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
 
   // 端口管理
   const [ports, setPorts] = useState<string[]>([]);
@@ -80,59 +90,52 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
 
   const isFurnaceSimulator = isSimulatorDeviceEnabled('furnace', simulatorSettings);
   const effectiveSelectedPort = isFurnaceSimulator ? 'COM_SIMULATOR' : selectedPort;
-  const effectivePorts = isFurnaceSimulator
+  const effectivePorts = developerMode
     ? Array.from(new Set(['COM_SIMULATOR', ...ports]))
     : ports;
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modalTop; void modalLeft; void modalWidth; void modalHeight;
+  const activeTabIndex = {
+    monitoring: 0,
+    segments: 1,
+    history: 2,
+  }[activeTab];
+  const tabListStyle = {
+    '--device-tab-index': activeTabIndex,
+    '--device-tab-count': 3,
+  } as React.CSSProperties;
+  const isFullWidthTab = activeTab === 'segments' || activeTab === 'history';
 
   return (
       <div
-        className="modal__content device-modal-content workspace-device-modal"
+        className="modal__content device-modal-content workspace-device-modal workspace-device-modal--furnace"
       >
         <div className="modal__header">
-          <h3>AI-518P 温度控制器</h3>
+          <h3 className="device-title" aria-label="AI-518P 温度控制器">
+            <span className="device-title__model" aria-hidden="true">AI-518P</span>
+            <SpacedCjkText text="温度控制器" className="device-title__name cjk-spaced" />
+          </h3>
           <div className="tabs">
             {/* 选项卡导航 */}
-            <div className="tabs__list">
+            <div className="tabs__list" style={tabListStyle}>
               <button
                 className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'monitoring' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('monitoring')}
               >
-                实时监控
-              </button>
-              {isConnected && (
-                <button
-                  className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'dashboard' ? 'is-active' : ''}`}
-                  onClick={() => setActiveTab('dashboard')}
-                >
-                  仪表盘
-                </button>
-              )}
-              <button
-                className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'program' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('program')}
-              >
-                设置程序段
+                <SpacedCjkText text="实时监控" />
               </button>
               <button
-                className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'presets' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('presets')}
+                className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'segments' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('segments')}
               >
-                预设程序段
-              </button>
-              <button
-                className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'recording' ? 'is-active' : ''}`}
-                onClick={() => setActiveTab('recording')}
-              >
-                实时曲线
+                <SpacedCjkText text="程序段" />
               </button>
               <button
                 className={`btn btn--secondary btn--sm tabs__trigger ${activeTab === 'history' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('history')}
               >
-                历史曲线
+                <SpacedCjkText text="历史曲线" />
               </button>
             </div>
           </div>
@@ -141,7 +144,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
 
         {/* 双列布局容器 */}
         <div className="modal__body">
-          <div className="furnace-modal">
+          <div className={`furnace-modal ${isFullWidthTab ? 'furnace-modal--full' : ''}`}>
             {/* 左侧主内容区域 (2/3宽度) */}
             <div className="furnace-modal__main">
               {/* 选项卡内容 */}
@@ -154,30 +157,22 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                     />
                   </div>
                 )}
-                {activeTab === 'dashboard' && isConnected && (
+                {activeTab === 'segments' && (
                   <div className="tabs__panel is-active">
-                    <FurnaceDashboardPanel furnaceState={furnaceState} />
-                  </div>
-                )}
-                {activeTab === 'program' && (
-                  <div className="tabs__panel is-active">
-                    <ProgramEditor
-                      furnaceState={furnaceState}
-                      furnaceControls={furnaceControls}
-                    />
-                  </div>
-                )}
-                {activeTab === 'presets' && (
-                  <div className="tabs__panel is-active">
-                    <PresetManager
-                      furnaceState={furnaceState}
-                      furnaceControls={furnaceControls}
-                    />
-                  </div>
-                )}
-                {activeTab === 'recording' && (
-                  <div className="tabs__panel is-active">
-                    <RecordingTab furnaceState={furnaceState} />
+                    <div className="furnace-segments-combo">
+                      <section className="furnace-segments-combo__pane">
+                        <ProgramEditor
+                          furnaceState={furnaceState}
+                          furnaceControls={furnaceControls}
+                        />
+                      </section>
+                      <section className="furnace-segments-combo__pane">
+                        <PresetManager
+                          furnaceState={furnaceState}
+                          furnaceControls={furnaceControls}
+                        />
+                      </section>
+                    </div>
                   </div>
                 )}
                 {activeTab === 'history' && (
@@ -189,9 +184,8 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
             </div>
 
             {/* 右侧区域 (1/3宽度) */}
+            {!isFullWidthTab && (
             <div className="furnace-modal__sidebar">
-              <div className="card">
-                <div className="card__body">
                   <DeviceConnectionPanel
                     deviceName="炉子"
                     connectionStatus={furnaceState.connection_status}
@@ -202,20 +196,23 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                     onConnect={handleConnect}
                     onDisconnect={furnaceControls.disconnect}
                   />
-                </div>
-              </div>
-              <DeviceDiagnosticsPanel
-                diagnostics={furnaceState.diagnostics}
-                commandLogs={furnaceState.command_logs}
-                onRefreshLogs={furnaceControls.load_command_logs}
-                onClearLogs={furnaceControls.clear_command_logs}
-              />
-              <FurnaceLogPanel
-                logs={furnaceState.logs}
-                onClear={furnaceControls.clear_logs}
-                title="前端操作日志"
-              />
+              {developerMode && (
+                <>
+                  <DeviceDiagnosticsPanel
+                    diagnostics={furnaceState.diagnostics}
+                    commandLogs={furnaceState.command_logs}
+                    onRefreshLogs={furnaceControls.load_command_logs}
+                    onClearLogs={furnaceControls.clear_command_logs}
+                  />
+                  <FurnaceLogPanel
+                    logs={furnaceState.logs}
+                    onClear={furnaceControls.clear_logs}
+                    title="前端操作日志"
+                  />
+                </>
+              )}
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -234,16 +231,25 @@ type FurnaceChartSample = {
   segmentTimeSet?: number;
 };
 
-type ActivityDay = {
+type ActivityDaySummary = {
   key: string;
   date: Date;
   count: number;
-  minTemperature: number | null;
   maxTemperature: number | null;
-  isPadding?: boolean;
+  runningMs: number;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const MAX_ACTIVITY_DAYS = 60;
+const ACTIVITY_COLUMN_WIDTH_PX = 21;
+const ACTIVITY_MONTH_GAP_WIDTH_PX = 12;
+const ACTIVITY_COLUMN_GAP_WIDTH_PX = 6;
+const ACTIVITY_SLOT_COUNT = 6;
+const ACTIVITY_SLOT_HOURS = 4;
+const ACTIVITY_TOOLTIP_WIDTH = 220;
+const ACTIVITY_TOOLTIP_HEIGHT = 152;
+const ACTIVITY_TOOLTIP_GAP = 14;
 
 const toDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -254,415 +260,468 @@ const toDateKey = (date: Date) => {
 
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-const startOfWeek = (date: Date) => {
-  const result = startOfDay(date);
-  result.setDate(result.getDate() - result.getDay());
-  return result;
-};
-
 const formatActivityLabel = (date: Date) => {
   return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
 };
 
-const buildActivityDays = (startDate: string, endDate: string, samples: FurnaceChartSample[]): ActivityDay[] => {
-  const rangeStart = startOfDay(new Date(startDate));
-  const rangeEnd = startOfDay(new Date(endDate));
-  const start = startOfWeek(rangeStart);
-  const end = startOfDay(rangeEnd);
-  end.setDate(end.getDate() + (6 - end.getDay()));
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start) return [];
+const formatActivityDayLabel = (date: Date) => {
+  return String(date.getDate()).padStart(2, '0');
+};
 
-  const buckets = new Map<string, ActivityDay>();
-  for (let time = start.getTime(); time <= end.getTime(); time += DAY_MS) {
-    const date = new Date(time);
+const formatActivityDate = (date: Date) => {
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+};
+
+const formatActivityDuration = (milliseconds: number) => {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return '0 min';
+  const totalMinutes = Math.round(milliseconds / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours} h ${String(minutes).padStart(2, '0')} min`;
+  return `${minutes} min`;
+};
+
+const formatActivitySlotLabel = (slotIndex: number) => {
+  const startHour = slotIndex * ACTIVITY_SLOT_HOURS;
+  const endHour = startHour + ACTIVITY_SLOT_HOURS;
+  return `${String(startHour).padStart(2, '0')}-${String(endHour).padStart(2, '0')}h`;
+};
+
+const isRunningSample = (sample: FurnaceChartSample) => {
+  return Number(sample.statusCode) === 0;
+};
+
+const shouldShowActivityMonth = (days: Array<{ date: Date }>, index: number) => {
+  if (index === 0) return true;
+  const previousDate = days[index - 1]?.date;
+  const currentDate = days[index]?.date;
+  return Boolean(previousDate && currentDate && (
+    previousDate.getFullYear() !== currentDate.getFullYear()
+    || previousDate.getMonth() !== currentDate.getMonth()
+  ));
+};
+
+const buildRecentActivityDays = (endDate: Date, dayCount = MAX_ACTIVITY_DAYS) => {
+  const end = startOfDay(endDate);
+  const start = new Date(end);
+  start.setDate(start.getDate() - (dayCount - 1));
+  return Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
     const key = toDateKey(date);
-    buckets.set(key, {
-      key,
-      date,
-      count: 0,
-      minTemperature: null,
-      maxTemperature: null,
-      isPadding: date < rangeStart || date > rangeEnd,
-    });
-  }
+    return { key, date };
+  });
+};
 
-  samples.forEach((sample) => {
+const resolveCssLength = (element: Element, propertyName: string, fallbackPx: number) => {
+  const value = window.getComputedStyle(element).getPropertyValue(propertyName).trim();
+  if (!value) return fallbackPx;
+  if (value.endsWith('px')) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallbackPx;
+  }
+  if (value.endsWith('rem')) {
+    const parsed = Number.parseFloat(value);
+    const rootSize = Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+    return Number.isFinite(parsed) && Number.isFinite(rootSize) ? parsed * rootSize : fallbackPx;
+  }
+  const probe = document.createElement('div');
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  probe.style.width = value;
+  element.appendChild(probe);
+  const measured = probe.getBoundingClientRect().width;
+  probe.remove();
+  if (Number.isFinite(measured) && measured > 0) return measured;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallbackPx;
+};
+
+const calculateActivityLayoutWidth = (
+  days: Array<{ date: Date }>,
+  cellWidth: number,
+  gapWidth: number,
+  monthGapWidth: number
+) => {
+  const monthGapCount = days.filter((_, index) => (
+    index > 0 && shouldShowActivityMonth(days, index)
+  )).length;
+  const gridColumnCount = days.length + monthGapCount;
+  return (
+    (days.length * cellWidth)
+    + (monthGapCount * monthGapWidth)
+    + (Math.max(0, gridColumnCount - 1) * gapWidth)
+  );
+};
+
+const buildActivitySummaries = (
+  days: Array<{ key: string; date: Date }>,
+  samples: FurnaceChartSample[]
+) => {
+  const summaries = new Map<string, ActivityDaySummary>();
+  const slots = new Map<string, number[]>();
+
+  days.forEach((day) => {
+    summaries.set(day.key, {
+      key: day.key,
+      date: day.date,
+      count: 0,
+      maxTemperature: null,
+      runningMs: 0,
+    });
+    slots.set(day.key, Array.from({ length: ACTIVITY_SLOT_COUNT }, () => 0));
+  });
+
+  const sortedSamples = [...samples].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  sortedSamples.forEach((sample, index) => {
     const sampleDate = new Date(sample.timestamp);
     if (!Number.isFinite(sampleDate.getTime())) return;
     const key = toDateKey(sampleDate);
-    const bucket = buckets.get(key);
-    if (!bucket) return;
-    bucket.count += 1;
+    const summary = summaries.get(key);
+    const daySlots = slots.get(key);
+    if (!summary || !daySlots) return;
+
+    summary.count += 1;
     const temperature = Number(sample.temperature);
     if (Number.isFinite(temperature)) {
-      bucket.minTemperature = bucket.minTemperature === null ? temperature : Math.min(bucket.minTemperature, temperature);
-      bucket.maxTemperature = bucket.maxTemperature === null ? temperature : Math.max(bucket.maxTemperature, temperature);
+      summary.maxTemperature = summary.maxTemperature === null ? temperature : Math.max(summary.maxTemperature, temperature);
+    }
+
+    const slotIndex = Math.max(0, Math.min(ACTIVITY_SLOT_COUNT - 1, Math.floor(sampleDate.getHours() / ACTIVITY_SLOT_HOURS)));
+    daySlots[slotIndex] += 1;
+
+    const nextSample = sortedSamples[index + 1];
+    if (!isRunningSample(sample) || !nextSample) return;
+    const nextDate = new Date(nextSample.timestamp);
+    if (!Number.isFinite(nextDate.getTime()) || toDateKey(nextDate) !== key) return;
+    const delta = nextDate.getTime() - sampleDate.getTime();
+    if (delta > 0 && delta <= HOUR_MS) {
+      summary.runningMs += delta;
     }
   });
 
-  return Array.from(buckets.values());
+  return { summaries, slots };
 };
 
-const buildActivityMonthLabels = (days: ActivityDay[]) => {
-  const labels: Array<{ key: string; label: string; column: number }> = [];
-  let lastMonth = '';
-  days.forEach((day, index) => {
-    if (day.isPadding) return;
-    const monthKey = `${day.date.getFullYear()}-${day.date.getMonth()}`;
-    if (monthKey === lastMonth) return;
-    lastMonth = monthKey;
-    labels.push({
-      key: monthKey,
-      label: `${day.date.getMonth() + 1}月`,
-      column: Math.floor(index / 7) + 1,
-    });
-  });
-  return labels;
+// ========== HistoryTab: history chart ==========
+
+type ActivityHoverState = {
+  key: string;
+  slotIndex: number;
+  x: number;
+  y: number;
 };
-
-const downloadCsv = (filename: string, rows: FurnaceChartSample[]) => {
-  const headers = ['timestamp', 'pv', 'sv', 'mv', 'status', 'statusCode', 'segment', 'segmentTime', 'segmentTimeSet'];
-  const escapeCell = (value: unknown) => {
-    if (value === undefined || value === null) return '';
-    const text = String(value);
-    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  const body = rows.map(row => [
-    row.timestamp,
-    row.temperature,
-    row.sv,
-    row.mv,
-    row.status,
-    row.statusCode,
-    row.segment,
-    row.segmentTime,
-    row.segmentTimeSet,
-  ].map(escapeCell).join(','));
-  const blob = new Blob([[headers.join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-};
-
-// ========== RecordingTab：实时曲线（WebSocket 推送） ==========
-
-interface RecordingTabProps {
-  furnaceState: FurnaceState;
-}
-
-function RecordingTab({ furnaceState }: RecordingTabProps) {
-  const samples = furnaceState.history_data as FurnaceChartSample[];
-  const isConnected = furnaceState.connection_status === 'connected';
-
-  return (
-    <div className="recording__tab">
-      <div className="recording__header">
-        <div>
-          <h4 className="recording__title">实时加热曲线</h4>
-          <span className="recording__subtitle">
-            {isConnected
-              ? `本次会话 ${samples.length} 个采样点`
-              : '设备未连接'}
-          </span>
-        </div>
-        <button
-          className="btn btn--sm btn--secondary"
-          onClick={() => downloadCsv('furnace-session.csv', samples)}
-          disabled={samples.length === 0}
-        >
-          导出数据
-        </button>
-      </div>
-      <div className="recording__body">
-        {!isConnected ? (
-          <div className="recording__empty">连接 Furnace 后会自动绘制实时曲线</div>
-        ) : samples.length === 0 ? (
-          <div className="recording__empty">等待设备采样...</div>
-        ) : (
-          <div className="chart__container chart__container--full">
-            <div className="chart__header chart__header--compact">
-              <h5 className="chart__title">本次会话</h5>
-              <div className="chart__legend chart__legend--inline">
-                <span className="chart__legend-item chart__legend-item--pv">PV</span>
-                <span className="chart__legend-item chart__legend-item--sv">SV</span>
-                <span className="chart__legend-item chart__legend-item--mv">MV</span>
-              </div>
-            </div>
-            <div className="chart__content">
-              <TemperatureChart data={samples as any} is_loading={furnaceState.loading} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ========== HistoryTab：历史曲线与导出 ==========
-
-type TimeRangeOption = 'past_1h' | 'past_24h' | 'past_7d' | 'past_30d' | 'past_1y' | 'custom';
-
-const TIME_RANGE_OPTIONS: { value: TimeRangeOption; label: string; days: number }[] = [
-  { value: 'past_1h', label: '过去1小时', days: 0.04 },
-  { value: 'past_24h', label: '过去24小时', days: 1 },
-  { value: 'past_7d', label: '过去7天', days: 7 },
-  { value: 'past_30d', label: '过去一个月', days: 30 },
-  { value: 'past_1y', label: '过去一年', days: 365 },
-];
 
 function HistoryTab() {
-  const [timeRange, setTimeRange] = useState<TimeRangeOption>('past_24h');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [rangeEnd, setRangeEnd] = useState(() => new Date());
   const [samples, setSamples] = useState<FurnaceChartSample[]>([]);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [hoveredSlot, setHoveredSlot] = useState<ActivityHoverState | null>(null);
   const [loading, setLoading] = useState(false);
+  const [visibleDayCount, setVisibleDayCount] = useState(30);
+  const chartSectionRef = useRef<HTMLDivElement>(null);
+  const activityMapRef = useRef<HTMLElement>(null);
+  const activityCanvasRef = useRef<HTMLDivElement>(null);
 
-  // 根据时间范围计算开始和结束日期
-  const calculateTimeRange = (range: TimeRangeOption): { start: string; end: string } => {
-    const now = new Date();
-    const end = now.toISOString().slice(0, 16);
-    let start: Date;
+  const queryActivityDays = useMemo(() => buildRecentActivityDays(rangeEnd, MAX_ACTIVITY_DAYS), [rangeEnd]);
+  const activityDays = useMemo(
+    () => queryActivityDays.slice(-Math.min(visibleDayCount, MAX_ACTIVITY_DAYS)),
+    [queryActivityDays, visibleDayCount]
+  );
+  const rangeStart = activityDays[0]?.date ?? new Date(rangeEnd.getTime() - (MAX_ACTIVITY_DAYS - 1) * DAY_MS);
+  const rangeEndExclusive = useMemo(() => {
+    const end = startOfDay(rangeEnd);
+    end.setDate(end.getDate() + 1);
+    return end;
+  }, [rangeEnd]);
 
-    switch (range) {
-      case 'past_1h':
-        start = new Date(now.getTime() - 60 * 60 * 1000);
-        break;
-      case 'past_24h':
-        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case 'past_7d':
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'past_30d':
-        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case 'past_1y':
-        start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    }
-
-    return { start: start.toISOString().slice(0, 16), end };
-  };
-
-  // 时间范围变化时更新日期（包括初始化）
-  useEffect(() => {
-    if (timeRange !== 'custom') {
-      const { start, end } = calculateTimeRange(timeRange);
-      setStartDate(start);
-      setEndDate(end);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRange]);
-
-  // 判断是否显示时间按钮（过去7天及之前）或日期按钮（过去7天及之后）
-  const showTimeButton = ['past_1h', 'past_24h', 'past_7d'].includes(timeRange);
-
-  // 安全地获取日期值，防止空字符串问题
-  const getDateValue = (dateStr: string, isDateTime: boolean): string => {
-    if (!dateStr) return '';
-    return isDateTime ? dateStr : (dateStr.length >= 10 ? dateStr.slice(0, 10) : dateStr);
-  };
-
-  const queryHistory = async () => {
-    if (!startDate || !endDate) { alert('请选择开始和结束日期'); return; }
+  const loadRecentHistory = async () => {
     setLoading(true);
+    const now = new Date();
+    const days = buildRecentActivityDays(now, MAX_ACTIVITY_DAYS);
+    const start = days[0]?.date ?? new Date(now.getTime() - (MAX_ACTIVITY_DAYS - 1) * DAY_MS);
+    const end = startOfDay(now);
+    end.setDate(end.getDate() + 1);
+
     try {
-      const sampleData = await runtimeClient.devices.furnace.samples<Array<{ timestamp: string; pv: number; sv?: number; mv?: number; statusCode?: number; segment?: number; segmentTime?: number; segmentTimeSet?: number }>>({
-        from_ts: startDate,
-        to: endDate,
+      const sampleData = await runtimeClient.devices.furnace.samples<Array<{
+        timestamp: string;
+        pv: number;
+        sv?: number;
+        mv?: number;
+        status?: string;
+        statusCode?: number;
+        segment?: number;
+        segmentTime?: number;
+        segmentTimeSet?: number;
+      }>>({
+        from_ts: start.toISOString(),
+        to: end.toISOString(),
         limit: 10000,
       });
+
       const normalizedSamples = sampleData.map(sample => ({
         timestamp: sample.timestamp,
         temperature: Number(sample.pv ?? 0),
         sv: sample.sv,
         mv: sample.mv,
+        status: sample.status,
         statusCode: sample.statusCode,
         segment: sample.segment,
         segmentTime: sample.segmentTime,
         segmentTimeSet: sample.segmentTimeSet,
       }));
+
+      setRangeEnd(now);
       setSamples(normalizedSamples);
-      const latestSample = normalizedSamples[normalizedSamples.length - 1];
+
+      const dayKeys = new Set(days.map(day => day.key));
+      const latestSample = [...normalizedSamples]
+        .reverse()
+        .find(sample => dayKeys.has(toDateKey(new Date(sample.timestamp))));
       setSelectedDay(latestSample ? toDateKey(new Date(latestSample.timestamp)) : null);
     } catch (error) {
-      console.error('Failed to query history:', error);
-      alert('查询失败：' + error);
+      console.error('Failed to query furnace history:', error);
+      setSamples([]);
+      setSelectedDay(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const activityDays = useMemo(
-    () => buildActivityDays(startDate, endDate, samples),
-    [startDate, endDate, samples]
+  useEffect(() => {
+    void loadRecentHistory();
+  }, []);
+
+  useEffect(() => {
+    const updateVisibleDayCount = () => {
+      const element = activityCanvasRef.current;
+      if (!element) return;
+      const availableWidth = element.clientWidth;
+      if (!Number.isFinite(availableWidth) || availableWidth <= 0) return;
+      const cellWidth = resolveCssLength(element, '--activity-cell', ACTIVITY_COLUMN_WIDTH_PX);
+      const gapWidth = resolveCssLength(element, '--activity-gap', ACTIVITY_COLUMN_GAP_WIDTH_PX);
+      const monthGapWidth = resolveCssLength(element, '--activity-month-gap', ACTIVITY_MONTH_GAP_WIDTH_PX);
+      const usableWidth = Math.max(0, availableWidth);
+      let nextCount = 1;
+      for (let count = 1; count <= MAX_ACTIVITY_DAYS; count += 1) {
+        const days = buildRecentActivityDays(rangeEnd, count);
+        const estimatedWidth = calculateActivityLayoutWidth(days, cellWidth, gapWidth, monthGapWidth);
+        if (estimatedWidth > usableWidth) break;
+        nextCount = count;
+      }
+      setVisibleDayCount(previous => (previous === nextCount ? previous : nextCount));
+    };
+
+    updateVisibleDayCount();
+    const element = activityCanvasRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateVisibleDayCount);
+      return () => window.removeEventListener('resize', updateVisibleDayCount);
+    }
+
+    const observer = new ResizeObserver(updateVisibleDayCount);
+    observer.observe(element);
+    window.addEventListener('resize', updateVisibleDayCount);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateVisibleDayCount);
+    };
+  }, [loading, rangeEnd, samples.length]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setHoveredSlot(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const visibleDayKeys = new Set(activityDays.map(day => day.key));
+    if (selectedDay && visibleDayKeys.has(selectedDay)) return;
+    const latestVisibleSample = [...samples]
+      .reverse()
+      .find(sample => visibleDayKeys.has(toDateKey(new Date(sample.timestamp))));
+    setSelectedDay(latestVisibleSample ? toDateKey(new Date(latestVisibleSample.timestamp)) : null);
+  }, [activityDays, samples, selectedDay]);
+
+  const { summaries, slots } = useMemo(
+    () => buildActivitySummaries(activityDays, samples),
+    [activityDays, samples]
   );
-  const activityMonthLabels = useMemo(
-    () => buildActivityMonthLabels(activityDays),
-    [activityDays]
-  );
-  const activityColumns = Math.max(1, Math.ceil(activityDays.length / 7));
-  const maxDayCount = Math.max(1, ...activityDays.map(day => day.count));
+
+  const maxSlotCount = useMemo(() => {
+    const allCounts = Array.from(slots.values()).flat();
+    return Math.max(1, ...allCounts);
+  }, [slots]);
+
   const selectedDaySamples = useMemo(
     () => selectedDay
       ? samples.filter(sample => toDateKey(new Date(sample.timestamp)) === selectedDay)
       : [],
     [samples, selectedDay]
   );
-  const selectedActivityDay = activityDays.find(day => day.key === selectedDay);
+
+  const selectedActivityDay = selectedDay ? summaries.get(selectedDay) : undefined;
   const selectedDateStart = selectedActivityDay
-    ? new Date(selectedActivityDay.date.getFullYear(), selectedActivityDay.date.getMonth(), selectedActivityDay.date.getDate()).toISOString()
-    : startDate;
+    ? startOfDay(selectedActivityDay.date).toISOString()
+    : rangeStart.toISOString();
   const selectedDateEnd = selectedActivityDay
     ? new Date(selectedActivityDay.date.getFullYear(), selectedActivityDay.date.getMonth(), selectedActivityDay.date.getDate() + 1).toISOString()
-    : endDate;
+    : rangeEndExclusive.toISOString();
+  const hoveredSummary = hoveredSlot ? summaries.get(hoveredSlot.key) : undefined;
+  const hoveredSlotCount = hoveredSlot ? slots.get(hoveredSlot.key)?.[hoveredSlot.slotIndex] ?? 0 : 0;
+  const activityGridLayout = useMemo(() => {
+    const dayColumns = new Map<string, number>();
+    const columns: string[] = [];
+    let gridColumn = 1;
+
+    activityDays.forEach((day, index) => {
+      if (index > 0 && shouldShowActivityMonth(activityDays, index)) {
+        columns.push('var(--activity-month-gap)');
+        gridColumn += 1;
+      }
+
+      columns.push('var(--activity-cell)');
+      dayColumns.set(day.key, gridColumn);
+      gridColumn += 1;
+    });
+
+    return {
+      dayColumns,
+      gridTemplateColumns: columns.join(' '),
+    };
+  }, [activityDays]);
+
+  const handleSelectActivitySlot = (dayKey: string) => {
+    setSelectedDay(dayKey);
+    requestAnimationFrame(() => {
+      chartSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const showActivityTooltip = (dayKey: string, slotIndex: number, element: HTMLElement) => {
+    const mapRect = activityMapRef.current?.getBoundingClientRect();
+    const slotRect = element.getBoundingClientRect();
+    if (!mapRect) return;
+
+    const anchorX = slotRect.left - mapRect.left + slotRect.width / 2;
+    const anchorY = slotRect.top - mapRect.top + slotRect.height / 2;
+    const shouldFlipX = anchorX + ACTIVITY_TOOLTIP_GAP + ACTIVITY_TOOLTIP_WIDTH > mapRect.width;
+    const shouldFlipY = anchorY + ACTIVITY_TOOLTIP_GAP + ACTIVITY_TOOLTIP_HEIGHT > mapRect.height;
+    const rawX = shouldFlipX
+      ? anchorX - ACTIVITY_TOOLTIP_GAP - ACTIVITY_TOOLTIP_WIDTH
+      : anchorX + ACTIVITY_TOOLTIP_GAP;
+    const rawY = shouldFlipY
+      ? anchorY - ACTIVITY_TOOLTIP_GAP - ACTIVITY_TOOLTIP_HEIGHT
+      : anchorY + ACTIVITY_TOOLTIP_GAP;
+    const maxX = Math.max(8, mapRect.width - ACTIVITY_TOOLTIP_WIDTH - 8);
+    const maxY = Math.max(8, mapRect.height - ACTIVITY_TOOLTIP_HEIGHT - 8);
+
+    setHoveredSlot({
+      key: dayKey,
+      slotIndex,
+      x: Math.min(Math.max(rawX, 8), maxX),
+      y: Math.min(Math.max(rawY, 8), maxY),
+    });
+  };
 
   return (
     <div className="history__tab">
-      {/* 控制栏 - 与预设选项卡样式一致 */}
-      <div className="control-bar">
-        {/* 时间范围选择器 */}
-        <select
-          className="select preset__selector"
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value as TimeRangeOption)}
-        >
-          {TIME_RANGE_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-
-        {/* 开始时间输入 */}
-        <input
-          type={showTimeButton ? 'datetime-local' : 'date'}
-          className="input preset__name-input"
-          value={getDateValue(startDate, showTimeButton)}
-          onChange={(e) => {
-            setStartDate(showTimeButton ? e.target.value : e.target.value + 'T00:00');
-            setTimeRange('custom');
-          }}
-        />
-
-        {/* 开始时间的圆形按钮 */}
-        <button
-          className="btn btn--sm btn--secondary history-time-btn"
-          title={showTimeButton ? '选择时间' : '选择日期'}
-          onClick={() => {
-            const input = document.querySelector('.history__tab .preset__name-input:first-of-type') as HTMLInputElement;
-            input?.showPicker?.();
-          }}
-        >
-          {showTimeButton ? '🕐' : '📅'}
-        </button>
-
-        {/* 结束时间输入 */}
-        <input
-          type={showTimeButton ? 'datetime-local' : 'date'}
-          className="input preset__name-input"
-          value={getDateValue(endDate, showTimeButton)}
-          onChange={(e) => {
-            setEndDate(showTimeButton ? e.target.value : e.target.value + 'T23:59');
-            setTimeRange('custom');
-          }}
-        />
-
-        {/* 结束时间的圆形按钮 */}
-        <button
-          className="btn btn--sm btn--secondary history-time-btn"
-          title={showTimeButton ? '选择时间' : '选择日期'}
-          onClick={() => {
-            const inputs = document.querySelectorAll('.history__tab .preset__name-input') as NodeListOf<HTMLInputElement>;
-            inputs[1]?.showPicker?.();
-          }}
-        >
-          {showTimeButton ? '🕐' : '📅'}
-        </button>
-
-        {/* 查询按钮 */}
-        <button
-          className="btn btn--sm btn--primary"
-          onClick={queryHistory}
-          disabled={loading}
-        >
-          {loading ? '查询中...' : '查询'}
-        </button>
-      </div>
-
       <div className="recording__body">
         {loading ? (
-          <div className="recording__empty">正在加载历史曲线...</div>
+          <div className="recording__empty"><SpacedCjkText text={'\u6b63\u5728\u52a0\u8f7d\u6700\u8fd1\u6700\u591a60\u5929\u91c7\u6837\u6d3b\u52a8...'} /></div>
         ) : samples.length === 0 ? (
-          <div className="recording__empty">选择时间范围后查询，页面只展示曲线；原始数据可按需导出。</div>
+          <div className="recording__empty"><SpacedCjkText text={'\u6700\u8fd1\u6700\u591a60\u5929\u6682\u65e0\u91c7\u6837\u6d3b\u52a8'} /></div>
         ) : (
           <div className="history-insight">
-            <div className="activity-map">
-              <div className="activity-map__header">
-                <div>
-                  <h5 className="activity-map__title">采样活动</h5>
-                  <span className="activity-map__subtitle">
-                    {samples.length} 个采样点 · {activityDays.filter(day => day.count > 0).length} 天有数据
-                  </span>
-                </div>
-                <button
-                  className="btn btn--sm btn--secondary"
-                  onClick={() => downloadCsv(`furnace-${startDate || 'from'}-${endDate || 'to'}.csv`, samples)}
-                >
-                  导出数据
-                </button>
-              </div>
-              <div className="activity-map__canvas">
-                <div
-                  className="activity-map__grid"
-                  style={{ ['--activity-columns' as string]: activityColumns }}
-                >
-                  {activityDays.map(day => {
-                  const intensity = day.isPadding || day.count === 0 ? 0 : Math.max(1, Math.ceil((day.count / maxDayCount) * 4));
-                  const isSelected = day.key === selectedDay;
-                  const title = day.count > 0
-                    ? `${formatActivityLabel(day.date)} · ${day.count} 点 · ${day.minTemperature?.toFixed(1)}-${day.maxTemperature?.toFixed(1)}°C`
-                    : `${formatActivityLabel(day.date)} · 无采样`;
-                  return (
-                    <button
-                      key={day.key}
-                      className={`activity-map__day activity-map__day--level-${intensity} ${day.isPadding ? 'is-padding' : ''} ${isSelected ? 'is-selected' : ''}`}
-                      title={title}
-                      onClick={() => !day.isPadding && day.count > 0 && setSelectedDay(day.key)}
-                      disabled={day.isPadding || day.count === 0}
-                    >
-                      <span>{day.date.getDate()}</span>
-                    </button>
-                  );
-                })}
-                </div>
-                <div
-                  className="activity-map__months"
-                  style={{ ['--activity-columns' as string]: activityColumns }}
-                >
-                  {activityMonthLabels.map(month => (
-                    <span
-                      key={month.key}
-                      className="activity-map__month"
-                      style={{ gridColumn: month.column }}
-                    >
-                      {month.label}
-                    </span>
+            <section className="activity-map" ref={activityMapRef} onMouseLeave={() => setHoveredSlot(null)}>
+              <div className="activity-map__timeline">
+                <div className="activity-map__slot-labels" aria-hidden="true">
+                  {Array.from({ length: ACTIVITY_SLOT_COUNT }, (_, slotIndex) => (
+                    <span key={slotIndex}>{formatActivitySlotLabel(slotIndex)}</span>
                   ))}
                 </div>
+                <div className="activity-map__canvas" ref={activityCanvasRef}>
+                  <div className="activity-map__month-labels" style={{ gridTemplateColumns: activityGridLayout.gridTemplateColumns }} aria-hidden="true">
+                    {activityDays.map((day, index) => {
+                      const gridColumn = activityGridLayout.dayColumns.get(day.key) ?? index + 1;
+                      return (
+                        <span key={day.key} className="activity-map__month-label" style={{ gridColumn }}>
+                          {shouldShowActivityMonth(activityDays, index) ? `${day.date.getMonth() + 1}\u6708` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div className="activity-map__grid" style={{ gridTemplateColumns: activityGridLayout.gridTemplateColumns }}>
+                    {activityDays.flatMap((day, dayIndex) => {
+                      const summary = summaries.get(day.key);
+                      const daySlots = slots.get(day.key) ?? [];
+                      const gridColumn = activityGridLayout.dayColumns.get(day.key) ?? dayIndex + 1;
+                      return Array.from({ length: ACTIVITY_SLOT_COUNT }, (_, slotIndex) => {
+                        const count = daySlots[slotIndex] ?? 0;
+                        const intensity = count === 0 ? 0 : Math.max(1, Math.ceil((count / maxSlotCount) * 4));
+                        const isSelected = selectedDay === day.key;
+                        const label = formatActivityDate(day.date) + ' ' + formatActivitySlotLabel(slotIndex) + '\uff0c' + count + ' \u4e2a\u91c7\u6837\u70b9';
+                        return (
+                          <button
+                            key={day.key + '-' + slotIndex}
+                            type="button"
+                            className={'activity-map__slot activity-map__slot--level-' + intensity + (isSelected ? ' is-selected' : '')}
+                            style={{ gridColumn, gridRow: slotIndex + 1 }}
+                            aria-label={label}
+                            disabled={!summary || count === 0}
+                            onMouseEnter={(event) => showActivityTooltip(day.key, slotIndex, event.currentTarget)}
+                            onMouseMove={(event) => showActivityTooltip(day.key, slotIndex, event.currentTarget)}
+                            onFocus={(event) => {
+                              showActivityTooltip(day.key, slotIndex, event.currentTarget);
+                            }}
+                            onBlur={() => setHoveredSlot(null)}
+                            onClick={() => count > 0 && handleSelectActivitySlot(day.key)}
+                          />
+                        );
+                      });
+                    })}
+                  </div>
+                  <div className="activity-map__day-labels" style={{ gridTemplateColumns: activityGridLayout.gridTemplateColumns }} aria-hidden="true">
+                    {activityDays.map((day, index) => {
+                      const labelInterval = activityDays.length > 48 ? 6 : activityDays.length > 36 ? 5 : activityDays.length > 28 ? 4 : activityDays.length > 18 ? 3 : 2;
+                      const isMonthFirstDay = day.date.getDate() === 1;
+                      const shouldShowLabel = index === 0
+                        || index === activityDays.length - 1
+                        || isMonthFirstDay
+                        || (index % labelInterval === 0 && index < activityDays.length - 2);
+                      const gridColumn = activityGridLayout.dayColumns.get(day.key) ?? index + 1;
+                      return (
+                        <span key={day.key} className="activity-map__day-label" style={{ gridColumn }}>
+                          {shouldShowLabel ? formatActivityDayLabel(day.date) : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="chart__container chart__container--full">
+              {hoveredSlot && hoveredSummary && hoveredSlotCount > 0 && (
+                <div className="activity-map__tooltip" style={{ left: hoveredSlot.x, top: hoveredSlot.y }} role="status">
+                  <strong>{formatActivityDate(hoveredSummary.date)}</strong>
+                  <span>{formatActivitySlotLabel(hoveredSlot.slotIndex)}</span>
+                  <span><SpacedCjkText text={'\u8fd0\u884c\u65f6\u957f ' + formatActivityDuration(hoveredSummary.runningMs)} /></span>
+                  <span><SpacedCjkText text={'\u6700\u9ad8\u6e29\u5ea6 ' + (hoveredSummary.maxTemperature === null ? '--' : hoveredSummary.maxTemperature.toFixed(1) + ' \u00b0C')} /></span>
+                  <span><SpacedCjkText text={'\u91c7\u6837\u70b9\u6570 ' + String(hoveredSummary.count)} /></span>
+                </div>
+              )}
+            </section>
+
+            <div ref={chartSectionRef} className="chart__container chart__container--full">
               <div className="chart__header chart__header--compact">
                 <h5 className="chart__title">
-                  {selectedActivityDay ? `${formatActivityLabel(selectedActivityDay.date)} 曲线 · ${selectedDaySamples.length} 点` : '选择有数据的日期'}
+                  {selectedActivityDay
+                    ? <SpacedCjkText text={formatActivityLabel(selectedActivityDay.date) + ' \u66f2\u7ebf \u00b7 ' + selectedDaySamples.length + ' \u70b9'} />
+                    : <SpacedCjkText text={'\u9009\u62e9\u6709\u6570\u636e\u7684\u65e5\u671f'} />}
                 </h5>
                 <div className="chart__legend chart__legend--inline">
                   <span className="chart__legend-item chart__legend-item--pv">PV</span>

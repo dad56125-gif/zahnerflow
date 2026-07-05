@@ -206,6 +206,14 @@
   margin-left: auto;
 }
 
+.workstation-model-text {
+  display: inline-block;
+  font-family: var(--device-number-font, var(--font-number)) !important;
+  font-weight: 720;
+  transform: scaleY(0.93);
+  transform-origin: center;
+}
+
 
 /* === 节点库 / 属性面板 / 侧边栏 === */
 .left-panel,
@@ -313,7 +321,7 @@
   font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--font-ui-tracking);
 }
 
 .property-value-static {

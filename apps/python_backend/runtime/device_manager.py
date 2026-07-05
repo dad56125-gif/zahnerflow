@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable
 
 from devices.furnace.limits import validate_furnace_temperature
@@ -37,6 +37,11 @@ class DeviceManager:
             "furnace": [],
             "mfc": [],
             "zahner": [],
+        }
+        self._connection_info = {
+            "furnace": {},
+            "mfc": {},
+            "zahner": {},
         }
 
     def _record_command(self, device: str, command: str, error: Exception | str | None = None, **extra) -> None:
@@ -81,6 +86,42 @@ class DeviceManager:
             return self.mfc.comm_log.get_logs() + device_logs
         return device_logs
 
+    def device_connection_info(self, device: str) -> dict:
+        return dict(self._connection_info.get(device, {}))
+
+    def _set_connection_info(self, device: str, *, port: str | None = None, mode: str, profile: str | None = None) -> None:
+        self._connection_info[device] = {
+            "connectedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "port": port,
+            "mode": mode,
+            "profile": profile,
+        }
+
+    def _clear_connection_info(self, device: str) -> None:
+        self._connection_info[device] = {}
+
+    def _port_owner(self, port: str, requested_device: str) -> str | None:
+        if port == "COM_SIMULATOR":
+            return None
+        for device, info in self._connection_info.items():
+            if device != requested_device and info.get("port") == port and self.device_mode(device) != "disconnected":
+                return device
+        return None
+
+    def _ensure_port_available(self, device: str, port: str) -> None:
+        owner = self._port_owner(port, device)
+        if owner:
+            raise RuntimeError(f"Serial port {port} is already used by {owner}; disconnect it before connecting {device}.")
+
+    def _raise_serial_open_error(self, device: str, port: str, error: Exception) -> None:
+        owner = self._port_owner(port, device)
+        hint = (
+            f" The port is currently tracked as used by {owner}."
+            if owner
+            else " The port may be open in another app, another ZahnerFlow instance, or a vendor serial tool."
+        )
+        raise RuntimeError(f"Could not open serial port {port}: {error}.{hint}") from error
+
     def clear_device_command_logs(self, device: str) -> None:
         self._command_logs[device] = []
         if device == "mfc" and self.mfc is not None and hasattr(self.mfc, "comm_log"):
@@ -97,7 +138,8 @@ class DeviceManager:
                 wants_simulator = port == "COM_SIMULATOR"
                 current_profile = getattr(self.furnace, "profile", None) if self.furnace else None
                 requested_profile = config.get("simulatorProfile", "normal") if wants_simulator else None
-                if self._furnace_is_simulator == wants_simulator and current_profile == requested_profile:
+                current_port = self._connection_info.get("furnace", {}).get("port")
+                if self._furnace_is_simulator == wants_simulator and current_profile == requested_profile and current_port == port:
                     return {"connected": True, "already": True, "mode": "simulator" if self._furnace_is_simulator else "real"}
                 if self.furnace:
                     try:
@@ -114,23 +156,31 @@ class DeviceManager:
                 self.furnace.start_simulation()
                 self._furnace_is_simulator = True
                 self.furnace_connected = True
+                self._set_connection_info("furnace", port=port, mode="simulator", profile=self.furnace.profile)
                 self._record_command("furnace", f"connect COM_SIMULATOR profile={self.furnace.profile}")
                 return {"connected": True, "mode": "simulator"}
 
             from devices.furnace.real_device import AI518PController, ConnectRequest
 
+            self._ensure_port_available("furnace", port)
             self.furnace = AI518PController()
-            self.furnace.connect(
-                ConnectRequest(
-                    port=port,
-                    baudrate=int(config.get("baudrate", 9600)),
-                    address=int(config.get("address", 1)),
-                    stopbits=int(config.get("stopbits", 2)),
-                    timeout=float(config.get("timeout", 1.0)),
+            try:
+                self.furnace.connect(
+                    ConnectRequest(
+                        port=port,
+                        baudrate=int(config.get("baudrate", 9600)),
+                        address=int(config.get("address", 1)),
+                        stopbits=int(config.get("stopbits", 2)),
+                        timeout=float(config.get("timeout", 1.0)),
+                    )
                 )
-            )
+            except Exception as e:
+                self.furnace = None
+                self._record_error("furnace", f"connect {port}", e)
+                self._raise_serial_open_error("furnace", port, e)
             self._furnace_is_simulator = False
             self.furnace_connected = True
+            self._set_connection_info("furnace", port=port, mode="real")
             self._record_command("furnace", f"connect {port}")
             return {"connected": True, "mode": "real"}
 
@@ -144,6 +194,7 @@ class DeviceManager:
             self.furnace = None
             self.furnace_connected = False
             self._furnace_is_simulator = False
+            self._clear_connection_info("furnace")
             self._record_command("furnace", "disconnect")
 
     def furnace_status(self) -> dict:
@@ -235,7 +286,8 @@ class DeviceManager:
                 wants_simulator = port == "COM_SIMULATOR"
                 current_profile = getattr(self.mfc, "profile", None) if self.mfc else None
                 requested_profile = config.get("simulatorProfile", "normal") if wants_simulator else None
-                if self._mfc_is_simulator == wants_simulator and current_profile == requested_profile:
+                current_port = self._connection_info.get("mfc", {}).get("port")
+                if self._mfc_is_simulator == wants_simulator and current_profile == requested_profile and current_port == port:
                     return {"connected": True, "already": True, "mode": "simulator" if self._mfc_is_simulator else "real"}
                 if self.mfc:
                     try:
@@ -252,21 +304,29 @@ class DeviceManager:
                 self.mfc.start_simulation()
                 self._mfc_is_simulator = True
                 self.mfc_connected = True
+                self._set_connection_info("mfc", port=port, mode="simulator", profile=self.mfc.profile)
                 self._record_command("mfc", f"connect COM_SIMULATOR profile={self.mfc.profile}")
                 return {"connected": True, "connection_id": "sim-001", "mode": "simulator"}
 
             from devices.mfc.real_device import ConnectRequest, MfcDeviceManager
 
+            self._ensure_port_available("mfc", port)
             self.mfc = MfcDeviceManager()
-            conn_id = self.mfc.connect(
-                ConnectRequest(
-                    port=port,
-                    baudrate=int(config.get("baudrate", 19200)),
-                    timeout=float(config.get("timeout", 1.0)),
+            try:
+                conn_id = self.mfc.connect(
+                    ConnectRequest(
+                        port=port,
+                        baudrate=int(config.get("baudrate", 19200)),
+                        timeout=float(config.get("timeout", 1.0)),
+                    )
                 )
-            )
+            except Exception as e:
+                self.mfc = None
+                self._record_error("mfc", f"connect {port}", e)
+                self._raise_serial_open_error("mfc", port, e)
             self._mfc_is_simulator = False
             self.mfc_connected = True
+            self._set_connection_info("mfc", port=port, mode="real")
             self._record_command("mfc", f"connect {port}")
             return {"connected": True, "connection_id": conn_id, "mode": "real"}
 
@@ -280,6 +340,7 @@ class DeviceManager:
             self.mfc = None
             self.mfc_connected = False
             self._mfc_is_simulator = False
+            self._clear_connection_info("mfc")
             self._record_command("mfc", "disconnect")
 
     def mfc_status(self) -> dict:
@@ -376,6 +437,7 @@ class DeviceManager:
             self.zahner = ZahnerSimulator(profile=profile)
             self._zahner_is_simulator = True
             self.zahner_connected = True
+            self._set_connection_info("zahner", mode="simulator", profile=profile)
             return {"connected": True, "mode": "simulator"}
 
         from devices.zahner.real_device import ZahnerDevice
@@ -384,6 +446,7 @@ class DeviceManager:
         self.zahner.connect(host)
         self._zahner_is_simulator = False
         self.zahner_connected = True
+        self._set_connection_info("zahner", mode="real")
         return {"connected": True, "mode": "real"}
 
     def disconnect_zahner(self) -> None:
@@ -395,6 +458,7 @@ class DeviceManager:
         self.zahner = None
         self.zahner_connected = False
         self._zahner_is_simulator = False
+        self._clear_connection_info("zahner")
 
     def zahner_status(self) -> dict:
         return {

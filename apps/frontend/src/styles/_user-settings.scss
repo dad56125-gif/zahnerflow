@@ -187,14 +187,14 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-hover); border-radius: var(--radius);
   padding: var(--size-sm); color: var(--text-secondary);
-  font-family: 'Courier New', 'SF Mono', monospace;
+  font-family: var(--font-ui);
   font-size: var(--size-sm); word-break: break-all; min-height: 20px; line-height: 1.4;
   backdrop-filter: blur(var(--blur-sm)); transition: var(--transition);
 
   &:hover { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); }
 
   label { display: block; margin-bottom: var(--size-3xs); font-size: var(--size-xs); color: rgba(255, 255, 255, 0.5); }
-  code  { font-family: 'Consolas', monospace; font-size: var(--size-xs); color: rgba(165, 243, 252, 0.8); word-break: break-all; }
+  code  { font-family: var(--font-number); font-size: var(--size-xs); color: rgba(165, 243, 252, 0.8); word-break: break-all; }
 }
 
 /* === User Selector === */
@@ -247,11 +247,12 @@
   background: transparent; backdrop-filter: none;
   border: none; border-radius: 0; box-shadow: none;
   padding: 0; min-width: 320px;
+  display: flex; flex-direction: column; gap: var(--space-4);
 
-  h3 { margin: 0 0 var(--space-4) 0; color: var(--text-primary); font-weight: 600; }
+  h3 { margin: 0; color: var(--text-primary); font-weight: 600; }
 }
 
-.dialog__buttons { display: flex; gap: var(--size-2xs); justify-content: flex-end; }
+.dialog__buttons { display: flex; gap: var(--size-2xs); justify-content: flex-end; margin-top: var(--space-2); }
 
 /* === Misc === */
 .settings__hint-text     { font-size: var(--size-xs); color: rgba(255, 255, 255, 0.35); margin-top: var(--space-2); line-height: 1.4; }

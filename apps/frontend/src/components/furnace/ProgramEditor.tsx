@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
 import type { ProgramSegment } from '../../modules/furnace/furnaceTypes';
 import { SegmentValidator } from '../../modules/furnace/segmentValidation';
+import { SpacedCjkText } from '../common/SpacedCjkText';
 
 interface ProgramEditorProps {
   furnaceState: FurnaceState;
@@ -74,14 +75,14 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
           onClick={handleRead}
           disabled={!isConnected || furnaceState.loading}
         >
-          {furnaceState.loading ? '读取中...' : '读取程序段'}
+          {furnaceState.loading ? <SpacedCjkText text="读取中..." /> : <SpacedCjkText text="读取程序段" />}
         </button>
         <button
           className="btn btn--sm btn--success"
           onClick={handleWrite}
           disabled={!isConnected || furnaceState.loading}
         >
-          {furnaceState.loading ? '写入中...' : '写入程序段'}
+          {furnaceState.loading ? <SpacedCjkText text="写入中..." /> : <SpacedCjkText text="写入程序段" />}
         </button>
       </div>
 
@@ -114,7 +115,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
                         disabled={!isConnected}
                         title={validationErrors[`temp_${id}`] || ''}
                       />
-                      <span className="unit">℃</span>
+                      <span className="unit">°C</span>
                     </div>
 
                     <div className="segment__label">

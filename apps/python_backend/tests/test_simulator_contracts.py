@@ -6,6 +6,7 @@ import os
 import pytest
 
 from devices.mfc.real_device import ErrorCategory, MfcError
+from experiment_worker import build_output_path
 from runtime.device_manager import DeviceManager
 
 
@@ -176,6 +177,41 @@ def test_zahner_simulator_dc_and_eis_measurement_contract(tmp_path):
         assert len(eis["eis_data"]["frequency"]) == len(eis["eis_data"]["z_real"]) == len(eis["eis_data"]["z_imag"])
     finally:
         devices.disconnect_all()
+
+
+def test_output_path_uses_safe_windows_segments_and_user_project(tmp_path):
+    path = build_output_path(
+        {
+            "basePath": str(tmp_path),
+            "projectName": "Project_01",
+            "individualName": "Sample_02",
+            "measurementType": "ocp_measurement",
+            "workflowName": "工作流 2026/7/3 16:26:01",
+            "workflowTimestamp": "2026/7/3 16:26:01",
+        }
+    )
+
+    assert "Project_01" in path
+    assert "Sample_02" in path
+    assert "_unassigned" not in path
+    relative = os.path.relpath(path, str(tmp_path))
+    assert not any(char in relative for char in '<>:"/|?*')
+
+
+def test_output_path_sanitizes_unassigned_workflow_name(tmp_path):
+    path = build_output_path(
+        {
+            "basePath": str(tmp_path),
+            "measurementType": "ocp_measurement",
+            "workflowName": "工作流 2026/7/3 16:26:01",
+            "workflowTimestamp": "2026/7/3 16:26:01",
+        }
+    )
+
+    relative = os.path.relpath(path, str(tmp_path))
+    assert "_unassigned" in relative
+    assert "工作流 2026_7_3 16_26_01" in relative
+    assert not any(char in relative for char in '<>:"/|?*')
 
 
 def test_zahner_simulator_failure_profiles():
