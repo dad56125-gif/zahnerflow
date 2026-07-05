@@ -155,7 +155,7 @@ export const FilePathSection: React.FC<FilePathSectionProps> = ({
                     />
                     <button
                         type="button"
-                        className="btn btn--sm btn--secondary btn--icon btn--rounded path-input__browse-btn"
+                        className="btn btn--md btn--secondary btn--icon btn--round path-input__browse-btn"
                         onClick={handleBrowsePath}
                         title="浏览文件夹"
                     >

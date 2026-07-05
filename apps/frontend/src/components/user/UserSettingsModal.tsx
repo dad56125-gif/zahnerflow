@@ -5,6 +5,7 @@ import { runtimeClient } from '../../runtimeClient';
 import { Dropdown } from '../shared/Dropdown';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
 import { selectDesktopDirectory } from '../../desktopBridge';
+import { SpacedCjkText } from '../common/SpacedCjkText';
 
 interface UserSettings {
     filePath: {
@@ -318,6 +319,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         });
     };
 
+    const sectionOrder = Object.keys(SECTION_LABELS) as SettingsSection[];
+    const activeSectionIndex = sectionOrder.indexOf(activeSection);
+    const tabListStyle = {
+        '--device-tab-index': Math.max(0, activeSectionIndex),
+        '--device-tab-count': sectionOrder.length,
+    } as React.CSSProperties;
+
     return (
         <ModalLayer
             open={isOpen}
@@ -330,27 +338,32 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             {({ close }) => (
                 <div className="settings">
                     {/* 头部 */}
-                    <div className="settings__header">
-                        <h2><span className="settings__title-icon"><SettingsTitleIcon /></span>用户配置</h2>
-                        <span className="current-user__badge">{currentUser}</span>
-                        <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={close} title="关闭">✕</button>
+                    <div className="settings__header modal__header">
+                        <h3 className="device-title" aria-label="用户配置">
+                            <span className="settings__title-icon"><SettingsTitleIcon /></span>
+                            <SpacedCjkText text="用户配置" className="device-title__name cjk-spaced" />
+                        </h3>
+                        <div className="tabs">
+                            <div className="tabs__list" style={tabListStyle}>
+                                {sectionOrder.map(section => (
+                                    <button
+                                        key={section}
+                                        className={`btn btn--secondary btn--sm tabs__trigger ${activeSection === section ? 'is-active' : ''}`}
+                                        onClick={() => setActiveSection(section)}
+                                    >
+                                        <span className="settings__nav-icon"><SettingsSectionIcon section={section} /></span>
+                                        <SpacedCjkText text={SECTION_LABELS[section].label} />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="settings__header-actions">
+                            <span className="current-user__badge">{currentUser}</span>
+                            <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={close} title="关闭">✕</button>
+                        </div>
                     </div>
 
                     <div className="settings__body">
-                        {/* 左侧导航 */}
-                        <div className="settings__nav">
-                            {(Object.keys(SECTION_LABELS) as SettingsSection[]).map(section => (
-                                <button
-                                    key={section}
-                                    className={`settings__nav-item ${activeSection === section ? 'is-active' : ''}`}
-                                    onClick={() => setActiveSection(section)}
-                                >
-                                    <span className="settings__nav-icon"><SettingsSectionIcon section={section} /></span>
-                                    <span className="settings__nav-label">{SECTION_LABELS[section].label}</span>
-                                </button>
-                            ))}
-                        </div>
-
                         {/* 右侧内容 */}
                         <div className="settings__content">
                             {loading ? (
@@ -380,7 +393,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                     />
                                                     <button
                                                         type="button"
-                                                        className="btn btn--sm btn--secondary btn--icon btn--rounded path-input__browse-btn"
+                                                        className="btn btn--md btn--secondary btn--icon btn--round path-input__browse-btn"
                                                         onClick={handleBrowsePath}
                                                         title="浏览文件夹"
                                                     >
@@ -498,21 +511,67 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                     {/* 通知配置 */}
                                     {activeSection === 'notification' && (
                                         <div className="settings__section-content">
-
-                                            <div className="settings__form-group">
-                                                <label className="setting-toggle">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={settings.notification.enabled}
-                                                        onChange={(e) => updateNotification('enabled', e.target.checked)}
-                                                    />
-                                                    <div className="toggle-track">
-                                                        <div className="toggle-thumb"></div>
-                                                    </div>
-                                                    <span className="toggle-label">
-                                                        {settings.notification.enabled ? '启用' : '不启用'}
+                                            <div className="settings__notification-row">
+                                                <div className="settings__toggle-row">
+                                                    <span className="settings__smtp-title">
+                                                        启用
                                                     </span>
-                                                </label>
+                                                    <label className="setting-toggle">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={settings.notification.enabled}
+                                                            onChange={(e) => updateNotification('enabled', e.target.checked)}
+                                                            aria-label="启用通知"
+                                                        />
+                                                        <div className="toggle-track">
+                                                            <div className="toggle-thumb"></div>
+                                                        </div>
+                                                    </label>
+                                                </div>
+
+                                                <div className="settings__timing-row">
+                                                    <span className="settings__smtp-title">
+                                                        发送时机
+                                                    </span>
+
+                                                    <div className="settings__toggle-group">
+                                                        <label className="setting-toggle">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={settings.notification.onComplete}
+                                                                onChange={(e) => updateNotification('onComplete', e.target.checked)}
+                                                            />
+                                                            <div className="toggle-track">
+                                                                <div className="toggle-thumb"></div>
+                                                            </div>
+                                                            <span className="toggle-label sub-toggle">完成时</span>
+                                                        </label>
+
+                                                        <label className="setting-toggle">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={settings.notification.onError}
+                                                                onChange={(e) => updateNotification('onError', e.target.checked)}
+                                                            />
+                                                            <div className="toggle-track">
+                                                                <div className="toggle-thumb"></div>
+                                                            </div>
+                                                            <span className="toggle-label sub-toggle">失败时</span>
+                                                        </label>
+
+                                                        <label className="setting-toggle">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={settings.notification.onWarning}
+                                                                onChange={(e) => updateNotification('onWarning', e.target.checked)}
+                                                            />
+                                                            <div className="toggle-track">
+                                                                <div className="toggle-thumb"></div>
+                                                            </div>
+                                                            <span className="toggle-label sub-toggle">警告时</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             {settings.notification.enabled && (
@@ -582,7 +641,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                     <div className="settings__smtp-action-row">
                                                         <button
                                                             type="button"
-                                                            className="test-email-btn"
+                                                            className="btn btn--sm btn--secondary test-email-btn"
                                                             onClick={async () => {
                                                                 if (!settings.notification.email) {
                                                                     alert('请先填写收件邮箱地址');
@@ -605,64 +664,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                                 }
                                                             }}
                                                             disabled={!settings.notification.email || !settings.notification.smtpUser}
-                                                            style={{
-                                                                opacity: (settings.notification.email && settings.notification.smtpUser) ? 1 : 0.5
-                                                            }}
                                                         >
-                                                            📧 发送测试邮件
+                                                            发送测试邮件
                                                         </button>
                                                         <p className="settings__hint-text settings__hint-text--no-margin">
                                                             点击后会使用上方配置发送测试邮件
                                                         </p>
                                                     </div>
 
-                                                    <h4 className="settings__smtp-title">
-                                                        发送时机
-                                                    </h4>
-
-                                                    <div className="settings__toggle-group">
-                                                        <div className="settings__form-group settings__form-group--no-margin">
-                                                            <label className="setting-toggle">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={settings.notification.onComplete}
-                                                                    onChange={(e) => updateNotification('onComplete', e.target.checked)}
-                                                                />
-                                                                <div className="toggle-track">
-                                                                    <div className="toggle-thumb"></div>
-                                                                </div>
-                                                                <span className="toggle-label sub-toggle">完成时</span>
-                                                            </label>
-                                                        </div>
-
-                                                        <div className="settings__form-group settings__form-group--no-margin">
-                                                            <label className="setting-toggle">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={settings.notification.onError}
-                                                                    onChange={(e) => updateNotification('onError', e.target.checked)}
-                                                                />
-                                                                <div className="toggle-track">
-                                                                    <div className="toggle-thumb"></div>
-                                                                </div>
-                                                                <span className="toggle-label sub-toggle">失败时</span>
-                                                            </label>
-                                                        </div>
-
-                                                        <div className="settings__form-group settings__form-group--no-margin">
-                                                            <label className="setting-toggle">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={settings.notification.onWarning}
-                                                                    onChange={(e) => updateNotification('onWarning', e.target.checked)}
-                                                                />
-                                                                <div className="toggle-track">
-                                                                    <div className="toggle-thumb"></div>
-                                                                </div>
-                                                                <span className="toggle-label sub-toggle">警告时</span>
-                                                            </label>
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             )}
 
@@ -733,16 +742,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                             ) : (
                                 <div className="settings__empty">请先选择用户</div>
                             )}
-                        </div>
-                    </div>
 
-                    {/* 底部状态 */}
-                    <div className="settings__footer">
-                        {saving ? (
-                            <span className="save-status saving">保存中...</span>
-                        ) : (
-                            <span className="save-status saved">✓ 自动保存</span>
-                        )}
+                            <div className="settings__save-indicator">
+                                {saving ? (
+                                    <span className="save-status saving">保存中...</span>
+                                ) : (
+                                    <span className="save-status saved">✓ 自动保存</span>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
