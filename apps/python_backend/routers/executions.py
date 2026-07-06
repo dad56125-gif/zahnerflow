@@ -40,6 +40,54 @@ def _start_from_unrolled_index(body: dict, total_steps: int) -> int:
     return start_index
 
 
+def _string_value(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _user_path_config(owner_name: str | None) -> dict:
+    if not _string_value(owner_name):
+        return {}
+    from routers.files import get_user_config
+
+    config = get_user_config(owner_name or "").get("config") or {}
+    return config if isinstance(config, dict) else {}
+
+
+def _resolve_path_config(owner_name: str | None, request_path_config: dict | None) -> dict:
+    resolved = _user_path_config(owner_name)
+    incoming = request_path_config if isinstance(request_path_config, dict) else {}
+    for key in ("basePath", "projectName", "individualName"):
+        value = _string_value(incoming.get(key))
+        if value:
+            resolved[key] = value
+    return {
+        "basePath": _string_value(resolved.get("basePath")) or "C:\\data\\archive",
+        "projectName": _string_value(resolved.get("projectName")),
+        "individualName": _string_value(resolved.get("individualName")),
+    }
+
+
+def _missing_run_metadata(owner_name: str | None, path_config: dict) -> list[str]:
+    missing = []
+    if not _string_value(owner_name):
+        missing.append("ownerName")
+    if not _string_value(path_config.get("projectName")):
+        missing.append("projectName")
+    if not _string_value(path_config.get("individualName")):
+        missing.append("individualName")
+    return missing
+
+
+def _run_metadata_message(missing_fields: list[str]) -> str:
+    labels = {
+        "ownerName": "用户",
+        "projectName": "项目名称",
+        "individualName": "样品名称",
+    }
+    missing_text = "、".join(labels[field] for field in missing_fields)
+    return f"缺少{missing_text}，请填写后再运行；5 秒内再次点击运行将强制开始。"
+
+
 def set_sio(sio_instance):
     global sio
     sio = sio_instance
@@ -101,10 +149,23 @@ async def create_execution(body: dict):
     workflow_name = body.get("workflowName")
     workstation_type = body.get("workstationType") or "zahner-zennium"
     auto_startup_config = body.get("autoStartupConfig") or {}
+    force_missing_metadata = bool(body.get("forceStartWithMissingRunMetadata"))
+    path_config = _resolve_path_config(owner_name, body.get("pathConfig"))
+    missing_metadata = _missing_run_metadata(owner_name, path_config)
     start_from_unrolled_index = 0
 
     if runtime.experiment_state.get("status") in ("running", "paused", "cancelling"):
         raise HTTPException(status_code=400, detail="An execution is already active")
+
+    if missing_metadata and not force_missing_metadata:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "MISSING_RUN_METADATA",
+                "missingFields": missing_metadata,
+                "message": _run_metadata_message(missing_metadata),
+            },
+        )
 
     resolved_workflow = None
     if nodes:
@@ -133,9 +194,6 @@ async def create_execution(body: dict):
     exec_id = f"exec_{int(time.time() * 1000)}_{random.randint(100, 999)}"
     now = datetime.utcnow().isoformat() + "Z"
 
-    from routers.files import get_user_config
-
-    path_config = get_user_config(owner_name or "")["config"] if owner_name else None
     wf_snapshot_payload = {
         **(resolved_workflow or {}),
         "id": workflow_id,

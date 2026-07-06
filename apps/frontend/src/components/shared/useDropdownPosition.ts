@@ -94,7 +94,11 @@ export const useDropdownPosition = (
         if (!isHiding) return;
 
         const dropdown = dropdownRef?.current;
-        if (!dropdown) return;
+        if (!dropdown) {
+            setIsOpen(false);
+            setIsHiding(false);
+            return;
+        }
 
         let animationCompleted = false;
         const fallbackTimer = setTimeout(() => {

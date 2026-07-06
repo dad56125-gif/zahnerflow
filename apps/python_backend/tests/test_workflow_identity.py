@@ -4,6 +4,9 @@ import asyncio
 import json
 import sqlite3
 
+import pytest
+from fastapi import HTTPException
+
 from routers import executions, workflows
 from workflow_identity import workflow_fingerprint
 
@@ -99,6 +102,7 @@ def test_execution_resolves_workflow_by_fingerprint(monkeypatch):
                 "workflowId": None,
                 "workflowName": "延时测试",
                 "nodes": [{"id": "temp_1", "type": "wait_delay", "config": {"duration": 1}}],
+                "forceStartWithMissingRunMetadata": True,
             }
         )
     )
@@ -108,6 +112,7 @@ def test_execution_resolves_workflow_by_fingerprint(monkeypatch):
                 "workflowId": None,
                 "workflowName": "另一个名字",
                 "nodes": [{"id": "temp_2", "type": "wait_delay", "config": {"duration": 1}}],
+                "forceStartWithMissingRunMetadata": True,
             }
         )
     )
@@ -131,6 +136,7 @@ def test_changed_nodes_create_new_workflow_and_execution_snapshot_uses_actual_no
                 "workflowId": None,
                 "workflowName": "延时测试",
                 "nodes": [{"id": "wait_1", "type": "wait_delay", "config": {"duration": 1}}],
+                "forceStartWithMissingRunMetadata": True,
             }
         )
     )
@@ -140,6 +146,7 @@ def test_changed_nodes_create_new_workflow_and_execution_snapshot_uses_actual_no
                 "workflowId": original["workflowId"],
                 "workflowName": "延时测试 v2",
                 "nodes": [{"id": "wait_1", "type": "wait_delay", "config": {"duration": 2}}],
+                "forceStartWithMissingRunMetadata": True,
             }
         )
     )
@@ -192,6 +199,7 @@ def test_runtime_connection_fields_do_not_change_workflow_identity(monkeypatch):
                     {"id": "startup", "type": "startup", "config": {"host": "localhost", "port": "COM3"}},
                     {"id": "wait", "type": "wait_delay", "config": {"duration": 1}},
                 ],
+                "forceStartWithMissingRunMetadata": True,
             }
         )
     )
@@ -208,12 +216,134 @@ def test_runtime_connection_fields_do_not_change_workflow_identity(monkeypatch):
                     },
                     {"id": "wait", "type": "wait_delay", "config": {"duration": 1}},
                 ],
+                "forceStartWithMissingRunMetadata": True,
             }
         )
     )
 
     assert simulator["workflowId"] == normal["workflowId"]
     assert db.conn.execute("SELECT COUNT(*) AS c FROM workflows").fetchone()["c"] == 1
+
+
+def test_execution_requires_run_metadata_before_writes(monkeypatch):
+    db = MemoryDb()
+    runtime = RuntimeStub()
+    monkeypatch.setattr(workflows, "db", db)
+    monkeypatch.setattr(executions, "db", db)
+    monkeypatch.setattr(executions, "runtime", runtime)
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            executions.create_execution(
+                {
+                    "workflowId": None,
+                    "workflowName": "元数据检查",
+                    "nodes": [{"id": "wait_1", "type": "wait_delay", "config": {"duration": 1}}],
+                }
+            )
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["code"] == "MISSING_RUN_METADATA"
+    assert exc_info.value.detail["missingFields"] == ["ownerName", "projectName", "individualName"]
+    assert db.conn.execute("SELECT COUNT(*) AS c FROM workflows").fetchone()["c"] == 0
+    assert db.conn.execute("SELECT COUNT(*) AS c FROM executions").fetchone()["c"] == 0
+    assert runtime.payloads == []
+
+
+def test_execution_reports_missing_project_and_individual_for_user(monkeypatch):
+    db = MemoryDb()
+    runtime = RuntimeStub()
+    monkeypatch.setattr(workflows, "db", db)
+    monkeypatch.setattr(executions, "db", db)
+    monkeypatch.setattr(executions, "runtime", runtime)
+    monkeypatch.setattr(
+        "routers.files.get_user_config",
+        lambda user: {"success": True, "config": {"basePath": "C:\\data\\archive", "projectName": "", "individualName": ""}},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            executions.create_execution(
+                {
+                    "workflowId": None,
+                    "workflowName": "元数据检查",
+                    "ownerName": "operator",
+                    "nodes": [{"id": "wait_1", "type": "wait_delay", "config": {"duration": 1}}],
+                }
+            )
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["missingFields"] == ["projectName", "individualName"]
+
+
+def test_execution_force_allows_missing_run_metadata(monkeypatch):
+    db = MemoryDb()
+    runtime = RuntimeStub()
+    monkeypatch.setattr(workflows, "db", db)
+    monkeypatch.setattr(executions, "db", db)
+    monkeypatch.setattr(executions, "runtime", runtime)
+
+    result = asyncio.run(
+        executions.create_execution(
+            {
+                "workflowId": None,
+                "workflowName": "强制启动",
+                "nodes": [{"id": "wait_1", "type": "wait_delay", "config": {"duration": 1}}],
+                "forceStartWithMissingRunMetadata": True,
+            }
+        )
+    )
+
+    assert result["status"] == "running"
+    assert db.conn.execute("SELECT COUNT(*) AS c FROM workflows").fetchone()["c"] == 1
+    assert db.conn.execute("SELECT COUNT(*) AS c FROM executions").fetchone()["c"] == 1
+    assert runtime.payloads[0]["pathConfig"]["projectName"] == ""
+    assert runtime.payloads[0]["pathConfig"]["individualName"] == ""
+
+
+def test_execution_request_path_config_overrides_saved_settings(monkeypatch):
+    db = MemoryDb()
+    runtime = RuntimeStub()
+    monkeypatch.setattr(workflows, "db", db)
+    monkeypatch.setattr(executions, "db", db)
+    monkeypatch.setattr(executions, "runtime", runtime)
+
+    def saved_config(user: str):
+        return {
+            "success": True,
+            "config": {
+                "basePath": "C:\\saved",
+                "projectName": "SavedProject",
+                "individualName": "SavedSample",
+            },
+        }
+
+    monkeypatch.setattr("routers.files.get_user_config", saved_config)
+
+    result = asyncio.run(
+        executions.create_execution(
+            {
+                "workflowId": None,
+                "workflowName": "路径优先级",
+                "ownerName": "operator",
+                "pathConfig": {
+                    "basePath": "D:\\request",
+                    "projectName": "RequestProject",
+                    "individualName": "RequestSample",
+                },
+                "nodes": [{"id": "wait_1", "type": "wait_delay", "config": {"duration": 1}}],
+            }
+        )
+    )
+
+    assert result["status"] == "running"
+    assert runtime.payloads[0]["pathConfig"] == {
+        "basePath": "D:\\request",
+        "projectName": "RequestProject",
+        "individualName": "RequestSample",
+    }
 
 
 def test_workflow_block_identity_uses_stable_workflow_id_only():

@@ -15,6 +15,7 @@ interface ToolbarProps {
   onGenerateReport?: () => void;
   onUnrollViewOpenChange?: (open: boolean) => void;
   autoStartupConfig?: Record<string, any>;
+  runMetadataWarning?: string | null;
 }
 
 type PrimaryAction = 'run' | 'reset';
@@ -82,6 +83,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onGenerateReport,
   onUnrollViewOpenChange,
   autoStartupConfig,
+  runMetadataWarning,
 }) => {
   const { clearCanvas, nodes } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
@@ -211,6 +213,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         <div className="toolbar__group toolbar__group--top-right">
+          {runMetadataWarning && buttonStates.primaryAction === 'run' && (
+            <div className="toolbar-run-warning" role="status" aria-live="polite">
+              <span className="toolbar-run-warning__marker">!</span>
+              <span className="toolbar-run-warning__message">{runMetadataWarning}</span>
+            </div>
+          )}
           <button
             className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled ? 'disabled' : ''}`}
             onClick={handlePrimaryAction}

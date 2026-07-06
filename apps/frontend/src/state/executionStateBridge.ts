@@ -4,6 +4,17 @@ import { runtimeClient, runtimeSocket } from '../runtimeClient';
 import type { ExecutionSnapshot, LoopIterationEvent } from '@zahnerflow/types';
 // clearMeasurementCache 已解耦，现在由 useMeasurementStream 自己监听 nodesReset 事件
 
+export interface StartExecutionOptions {
+  nodes: any[];
+  ownerName?: string;
+  workflowName?: string;
+  workstationType?: string | null;
+  autoStartupConfig?: Record<string, any>;
+  pathConfig?: Record<string, any>;
+  startFromUnrolledIndex?: number;
+  forceStartWithMissingRunMetadata?: boolean;
+}
+
 interface ExecutionState {
   isRunning: boolean;
   isPaused: boolean;
@@ -30,14 +41,7 @@ interface ExecutionState {
   };
 
   // Actions
-  startExecution: (
-    nodes: any[],
-    ownerName?: string,
-    workflowName?: string,
-    workstationType?: string | null,
-    autoStartupConfig?: Record<string, any>,
-    startFromUnrolledIndex?: number
-  ) => Promise<{ executionId: string; workflowId: string }>;
+  startExecution: (options: StartExecutionOptions) => Promise<{ executionId: string; workflowId: string }>;
   stopExecution: () => Promise<void>;
   pauseExecution: () => Promise<void>;
   resumeExecution: () => Promise<void>;
@@ -218,7 +222,16 @@ export const useExecutionStore = create<ExecutionState>()(
         lastSnapshot: null, // ✅ 初始化为空
         loopProgress: {}, // ✅ 初始化循环进度
 
-        startExecution: async (nodes, ownerName, workflowName, workstationType, autoStartupConfig, startFromUnrolledIndex = 0) => {
+        startExecution: async ({
+          nodes,
+          ownerName,
+          workflowName,
+          workstationType,
+          autoStartupConfig,
+          pathConfig,
+          startFromUnrolledIndex = 0,
+          forceStartWithMissingRunMetadata = false,
+        }) => {
           // 初始化状态
           set({
             isRunning: true,
@@ -246,7 +259,9 @@ export const useExecutionStore = create<ExecutionState>()(
               workflowName,
               workstationType,
               autoStartupConfig,
+              pathConfig,
               startFromUnrolledIndex,
+              forceStartWithMissingRunMetadata,
             });
 
             // 更新返回的 executionId
@@ -262,8 +277,13 @@ export const useExecutionStore = create<ExecutionState>()(
 
             // 注意：后续的状态更新将由 WebSocket 的 snapshot 事件接管
           } catch (error) {
+            const details = error && typeof error === 'object' && 'details' in error
+              ? (error as { details?: { code?: string } }).details
+              : undefined;
             set({
-              error: error instanceof Error ? error.message : '启动执行失败',
+              error: details?.code === 'MISSING_RUN_METADATA'
+                ? null
+                : error instanceof Error ? error.message : '启动执行失败',
               isRunning: false
             });
             throw error;

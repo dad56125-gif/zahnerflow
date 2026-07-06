@@ -10,7 +10,7 @@ import { MeasurementDashboard } from './components/measurement-dashboard/Measure
 import { Canvas } from './components/canvas/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
-import { runtimeClient, runtimeSocket } from './runtimeClient';
+import { runtimeClient, runtimeSocket, type RuntimeError } from './runtimeClient';
 import { ModalLayer } from './components/shared/OverlayLayer';
 
 import { useCanvasStore } from './state/canvasStore';
@@ -34,6 +34,47 @@ import {
   simulatorHostForZahner,
   simulatorProfileFor,
 } from './modules/simulator/simulatorSettings';
+
+const RUN_METADATA_CONFIRM_MS = 5000;
+
+type RunFlowOptions = {
+  startFromUnrolledIndex?: number;
+};
+
+type MissingRunMetadataDetails = {
+  code?: string;
+  missingFields?: string[];
+  message?: string;
+};
+
+type RunMetadataWarning = {
+  message: string;
+  expiresAt: number;
+};
+
+const RUN_METADATA_FIELD_LABELS: Record<string, string> = {
+  ownerName: '用户',
+  projectName: '项目名称',
+  individualName: '样品名称',
+};
+
+function isMissingRunMetadataError(error: unknown): error is RuntimeError & { details: MissingRunMetadataDetails } {
+  const details = error && typeof error === 'object' && 'details' in error
+    ? (error as RuntimeError).details
+    : undefined;
+  return Boolean(details && typeof details === 'object' && (details as MissingRunMetadataDetails).code === 'MISSING_RUN_METADATA');
+}
+
+function runMetadataWarningMessage(details: MissingRunMetadataDetails): string {
+  const fields = Array.isArray(details.missingFields) ? details.missingFields : [];
+  const missingText = fields
+    .map((field) => RUN_METADATA_FIELD_LABELS[field])
+    .filter(Boolean)
+    .join('、');
+  return missingText
+    ? `缺少${missingText}，请填写后再运行。再次点击将强制开始。`
+    : details.message || '运行信息不完整，请填写后再运行。再次点击将强制开始。';
+}
 
 // 内部应用内容组件（在 UserProvider 内部，可以使用 useUser）
 const AppContent: React.FC = () => {
@@ -69,6 +110,7 @@ const AppContent: React.FC = () => {
   const [simulatorSettings, setSimulatorSettings] = useState<SimulatorSettings>(() => loadSimulatorSettings());
   const [suppressedEtaNodeFingerprint, setSuppressedEtaNodeFingerprint] = useState<string | null>(null);
   const [blockedWorkflowBlockIds, setBlockedWorkflowBlockIds] = useState<string[]>([]);
+  const [runMetadataWarning, setRunMetadataWarning] = useState<RunMetadataWarning | null>(null);
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
@@ -115,6 +157,18 @@ const AppContent: React.FC = () => {
       setSuppressedEtaNodeFingerprint(null);
     }
   }, [nodeFingerprint, suppressedEtaNodeFingerprint]);
+
+  useEffect(() => {
+    if (!runMetadataWarning) return;
+    const timeout = window.setTimeout(() => {
+      setRunMetadataWarning(null);
+    }, Math.max(0, runMetadataWarning.expiresAt - Date.now()));
+    return () => window.clearTimeout(timeout);
+  }, [runMetadataWarning]);
+
+  useEffect(() => {
+    setRunMetadataWarning(null);
+  }, [nodeFingerprint, currentUser, filePathConfig.projectName, filePathConfig.individualName]);
 
   useEffect(() => {
     const workflowIds = Array.from(new Set(
@@ -219,7 +273,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // --- 执行控制逻辑 ---
-  const runFlow = async (options: { startFromUnrolledIndex?: number } = {}) => {
+  const runFlow = async (options: RunFlowOptions = {}) => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
       setIsNotificationPanelOpen(true);
       return;
@@ -235,15 +289,27 @@ const AppContent: React.FC = () => {
         workflowStore.setDraftWorkflowName(workflowName);
       }
 
-      await startExecution(
+      const forceStartWithMissingRunMetadata = !!runMetadataWarning && Date.now() < runMetadataWarning.expiresAt;
+
+      await startExecution({
         nodes,
-        currentUser || undefined,
+        ownerName: currentUser || undefined,
         workflowName,
-        selectedWorkstation,
-        zahnerAutoStartupConfig,
-        options.startFromUnrolledIndex ?? 0
-      );
+        workstationType: selectedWorkstation,
+        autoStartupConfig: zahnerAutoStartupConfig,
+        pathConfig: filePathConfig,
+        startFromUnrolledIndex: options.startFromUnrolledIndex ?? 0,
+        forceStartWithMissingRunMetadata,
+      });
+      setRunMetadataWarning(null);
     } catch (error) {
+      if (isMissingRunMetadataError(error)) {
+        setRunMetadataWarning({
+          message: runMetadataWarningMessage(error.details),
+          expiresAt: Date.now() + RUN_METADATA_CONFIRM_MS,
+        });
+        return;
+      }
       console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);
     }
@@ -251,6 +317,7 @@ const AppContent: React.FC = () => {
 
   const resetFlow = async () => {
     try {
+      setRunMetadataWarning(null);
       // 🔥 SSOT: 不再主动清空，完全依赖后端 WebSocket 广播 nodesReset 事件
       // clearMeasurementCache() 和 resetExecutionState() 现在由 executionStore 的事件监听统一处理
 
@@ -267,10 +334,10 @@ const AppContent: React.FC = () => {
   };
 
   // 包装回调
-  const handleRunFlow = useCallback(async (options: { startFromUnrolledIndex?: number } = {}) => {
+  const handleRunFlow = useCallback(async (options: RunFlowOptions = {}) => {
     setSuppressedEtaNodeFingerprint(null);
     await runFlow(options);
-  }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, zahnerAutoStartupConfig, workflowBlockRunBlocked]);
+  }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, filePathConfig, zahnerAutoStartupConfig, workflowBlockRunBlocked, runMetadataWarning]);
 
   const handleLoopDetected = useCallback((loops: SimpleLoopInfo[]) => {
     setDetectedLoops(loops);
@@ -286,6 +353,7 @@ const AppContent: React.FC = () => {
         selectedWorkstationId={selectedWorkstation}
         simulatorActive={simulatorActive}
         onSimulatorPanelOpen={() => setShowSimulatorPanel(true)}
+        hasRunMetadataWarning={Boolean(runMetadataWarning)}
       />
 
       <div className="leftbar-area">
@@ -312,6 +380,7 @@ const AppContent: React.FC = () => {
           onGenerateReport={() => setShowReportModal(true)}
           onUnrollViewOpenChange={setShowUnrollView}
           autoStartupConfig={zahnerAutoStartupConfig}
+          runMetadataWarning={runMetadataWarning?.message || null}
         />
       </div>
 

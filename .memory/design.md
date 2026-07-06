@@ -134,13 +134,18 @@
 
 刷新接管规则：`systemStateSnapshot` 是执行接管的权威来源。后端运行快照必须携带正在执行的 `nodes`、`workflowId`、`workflowName`、`ownerName`、`workstationType`、当前步骤和 ETA；页面刷新或 Socket 重连后，前端应使用 `running` / `paused` / `cancelling` 快照恢复画布、当前工作流和工作站选择。设备连接状态仍通过设备 runtime status 路由和 `deviceStatusUpdate` 事件恢复，禁止用前端本地存档伪造 Furnace、MFC 或工作站连接状态。
 
+运行前元数据确认规则：执行创建请求启动前必须由后端检查本次执行的用户、项目名称和样品名称。项目名称和样品名称优先使用请求中的 `pathConfig`，缺失时再读取该用户设置。若存在缺失且请求未携带 `forceStartWithMissingRunMetadata=true`，后端必须在创建 workflow / execution 记录和启动设备前返回 `409`，`detail.code` 为 `MISSING_RUN_METADATA`，并带上 `missingFields`。前端收到该错误后只在运行按钮左侧显示 5 秒局部警告，不写入全局通知；5 秒内再次从主运行按钮或展开步骤运行入口发起请求时，才携带 `forceStartWithMissingRunMetadata=true` 强制开始。
+
 归属文件：
 
 - `apps/python_backend/runtime/execution_engine.py`
 - `apps/python_backend/runtime/app_runtime.py`
 - `apps/python_backend/loop_unroller.py`
 - `apps/python_backend/routers/executions.py`
+- `apps/shared/contracts/workflow.py`
+- `packages/types/src/contracts/workflow.ts`
 - `apps/frontend/src/App.tsx`
+- `apps/frontend/src/components/canvas/Canvas.tsx`
 - `apps/frontend/src/components/TopNavbar.tsx`
 - `apps/frontend/src/components/Toolbar.tsx`
 - `apps/frontend/src/state/executionStateBridge.ts`
@@ -151,7 +156,7 @@
 
 禁止事项：除非本地单用户前提改变，否则禁止引入多用户执行队列、隐藏 worker 池或分布式调度；禁止依靠前端本地缓存作为执行恢复事实源。
 
-最近复核：2026-07-01，启动/停止节点改为测量工作流的自动执行边界后复核。
+最近复核：2026-07-07，加入运行前用户、项目名称和样品名称确认后复核。
 
 ## [执行-ETA与事实记录]
 
@@ -275,6 +280,7 @@ ETA 规则：
 18. `startup` 和 `shutdown` 是后端自动测量边界，不在节点库中展示，也不应由用户在新工作流里手动创建。前端启动执行时只通过 `autoStartupConfig` 传递 Zahner 自动启动连接参数；该字段是执行请求上下文，不是节点配置，不参与工作流定义归档或 fingerprint。
 19. 用户设置中的文件路径配置是测量输出路径的默认来源。`basePath`、`projectName` 和 `individualName` 随执行请求进入后端执行引擎；测量节点可用显式节点参数覆盖这些默认值。项目名和样品名输入层限制为英文、数字和下划线，但后端在最终构建目录时仍必须清洗每一个路径片段，避免工作流名、时间戳或外部输入中的 Windows 非法字符进入真实目录名。
 20. “展开所有执行步骤”弹窗必须使用后端 `POST /api/executions/unroll-preview` 的结果展示展开步骤。该接口返回循环、工作流块、高级节点和自动测量边界展开后的同一套步骤序列。弹窗默认保持全展开，但自动 `startup` / `shutdown` 边界不显示为普通卡片；循环、高级节点和工作流块只通过用户点击收缩按钮临时折叠。弹窗允许选择某个可见展开步骤并通过执行创建请求的 `startFromUnrolledIndex` 从该步骤开始运行；普通运行不传该字段或传 `0`。
+21. 执行创建请求支持 `pathConfig` 和 `forceStartWithMissingRunMetadata`。`pathConfig` 是本次执行文件路径配置，优先于已保存用户设置；`forceStartWithMissingRunMetadata` 只用于用户在运行前元数据警告出现后的 5 秒确认窗口内强制启动。缺少用户、项目名称或样品名称时，后端返回结构化 `409 / MISSING_RUN_METADATA`，前端只能把它渲染为运行按钮旁的局部警告，不作为普通执行失败进入全局通知。
 
 归属文件：
 
@@ -287,8 +293,13 @@ ETA 规则：
 - `apps/python_backend/runtime/device_manager.py`
 - `apps/python_backend/runtime/execution_engine.py`
 - `apps/python_backend/device_data_service.py`
+- `apps/shared/contracts/workflow.py`
+- `packages/types/src/contracts/workflow.ts`
 - `apps/shared/contracts/furnace.py`
 - `apps/frontend/src/runtimeClient.ts`
+- `apps/frontend/src/App.tsx`
+- `apps/frontend/src/state/executionStateBridge.ts`
+- `apps/frontend/src/components/canvas/Canvas.tsx`
 - `apps/frontend/src/state/currentWorkflowStore.ts`
 - `apps/frontend/src/components/Toolbar.tsx`
 - `apps/frontend/src/components/ScheduleRunner.tsx`
@@ -307,7 +318,7 @@ ETA 规则：
 
 禁止事项：禁止把架构清理的副作用变成当前前端仍在使用的 API 路径破坏；禁止在 TSX 中引入硬编码内联颜色和物理字号；禁止在图表及画布中使用写死的亮色/暗色绘图背景与文本色；禁止重引入 `shared/api.ts`、`services/api/client.ts`、`services/api/zahnerApi.ts`、`BaseDeviceApi.ts`、`BaseWebSocketService.ts`、`furnaceApi.ts`、`mfcApi.ts`、`furnaceWebSocket.service.ts`、`mfcWebSocket.service.ts`、`workflowService.ts` 或 `websocket.service.ts` 作为前端通信入口；禁止新增只做 `.btn` class 映射的薄按钮包装组件；禁止在按钮 TSX 中用视觉内联样式替代 `.btn` 体系；禁止在 `<input>` / `<select>` 上省略 `.input` / `.select` 基类；禁止在业务 SCSS 中重复定义输入框基础外观样式；禁止在 SVG stroke 中硬编码 `rgba(...)` 颜色值；禁止使用 `×`（U+00D7）、`▼` 或带 / 不带 variation selector 混用的 emoji 符号。
 
-最近复核：2026-06-30，工作流块节点接入前端契约、属性面板和运行禁用规则后复核。
+最近复核：2026-07-07，加入执行启动前元数据确认契约后复核。
 
 ## [前端-组件目录]
 

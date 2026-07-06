@@ -46,6 +46,46 @@
   right: var(--toolbar-edge-offset);
 }
 
+.toolbar-run-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2xs);
+  max-width: none;
+  white-space: nowrap;
+  min-height: var(--toolbar-icon-button-size);
+  padding: var(--size-2xs) var(--size-sm);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-panel);
+  background: var(--color-warning-bg);
+  color: var(--text-primary);
+  backdrop-filter: blur(var(--blur-3));
+  box-shadow: 0 var(--size-2xs) var(--effect-xl) var(--glass-shadow);
+  pointer-events: none;
+}
+
+.toolbar-run-warning__marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-lg);
+  min-width: var(--size-lg);
+  height: var(--size-lg);
+  border-radius: var(--radius-full);
+  background: var(--color-warning);
+  color: var(--text-primary);
+  font-family: var(--font-number);
+  font-size: var(--size-sm);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.toolbar-run-warning__message {
+  color: var(--text-primary);
+  font-size: var(--size-sm);
+  line-height: 1.35;
+  text-shadow: var(--text-shadow-body);
+}
+
 .toolbar__group--bottom-right {
   right: var(--toolbar-edge-offset);
   bottom: var(--size-md);
@@ -673,5 +713,46 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+/* === UserSelector 高亮提醒动效 === */
+@keyframes warning-pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6),
+                0 0 4px rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.7) !important;
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0),
+                0 0 16px rgba(245, 158, 11, 0.9);
+    border-color: rgba(245, 158, 11, 1) !important;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0),
+                0 0 4px rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.7) !important;
+  }
+}
+
+@keyframes warning-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10%, 30%, 50%, 70%, 90% { transform: translate(-2px, 0); }
+  20%, 40%, 60%, 80% { transform: translate(2px, 0); }
+}
+
+.user-selector__highlight--active {
+  position: relative !important;
+  border-color: var(--color-warning) !important;
+  animation: warning-pulse-glow 1.5s infinite ease-in-out, warning-shake 0.5s ease-in-out 1;
+  z-index: 10;
+  
+  svg {
+    filter: drop-shadow(0 0 2px var(--color-warning));
+    
+    .btn-svg-icon__primary,
+    .btn-svg-icon__secondary {
+      stroke: var(--color-warning) !important;
+    }
   }
 }

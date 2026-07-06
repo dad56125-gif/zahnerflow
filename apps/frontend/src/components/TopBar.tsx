@@ -25,6 +25,7 @@ interface TopBarProps {
   selectedWorkstationId?: string | null;
   simulatorActive?: boolean;
   onSimulatorPanelOpen?: () => void;
+  hasRunMetadataWarning?: boolean;
 }
 
 const DEVICE_ICON_PATHS = {
@@ -83,6 +84,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   selectedWorkstationId,
   simulatorActive = false,
   onSimulatorPanelOpen,
+  hasRunMetadataWarning,
 }) => {
   const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
@@ -227,6 +229,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <UserSelector
             currentUser={currentUser}
             onUserChange={setCurrentUser}
+            hasRunMetadataWarning={hasRunMetadataWarning}
             developerControls={(
               <>
                 <span className="developer-mode-trigger-slot">

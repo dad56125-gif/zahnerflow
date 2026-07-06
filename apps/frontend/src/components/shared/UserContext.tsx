@@ -6,6 +6,7 @@ interface User {
   user: string;
   email: string | null;
   createdAt: string;
+  avatar?: string;
 }
 
 export interface FilePathConfig {
@@ -22,6 +23,8 @@ interface UserContextType {
   deleteUser: (user: string) => Promise<boolean>;
   filePathConfig: FilePathConfig;
   setFilePathConfig: (config: FilePathConfig) => void;
+  currentUserAvatar: string;
+  setCurrentUserAvatar: (avatar: string) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -41,6 +44,7 @@ interface UserProviderProps {
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUserState] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
+  const [currentUserAvatar, setCurrentUserAvatarState] = useState<string>('');
 
   // 文件路径配置状态
   const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>({
@@ -56,14 +60,29 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     const response = await runtimeClient.users.list();
     if (response?.users) {
       const userList = response.users;
-      const fullUsers: User[] = userList.map(username => {
+      
+      // 并行请求每个用户的 Settings 配置，填充头像数据
+      const fullUsersPromises = userList.map(async (username) => {
+        let avatar = '';
+        try {
+          const settingsRes: any = await runtimeClient.users.getSettings(username);
+          if (settingsRes?.success && settingsRes.settings?.cloud?.avatar) {
+            avatar = settingsRes.settings.cloud.avatar;
+          }
+        } catch (err) {
+          console.warn(`[UserContext] 预加载用户 "${username}" 的头像配置失败:`, err);
+        }
+        
         return {
           id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
           user: username,
           email: null,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          avatar
         };
       });
+
+      const fullUsers = await Promise.all(fullUsersPromises);
       setUsers(fullUsers);
     }
   };
@@ -78,12 +97,19 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     try {
       // 使用新的统一用户配置 API
       const response: any = await runtimeClient.users.getSettings(user);
-      if (response?.success && response?.settings?.filePath) {
-        setFilePathConfigState({
-          basePath: response.settings.filePath.basePath || 'C:\\data\\archive',
-          projectName: response.settings.filePath.projectName || '',
-          individualName: response.settings.filePath.individualName || ''
-        });
+      if (response?.success) {
+        if (response.settings?.filePath) {
+          setFilePathConfigState({
+            basePath: response.settings.filePath.basePath || 'C:\\data\\archive',
+            projectName: response.settings.filePath.projectName || '',
+            individualName: response.settings.filePath.individualName || ''
+          });
+        }
+        if (response.settings?.cloud?.avatar) {
+          setCurrentUserAvatarState(response.settings.cloud.avatar);
+        } else {
+          setCurrentUserAvatarState('');
+        }
       }
     } catch (error) {
       console.warn(`[UserContext] 加载用户 "${user}" 的路径配置失败:`, error);
@@ -93,6 +119,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         projectName: '',
         individualName: ''
       });
+      setCurrentUserAvatarState('');
     } finally {
       setIsLoadingConfig(false);
     }
@@ -118,6 +145,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         projectName: '',
         individualName: ''
       });
+      setCurrentUserAvatarState('');
     }
   };
 
@@ -137,6 +165,17 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   };
 
+  // 设置并联动同步当前用户的头像
+  const setCurrentUserAvatar = (avatar: string) => {
+    setCurrentUserAvatarState(avatar);
+    setUsers(prev => prev.map(u => {
+      if (u.user === currentUser) {
+        return { ...u, avatar };
+      }
+      return u;
+    }));
+  };
+
   const createUser = async (userData: { user: string; email?: string }): Promise<User> => {
     const response = await runtimeClient.users.create<{ success: boolean; message?: string }>(userData);
 
@@ -145,12 +184,11 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         user: userData.user,
         email: userData.email || null,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        avatar: ''
       };
 
       setUsers(prev => [...prev, newUser]);
-
-      // 创建用户后不自动选择，让用户手动选择
 
       return newUser;
     } else {
@@ -198,7 +236,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     createUser,
     deleteUser,
     filePathConfig,
-    setFilePathConfig
+    setFilePathConfig,
+    currentUserAvatar,
+    setCurrentUserAvatar
   };
 
   return (

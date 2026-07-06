@@ -2,6 +2,18 @@
 
 本文记录会影响设计判断的变化。每条记录都必须使用 `design.md` 中的锚点。
 
+## 2026-07-07 - 运行前元数据缺失确认
+
+锚点：[执行-状态机]，[接口-前端契约]
+
+原因：实验执行依赖用户、项目名称和样品名称组织输出路径与报告元数据。此前执行启动会直接读取用户设置并允许空项目或空样品继续运行，用户容易在未选项目或样品编号时误启动。
+
+变更：执行创建请求新增 `pathConfig` 和 `forceStartWithMissingRunMetadata`。后端在创建 workflow / execution 记录和启动设备前检查 `ownerName`、`projectName` 和 `individualName`，缺失且未强制时返回结构化 `409 / MISSING_RUN_METADATA`。前端将该错误渲染为运行按钮左侧 5 秒局部警告，5 秒内再次点击主运行或展开步骤运行入口才携带强制标记继续启动。
+
+设计影响：运行前元数据检查由后端负责，首次缺失不产生持久化记录、不进入执行状态机，也不作为全局执行失败通知。`pathConfig` 是本次执行路径配置并优先于已保存用户设置；强制启动只存在于 5 秒确认窗口内。
+
+验证：新增后端测试覆盖缺少用户时不写 workflow / execution、缺少项目与样品名时返回字段、强制启动放行、请求 `pathConfig` 优先于已保存用户设置；执行 `PYTHONPATH=apps/python_backend uv run pytest apps/python_backend/tests/test_workflow_identity.py` 与 `pnpm --filter zahnerflow-flowgram build` 通过。直接执行 `uv run pytest apps/python_backend/tests/test_workflow_identity.py` 时因该测试直接导入 `routers` 且未设置 `PYTHONPATH`，收集阶段无法找到模块。
+
 ## 2026-07-07 - 模拟端口只在开发者模拟状态开启时展示
 
 锚点：[设备-连接路由]，[接口-前端契约]

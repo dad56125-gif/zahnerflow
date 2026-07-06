@@ -112,6 +112,8 @@ class ExecutionStartRequest(ContractModel):
     workflowName: Optional[str] = Field(default=None, description="工作流名称建议")
     workstationType: Optional[WorkstationType] = Field(default=None, description="工作站类型")
     autoStartupConfig: dict = Field(default_factory=dict, description="自动启动程序配置")
+    pathConfig: dict = Field(default_factory=dict, description="本次执行的文件路径配置")
+    forceStartWithMissingRunMetadata: bool = Field(default=False, description="缺少用户/项目/样品名时是否强制启动")
     startFromUnrolledIndex: int = Field(default=0, description="从第几个展开步骤开始执行，0 为从头开始")
 
 

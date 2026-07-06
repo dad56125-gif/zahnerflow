@@ -129,6 +129,10 @@ export interface ExecutionStartRequest {
   workstationType?: string | null;
   /** 自动启动程序配置 */
   autoStartupConfig?: Record<string, any>;
+  /** 本次执行的文件路径配置 */
+  pathConfig?: Record<string, any>;
+  /** 缺少用户/项目/样品名时是否强制启动 */
+  forceStartWithMissingRunMetadata?: boolean;
   /** 从第几个展开步骤开始执行，0 为从头开始 */
   startFromUnrolledIndex?: number;
 }

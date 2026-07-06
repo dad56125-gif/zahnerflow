@@ -22,6 +22,7 @@ interface CanvasProps {
   onGenerateReport?: () => void;
   onUnrollViewOpenChange?: (open: boolean) => void;
   autoStartupConfig?: Record<string, any>;
+  runMetadataWarning?: string | null;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -36,6 +37,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onGenerateReport,
   onUnrollViewOpenChange,
   autoStartupConfig,
+  runMetadataWarning,
 }) => {
   // 1. 从 Store 获取纯数据和 Actions
   const {
@@ -221,6 +223,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           onGenerateReport={onGenerateReport}
           onUnrollViewOpenChange={onUnrollViewOpenChange}
           autoStartupConfig={autoStartupConfig}
+          runMetadataWarning={runMetadataWarning}
         />
       )}
 

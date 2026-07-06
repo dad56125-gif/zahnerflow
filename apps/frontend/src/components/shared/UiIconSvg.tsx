@@ -4,9 +4,10 @@ import { UI_ICON_PATHS, type UiIconName } from './uiIcons';
 interface UiIconSvgProps {
   name: UiIconName;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export function UiIconSvg({ name, className }: UiIconSvgProps) {
+export function UiIconSvg({ name, className, style }: UiIconSvgProps) {
   const icon = UI_ICON_PATHS[name];
 
   return (
@@ -15,6 +16,7 @@ export function UiIconSvg({ name, className }: UiIconSvgProps) {
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
+      style={style}
     >
       {icon.primary.map((path) => (
         <path key={path} className="btn-svg-icon__primary" d={path} />

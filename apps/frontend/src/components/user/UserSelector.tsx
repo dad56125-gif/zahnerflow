@@ -11,6 +11,7 @@ interface UserSelectorProps {
   currentUser: string;
   onUserChange: (user: string) => void;
   developerControls?: React.ReactNode;
+  hasRunMetadataWarning?: boolean;
 }
 
 type UserActionIconName = 'createUser' | 'userSettings';
@@ -47,9 +48,27 @@ const UserActionIcon: React.FC<{ name: UserActionIconName }> = ({ name }) => {
 export const UserSelector: React.FC<UserSelectorProps> = ({
   currentUser,
   onUserChange,
-  developerControls
+  developerControls,
+  hasRunMetadataWarning
 }) => {
-  const { users, createUser, deleteUser } = useUser();
+  const { users, createUser, deleteUser, filePathConfig, currentUserAvatar } = useUser();
+
+  // 根据缺失情况确定应该高亮提醒哪一个按钮
+  const getHighlightType = () => {
+    if (!hasRunMetadataWarning) return null;
+    if (users.length === 0) {
+      return 'create'; // 优先级 1：没有用户，提醒添加用户
+    }
+    if (!currentUser) {
+      return 'select'; // 优先级 2：有用户但没选，提醒选择下拉
+    }
+    if (!filePathConfig.projectName || !filePathConfig.individualName) {
+      return 'settings'; // 优先级 3：选了用户但没填项目/样品名，提醒配置按钮
+    }
+    return null;
+  };
+
+  const highlightType = getHighlightType();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -60,14 +79,12 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 使用提取的 dropdown hook
   const dropdown = useDropdownPosition({
     triggerRef: buttonRef,
     dropdownRef: dropdownRef,
-    offset: 18,
-    minWidth: 280
+    offset: 8,
+    minWidth: 200,
   });
-
 
   const handleCreateUser = async () => {
     if (!newUserName.trim()) return;
@@ -75,32 +92,31 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     setError('');
     try {
       await createUser({ user: newUserName.trim() });
-      // 创建用户后不自动选择，让用户手动选择
       setShowCreateDialog(false);
       setNewUserName('');
-      dropdown.startClose();
-    } catch (error) {
-      console.error('Failed to create user:', error);
-      setError((error as Error).message || '创建用户失败');
+    } catch (err: any) {
+      setError(err.message || '创建用户失败');
     }
   };
 
-  const handleDeleteUser = async (userToDelete: string) => {
-    setUserToDelete(userToDelete);
+  const handleDeleteUser = (username: string) => {
+    setUserToDelete(username);
     setShowDeleteDialog(true);
   };
 
   const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
     try {
       const success = await deleteUser(userToDelete);
-      if (!success) {
-        console.error(`删除用户 ${userToDelete} 失败`);
+      if (success) {
+        setShowDeleteDialog(false);
+        setUserToDelete('');
+      } else {
+        alert('删除用户失败');
       }
-    } catch (error) {
-      console.error('Failed to delete user:', error);
-    } finally {
-      setShowDeleteDialog(false);
-      setUserToDelete('');
+    } catch (err: any) {
+      alert(`删除用户失败: ${err.message}`);
     }
   };
 
@@ -114,10 +130,24 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 用户选择器按钮 - 使用统一按钮系统样式 */}
       <button
         ref={buttonRef}
-        className="btn btn--md btn--primary"
+        className={`btn btn--md btn--primary ${highlightType === 'select' ? 'user-selector__highlight--active' : ''}`}
         onClick={() => dropdown.toggle()}
       >
-        <span className="btn-icon"><UiIconSvg name="user" /></span>
+        {currentUserAvatar ? (
+          <img
+            src={currentUserAvatar}
+            alt=""
+            className="user-selector__avatar"
+            style={{
+              borderRadius: '50%',
+              objectFit: 'cover'
+            }}
+          />
+        ) : (
+          <span className="btn-icon">
+            <UiIconSvg name="user" />
+          </span>
+        )}
         <span className="btn-text">{renderCjkText(currentUser || '选择用户')}</span>
         <svg className={`dropdown__arrow ${dropdown.isOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
           <path
@@ -133,7 +163,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
       {/* 配置按钮 - 圆形齿轮，位于选择器右侧 */}
       <button
-        className="btn btn--md btn--secondary btn--icon btn--round user-selector__action-btn"
+        className={`btn btn--md btn--secondary btn--icon btn--round user-selector__action-btn ${highlightType === 'settings' ? 'user-selector__highlight--active' : ''}`}
         onClick={() => setShowSettingsModal(true)}
         title="用户配置"
         disabled={!currentUser}
@@ -143,7 +173,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
       {/* 新建用户按钮 - 圆形 + 号，位于选择器右侧 */}
       <button
-        className="btn btn--md btn--secondary btn--icon btn--round user-selector__action-btn"
+        className={`btn btn--md btn--secondary btn--icon btn--round user-selector__action-btn ${highlightType === 'create' ? 'user-selector__highlight--active' : ''}`}
         onClick={() => {
           setShowCreateDialog(true);
           setError('');
@@ -172,20 +202,75 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         <div
           ref={dropdownRef}
         >
+            {currentUser && (
+              <div
+                className="dropdown__option"
+                onClick={() => {
+                  onUserChange('');
+                  dropdown.startClose();
+                }}
+                style={{
+                  fontStyle: 'italic',
+                  color: 'var(--text-secondary)',
+                  borderBottom: '1px solid var(--glass-border)',
+                  minHeight: '20px',
+                  height: '20px',
+                  paddingTop: 0,
+                  paddingBottom: 0,
+                  fontSize: '11px'
+                }}
+              >
+                <span><SpacedCjkText text="清除选择" /></span>
+              </div>
+            )}
             {users.length > 0 ? (
               users.map(user => (
                 <div
                   key={user.user}
                   className={`dropdown__option ${user.user === currentUser ? 'is-selected' : ''}`}
+                  onClick={() => {
+                    onUserChange(user.user);
+                    dropdown.startClose();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--size-xs)'
+                  }}
                 >
-                  <span
-                    onClick={() => {
-                      onUserChange(user.user);
-                      dropdown.startClose();
+                  {/* 用户下拉项的小头像预览 */}
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
                     }}
                   >
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt=""
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : (
+                      <UiIconSvg name="user" style={{ width: '12px', height: '12px', opacity: 0.4 }} />
+                    )}
+                  </div>
+                  
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user.user}
                   </span>
+                  
                   <button
                     className="btn btn--xs btn--ghost btn--icon btn--rounded user-selector__delete-btn"
                     onClick={(e) => {

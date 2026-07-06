@@ -442,6 +442,14 @@
   justify-content: flex-start;
 }
 
+.user-selector__avatar {
+  width: 32px;
+  height: 32px;
+  margin: -6px 0;
+  margin-left: -10px;
+  display: block;
+}
+
 .user-selector__action-btn {
   flex-shrink: 0;
   --btn-icon-box: var(--toolbar-icon-button-size);
