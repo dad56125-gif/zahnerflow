@@ -1,3 +1,5 @@
+import type { UiIconName } from '../shared/uiIcons';
+
 /**
  * 实验报告模块的规范化数据模型。
  *
@@ -77,14 +79,14 @@ export const NODE_TYPE_LABELS: Record<string, string> = {
   change_gas_flow: '气体流量控制',
 };
 
-export const STATUS_ICONS: Record<string, string> = {
-  completed: '✅',
-  success: '✅',
-  failed: '❌',
-  cancelled: '⛔',
-  skipped: '⏭️',
-  pending: '⏳',
-  running: '🔄',
+export const STATUS_ICON_NAMES: Record<string, UiIconName> = {
+  completed: 'check',
+  success: 'check',
+  failed: 'error',
+  cancelled: 'warning',
+  skipped: 'skip',
+  pending: 'timer',
+  running: 'refresh',
 };
 
 // ─── 实验记录 modal 类型 ──────────────────────────────

@@ -1,6 +1,8 @@
 import React from 'react';
 import { ModalLayer } from './shared/OverlayLayer';
 import { useAppStore } from '../state/appStore';
+import { UiIconSvg } from './shared/UiIconSvg';
+import type { UiIconName } from './shared/uiIcons';
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -13,13 +15,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
   const removeNotification = useAppStore(state => state.removeNotification);
   const clearNotifications = useAppStore(state => state.clearNotifications);
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: string): UiIconName => {
     switch (type) {
-      case 'success': return '✅';
-      case 'error': return '❌';
-      case 'warning': return '⚠️';
-      case 'info': return 'ℹ️';
-      default: return '📢';
+      case 'success': return 'check';
+      case 'error': return 'error';
+      case 'warning': return 'warning';
+      case 'info': return 'info';
+      default: return 'megaphone';
     }
   };
 
@@ -74,7 +76,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
                 onClick={clearNotifications}
                 title="清空所有通知"
               >
-                🗑️
+                <UiIconSvg name="trash" />
               </button>
               <button
                 className="btn btn--sm btn--ghost btn--icon btn--rounded notification__action-btn"
@@ -89,7 +91,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
           <div className="notification__content">
             {notifications.length === 0 ? (
               <div className="notification__empty">
-                <div className="notification__empty-icon">📭</div>
+                <div className="notification__empty-icon"><UiIconSvg name="inbox" /></div>
                 <div className="notification__empty-text">暂无通知</div>
               </div>
             ) : (
@@ -99,7 +101,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
                   className={`notification__item notification__item--${notification.type} ${notification.read ? '' : 'is-unread'}`}
                 >
                   <div className="notification__icon" style={{ color: getNotificationColor(notification.type) }}>
-                    {getNotificationIcon(notification.type)}
+                    <UiIconSvg name={getNotificationIcon(notification.type)} />
                   </div>
                     <div className="notification__body">
                       <div className="notification__item-title">{notification.title}</div>

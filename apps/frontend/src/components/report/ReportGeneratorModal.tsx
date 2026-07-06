@@ -9,8 +9,9 @@ import { useCanvasStore } from '../../state/canvasStore';
 import { useWorkflowStore } from '../../state/currentWorkflowStore';
 import { buildReportData, formatDateTime, formatDuration } from './reportDataBuilder';
 import { WorkflowMapView } from './WorkflowMapView';
+import { UiIconSvg } from '../shared/UiIconSvg';
 import {
-  STATUS_ICONS,
+  STATUS_ICON_NAMES,
   NODE_TYPE_LABELS,
   type ReportData,
   type ReportNodeInfo,
@@ -49,6 +50,17 @@ function getStatusText(status: string): string {
     default:
       return '未执行';
   }
+}
+
+function StatusLabel({ status }: { status: string }) {
+  const iconName = STATUS_ICON_NAMES[status];
+
+  return (
+    <>
+      {iconName && <UiIconSvg name={iconName} />}
+      {getStatusText(status)}
+    </>
+  );
 }
 
 function statusClass(status: string): string {
@@ -731,7 +743,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
               <span>状态</span>
               <strong>
                 <span className={`report__status ${statusClass(reportData.status)}`}>
-                  {STATUS_ICONS[reportData.status] || ''} {getStatusText(reportData.status)}
+                  <StatusLabel status={reportData.status} />
                 </span>
               </strong>
             </div>
@@ -793,7 +805,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                     </td>
                     <td>{node.label}</td>
                     <td>{node.keyParams}</td>
-                    <td><span className={`report__status ${statusClass(node.status)}`}>{STATUS_ICONS[node.status] || ''} {getStatusText(node.status)}</span></td>
+                    <td><span className={`report__status ${statusClass(node.status)}`}><StatusLabel status={node.status} /></span></td>
                     <td>
                       <span>{node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</span>
                       {node.estimatedSeconds != null && <span className="report__step-meta">估算 {formatDuration(node.estimatedSeconds)}</span>}
@@ -924,7 +936,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                             <span>{formatDateTime(run.startedAt)}</span>
                             {run.durationMs > 0 && <span>{formatDuration(run.durationMs / 1000)}</span>}
                             <span className={`report__status ${statusClass(run.status)}`}>
-                              {STATUS_ICONS[run.status] || ''} {getStatusText(run.status)}
+                              <StatusLabel status={run.status} />
                             </span>
                           </span>
                         </button>

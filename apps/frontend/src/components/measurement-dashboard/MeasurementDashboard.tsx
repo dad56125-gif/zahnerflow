@@ -13,6 +13,7 @@ import { useBulkSelection } from './useBulkSelection';
 import type { ExecutionSnapshot, WorkflowNode } from '@zahnerflow/types';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme } from '../../utils/colorUtils';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface MeasurementDashboardProps {
     isOpen: boolean;
@@ -363,7 +364,9 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                                     color: 'var(--text-muted)'
                                 }}
                             >
-                                <span style={{ fontSize: '3rem', marginBottom: 'var(--size-md)' }}>📈</span>
+                                <span style={{ marginBottom: 'var(--size-md)' }}>
+                                    <UiIconSvg name="chart" className="chart-modal-empty__icon" />
+                                </span>
                                 <span>当前工作流没有测量节点</span>
                                 <span style={{ fontSize: 'var(--size-sm)', marginTop: 'var(--size-xs)' }}>
                                     添加 EIS、OCP、电压/电流斜坡等测量节点后可查看图表

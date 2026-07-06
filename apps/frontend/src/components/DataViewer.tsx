@@ -5,6 +5,7 @@ import { useMeasurementStream } from '../hooks/useMeasurementStream';
 import { useEisData, EisDataPoint } from '../hooks/useEisData';
 import type { RawStreamData } from '@zahnerflow/types';
 import { DataTable, TableColumn } from './shared/DataTable';
+import { UiIconSvg } from './shared/UiIconSvg';
 
 interface DataViewerProps {
   isVisible?: boolean;
@@ -150,7 +151,9 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     if (!healthData) {
       return (
         <div className="data-viewer__placeholder">
-          <div className="data-viewer__placeholder-icon data-viewer__placeholder-icon--sm">🔋</div>
+          <div className="data-viewer__placeholder-icon data-viewer__placeholder-icon--sm">
+            <UiIconSvg name="battery" />
+          </div>
           <div>暂无健康分析数据</div>
           <div className="data-viewer__placeholder-subtext">测量完成后将显示电池健康状况</div>
         </div>
@@ -170,7 +173,9 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
           fontSize: '1.2rem',
           fontWeight: 'bold'
         }}>
-          <span className="health-icon">{healthData.status === 'healthy' ? '✅' : '⚠️'}</span>
+          <span className="health-icon">
+            <UiIconSvg name={healthData.status === 'healthy' ? 'check' : 'warning'} />
+          </span>
           <span className="health-text" style={{ color: healthData.status === 'healthy' ? '#81c784' : '#ffb74d' }}>
             {healthData.status === 'healthy' ? '电池状况良好' : '电池异常 (需关注)'}
           </span>

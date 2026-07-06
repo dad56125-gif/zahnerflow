@@ -22,6 +22,7 @@ import {
 } from '../../modules/simulator/simulatorSettings';
 import { readDeveloperMode, DEVELOPER_MODE_EVENT } from '../../modules/simulator/developerMode';
 import { SpacedCjkText } from '../common/SpacedCjkText';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface MFCModalProps {
   on_close: () => void;
@@ -222,7 +223,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   {/* 设备列表 */}
                   {mfcState.devices.length === 0 && !mfcState.isScanning && !mfcState.error ? (
                     <div className="mfc__empty">
-                      <div className="mfc__empty-icon">📡</div>
+                      <div className="mfc__empty-icon"><UiIconSvg name="signal" /></div>
                       <h4><SpacedCjkText text="未发现MFC设备" /></h4>
                       <p><SpacedCjkText text="正在扫描端口设备..." /></p>
                       <span className="mfc__empty-hint"><SpacedCjkText text="长时间无响应请检查连接" /></span>

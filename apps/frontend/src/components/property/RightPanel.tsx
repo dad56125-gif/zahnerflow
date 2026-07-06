@@ -29,6 +29,7 @@ import {
 import { ScheduleTimePicker } from '../ScheduleRunner';
 import { runtimeClient } from '../../runtimeClient';
 import { resolveDropdownPosition, type DropdownPosition } from '../shared/dropdownPosition';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 // 静态配置（用于获取节点显示名称）
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
@@ -697,7 +698,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       if (!effectiveDefaults || Object.keys(effectiveDefaults).length === 0) {
         return (
           <div className="empty-state">
-            <div className="empty-icon">⚙️</div>
+            <div className="empty-icon"><UiIconSvg name="settings" /></div>
             <div className="empty-text">该节点类型暂无参数配置</div>
           </div>
         );
@@ -749,13 +750,13 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                 className={`btn btn--sm glass ${activeTab === 'basic' ? 'btn--primary' : 'btn--secondary'}`}
                 onClick={() => setActiveTab('basic')}
               >
-                <span className="btn-icon">📋</span><span className="btn-text">基本</span>
+                <span className="btn-icon"><UiIconSvg name="list" /></span><span className="btn-text">基本</span>
               </button>
               <button
                 className={`btn btn--sm glass ${activeTab === 'parameters' ? 'btn--primary' : 'btn--secondary'}`}
                 onClick={() => setActiveTab('parameters')}
               >
-                <span className="btn-icon">⚙️</span><span className="btn-text">参数</span>
+                <span className="btn-icon"><UiIconSvg name="settings" /></span><span className="btn-text">参数</span>
               </button>
 
               {supportsChart && (
@@ -763,7 +764,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                   className={`btn btn--sm glass ${activeTab === 'chart' ? 'btn--primary' : 'btn--secondary'}`}
                   onClick={() => setActiveTab('chart')}
                 >
-                  <span className="btn-icon">📊</span><span className="btn-text">数据</span>
+                  <span className="btn-icon"><UiIconSvg name="data" /></span><span className="btn-text">数据</span>
                 </button>
               )}
             </div>

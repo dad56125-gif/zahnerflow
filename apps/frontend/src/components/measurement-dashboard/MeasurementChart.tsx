@@ -12,6 +12,7 @@ import { useEisData } from '../../hooks/useEisData';
 import type { ExecutionSnapshot } from '@zahnerflow/types';
 import { EisLegendScheme, getEisLegendVisual, getIterationColor } from '../../utils/colorUtils';
 import { useAppStore } from '../../state/appStore';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 echarts.use([
 LineChart,
@@ -577,9 +578,9 @@ chartInstance.current?.setOption({ series: [] });
 }, [activeExecutionId, isEisNode]);
 
 const getStatusTag = () => {
-if (isPending) return <span style={{ color: 'var(--color-warning)' }}>⏳ 等待</span>;
+if (isPending) return <span style={{ color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><UiIconSvg name="timer" />等待</span>;
 if (isRunning) return <span style={{ color: 'var(--color-success)', fontWeight: 'bold' }}>▶ 测量中</span>;
-if (currentStepIndex > nodeIndex) return <span style={{ color: 'var(--color-indigo-light)' }}>✅ 完成</span>;
+if (currentStepIndex > nodeIndex) return <span style={{ color: 'var(--color-indigo-light)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><UiIconSvg name="check" />完成</span>;
 return null;
 };
 

@@ -1,7 +1,8 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
-import { STATUS_ICONS, type ReportData } from './types';
+import { STATUS_ICON_NAMES, type ReportData } from './types';
+import { UI_ICON_PATHS } from '../shared/uiIcons';
 
 function formatFileDate(primaryIsoString: string, fallbackIsoString?: string): string {
   const date = new Date(primaryIsoString);
@@ -52,6 +53,25 @@ function getStatusText(status: string): string {
   }
 }
 
+function statusIconMarkup(status: string): string {
+  const iconName = STATUS_ICON_NAMES[status];
+  if (!iconName) return '';
+
+  const icon = UI_ICON_PATHS[iconName];
+  const primary = icon.primary
+    .map((path) => `<path class="report-status-icon__primary" d="${path}"></path>`)
+    .join('');
+  const secondary = icon.secondary
+    .map((path) => `<path class="report-status-icon__secondary" d="${path}"></path>`)
+    .join('');
+
+  return `<svg class="report-status-icon" viewBox="0 0 24 24" aria-hidden="true">${primary}${secondary}</svg>`;
+}
+
+function statusLabelMarkup(status: string): string {
+  return `${statusIconMarkup(status)} ${getStatusText(status)}`;
+}
+
 export async function exportToPdf(reportData: ReportData, containerElement: HTMLElement): Promise<void> {
   const canvas = await html2canvas(containerElement, {
     scale: 2,
@@ -84,7 +104,6 @@ export async function exportToPdf(reportData: ReportData, containerElement: HTML
 }
 
 export function generateReportHtml(reportData: ReportData): string {
-  const statusText = getStatusText(reportData.status);
   const artifactRows = reportData.artifactDetails
     .map((artifact) => `
       <tr>
@@ -120,7 +139,7 @@ export function generateReportHtml(reportData: ReportData): string {
         <h2 class="report-section-title">执行摘要</h2>
         <table class="report-summary-table">
           <tbody>
-            <tr><td>状态</td><td>${STATUS_ICONS[reportData.status] || ''} ${statusText}</td></tr>
+            <tr><td>状态</td><td>${statusLabelMarkup(reportData.status)}</td></tr>
             <tr><td>开始时间</td><td>${formatDateTime(reportData.startTime)}</td></tr>
             <tr><td>结束时间</td><td>${formatDateTime(reportData.endTime)}</td></tr>
             <tr><td>总耗时</td><td>${formatDuration(reportData.durationSeconds)}</td></tr>
@@ -151,7 +170,7 @@ export function generateReportHtml(reportData: ReportData): string {
                     <td>${node.index}<br><small>原节点 ${node.originalIndex}${node.iterationLabel !== '-' ? ` / ${escapeHtml(node.iterationLabel)}` : ''}</small></td>
                     <td>${escapeHtml(node.label)}</td>
                     <td>${escapeHtml(node.keyParams)}</td>
-                    <td>${STATUS_ICONS[node.status] || ''} ${getStatusText(node.status)}</td>
+                    <td>${statusLabelMarkup(node.status)}</td>
                     <td>${node.durationSeconds ? formatDuration(node.durationSeconds) : '-'}</td>
                     <td>${escapeHtml(node.error || node.csvPath || node.outputFile || node.resultSummary || '-')}</td>
                   </tr>
@@ -246,6 +265,26 @@ export function exportToHtml(reportData: ReportData): void {
       font-size: 24px;
       margin: 0 0 16px;
       color: #0f766e;
+    }
+    .report-status-icon {
+      width: 14px;
+      height: 14px;
+      display: inline-block;
+      vertical-align: -2px;
+      margin-right: 4px;
+    }
+    .report-status-icon__primary,
+    .report-status-icon__secondary {
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .report-status-icon__primary {
+      stroke: currentColor;
+    }
+    .report-status-icon__secondary {
+      stroke: #6b7280;
     }
     table {
       width: 100%;

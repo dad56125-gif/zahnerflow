@@ -6,6 +6,7 @@ import { Dropdown } from '../shared/Dropdown';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
 import { selectDesktopDirectory } from '../../desktopBridge';
 import { SpacedCjkText } from '../common/SpacedCjkText';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface UserSettings {
     filePath: {
@@ -732,7 +733,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                     </div>
 
                                                     <div className="settings__cloud-note">
-                                                        <p>💡 API 密钥等敏感信息请在服务器端配置，不在客户端存储。</p>
+                                                        <p><UiIconSvg name="info" /> API 密钥等敏感信息请在服务器端配置，不在客户端存储。</p>
                                                     </div>
                                                 </>
                                             )}

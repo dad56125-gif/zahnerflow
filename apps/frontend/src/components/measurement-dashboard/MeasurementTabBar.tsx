@@ -12,6 +12,7 @@ import type { WorkflowNode, ExecutionSnapshot } from '@zahnerflow/types';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme, IterationSymbol, getEisLegendVisual } from '../../utils/colorUtils';
 import { getBulkIconCells, BulkDisplayMode } from './useBulkSelection';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 // ─── Props ───────────────────────────────────────────────
 
@@ -346,7 +347,12 @@ function renderModalHeader(props: MeasurementTabBarProps) {
               pointerEvents: 'auto'
             }}
           >
-            {isPending && "⏳ 等待"}
+            {isPending && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <UiIconSvg name="timer" />
+                等待
+              </span>
+            )}
             {isRunning && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{
@@ -361,7 +367,12 @@ function renderModalHeader(props: MeasurementTabBarProps) {
                 测量中
               </span>
             )}
-            {!isPending && !isRunning && "✅ 已完成"}
+            {!isPending && !isRunning && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <UiIconSvg name="check" />
+                已完成
+              </span>
+            )}
           </div>
         );
       })()}

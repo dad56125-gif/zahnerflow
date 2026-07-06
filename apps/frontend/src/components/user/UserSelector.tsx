@@ -5,6 +5,7 @@ import { useDropdownPosition } from '../shared/useDropdownPosition';
 import { Dropdown } from '../shared/Dropdown';
 import { ModalLayer } from '../shared/OverlayLayer';
 import { renderCjkText, SpacedCjkText } from '../common/SpacedCjkText';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface UserSelectorProps {
   currentUser: string;
@@ -116,7 +117,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         className="btn btn--md btn--primary"
         onClick={() => dropdown.toggle()}
       >
-        <span className="btn-icon">👤</span>
+        <span className="btn-icon"><UiIconSvg name="user" /></span>
         <span className="btn-text">{renderCjkText(currentUser || '选择用户')}</span>
         <svg className={`dropdown__arrow ${dropdown.isOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
           <path
@@ -267,7 +268,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         {({ close }) => (
           <div className="create-user__dialog overlay-base">
             <div className="dialog__content">
-              <div className="delete-confirm__icon">⚠️</div>
+              <div className="delete-confirm__icon"><UiIconSvg name="warning" /></div>
               <h3><SpacedCjkText text="确认删除用户" /></h3>
               <p className="delete-confirm__text">
                 <SpacedCjkText text="确定要删除用户" /> <strong>"{userToDelete}"</strong> <SpacedCjkText text="吗" />？

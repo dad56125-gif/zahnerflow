@@ -1,6 +1,7 @@
 import React from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import { useUser } from '../shared/UserContext';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface NotificationSettings {
     email: string;
@@ -188,7 +189,8 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
                             onClick={handleTestEmail}
                             disabled={!settings.email || !settings.smtpUser}
                         >
-                            📧 发送测试邮件
+                            <span className="btn-icon"><UiIconSvg name="mail" /></span>
+                            <span className="btn-text">发送测试邮件</span>
                         </button>
                         <p className="settings__hint-text settings__hint-text--no-margin">
                             点击后会使用上方配置发送测试邮件

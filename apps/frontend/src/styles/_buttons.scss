@@ -233,6 +233,44 @@
   stroke: var(--text-secondary);
 }
 
+.ui-svg-icon {
+  color: currentColor;
+}
+
+.chart-modal-empty__icon,
+.data-viewer__placeholder-icon .ui-svg-icon,
+.mfc__empty-icon .ui-svg-icon,
+.notification__empty-icon .ui-svg-icon,
+.empty-icon .ui-svg-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.chart-modal-empty__icon .btn-svg-icon__primary,
+.chart-modal-empty__icon .btn-svg-icon__secondary,
+.data-viewer__placeholder-icon .ui-svg-icon .btn-svg-icon__primary,
+.data-viewer__placeholder-icon .ui-svg-icon .btn-svg-icon__secondary,
+.mfc__empty-icon .ui-svg-icon .btn-svg-icon__primary,
+.mfc__empty-icon .ui-svg-icon .btn-svg-icon__secondary,
+.notification__empty-icon .ui-svg-icon .btn-svg-icon__primary,
+.notification__empty-icon .ui-svg-icon .btn-svg-icon__secondary,
+.empty-icon .ui-svg-icon .btn-svg-icon__primary,
+.empty-icon .ui-svg-icon .btn-svg-icon__secondary,
+.delete-confirm__icon .ui-svg-icon .btn-svg-icon__primary,
+.delete-confirm__icon .ui-svg-icon .btn-svg-icon__secondary {
+  stroke-width: 1;
+}
+
+.delete-confirm__icon .ui-svg-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.ui-svg-icon--trash .btn-svg-icon__primary,
+.ui-svg-icon--trash .btn-svg-icon__secondary {
+  stroke-width: 1;
+}
+
 .btn-text {
   min-width: 0;
   overflow: hidden;
