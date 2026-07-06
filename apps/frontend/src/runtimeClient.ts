@@ -142,6 +142,7 @@ export const runtimeClient = {
 
   executions: {
     start: <T>(body: RequestBody) => post<T>('/api/executions', body),
+    unrollPreview: <T>(body: RequestBody) => post<T>('/api/executions/unroll-preview', body),
     estimate: <T>(body: RequestBody) => post<T>('/api/executions/estimate', body),
     list: <T>(params?: QueryParams) => get<T>('/api/executions', params),
     get: <T>(id: string) => get<T>(`/api/executions/${encodeURIComponent(id)}`),

@@ -43,6 +43,7 @@ class ExecutionEngine:
         self._workstation_type = None
         self._auto_startup_config: dict = {}
         self._path_config: dict = {}
+        self._start_from_unrolled_index = 0
 
     @property
     def is_running(self) -> bool:
@@ -64,6 +65,7 @@ class ExecutionEngine:
         self._workstation_type = payload.get("workstationType")
         self._auto_startup_config = payload.get("autoStartupConfig") or {}
         self._path_config = payload.get("pathConfig") or {}
+        self._start_from_unrolled_index = max(0, int(payload.get("startFromUnrolledIndex") or 0))
         self.current_step_index = 0
         self._cancel_requested = False
         self._pause_requested = False
@@ -105,7 +107,7 @@ class ExecutionEngine:
         return {"message": "Execution cancellation requested"}
 
     async def _execute(self) -> None:
-        from loop_unroller import unroll_loops
+        from loop_unroller import MEASUREMENT_NODE_TYPES, unroll_loops
 
         start_time = time.time()
         execution_id = self.execution_id
@@ -113,6 +115,8 @@ class ExecutionEngine:
         unrolled = unroll_loops(self.nodes, auto_startup_config=self._auto_startup_config)
         steps = unrolled["steps"]
         total_steps = len(steps)
+        start_from = min(self._start_from_unrolled_index, total_steps)
+        boundary_prelude_indices = _boundary_prelude_indices(steps, start_from, MEASUREMENT_NODE_TYPES)
         await self.runtime.on_execution_timeline_started(
             {
                 "executionId": execution_id,
@@ -122,11 +126,16 @@ class ExecutionEngine:
                 "ownerName": self._owner_name,
                 "workflowName": self._workflow_name,
                 "workstationType": self._workstation_type,
+                "startFromUnrolledIndex": self._start_from_unrolled_index,
+                "boundaryPreludeIndices": sorted(boundary_prelude_indices),
             }
         )
 
         try:
             for unrolled_idx, step in enumerate(steps):
+                if unrolled_idx < start_from and unrolled_idx not in boundary_prelude_indices:
+                    continue
+
                 if self._cancel_requested:
                     raise WorkflowCancelled("Execution cancelled by user")
 
@@ -496,3 +505,25 @@ class ExecutionEngine:
             "csvPath": result.get("csv_path") or (eis_data.get("csv_path") if eis_data else None),
             "data_points": result.get("points") or (eis_data.get("point_count") if eis_data else 0),
         }
+
+
+def _boundary_prelude_indices(steps: list[dict], start_from: int, measurement_node_types: set[str]) -> set[int]:
+    if start_from <= 0:
+        return set()
+
+    has_remaining_measurement = any(
+        step.get("nodeType") in measurement_node_types
+        for step in steps[start_from:]
+    )
+    if not has_remaining_measurement:
+        return set()
+
+    startup_indices = [
+        index
+        for index, step in enumerate(steps[:start_from])
+        if step.get("nodeType") == "startup" and step.get("autoBoundary")
+    ]
+    if not startup_indices:
+        return set()
+
+    return {startup_indices[-1]}

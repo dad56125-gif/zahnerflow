@@ -234,27 +234,13 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       positions: {}
     });
     const closeDropdownTimerRef = useRef<number | null>(null);
+    const dropdownAnchorsRef = useRef<Record<string, HTMLElement | null>>({});
 
     const clearDropdownCloseTimer = useCallback(() => {
       if (closeDropdownTimerRef.current === null) return;
       window.clearTimeout(closeDropdownTimerRef.current);
       closeDropdownTimerRef.current = null;
     }, []);
-
-    const handleOpenDropdown = useCallback((id: string, event: React.MouseEvent) => {
-      clearDropdownCloseTimer();
-      const rect = event.currentTarget.getBoundingClientRect();
-      const position = resolveDropdownPosition(rect, { id });
-      setDropdownState(prev => ({
-        ...prev,
-        activeId: id,
-        hidingId: null,
-        positions: {
-          ...prev.positions,
-          [id]: position
-        }
-      }));
-    }, [clearDropdownCloseTimer]);
 
     const handleCloseDropdown = useCallback((id: string) => {
       clearDropdownCloseTimer();
@@ -273,12 +259,36 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
             positions
           };
         });
+        dropdownAnchorsRef.current[id] = null;
         closeDropdownTimerRef.current = null;
       }, DROPDOWN_EXIT_DURATION_MS);
     }, [clearDropdownCloseTimer]);
 
+    const handleOpenDropdown = useCallback((id: string, event: React.MouseEvent) => {
+      if (dropdownState.activeId === id && dropdownState.hidingId !== id) {
+        handleCloseDropdown(id);
+        return;
+      }
+
+      clearDropdownCloseTimer();
+      const triggerElement = event.currentTarget as HTMLElement;
+      dropdownAnchorsRef.current[id] = triggerElement;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const position = resolveDropdownPosition(rect, { id });
+      setDropdownState(prev => ({
+        ...prev,
+        activeId: id,
+        hidingId: null,
+        positions: {
+          ...prev.positions,
+          [id]: position
+        }
+      }));
+    }, [clearDropdownCloseTimer, dropdownState.activeId, dropdownState.hidingId, handleCloseDropdown]);
+
     useEffect(() => {
       clearDropdownCloseTimer();
+      dropdownAnchorsRef.current = {};
       setDropdownState({ activeId: null, hidingId: null, positions: {} });
     }, [node?.id, activeTab, clearDropdownCloseTimer]);
 
@@ -288,6 +298,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       isOpen: (id: string) => dropdownState.activeId === id,
       isHiding: (id: string) => dropdownState.hidingId === id,
       getPosition: (id: string) => dropdownState.positions[id] || null,
+      getTriggerElement: (id: string) => dropdownAnchorsRef.current[id] || null,
       open: handleOpenDropdown,
       close: handleCloseDropdown
     }), [

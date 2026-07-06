@@ -51,6 +51,7 @@ class AppRuntime:
         self._execution_timeline: dict | None = None
         self._current_step_started_at: str | None = None
         self._current_unrolled_index: int | None = None
+        self._start_from_unrolled_index: int = 0
         self._mfc_scan_lock = asyncio.Lock()
         self._mfc_scan_active = False
         self._mfc_scan_cancel_requested = False
@@ -176,6 +177,16 @@ class AppRuntime:
         now = datetime.utcnow().isoformat() + "Z"
         self._execution_started_at = now
         self._execution_timeline = build_timeline(payload.get("nodes", []), payload.get("steps", []), self.devices)
+        self._start_from_unrolled_index = max(0, int(payload.get("startFromUnrolledIndex") or 0))
+        boundary_prelude_indices = {int(index) for index in payload.get("boundaryPreludeIndices") or []}
+        for step in self._execution_timeline.get("steps", []):
+            step_unrolled_index = int(step.get("unrolledIndex") or 0)
+            if step_unrolled_index < self._start_from_unrolled_index and step_unrolled_index not in boundary_prelude_indices:
+                step["skipped"] = True
+                step["completed"] = True
+                step["estimatedSeconds"] = 0.0
+                step["etaSource"] = "skipped"
+                step["etaConfidence"] = 1.0
         self._current_step_started_at = None
         self._current_unrolled_index = None
         await self.on_experiment_state(
@@ -545,6 +556,7 @@ class AppRuntime:
         self._execution_timeline = None
         self._current_step_started_at = None
         self._current_unrolled_index = None
+        self._start_from_unrolled_index = 0
 
     def _timeline_step(self, unrolled_index: int | None) -> dict | None:
         if unrolled_index is None or not self._execution_timeline:

@@ -2,6 +2,30 @@
 
 本文记录会影响设计判断的变化。每条记录都必须使用 `design.md` 中的锚点。
 
+## 2026-07-07 - 模拟端口只在开发者模拟状态开启时展示
+
+锚点：[设备-连接路由]，[接口-前端契约]
+
+原因：开发者模式已开启但具体设备模拟状态未开启时，设备端口列表仍能检索到 `COM_SIMULATOR` 或 `simulator`，容易让用户在真实连接路径中误选模拟端口。
+
+变更：Furnace 与 MFC 的 `/ports` 路由只返回真实串口枚举结果并过滤 `COM_SIMULATOR`；Zahner 的 `/ports` 只返回 `localhost`。Furnace 和 MFC 连接面板只有在开发者模式开启且对应设备模拟开关同时开启时，才向端口列表注入 `COM_SIMULATOR`，并在连接时携带模拟 profile。
+
+设计影响：真实端口发现接口不再承载模拟入口；模拟入口属于前端开发者模拟控制状态，必须显式开启后才展示和生效。后端仍保留通过 `COM_SIMULATOR` 或 `host=simulator` 连接模拟器的能力，但不会在普通端口发现中暴露这些值。
+
+验证：执行 `PYTHONPATH=. uv run pytest tests/test_simulator_contracts.py::test_device_port_routes_exclude_simulator_entries -q`、`uv run python -m compileall apps/python_backend`、`../../node_modules/.bin/tsc --noEmit`、`node_modules/.bin/vite build` 通过。
+
+## 2026-07-06 - 展开预览改用后端事实并支持从展开步骤运行
+
+锚点：[执行-状态机]，[执行-ETA与事实记录]，[接口-前端契约]
+
+原因：“展开所有执行步骤”弹窗需要正确展示工作流块子节点，并允许用户选择某个展开步骤后从该步骤开始运行。原弹窗使用前端本地展开器，无法展开已归档工作流块，也不能保证选中的展开索引与后端真实执行步骤一致。
+
+变更：新增 `POST /api/executions/unroll-preview`，由后端 `loop_unroller.py` 返回循环、工作流块、高级节点和自动测量边界展开后的步骤序列。后端高级节点展开为可执行的 `chronoamperometry` / `chronopotentiometry` 子步骤，并保留父高级节点元数据。执行创建请求新增 `startFromUnrolledIndex`，执行器从该展开索引开始跳过前序普通步骤；如果所选起点位于自动 `startup` 之后且后续仍有测量步骤，执行器会先执行最近的自动 `startup` 前置边界，随后从所选步骤继续执行，末尾自动 `shutdown` 仍正常执行。前端弹窗改为读取后端预览结果，隐藏自动 `startup` / `shutdown` 普通卡片，支持选择可见步骤并从所选展开索引运行，同时保留循环、高级和工作流块范围收缩能力；重叠收缩范围中优先显示工作流块摘要。
+
+设计影响：后端展开结果成为展开预览、ETA、执行和报告的统一索引来源。前端不再把本地展开器作为“展开所有执行步骤”的事实源；从某步开始运行必须基于后端预览返回的 `unrolledIndex`。自动启动/停止是执行边界，不是用户可选择的普通展开步骤；隐藏它们不能改变执行时必须启动和停止设备的事实。
+
+验证：执行 `uv run python -m apps.shared.contracts.generate`、`uv run python -m compileall apps/python_backend apps/shared/contracts`、`PYTHONPATH=apps/python_backend uv run pytest apps/python_backend/tests/test_loop_unroller.py -q`、`pnpm --filter @zahnerflow/types build`、`pnpm --filter zahnerflow-flowgram build` 和 `git diff --check` 通过。
+
 ## 2026-07-06 - Furnace 历史概览改为聚合加载
 
 锚点：[数据-SQLite]，[接口-前端契约]

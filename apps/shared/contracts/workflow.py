@@ -104,6 +104,46 @@ class WorkflowEtaEstimate(ContractModel):
     steps: List[ExecutionEtaStep] = Field(default_factory=list, description="展开后步骤 ETA 明细")
 
 
+class ExecutionStartRequest(ContractModel):
+    """创建执行请求"""
+    nodes: List[WorkflowNode] = Field(default_factory=list, description="本次执行的画布节点")
+    workflowId: Optional[str] = Field(default=None, description="可选工作流 ID，仅在不传节点时读取归档定义")
+    ownerName: Optional[str] = Field(default=None, description="执行用户")
+    workflowName: Optional[str] = Field(default=None, description="工作流名称建议")
+    workstationType: Optional[WorkstationType] = Field(default=None, description="工作站类型")
+    autoStartupConfig: dict = Field(default_factory=dict, description="自动启动程序配置")
+    startFromUnrolledIndex: int = Field(default=0, description="从第几个展开步骤开始执行，0 为从头开始")
+
+
+class UnrolledWorkflowStep(ContractModel):
+    """后端展开后的执行预览步骤"""
+    nodeId: str = Field(description="展开后节点 ID")
+    nodeType: NodeType = Field(description="展开后节点类型")
+    originalIndex: int = Field(description="父工作流原始节点索引")
+    sourceIndex: Optional[int] = Field(default=None, description="节点在来源工作流中的索引")
+    unrolledIndex: int = Field(description="展开后步骤索引")
+    unrolledTotal: int = Field(description="展开后总步骤数")
+    iterationPath: List[dict] = Field(default_factory=list, description="循环迭代路径")
+    loopContextStack: List[int] = Field(default_factory=list, description="循环上下文栈")
+    loopDepth: int = Field(default=0, description="循环嵌套深度")
+    blockPath: List[dict] = Field(default_factory=list, description="工作流块来源路径")
+    node: dict = Field(default_factory=dict, description="实际执行节点快照")
+    parentNodeId: Optional[str] = Field(default=None, description="高级节点父节点 ID")
+    parentNodeType: Optional[NodeType] = Field(default=None, description="高级节点父类型")
+    stepIndex: Optional[int] = Field(default=None, description="高级节点内部步骤索引")
+    totalSteps: Optional[int] = Field(default=None, description="高级节点内部总步骤数")
+    stepValue: Optional[float] = Field(default=None, description="高级节点当前步设定值")
+    cycleIndex: Optional[int] = Field(default=None, description="切换类高级节点周期索引")
+    autoBoundary: Optional[bool] = Field(default=None, description="是否为自动启动/停止边界")
+
+
+class WorkflowUnrollPreview(ContractModel):
+    """后端展开预览响应"""
+    nodeCount: int = Field(description="原始节点数量")
+    steps: List[UnrolledWorkflowStep] = Field(default_factory=list, description="展开后步骤")
+    summary: dict = Field(default_factory=dict, description="展开摘要")
+
+
 class ExecutionSnapshot(ContractModel):
     """
     执行快照 — 工作流正在跑时的进度状态

@@ -18,10 +18,10 @@
   position: fixed;
   left: calc(var(--left-panel-w) + 2 * var(--space));
   right: calc(var(--property-w) + 2 * var(--space));
-  bottom: calc(var(--navbar-h) + 2 * var(--space));
-  top: calc(var(--navbar-h) + 2 * var(--space) + 22vh); // 向下降低高度以缩矮弹窗，避开顶部画布更多流程节点展示
+  bottom: var(--canvas-b);
+  top: calc(var(--canvas-t) + 22vh); // 向下降低高度以缩矮弹窗，避开顶部画布更多流程节点展示
   width: auto !important;
-  height: calc(100vh - (2 * (var(--navbar-h) + 2 * var(--space)) + 22vh)) !important; /* 显式计算高度，防止绝对定位子元素引起高度塌陷 */
+  height: calc(100vh - var(--canvas-t) - var(--canvas-b) - 22vh) !important; /* 显式计算高度，防止绝对定位子元素引起高度塌陷 */
   @include flex-col; overflow: hidden; opacity: 1; /* 默认显示状态，配合无 forwards 动画，解除合成层干扰 */
   z-index: calc(var(--z-modal, 200) + 1);
   pointer-events: auto;
@@ -37,7 +37,7 @@
   position: fixed;
   left: calc(var(--left-panel-w) + 2 * var(--space) + 24px); // 整体右移 24px 以显露出卡片左边框并形成精致错落感
   right: calc(var(--property-w) + 2 * var(--space));
-  top: calc(var(--navbar-h) + 2 * var(--space) + 22vh - 46px); // 精确对齐降低高度后的单层主 Tab 悬浮高度
+  top: calc(var(--canvas-t) + 22vh - 46px); // 精确对齐降低高度后的单层主 Tab 悬浮高度
   display: flex;
   flex-direction: column;
   gap: var(--size-3xs);
@@ -512,9 +512,9 @@
   }
 }
 
-.unroll-view-body {
+.workspace-device-modal > .unroll-view-body {
   overflow: auto;
-  padding: var(--size-md);
+  padding: var(--size-lg) var(--size-xl);
 }
 
 .unroll-empty {
@@ -526,14 +526,102 @@
   font-size: var(--size-md);
 }
 
+.unroll-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-sm);
+  margin-bottom: var(--size-sm);
+  padding: var(--size-xs) var(--size-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+
+  &__text {
+    min-width: 0;
+    color: var(--text-secondary);
+    font-size: var(--size-xs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.unroll-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-sm);
+  margin-bottom: var(--size-sm);
+  padding: var(--size-xs) var(--size-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+
+  &__summary {
+    color: var(--text-secondary);
+    font-size: var(--size-xs);
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--size-xs);
+    flex-wrap: wrap;
+  }
+
+  &__toggle {
+    min-width: 5.75rem;
+    border-color: var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--text-secondary);
+    box-shadow:
+      0 var(--size-3xs) var(--effect-md) var(--glass-shadow),
+      inset 0 1px 0 var(--glass-hover);
+
+    &:hover:not(:disabled) {
+      border-color: var(--glass-border-hover);
+      background: var(--glass-bg-hover);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-button-hover);
+      transform: translateY(-1px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    &.is-active {
+      border-color: var(--color-primary);
+      background: var(--color-primary-bg);
+      color: var(--text-primary);
+      box-shadow:
+        0 0 0 1px var(--color-primary-bg),
+        inset 0 1px 0 var(--glass-hover);
+    }
+
+    &:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    &--reset {
+      min-width: 4.75rem;
+    }
+  }
+}
+
 .unroll-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: var(--size-xs);
+  gap: var(--size-sm);
   align-content: start;
 }
 
 .unroll-step-card {
+  min-height: 6.5rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
@@ -543,10 +631,28 @@
   gap: var(--size-3xs);
   transition: all var(--transition-fast);
   cursor: default;
+  text-align: left;
+  font: inherit;
+  color: var(--text-primary);
 
   &:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  &--selectable {
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    &.is-selected {
+      border-color: rgba(99, 102, 241, 0.65);
+      background: rgba(99, 102, 241, 0.12);
+      box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.24);
+    }
   }
 
   &__header {
@@ -576,13 +682,54 @@
     gap: var(--size-3xs);
     font-size: var(--size-xs);
     color: var(--color-warning);
+
+    &--block {
+      color: rgb(94, 234, 212);
+    }
   }
 
   &__preview {
     font-size: var(--size-xs);
     color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  &--collapsed {
+    cursor: pointer;
+    border-style: dashed;
+    text-align: left;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    &-loop {
+      border-color: rgba(251, 191, 36, 0.38);
+      background: rgba(251, 191, 36, 0.075);
+    }
+
+    &-advanced {
+      border-color: rgba(99, 102, 241, 0.42);
+      background: rgba(99, 102, 241, 0.08);
+    }
+
+    &-workflow {
+      border-color: rgba(45, 212, 191, 0.38);
+      background: rgba(45, 212, 191, 0.075);
+    }
+  }
+
+  &__collapse-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    font-size: var(--size-sm);
+    line-height: 1;
   }
 }

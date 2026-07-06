@@ -45,6 +45,7 @@ interface BaseInputProps {
     isOpen: (id: string) => boolean;
     isHiding: (id: string) => boolean;
     getPosition: (id: string) => DropdownPosition | null;
+    getTriggerElement: (id: string) => HTMLElement | null;
     open: (id: string, e: React.MouseEvent) => void;
     close: (id: string) => void;
   };
@@ -148,6 +149,8 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
           isHiding={isHiding}
           onClose={() => dropdownState.close(dropdownId)}
           position={position}
+          triggerElement={dropdownState.getTriggerElement(dropdownId)}
+          lockWheelOutside
         >
           {effectiveOptions.map((opt) => (
             <div
@@ -326,6 +329,8 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
             isHiding={isHiding}
             onClose={() => dropdownState.close(dropdownId)}
             position={position}
+            triggerElement={dropdownState.getTriggerElement(dropdownId)}
+            lockWheelOutside
           >
             {deviceOptions.map(d => (
               <div key={d.value} className={`dropdown__option ${currentValue === d.value ? 'is-selected' : ''}`} onClick={() => {

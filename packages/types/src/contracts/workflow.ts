@@ -116,6 +116,71 @@ export interface WorkflowEtaEstimate {
   steps?: ExecutionEtaStep[];
 }
 
+export interface ExecutionStartRequest {
+  /** 本次执行的画布节点 */
+  nodes?: WorkflowNode[];
+  /** 可选工作流 ID，仅在不传节点时读取归档定义 */
+  workflowId?: string | null;
+  /** 执行用户 */
+  ownerName?: string | null;
+  /** 工作流名称建议 */
+  workflowName?: string | null;
+  /** 工作站类型 */
+  workstationType?: string | null;
+  /** 自动启动程序配置 */
+  autoStartupConfig?: Record<string, any>;
+  /** 从第几个展开步骤开始执行，0 为从头开始 */
+  startFromUnrolledIndex?: number;
+}
+
+export interface UnrolledWorkflowStep {
+  /** 展开后节点 ID */
+  nodeId: string;
+  /** 展开后节点类型 */
+  nodeType: string;
+  /** 父工作流原始节点索引 */
+  originalIndex: number;
+  /** 节点在来源工作流中的索引 */
+  sourceIndex?: number | null;
+  /** 展开后步骤索引 */
+  unrolledIndex: number;
+  /** 展开后总步骤数 */
+  unrolledTotal: number;
+  /** 循环迭代路径 */
+  iterationPath?: Record<string, any>[];
+  /** 循环上下文栈 */
+  loopContextStack?: number[];
+  /** 循环嵌套深度 */
+  loopDepth?: number;
+  /** 工作流块来源路径 */
+  blockPath?: Record<string, any>[];
+  /** 实际执行节点快照 */
+  node?: Record<string, any>;
+  /** 高级节点父节点 ID */
+  parentNodeId?: string | null;
+  /** 高级节点父类型 */
+  parentNodeType?: string | null;
+  /** 高级节点内部步骤索引 */
+  stepIndex?: number | null;
+  /** 高级节点内部总步骤数 */
+  totalSteps?: number | null;
+  /** 高级节点当前步设定值 */
+  stepValue?: number | null;
+  /** 切换类高级节点周期索引 */
+  cycleIndex?: number | null;
+  /** 是否为自动启动/停止边界 */
+  autoBoundary?: boolean | null;
+}
+
+export interface WorkflowUnrollPreview {
+  /** 原始节点数量 */
+  nodeCount: number;
+  /** 展开后步骤 */
+  steps?: UnrolledWorkflowStep[];
+  /** 展开摘要 */
+  summary?: Record<string, any>;
+}
+
 export interface ExecutionSnapshot {
   /** 整体状态 */
   status: string;

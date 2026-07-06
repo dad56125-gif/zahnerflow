@@ -1,11 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 
-const ParticleBackground: React.FC = () => {
+interface ParticleBackgroundProps {
+    suspended?: boolean;
+}
+
+const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = false }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+        if (suspended) return;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -247,12 +252,12 @@ const ParticleBackground: React.FC = () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             cancelAnimationFrame(animationFrameId);
         };
-    }, []);
+    }, [suspended]);
 
     return (
         <canvas
             ref={canvasRef}
-            className="fixed inset-0 -z-50 pointer-events-none"
+            className={`particle-background fixed inset-0 -z-50 pointer-events-none ${suspended ? 'particle-background--suspended' : ''}`}
             style={{
                 position: 'fixed',
                 top: 0,

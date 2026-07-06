@@ -16,10 +16,12 @@ interface CanvasProps {
   isCancelling?: boolean;
   hasError: boolean;
   workflowBlockRunBlocked?: boolean;
-  onRunFlow?: () => void;
+  onRunFlow?: (options?: { startFromUnrolledIndex?: number }) => void;
   onResetFlow?: () => void;
   onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
   onGenerateReport?: () => void;
+  onUnrollViewOpenChange?: (open: boolean) => void;
+  autoStartupConfig?: Record<string, any>;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -32,6 +34,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   onResetFlow,
   onLoopDetected,
   onGenerateReport,
+  onUnrollViewOpenChange,
+  autoStartupConfig,
 }) => {
   // 1. 从 Store 获取纯数据和 Actions
   const {
@@ -215,6 +219,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           hasError={hasError}
           workflowBlockRunBlocked={workflowBlockRunBlocked}
           onGenerateReport={onGenerateReport}
+          onUnrollViewOpenChange={onUnrollViewOpenChange}
+          autoStartupConfig={autoStartupConfig}
         />
       )}
 

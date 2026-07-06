@@ -9,6 +9,12 @@ LOOP_END = "loop_end"
 WORKFLOW_BLOCK = "workflow_block"
 IGNORED_BLOCK_NODE_TYPES = {"startup", "shutdown"}
 BOUNDARY_NODE_TYPES = {"startup", "shutdown"}
+ADVANCED_MEASUREMENT_TYPES = {
+    "galvanostatic_switching",
+    "potentiostatic_switching",
+    "galvanostatic_step_ramp",
+    "potentiostatic_step_ramp",
+}
 MEASUREMENT_NODE_TYPES = {
     "eis_potentiostatic",
     "eis_galvanostatic",
@@ -18,10 +24,6 @@ MEASUREMENT_NODE_TYPES = {
     "current_ramp",
     "chronoamperometry",
     "chronopotentiometry",
-    "galvanostatic_switching",
-    "potentiostatic_switching",
-    "galvanostatic_step_ramp",
-    "potentiostatic_step_ramp",
     "measurement",
 }
 
@@ -125,6 +127,20 @@ def _unroll_recursive(
             index += 1
             continue
 
+        if node_type in ADVANCED_MEASUREMENT_TYPES:
+            steps.extend(
+                _expand_advanced_node(
+                    node,
+                    index,
+                    iteration_path,
+                    loop_context_stack,
+                    block_path,
+                    parent_original_index,
+                )
+            )
+            index += 1
+            continue
+
         if node_type == LOOP_END:
             index += 1
             continue
@@ -145,6 +161,169 @@ def _unroll_recursive(
         index += 1
 
     return steps
+
+
+def _expand_advanced_node(
+    node: dict,
+    index: int,
+    iteration_path: list[dict],
+    loop_context_stack: list[int],
+    block_path: list[dict],
+    parent_original_index: int | None,
+) -> list[dict]:
+    config = dict(node.get("config") or {})
+    node_type = node.get("type")
+    original_index = parent_original_index if parent_original_index is not None else index
+    common_meta = {
+        "parentNodeId": node.get("id"),
+        "parentNodeType": node_type,
+        "nodeConfig": config,
+    }
+
+    if node_type in ("galvanostatic_step_ramp", "potentiostatic_step_ramp"):
+        is_galvanostatic = node_type == "galvanostatic_step_ramp"
+        start = _float_config(
+            config,
+            ["startCurrent", "start_current", "start_potential", "startPotential"],
+            0.1 if is_galvanostatic else 0.0,
+        )
+        end = _float_config(config, ["endCurrent", "end_current", "end_potential", "endPotential"], 1.0)
+        step_value = _float_config(config, ["stepCurrent", "step_current", "step_potential", "stepPotential"], 0.1)
+        hold_time = _float_config(config, ["holdTime", "hold_time", "measurementDuration"], 30.0)
+        sampling_interval = _float_config(config, ["samplingInterval", "sampling_interval"], 0.5)
+        if not step_value:
+            step_value = 0.1
+        raw_step_count = int(abs(end - start) // abs(step_value)) + 1
+        step_count = min(max(1, raw_step_count), 1000)
+        direction = 1 if end >= start else -1
+        actual_step = abs(step_value) * direction
+        child_type = "chronopotentiometry" if is_galvanostatic else "chronoamperometry"
+        child_steps = []
+
+        for step_index in range(step_count):
+            value = start + step_index * actual_step
+            child_config = {
+                **config,
+                **common_meta,
+                "measurementDuration": hold_time,
+                "samplingInterval": sampling_interval,
+                "stepIndex": step_index,
+                "totalSteps": step_count,
+                "stepValue": value,
+            }
+            if is_galvanostatic:
+                child_config["polarizationCurrent"] = value
+                child_config["polarization_current"] = value
+            else:
+                child_config["polarizationVoltage"] = value
+                child_config["polarization_voltage"] = value
+            child_steps.append(
+                _advanced_child_step(
+                    node,
+                    child_type,
+                    child_config,
+                    original_index,
+                    step_index,
+                    iteration_path,
+                    loop_context_stack,
+                    block_path,
+                )
+            )
+        return child_steps
+
+    if node_type in ("galvanostatic_switching", "potentiostatic_switching"):
+        is_galvanostatic = node_type == "galvanostatic_switching"
+        cycles = max(0, int(_float_config(config, ["cycles"], 5)))
+        sampling_interval = _float_config(config, ["samplingInterval", "sampling_interval"], 0.5)
+        first_value = _float_config(
+            config,
+            ["current1", "current_1", "potential1", "potential_1"],
+            0.0,
+        )
+        second_value = _float_config(
+            config,
+            ["current2", "current_2", "potential2", "potential_2"],
+            0.01 if is_galvanostatic else 0.5,
+        )
+        hold_times = [
+            _float_config(config, ["holdTime1", "hold_time_1"], 30.0),
+            _float_config(config, ["holdTime2", "hold_time_2"], 30.0),
+        ]
+        values = [first_value, second_value]
+        child_type = "chronopotentiometry" if is_galvanostatic else "chronoamperometry"
+        total_steps = cycles * 2
+        child_steps = []
+
+        for cycle_index in range(cycles):
+            for phase_index, value in enumerate(values):
+                step_index = cycle_index * 2 + phase_index
+                child_config = {
+                    **config,
+                    **common_meta,
+                    "measurementDuration": hold_times[phase_index],
+                    "samplingInterval": sampling_interval,
+                    "stepIndex": step_index,
+                    "totalSteps": total_steps,
+                    "cycleIndex": cycle_index,
+                    "isFirstOfCycle": phase_index == 0,
+                    "stepValue": value,
+                }
+                if is_galvanostatic:
+                    child_config["polarizationCurrent"] = value
+                    child_config["polarization_current"] = value
+                else:
+                    child_config["polarizationVoltage"] = value
+                    child_config["polarization_voltage"] = value
+                child_steps.append(
+                    _advanced_child_step(
+                        node,
+                        child_type,
+                        child_config,
+                        original_index,
+                        step_index,
+                        iteration_path,
+                        loop_context_stack,
+                        block_path,
+                    )
+                )
+        return child_steps
+
+    return []
+
+
+def _advanced_child_step(
+    parent_node: dict,
+    child_type: str,
+    child_config: dict,
+    original_index: int,
+    step_index: int,
+    iteration_path: list[dict],
+    loop_context_stack: list[int],
+    block_path: list[dict],
+) -> dict:
+    parent_id = parent_node.get("id", "advanced")
+    child_node = {
+        "id": f"{parent_id}__expanded_{step_index + 1}",
+        "type": child_type,
+        "config": child_config,
+    }
+    return {
+        "nodeId": child_node["id"],
+        "nodeType": child_type,
+        "originalIndex": original_index,
+        "sourceIndex": original_index,
+        "node": child_node,
+        "iterationPath": [dict(item) for item in iteration_path],
+        "loopContextStack": list(loop_context_stack),
+        "loopDepth": len(loop_context_stack),
+        "blockPath": [dict(item) for item in block_path],
+        "parentNodeId": parent_id,
+        "parentNodeType": parent_node.get("type"),
+        "stepIndex": step_index,
+        "totalSteps": child_config.get("totalSteps"),
+        "stepValue": child_config.get("stepValue"),
+        "cycleIndex": child_config.get("cycleIndex"),
+    }
 
 
 def _expand_workflow_block(
@@ -266,6 +445,17 @@ def _loop_count(node: dict) -> int:
         return max(0, int(raw_count))
     except (TypeError, ValueError):
         return 1
+
+
+def _float_config(config: dict, keys: list[str], default: float) -> float:
+    for key in keys:
+        if key not in config:
+            continue
+        try:
+            return float(config[key])
+        except (TypeError, ValueError):
+            continue
+    return float(default)
 
 
 def _body_node_indices(nodes: list[dict], start_idx: int, end_idx: int) -> list[int]:

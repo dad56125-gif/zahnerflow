@@ -5,7 +5,7 @@ import { useExecutionStore } from '../state/executionStateBridge';
 import { UnrollViewModal } from './UnrollViewModal';
 
 interface ToolbarProps {
-  onRunFlow: () => void;
+  onRunFlow: (options?: { startFromUnrolledIndex?: number }) => void;
   onResetFlow?: () => void;
   selectedWorkstation: string | null;
   isRunning: boolean;
@@ -13,6 +13,8 @@ interface ToolbarProps {
   hasError: boolean;
   workflowBlockRunBlocked?: boolean;
   onGenerateReport?: () => void;
+  onUnrollViewOpenChange?: (open: boolean) => void;
+  autoStartupConfig?: Record<string, any>;
 }
 
 type PrimaryAction = 'run' | 'reset';
@@ -78,6 +80,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   hasError,
   workflowBlockRunBlocked = false,
   onGenerateReport,
+  onUnrollViewOpenChange,
+  autoStartupConfig,
 }) => {
   const { clearCanvas, nodes } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
@@ -162,6 +166,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   const buttonStates = getButtonStates();
 
+  const setUnrollViewOpen = (open: boolean) => {
+    setShowUnrollView(open);
+    onUnrollViewOpenChange?.(open);
+  };
+
   const handlePrimaryAction = () => {
     if (buttonStates.primaryAction === 'reset') {
       onResetFlow?.();
@@ -216,7 +225,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="toolbar__group toolbar__group--bottom-right">
           <button
             className={`btn btn--md btn--icon btn--round glass ${buttonStates.workflowDisabled || nodes.length === 0 ? 'disabled' : 'btn--secondary'}`}
-            onClick={() => setShowUnrollView(true)}
+            onClick={() => setUnrollViewOpen(true)}
             title="查看展开后的所有执行步骤"
             aria-label="查看展开后的所有执行步骤"
             disabled={buttonStates.workflowDisabled || nodes.length === 0}
@@ -228,8 +237,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       <UnrollViewModal
         isOpen={showUnrollView}
-        onClose={() => setShowUnrollView(false)}
+        onClose={() => setUnrollViewOpen(false)}
         nodes={nodes}
+        autoStartupConfig={autoStartupConfig}
+        canRunFromStep={!buttonStates.primaryButtonDisabled && buttonStates.primaryAction === 'run'}
+        onRunFromStep={(startFromUnrolledIndex) => {
+          setUnrollViewOpen(false);
+          onRunFlow({ startFromUnrolledIndex });
+        }}
       />
 
     </>

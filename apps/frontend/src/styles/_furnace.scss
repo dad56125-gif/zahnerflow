@@ -666,26 +666,6 @@
   }
 }
 
-.workspace-device-modal .furnace-modal__sidebar {
-  .device-connection {
-    border-radius: var(--radius-full);
-    padding: var(--size-sm) var(--size-md);
-    background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
-      rgba(0, 0, 0, 0.12);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.22);
-
-    &.is-connected {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.2),
-        0 0 var(--size-xl) rgba(16, 185, 129, 0.16);
-    }
-  }
-}
-
 .workspace-device-modal .furnace-modal__main {
   .device-dashboard--furnace-strip {
     padding: 0;

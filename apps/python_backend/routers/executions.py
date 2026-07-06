@@ -20,13 +20,24 @@ router = APIRouter(prefix="/api/executions", tags=["executions"])
 sio = None
 
 
-def _unroll_workflow_nodes(nodes: list[dict]) -> dict:
+def _unroll_workflow_nodes(nodes: list[dict], auto_startup_config: dict | None = None) -> dict:
     from loop_unroller import WorkflowBlockError, unroll_loops
 
     try:
-        return unroll_loops(nodes)
+        return unroll_loops(nodes, auto_startup_config=auto_startup_config or {})
     except WorkflowBlockError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _start_from_unrolled_index(body: dict, total_steps: int) -> int:
+    raw_index = body.get("startFromUnrolledIndex", 0)
+    try:
+        start_index = int(raw_index or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="startFromUnrolledIndex must be an integer")
+    if start_index < 0 or (total_steps > 0 and start_index >= total_steps):
+        raise HTTPException(status_code=400, detail="startFromUnrolledIndex is outside the expanded step range")
+    return start_index
 
 
 def set_sio(sio_instance):
@@ -90,6 +101,7 @@ async def create_execution(body: dict):
     workflow_name = body.get("workflowName")
     workstation_type = body.get("workstationType") or "zahner-zennium"
     auto_startup_config = body.get("autoStartupConfig") or {}
+    start_from_unrolled_index = 0
 
     if runtime.experiment_state.get("status") in ("running", "paused", "cancelling"):
         raise HTTPException(status_code=400, detail="An execution is already active")
@@ -131,7 +143,8 @@ async def create_execution(body: dict):
         "nodes": nodes,
         "fingerprint": workflow_fingerprint(nodes),
     }
-    _unroll_workflow_nodes(nodes)
+    unrolled_preview = _unroll_workflow_nodes(nodes, auto_startup_config)
+    start_from_unrolled_index = _start_from_unrolled_index(body, len(unrolled_preview["steps"]))
     wf_snapshot = json.dumps(wf_snapshot_payload)
 
     db.conn.execute(
@@ -156,12 +169,44 @@ async def create_execution(body: dict):
                 "workstationType": workstation_type,
                 "autoStartupConfig": auto_startup_config,
                 "pathConfig": path_config or {},
+                "startFromUnrolledIndex": start_from_unrolled_index,
             }
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start execution: {e}")
 
-    return {"executionId": exec_id, "workflowId": workflow_id, "status": "running"}
+    return {
+        "executionId": exec_id,
+        "workflowId": workflow_id,
+        "status": "running",
+        "startFromUnrolledIndex": start_from_unrolled_index,
+    }
+
+
+@router.post("/unroll-preview")
+def preview_unrolled_execution(body: dict):
+    workflow_id = body.get("workflowId")
+    nodes = body.get("nodes")
+    auto_startup_config = body.get("autoStartupConfig") or {}
+
+    if not nodes and workflow_id:
+        row = db.conn.execute("SELECT json_data FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        workflow = json.loads(row["json_data"])
+        nodes = workflow.get("nodes") or []
+
+    if nodes is None:
+        raise HTTPException(status_code=400, detail="Nodes array is required")
+    if not isinstance(nodes, list):
+        raise HTTPException(status_code=400, detail="Nodes must be an array")
+
+    unrolled = _unroll_workflow_nodes(nodes, auto_startup_config)
+    return {
+        "nodeCount": len(nodes),
+        "steps": unrolled["steps"],
+        "summary": unrolled["summary"],
+    }
 
 
 @router.post("/estimate")

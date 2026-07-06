@@ -167,6 +167,7 @@ def generate():
         WorkstationType, NodeType, NodeCategory, NodeStatus,
         WorkflowNode, Workflow, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
         ExecutionEtaStep, WorkflowEtaEstimate,
+        ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
         NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
         RawStreamData, EnrichedStreamData,
     )
@@ -232,7 +233,8 @@ def generate():
         "",
     ]
     for model in [WorkflowNode, Workflow, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep,
-                  WorkflowEtaEstimate, ExecutionSnapshot,
+                  WorkflowEtaEstimate, ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
+                  ExecutionSnapshot,
                   NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
                   RawStreamData, EnrichedStreamData]:
         workflow_content.append(model_to_interface(model))
@@ -351,7 +353,7 @@ def generate():
         f.write("\n".join(index_content))
     print(f"  Generated: contracts/index.ts")
 
-    model_count = 26
+    model_count = 29
     print(f"\n✅ All types generated to: {output_dir}")
     print(f"   5 files generated, {model_count} interfaces generated")
 

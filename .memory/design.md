@@ -60,17 +60,22 @@
 - MFC：`port == "COM_SIMULATOR"` 使用模拟器。
 - Zahner：`host == "simulator"` 使用模拟器。
 
+端口发现接口只返回真实可枚举连接入口：Furnace 与 MFC 的 `/ports` 不返回 `COM_SIMULATOR`，Zahner 的 `/ports` 不返回 `simulator`。模拟连接入口只由前端开发者模式下的模拟控制状态注入；必须同时满足开发者模式已启用、全局模拟开关已启用、对应设备模拟开关已启用，设备连接面板才显示模拟端口并在连接时传入模拟连接参数。
+
 串口设备连接由 `DeviceManager` 统一记录当前连接端口和连接开始时间。除 `COM_SIMULATOR` 外，同一个真实串口不能同时被 Furnace 与 MFC 复用；运行时发现端口已被本进程内其他设备占用时必须在连接前拒绝，并提示先断开占用设备。如果 Windows 在打开串口时返回拒绝访问，应作为操作系统/外部进程串口占用或权限问题上报，而不是推断为前后端通信异常。
 
 归属文件：
 
 - `apps/python_backend/runtime/device_manager.py`
+- `apps/python_backend/routers/devices.py`
+- `apps/frontend/src/components/furnace/FurnaceDeviceModal.tsx`
+- `apps/frontend/src/components/mfc/MFCModal.tsx`
 
 允许变化：可以增加更清晰的 UI 标签或参数校验，但后端仍必须由连接参数驱动。
 
-禁止事项：禁止把 `FURNACE_MODE`、`MFC_MODE`、`ZAHNER_MODE` 等全局环境变量作为主要路由机制。
+禁止事项：禁止把 `FURNACE_MODE`、`MFC_MODE`、`ZAHNER_MODE` 等全局环境变量作为主要路由机制；禁止让真实端口发现接口默认暴露模拟端口。
 
-最近复核：2026-07-03，补充真实串口占用校验与连接事实记录后复核。
+最近复核：2026-07-07，收紧模拟端口只在开发者模拟状态开启时展示后复核。
 
 ## [设备-真机驱动]
 
@@ -123,7 +128,9 @@
 
 工作流块规则：`workflow_block` 是流程控制节点，参数至少包含被引用的 `workflowId`。执行启动和执行前 ETA 会在后端展开工作流块，把被引用工作流中的可执行节点内联为真实步骤。v1 不支持工作流块嵌套工作流块；如果子工作流包含 `workflow_block`，前端必须禁用运行，后端预估和启动也必须拒绝。子工作流中的 `startup` 和 `shutdown` 在块展开时默认忽略，不进入 ETA、执行步骤或报告明细。
 
-测量边界规则：`startup` 和 `shutdown` 不再作为节点库中的可选节点展示。后端执行展开时，如果展开后的步骤中存在测量节点，会忽略已有的手动 `startup` / `shutdown` 边界步骤，并自动在第一个测量步骤前插入一次 `startup`、在最后一个测量步骤后插入一次 `shutdown`。自动 `startup` 的连接参数来自执行请求的 `autoStartupConfig`，普通运行默认 `host=localhost`，模拟器运行由前端传入 `host=simulator` 和模拟器 profile；这些自动步骤不写回画布节点，不参与 workflow fingerprint。
+起点运行规则：执行创建请求可以携带 `startFromUnrolledIndex`，表示从后端展开后的第几个实际步骤开始运行；默认值为 `0`。后端必须先用同一套展开结果校验该索引，再启动执行。执行器跳过该索引之前的普通步骤，不改变展开步骤的 `unrolledIndex`，因此进度、ETA、执行事实和报告仍使用完整展开序号。如果所选起点位于自动 `startup` 之后且后续仍有测量步骤，执行器必须先执行最近的自动 `startup` 作为前置边界，再跳到所选起点继续执行，避免从测量中段开始时漏掉仪器启动。前端只能把后端展开预览中用户选中的索引传回后端，不能用本地推断的索引作为执行事实。
+
+测量边界规则：`startup` 和 `shutdown` 不再作为节点库中的可选节点展示，也不作为“展开所有执行步骤”弹窗中的普通可选步骤展示。后端执行展开时，如果展开后的步骤中存在测量节点，会忽略已有的手动 `startup` / `shutdown` 边界步骤，并自动在第一个测量步骤前插入一次 `startup`、在最后一个测量步骤后插入一次 `shutdown`。自动 `startup` 的连接参数来自执行请求的 `autoStartupConfig`，普通运行默认 `host=localhost`，模拟器运行由前端传入 `host=simulator` 和模拟器 profile；这些自动步骤不写回画布节点，不参与 workflow fingerprint。
 
 刷新接管规则：`systemStateSnapshot` 是执行接管的权威来源。后端运行快照必须携带正在执行的 `nodes`、`workflowId`、`workflowName`、`ownerName`、`workstationType`、当前步骤和 ETA；页面刷新或 Socket 重连后，前端应使用 `running` / `paused` / `cancelling` 快照恢复画布、当前工作流和工作站选择。设备连接状态仍通过设备 runtime status 路由和 `deviceStatusUpdate` 事件恢复，禁止用前端本地存档伪造 Furnace、MFC 或工作站连接状态。
 
@@ -168,8 +175,8 @@ ETA 规则：
 - 后端只在执行开始、节点开始、节点结束和执行结束时推送 ETA 快照；前端运行中按 `updatedAt + estimatedRemainingSeconds` 本地读秒。
 - 执行前预估通过 `POST /api/executions/estimate` 完成；前端提交当前画布节点或 workflowId，后端展开循环后复用 `runtime/execution_eta.py` 的同一套规则、历史学习和设备状态读取，只返回计划预估，不创建 execution、不写 `execution_steps`。
 - `loop_start` 与 `loop_end` 是控制边界，不是实际执行步骤。后端 `loop_unroller.py` 必须按循环次数展开循环体，ETA、执行进度、`execution_steps.unrolled_index` 和报告明细都以展开后的步骤为准。
-- `workflow_block` 在后端展开为被引用工作流的子步骤，展开后的子步骤携带 `blockPath`，用于进度、ETA 和报告追溯块来源。工作流块展开、循环展开、ETA 预估和真实执行必须使用同一套后端展开结果；前端展开视图只能作为预览，不能成为执行事实源。
-- 普通工作流和工作流块完成展开后，测量节点会触发自动 `startup` / `shutdown` 边界步骤。ETA、执行进度、`execution_steps.unrolled_index` 和报告明细必须以包含这些自动边界步骤的后端展开结果为准；画布节点数量和 workflow fingerprint 仍以用户定义节点为准。
+- `workflow_block` 在后端展开为被引用工作流的子步骤，展开后的子步骤携带 `blockPath`，用于进度、ETA 和报告追溯块来源。高级测量节点在后端展开为实际可执行的计时法子步骤，并保留父高级节点元数据。工作流块展开、循环展开、高级节点展开、ETA 预估和真实执行必须使用同一套后端展开结果；前端展开视图通过 `POST /api/executions/unroll-preview` 读取后端展开预览，不能成为执行事实源。
+- 普通工作流和工作流块完成展开后，测量节点会触发自动 `startup` / `shutdown` 边界步骤。ETA、执行进度、`execution_steps.unrolled_index` 和报告明细必须以包含这些自动边界步骤的后端展开结果为准；“展开所有执行步骤”弹窗只隐藏自动边界的普通卡片展示，不改变后端展开索引和执行事实；画布节点数量和 workflow fingerprint 仍以用户定义节点为准。
 - 展开步骤的 `iterationPath` 使用对象数组记录循环节点、循环起始索引、当前迭代和总迭代数；运行时进入每次循环迭代时通过 `loopiteration_start` 推送 `loopStartIndex`、`iteration`、`totalIterations` 和循环体节点索引，前端只展示和缓存后端事实。
 
 归属文件：
@@ -267,11 +274,13 @@ ETA 规则：
 17. 工作流块节点 `workflow_block` 在前端作为流程控制节点出现。属性面板只提供已归档工作流选择、只读预览和“展开到当前位置”；展开时用子工作流的可执行节点替换当前工作流块，并保留父工作流块前后的节点。展开后的节点带顶层 `group` 元数据，选中同一连续分组内任意节点时可收缩回原工作流块。`group` 不属于节点执行参数，不参与 workflow fingerprint。v1 不提供块内直接编辑器，不新增公开保存式 workflow CRUD。当前画布引用的子工作流如果包含 `workflow_block`，主运行按钮必须禁用，原位展开按钮也必须禁用。
 18. `startup` 和 `shutdown` 是后端自动测量边界，不在节点库中展示，也不应由用户在新工作流里手动创建。前端启动执行时只通过 `autoStartupConfig` 传递 Zahner 自动启动连接参数；该字段是执行请求上下文，不是节点配置，不参与工作流定义归档或 fingerprint。
 19. 用户设置中的文件路径配置是测量输出路径的默认来源。`basePath`、`projectName` 和 `individualName` 随执行请求进入后端执行引擎；测量节点可用显式节点参数覆盖这些默认值。项目名和样品名输入层限制为英文、数字和下划线，但后端在最终构建目录时仍必须清洗每一个路径片段，避免工作流名、时间戳或外部输入中的 Windows 非法字符进入真实目录名。
+20. “展开所有执行步骤”弹窗必须使用后端 `POST /api/executions/unroll-preview` 的结果展示展开步骤。该接口返回循环、工作流块、高级节点和自动测量边界展开后的同一套步骤序列。弹窗默认保持全展开，但自动 `startup` / `shutdown` 边界不显示为普通卡片；循环、高级节点和工作流块只通过用户点击收缩按钮临时折叠。弹窗允许选择某个可见展开步骤并通过执行创建请求的 `startFromUnrolledIndex` 从该步骤开始运行；普通运行不传该字段或传 `0`。
 
 归属文件：
 
 - `apps/python_backend/routers/devices.py`
 - `apps/python_backend/routers/executions.py`
+- `apps/python_backend/loop_unroller.py`
 - `apps/python_backend/routers/workflows.py`
 - `apps/python_backend/main.py`
 - `apps/python_backend/devices/furnace/limits.py`

@@ -18,7 +18,6 @@ import { runtimeSocket } from '../../runtimeClient';
 import {
   SimulatorSettings,
   isSimulatorDeviceEnabled,
-  simulatorPortFor,
   simulatorProfileFor,
 } from '../../modules/simulator/simulatorSettings';
 import { readDeveloperMode, DEVELOPER_MODE_EVENT } from '../../modules/simulator/developerMode';
@@ -69,14 +68,15 @@ export const MFCModal: React.FC<MFCModalProps> = ({
 
   // 保持对 props 的读取以避免 TS 未使用报错
   void modal_top; void modal_left; void modal_width; void modal_height;
-  const isMfcSimulator = isSimulatorDeviceEnabled('mfc', simulatorSettings);
+  const isMfcSimulator = developerMode && isSimulatorDeviceEnabled('mfc', simulatorSettings);
   const effectiveSelectedPort = isMfcSimulator ? 'COM_SIMULATOR' : mfcState.selected_port;
-  const effectivePorts = developerMode
+  const effectivePorts = isMfcSimulator
     ? Array.from(new Set(['COM_SIMULATOR', ...mfcState.available_ports]))
     : mfcState.available_ports;
   const connectMfc = () => {
-    const port = simulatorPortFor('mfc', mfcState.selected_port, simulatorSettings);
-    mfcControls.connect(port, 19200, 1.0, simulatorProfileFor('mfc', simulatorSettings));
+    const port = isMfcSimulator ? 'COM_SIMULATOR' : mfcState.selected_port;
+    const simulatorProfile = isMfcSimulator ? simulatorProfileFor('mfc', simulatorSettings) : undefined;
+    mfcControls.connect(port, 19200, 1.0, simulatorProfile);
   };
   const flowSummary = useMemo(() => {
     const totalFlow = mfcState.devices.reduce((sum, item) => sum + (Number(item.flowSccm) || 0), 0);

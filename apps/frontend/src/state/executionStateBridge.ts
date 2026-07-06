@@ -35,7 +35,8 @@ interface ExecutionState {
     ownerName?: string,
     workflowName?: string,
     workstationType?: string | null,
-    autoStartupConfig?: Record<string, any>
+    autoStartupConfig?: Record<string, any>,
+    startFromUnrolledIndex?: number
   ) => Promise<{ executionId: string; workflowId: string }>;
   stopExecution: () => Promise<void>;
   pauseExecution: () => Promise<void>;
@@ -217,7 +218,7 @@ export const useExecutionStore = create<ExecutionState>()(
         lastSnapshot: null, // ✅ 初始化为空
         loopProgress: {}, // ✅ 初始化循环进度
 
-        startExecution: async (nodes, ownerName, workflowName, workstationType, autoStartupConfig) => {
+        startExecution: async (nodes, ownerName, workflowName, workstationType, autoStartupConfig, startFromUnrolledIndex = 0) => {
           // 初始化状态
           set({
             isRunning: true,
@@ -245,6 +246,7 @@ export const useExecutionStore = create<ExecutionState>()(
               workflowName,
               workstationType,
               autoStartupConfig,
+              startFromUnrolledIndex,
             });
 
             // 更新返回的 executionId

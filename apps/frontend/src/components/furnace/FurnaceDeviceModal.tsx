@@ -6,12 +6,10 @@ import { PresetManager } from './PresetManager';
 import { FurnaceLogPanel } from './FurnaceLogPanel';
 import { TemperatureChart } from './FurnaceTemperatureChart';
 import { DeviceConnectionPanel } from '../../components/common/DeviceConnectionPanel';
-import { DeviceDiagnosticsPanel } from '../../components/common/DeviceDiagnosticsPanel';
 import { runtimeClient } from '../../runtimeClient';
 import {
   SimulatorSettings,
   isSimulatorDeviceEnabled,
-  simulatorPortFor,
   simulatorProfileFor,
 } from '../../modules/simulator/simulatorSettings';
 import { readDeveloperMode, DEVELOPER_MODE_EVENT } from '../../modules/simulator/developerMode';
@@ -81,10 +79,12 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     }
   };
 
+  const isFurnaceSimulator = developerMode && isSimulatorDeviceEnabled('furnace', simulatorSettings);
+
   const handleConnect = async () => {
-    const port = simulatorPortFor('furnace', selectedPort, simulatorSettings);
+    const port = isFurnaceSimulator ? 'COM_SIMULATOR' : selectedPort;
     if (!port) return;
-    const simulatorProfile = simulatorProfileFor('furnace', simulatorSettings);
+    const simulatorProfile = isFurnaceSimulator ? simulatorProfileFor('furnace', simulatorSettings) : undefined;
     await furnaceControls.connect({
       port,
       baudrate: 9600,
@@ -95,9 +95,8 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     });
   };
 
-  const isFurnaceSimulator = isSimulatorDeviceEnabled('furnace', simulatorSettings);
   const effectiveSelectedPort = isFurnaceSimulator ? 'COM_SIMULATOR' : selectedPort;
-  const effectivePorts = developerMode
+  const effectivePorts = isFurnaceSimulator
     ? Array.from(new Set(['COM_SIMULATOR', ...ports]))
     : ports;
 
@@ -273,21 +272,13 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                 onConnect={handleConnect}
                 onDisconnect={furnaceControls.disconnect}
               />
-              {developerMode && (
-                <>
-                  <DeviceDiagnosticsPanel
-                    diagnostics={furnaceState.diagnostics}
-                    commandLogs={furnaceState.command_logs}
-                    onRefreshLogs={furnaceControls.load_command_logs}
-                    onClearLogs={furnaceControls.clear_command_logs}
-                  />
-                  <FurnaceLogPanel
-                    logs={furnaceState.logs}
-                    onClear={furnaceControls.clear_logs}
-                    title="前端操作日志"
-                  />
-                </>
-              )}
+              <FurnaceLogPanel
+                logs={furnaceState.logs}
+                onClear={furnaceControls.clear_logs}
+                title="操作日志"
+                diagnostics={furnaceState.diagnostics}
+                showDiagnostics={developerMode}
+              />
             </div>
           </div>
         </div>

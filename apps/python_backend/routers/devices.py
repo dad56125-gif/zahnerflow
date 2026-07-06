@@ -14,6 +14,10 @@ from runtime.app_runtime import runtime
 router = APIRouter(tags=["devices"])
 
 
+def _real_serial_ports(list_ports_func) -> list[str]:
+    return [port for port in list_ports_func() if port != "COM_SIMULATOR"]
+
+
 @router.get("/api/devices/furnace/samples")
 def get_furnace_samples(from_ts: str = None, to: str = None, limit: int = None, downsample: int = None):
     return furnace_data.query_samples(from_ts=from_ts, to_ts=to, limit=limit, downsample=downsample)
@@ -96,9 +100,9 @@ async def _furnace_route(path: str, method: str, body_json: dict, query_params: 
         try:
             from devices.furnace.real_device import list_ports
 
-            return ["COM_SIMULATOR", *list_ports()]
+            return _real_serial_ports(list_ports)
         except Exception:
-            return ["COM_SIMULATOR"]
+            return []
     if path == "parameter/write" and method == "POST":
         return await runtime.furnace_write_param(body_json.get("code"), body_json.get("value"))
     if path.startswith("program/segments/") and method == "GET":
@@ -201,9 +205,9 @@ async def _mfc_route(path: str, method: str, body_json: dict, query_params: dict
         try:
             from devices.mfc.real_device import list_ports
 
-            return ["COM_SIMULATOR", *list_ports()]
+            return _real_serial_ports(list_ports)
         except Exception:
-            return ["COM_SIMULATOR"]
+            return []
     if path == "devices" and method == "GET":
         return (await runtime.device_status("mfc")).get("devices", [])
     raise HTTPException(status_code=404, detail=f"Unknown MFC path: {path}")
@@ -219,5 +223,5 @@ async def _zahner_route(path: str, method: str, body_json: dict, query_params: d
     if path == "runtime/status" and method == "GET":
         return await runtime.runtime_device_status("zahner")
     if path == "ports" and method == "GET":
-        return ["simulator", "localhost"]
+        return ["localhost"]
     raise HTTPException(status_code=404, detail=f"Unknown Zahner path: {path}")

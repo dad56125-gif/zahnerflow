@@ -24,6 +24,23 @@ def test_device_manager_initial_disconnected_contract():
     assert devices.device_mode("zahner") == "disconnected"
 
 
+def test_device_port_routes_exclude_simulator_entries(monkeypatch):
+    from devices.furnace import real_device as furnace_real_device
+    from devices.mfc import real_device as mfc_real_device
+    from routers import devices as device_routes
+
+    monkeypatch.setattr(furnace_real_device, "list_ports", lambda: ["COM1", "COM_SIMULATOR"])
+    monkeypatch.setattr(mfc_real_device, "list_ports", lambda: ["COM2", "COM_SIMULATOR"])
+
+    furnace_ports = asyncio.run(device_routes._furnace_route("ports", "GET", {}, {}))
+    mfc_ports = asyncio.run(device_routes._mfc_route("ports", "GET", {}, {}))
+    zahner_ports = asyncio.run(device_routes._zahner_route("ports", "GET", {}, {}))
+
+    assert furnace_ports == ["COM1"]
+    assert mfc_ports == ["COM2"]
+    assert zahner_ports == ["localhost"]
+
+
 def test_furnace_simulator_status_segments_and_raw_temperature_contract():
     devices = DeviceManager()
     try:

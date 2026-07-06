@@ -65,6 +65,7 @@ const AppContent: React.FC = () => {
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
   const [showMeasurementDashboard, setShowMeasurementDashboard] = useState(false);
   const [showSimulatorPanel, setShowSimulatorPanel] = useState(false);
+  const [showUnrollView, setShowUnrollView] = useState(false);
   const [simulatorSettings, setSimulatorSettings] = useState<SimulatorSettings>(() => loadSimulatorSettings());
   const [suppressedEtaNodeFingerprint, setSuppressedEtaNodeFingerprint] = useState<string | null>(null);
   const [blockedWorkflowBlockIds, setBlockedWorkflowBlockIds] = useState<string[]>([]);
@@ -82,6 +83,7 @@ const AppContent: React.FC = () => {
   const systemState = useSystemState();
   const isCancelling = systemState?.status === 'cancelling';
   const simulatorActive = hasActiveSimulator(simulatorSettings);
+  const backgroundSuspended = showUnrollView || !!fixedDevice || showSimulatorPanel || showMeasurementDashboard || showReportModal;
 
   const applyWorkstation = useCallback((workstationType: WorkstationType | null) => {
     setSelectedWorkstation(workstationType);
@@ -98,6 +100,15 @@ const AppContent: React.FC = () => {
   const workflowBlockRunBlocked = blockedWorkflowBlockIds.length > 0 || nodes.some((node) =>
     node.type === 'workflow_block' && !String(node.config?.workflowId || '').trim()
   );
+  const zahnerAutoStartupConfig = useMemo(() => {
+    const simulatorProfile = simulatorProfileFor('zahner', simulatorSettings);
+    return simulatorActive
+      ? {
+        host: simulatorHostForZahner(undefined, simulatorSettings),
+        ...(simulatorProfile && { simulatorProfile }),
+      }
+      : { host: 'localhost' };
+  }, [simulatorActive, simulatorSettings]);
 
   useEffect(() => {
     if (suppressedEtaNodeFingerprint && suppressedEtaNodeFingerprint !== nodeFingerprint) {
@@ -208,7 +219,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // --- 执行控制逻辑 ---
-  const runFlow = async () => {
+  const runFlow = async (options: { startFromUnrolledIndex?: number } = {}) => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
       setIsNotificationPanelOpen(true);
       return;
@@ -224,15 +235,14 @@ const AppContent: React.FC = () => {
         workflowStore.setDraftWorkflowName(workflowName);
       }
 
-      const simulatorProfile = simulatorProfileFor('zahner', simulatorSettings);
-      const autoStartupConfig = simulatorActive
-        ? {
-          host: simulatorHostForZahner(undefined, simulatorSettings),
-          ...(simulatorProfile && { simulatorProfile }),
-        }
-        : { host: 'localhost' };
-
-      await startExecution(nodes, currentUser || undefined, workflowName, selectedWorkstation, autoStartupConfig);
+      await startExecution(
+        nodes,
+        currentUser || undefined,
+        workflowName,
+        selectedWorkstation,
+        zahnerAutoStartupConfig,
+        options.startFromUnrolledIndex ?? 0
+      );
     } catch (error) {
       console.error('工作流执行失败:', error);
       setIsNotificationPanelOpen(true);
@@ -257,10 +267,10 @@ const AppContent: React.FC = () => {
   };
 
   // 包装回调
-  const handleRunFlow = useCallback(async () => {
+  const handleRunFlow = useCallback(async (options: { startFromUnrolledIndex?: number } = {}) => {
     setSuppressedEtaNodeFingerprint(null);
-    await runFlow();
-  }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, simulatorActive, simulatorSettings, workflowBlockRunBlocked]);
+    await runFlow(options);
+  }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, zahnerAutoStartupConfig, workflowBlockRunBlocked]);
 
   const handleLoopDetected = useCallback((loops: SimpleLoopInfo[]) => {
     setDetectedLoops(loops);
@@ -268,7 +278,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="app-root">
-      <ParticleBackground />
+      <ParticleBackground suspended={backgroundSuspended} />
       <TopBar
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}
@@ -300,6 +310,8 @@ const AppContent: React.FC = () => {
           workflowBlockRunBlocked={workflowBlockRunBlocked}
           onLoopDetected={handleLoopDetected}
           onGenerateReport={() => setShowReportModal(true)}
+          onUnrollViewOpenChange={setShowUnrollView}
+          autoStartupConfig={zahnerAutoStartupConfig}
         />
       </div>
 

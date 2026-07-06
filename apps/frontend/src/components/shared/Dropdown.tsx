@@ -11,13 +11,25 @@ interface DropdownProps {
   pointerEvents?: 'auto' | 'none';
   className?: string;
   triggerRef?: RefObject<HTMLElement>;
+  triggerElement?: HTMLElement | null;
+  lockWheelOutside?: boolean;
 }
 
 type DropdownPhase = 'open' | 'closing';
 
 const DROPDOWN_EXIT_DURATION_MS = 260;
 
-export const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, position, children, className, triggerRef }) => {
+export const Dropdown: React.FC<DropdownProps> = ({
+  isOpen,
+  isHiding,
+  onClose,
+  position,
+  children,
+  className,
+  triggerRef,
+  triggerElement,
+  lockWheelOutside = false,
+}) => {
   const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
   const [isRendered, setIsRendered] = useState(isOpen && !isHiding);
   const [phase, setPhase] = useState<DropdownPhase>(isOpen && !isHiding ? 'open' : 'closing');
@@ -69,6 +81,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, p
       const target = event.target as Node;
       if (dropdownRef.current?.contains(target)) return;
       if (triggerRef?.current?.contains(target)) return;
+      if (triggerElement?.contains(target)) return;
       requestClose();
     };
 
@@ -76,15 +89,28 @@ export const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, p
       if (event.key === 'Escape') requestClose();
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('mousedown', handlePointerDown, true);
+    document.addEventListener('touchstart', handlePointerDown, true);
     document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('mousedown', handlePointerDown, true);
+      document.removeEventListener('touchstart', handlePointerDown, true);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isRendered, phase, requestClose, triggerRef]);
+  }, [isRendered, phase, requestClose, triggerElement, triggerRef]);
+
+  useEffect(() => {
+    if (!lockWheelOutside || !isRendered || phase === 'closing') return;
+
+    const handleWheel = (event: WheelEvent) => {
+      const target = event.target as Node;
+      if (dropdownRef.current?.contains(target)) return;
+      event.preventDefault();
+    };
+
+    document.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    return () => document.removeEventListener('wheel', handleWheel, { capture: true });
+  }, [isRendered, lockWheelOutside, phase]);
 
   if (!mountNode || !isRendered) return null;
 
@@ -99,6 +125,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ isOpen, isHiding, onClose, p
         pointerEvents: 'auto',
         zIndex: 10000
       } as React.CSSProperties}
+      onWheel={(event) => event.stopPropagation()}
     >
       <div className="dropdown__list">
         {children}
