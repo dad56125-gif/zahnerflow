@@ -6,18 +6,20 @@ interface ParticleBackgroundProps {
 
 const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = false }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const suspendedRef = useRef(suspended);
+    const controlsRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        if (suspended) return;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
-        let animationFrameId: number;
+        let animationFrameId = 0;
+        let isRunning = false;
         let lastFrameTime = 0;
         const TARGET_FPS = 30;
         const FRAME_INTERVAL = 1000 / TARGET_FPS;
@@ -117,6 +119,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
             initParticles();
+            drawFrame(false);
         };
 
         const handleMouseMove = (e: MouseEvent) => {
@@ -124,19 +127,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             mouseY = e.clientY;
         };
 
-        window.addEventListener('resize', handleResize);
-        window.addEventListener('mousemove', handleMouseMove);
-
-        // Animation Loop (帧率限制)
-        const animate = (currentTime: number = 0) => {
-            // 帧率限制：30fps
-            const delta = currentTime - lastFrameTime;
-            if (delta < FRAME_INTERVAL) {
-                animationFrameId = requestAnimationFrame(animate);
-                return;
-            }
-            lastFrameTime = currentTime - (delta % FRAME_INTERVAL);
-
+        const drawFrame = (advance: boolean) => {
             // Clear
             ctx.fillStyle = '#0f172a'; // Deep background base
             ctx.fillRect(0, 0, width, height);
@@ -146,8 +137,10 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             ctx.filter = 'blur(60px)'; // Heavy blur for aurora effect
 
             waves.forEach(wave => {
-                wave.phase += wave.speed;
-                wave.huePhase += wave.hueSpeed;
+                if (advance) {
+                    wave.phase += wave.speed;
+                    wave.huePhase += wave.hueSpeed;
+                }
 
                 const yOffset = height * wave.yOffsetProportion;
 
@@ -182,25 +175,27 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             // === LAYER 2: CONSTELLATION PARTICLES (Foreground Structure) ===
 
             particles.forEach((p, index) => {
-                // Movement
-                p.x += p.vx;
-                p.y += p.vy;
+                if (advance) {
+                    // Movement
+                    p.x += p.vx;
+                    p.y += p.vy;
 
-                // Bounce
-                if (p.x < 0 || p.x > width) p.vx *= -1;
-                if (p.y < 0 || p.y > height) p.vy *= -1;
+                    // Bounce
+                    if (p.x < 0 || p.x > width) p.vx *= -1;
+                    if (p.y < 0 || p.y > height) p.vy *= -1;
 
-                // Mouse Interaction
-                const dx = mouseX - p.x;
-                const dy = mouseY - p.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                    // Mouse Interaction
+                    const dx = mouseX - p.x;
+                    const dy = mouseY - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < MOUSE_DISTANCE) {
-                    const force = (MOUSE_DISTANCE - dist) / MOUSE_DISTANCE;
-                    const angle = Math.atan2(dy, dx);
-                    // Gentle push
-                    p.vx -= Math.cos(angle) * force * 0.02;
-                    p.vy -= Math.sin(angle) * force * 0.02;
+                    if (dist < MOUSE_DISTANCE) {
+                        const force = (MOUSE_DISTANCE - dist) / MOUSE_DISTANCE;
+                        const angle = Math.atan2(dy, dx);
+                        // Gentle push
+                        p.vx -= Math.cos(angle) * force * 0.02;
+                        p.vy -= Math.sin(angle) * force * 0.02;
+                    }
                 }
 
                 // Draw Particle
@@ -225,33 +220,81 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                     }
                 }
             });
+        };
 
-            // Only request next frame if page is visible
-            if (!document.hidden) {
-                animationFrameId = requestAnimationFrame(animate);
+        const stop = () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = 0;
             }
+            isRunning = false;
+            lastFrameTime = 0;
+        };
+
+        // Animation Loop (帧率限制)
+        const animate = (currentTime: number = 0) => {
+            if (!isRunning || suspendedRef.current || document.hidden) {
+                stop();
+                return;
+            }
+
+            // 帧率限制：30fps
+            const delta = currentTime - lastFrameTime;
+            if (delta < FRAME_INTERVAL) {
+                animationFrameId = requestAnimationFrame(animate);
+                return;
+            }
+            lastFrameTime = currentTime - (delta % FRAME_INTERVAL);
+
+            drawFrame(true);
+
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        const start = () => {
+            if (isRunning || suspendedRef.current || document.hidden) return;
+            isRunning = true;
+            // 恢复时从当前时间重新计帧，避免把暂停期间的时间差一次性补算成跳变。
+            lastFrameTime = performance.now();
+            animationFrameId = requestAnimationFrame(animate);
         };
 
         const handleVisibilityChange = () => {
-            if (!document.hidden) {
-                // Resume animation loop if it stopped
-                cancelAnimationFrame(animationFrameId);
-                animate();
+            if (document.hidden) {
+                stop();
+                return;
             }
+
+            start();
         };
 
-        animationFrameId = requestAnimationFrame(animate);
+        controlsRef.current = { start, stop };
 
         window.addEventListener('resize', handleResize);
         window.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
+        drawFrame(false);
+        start();
+
         return () => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
-            cancelAnimationFrame(animationFrameId);
+            stop();
+            controlsRef.current = null;
         };
+    }, []);
+
+    useEffect(() => {
+        suspendedRef.current = suspended;
+
+        if (suspended) {
+            controlsRef.current?.stop();
+            return;
+        }
+
+        controlsRef.current?.start();
     }, [suspended]);
 
     return (
