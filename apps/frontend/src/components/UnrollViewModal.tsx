@@ -3,6 +3,8 @@ import { ModalLayer } from './shared/OverlayLayer';
 import type { WorkflowNode } from '@zahnerflow/types';
 import { NODE_CONFIGS } from '../types/NodeConfiguration';
 import { runtimeClient } from '../runtimeClient';
+import { NodeIconSvg } from './NodeIconSvg';
+import { UiIconSvg } from './shared/UiIconSvg';
 
 interface UnrollViewModalProps {
     isOpen: boolean;
@@ -148,7 +150,7 @@ export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
     const getNodeConfig = (nodeType: string) => {
         return NODE_CONFIGS[nodeType as keyof typeof NODE_CONFIGS] || {
             name: nodeType,
-            icon: '📦',
+            icon: 'workflow',
             category: 'unknown'
         };
     };
@@ -441,7 +443,9 @@ export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
                     <span className="unroll-step-card__index">
                         #{index + 1}
                     </span>
-                    <span>{nodeConfig.icon}</span>
+                    <span className="unroll-step-card__node-icon">
+                        <NodeIconSvg nodeType={step.nodeType} fallback={nodeConfig.icon} />
+                    </span>
                     <span className="unroll-step-card__name">
                         {nodeConfig.name}
                     </span>
@@ -450,14 +454,16 @@ export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
                 {/* 迭代路径 */}
                 {(step.iterationPath || []).length > 0 && (
                     <div className="unroll-step-card__iteration">
-                        <span>🔄</span>
+                        <span className="unroll-step-card__meta-icon"><UiIconSvg name="loop" /></span>
                         <span>迭代 [{iterPath}]</span>
                     </div>
                 )}
 
                 {blockLabel && (
                     <div className="unroll-step-card__iteration unroll-step-card__iteration--block">
-                        <span>▣</span>
+                        <span className="unroll-step-card__meta-icon">
+                            <NodeIconSvg nodeType="workflow_block" fallback="workflow_block" />
+                        </span>
                         <span>{blockLabel}</span>
                     </div>
                 )}

@@ -1,6 +1,14 @@
 import React from 'react';
 
 const NODE_ICON_PATHS = {
+  startup: {
+    secondary: ['M12,4V13', 'M8.5,9.5L12,13L15.5,9.5'],
+    primary: ['M5,16a7,7,0,0,0,14,0'],
+  },
+  shutdown: {
+    secondary: ['M12,4V12'],
+    primary: ['M7,7a7,7,0,1,0,10,0'],
+  },
   eis_potentiostatic: {
     secondary: ['M3.5,16.5C3.5,4.6,20.5,4.6,20.5,16.5', 'M3.5,20H20.5'],
     primary: [],

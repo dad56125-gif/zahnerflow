@@ -5,6 +5,7 @@ import React, { memo, useCallback, useMemo } from 'react';
 import { DisplayNode } from './useLayout';
 import { NodeParameterDisplay } from './NodeParameterDisplay';
 import { NodeIconSvg } from '../NodeIconSvg';
+import { UiIconSvg } from '../shared/UiIconSvg';
 
 export interface NodeRendererProps {
   // 接收统一布局生成的节点对象
@@ -69,7 +70,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
 }) => {
   // 1. 直接从注入的数据中读取显示属性
   const displayName = node.data.label || node.type;
-  const icon = node.data.icon || '📦';
+  const icon = node.data.icon || <UiIconSvg name="workflow" />;
   const nodeType = node.data._nodeType; // 原始类型
   const params = node.data; // 参数即本身 (扁平化)
 
@@ -184,7 +185,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
 
       {/* 连接指示器预留 */}
       {isConnecting && connectionStart === node.id && (
-        <div className="connection-start__indicator">🔗</div>
+        <div className="connection-start__indicator"><UiIconSvg name="link" /></div>
       )}
     </div>
   );

@@ -28,7 +28,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '启动程序',
     category: 'device',
     description: '启动电化学工作站程序 (FastAPI)',
-    icon: '🚀',
+    icon: 'startup',
     defaultParameters: {
       host: 'localhost'
     }
@@ -39,7 +39,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '停止程序',
     category: 'device',
     description: '停止电化学工作站程序',
-    icon: '🛑',
+    icon: 'shutdown',
     defaultParameters: {}
   },
 
@@ -48,7 +48,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '改变温度',
     category: 'device',
     description: 'Furnace自动温度控制节点',
-    icon: '🌡️',
+    icon: 'change_temperature',
     defaultParameters: {
       targetTemperature: 25,
       rate: 5.0,
@@ -64,7 +64,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '更改气体流量',
     category: 'device',
     description: 'MFC气体流量控制节点',
-    icon: '💨',
+    icon: 'change_gas_flow',
     defaultParameters: {
       deviceSelection: '1:N2',
       deviceAddress: 1,
@@ -82,7 +82,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '恒电位EIS',
     category: 'basic_measurement',
     description: '恒电位电化学阻抗谱测量 (FastAPI)',
-    icon: '📊',
+    icon: 'eis_potentiostatic',
     defaultParameters: {
       eisLowerFrequency: 0.1,
       eisUpperFrequency: 300000,
@@ -104,7 +104,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '恒电流EIS',
     category: 'basic_measurement',
     description: '恒电流电化学阻抗谱测量 (FastAPI)',
-    icon: '📊',
+    icon: 'eis_galvanostatic',
     defaultParameters: {
       eisLowerFrequency: 0.05,
       eisUpperFrequency: 300000,
@@ -125,7 +125,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '开路电位测量',
     category: 'basic_measurement',
     description: '开路电位测量 (FastAPI)',
-    icon: '🔋',
+    icon: 'ocp_measurement',
     defaultParameters: {
       check_battery_health: false,
       measurementDuration: 60.0,
@@ -138,7 +138,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '计时安培法',
     category: 'basic_measurement',
     description: '计时安培法测量 (FastAPI)',
-    icon: '⏱️',
+    icon: 'chronoamperometry',
     defaultParameters: {
       polarizationVoltage: 1.0,
       measurementDuration: 60.0,
@@ -153,7 +153,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '计时电位法',
     category: 'basic_measurement',
     description: '计时电位法测量 (FastAPI)',
-    icon: '⏰',
+    icon: 'chronopotentiometry',
     defaultParameters: {
       polarizationCurrent: 10e-3,
       measurementDuration: 60.0,
@@ -168,7 +168,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '电压斜坡',
     category: 'basic_measurement',
     description: '电压斜坡测量 (线性扫描伏安法)',
-    icon: '📈',
+    icon: 'voltage_ramp',
     defaultParameters: {
       start_voltage: -0.5,
       startVoltageReference: 'absolute',
@@ -186,7 +186,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '电流斜坡',
     category: 'basic_measurement',
     description: '电流斜坡测量 (电位动态扫描)',
-    icon: '📉',
+    icon: 'current_ramp',
     defaultParameters: {
       startCurrent: -10e-3,
       endCurrent: 10e-3,
@@ -203,7 +203,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '循环开始',
     category: 'flow_control',
     description: '定义循环参数和开始位置',
-    icon: '🔄',
+    icon: 'loop_start',
     defaultParameters: {
       loopCount: 1
     }
@@ -214,7 +214,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '循环结束',
     category: 'flow_control',
     description: '标记循环结束位置',
-    icon: '⏹️',
+    icon: 'loop_end',
     defaultParameters: {}
   },
 
@@ -223,7 +223,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '等待',
     category: 'flow_control',
     description: '在工作流执行过程中插入指定时间的等待',
-    icon: '⏱️',
+    icon: 'wait_delay',
     defaultParameters: {
       duration: 1.0
     }
@@ -234,7 +234,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '定时',
     category: 'flow_control',
     description: '等待到指定时间后继续执行工作流',
-    icon: '⏱️',
+    icon: 'scheduled_start',
     defaultParameters: {
       hour: 0,
       minute: 0,
@@ -247,7 +247,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '工作流块',
     category: 'flow_control',
     description: '引用一个已归档工作流作为组合步骤',
-    icon: '▣',
+    icon: 'workflow_block',
     defaultParameters: {
       workflowId: '',
       workflowName: '',
@@ -263,7 +263,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '恒电流切换',
     category: 'advanced_measurement',
     description: '在两个电流值之间周期性切换',
-    icon: '⇄',
+    icon: 'galvanostatic_switching',
     defaultParameters: {
       current_1: 0.0,
       current_2: 10e-3,
@@ -281,7 +281,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '恒电位切换',
     category: 'advanced_measurement',
     description: '在两个电位值之间周期性切换',
-    icon: '⇅',
+    icon: 'potentiostatic_switching',
     defaultParameters: {
       potential_1: 0.0,
       potential_2: 0.5,
@@ -299,7 +299,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '恒电流阶梯',
     category: 'advanced_measurement',
     description: '电流阶梯式变化，每阶保持固定时间',
-    icon: '▁▂▃▄',
+    icon: 'galvanostatic_step_ramp',
     defaultParameters: {
       startCurrent: 0.1,
       endCurrent: 1.0,
@@ -316,7 +316,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     name: '恒电位阶梯',
     category: 'advanced_measurement',
     description: '电位阶梯式变化，每阶保持固定时间',
-    icon: '▁▂▃▄',
+    icon: 'potentiostatic_step_ramp',
     defaultParameters: {
       start_potential: 0.0,
       end_potential: 1.0,

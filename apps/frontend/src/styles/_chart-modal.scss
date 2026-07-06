@@ -676,6 +676,38 @@
     white-space: nowrap;
   }
 
+  &__node-icon,
+  &__meta-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .node-library-svg {
+      width: 1.05rem;
+      height: 1.05rem;
+      display: block;
+      overflow: visible;
+    }
+
+    .node-library-svg__primary,
+    .node-library-svg__secondary {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .node-library-svg__label {
+      fill: currentColor;
+      font-size: 0.46rem;
+      font-weight: 800;
+      text-anchor: middle;
+    }
+  }
+
   &__iteration {
     display: flex;
     align-items: center;
