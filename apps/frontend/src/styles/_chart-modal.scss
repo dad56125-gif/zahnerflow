@@ -21,7 +21,7 @@
   bottom: var(--canvas-b);
   top: calc(var(--canvas-t) + 22vh); // 向下降低高度以缩矮弹窗，避开顶部画布更多流程节点展示
   width: auto !important;
-  height: calc(100vh - var(--canvas-t) - var(--canvas-b) - 22vh) !important; /* 显式计算高度，防止绝对定位子元素引起高度塌陷 */
+  height: auto !important;
   @include flex-col; overflow: hidden; opacity: 1; /* 默认显示状态，配合无 forwards 动画，解除合成层干扰 */
   z-index: calc(var(--z-modal, 200) + 1);
   pointer-events: auto;
