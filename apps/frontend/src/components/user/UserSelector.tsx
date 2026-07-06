@@ -213,11 +213,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                   fontStyle: 'italic',
                   color: 'var(--text-secondary)',
                   borderBottom: '1px solid var(--glass-border)',
-                  minHeight: '20px',
-                  height: '20px',
+                  minHeight: '26px',
+                  height: '26px',
                   paddingTop: 0,
                   paddingBottom: 0,
-                  fontSize: '11px'
+                  fontSize: '12px'
                 }}
               >
                 <span><SpacedCjkText text="清除选择" /></span>

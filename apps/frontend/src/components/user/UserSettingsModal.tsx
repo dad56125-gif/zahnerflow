@@ -553,6 +553,32 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                                 triggerRef={projectDropdownButtonRef}
                                                             >
                                                                 <div ref={projectDropdownPanelRef}>
+                                                                    {settings.filePath.projectName && (
+                                                                        <div
+                                                                            className="project__dropdown-item"
+                                                                            onClick={() => {
+                                                                                updateFilePath('projectName', '');
+                                                                                projectDropdown.startClose();
+                                                                            }}
+                                                                            style={{
+                                                                                fontStyle: 'italic',
+                                                                                color: 'var(--text-secondary)',
+                                                                                borderBottom: '1px solid var(--glass-border)',
+                                                                                minHeight: '26px',
+                                                                                height: '26px',
+                                                                                paddingTop: 0,
+                                                                                paddingBottom: 0,
+                                                                                fontSize: '12px',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                paddingLeft: 'var(--size-lg)',
+                                                                                boxSizing: 'border-box'
+                                                                            }}
+                                                                        >
+                                                                            <span><SpacedCjkText text="清除选择" /></span>
+                                                                        </div>
+                                                                    )}
                                                                     {projects.length > 0 ? (
                                                                         projects.map(p => (
                                                                             <div
