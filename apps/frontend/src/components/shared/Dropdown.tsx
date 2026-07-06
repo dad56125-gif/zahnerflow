@@ -1,11 +1,12 @@
 import React, { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { DropdownPosition } from './dropdownPosition';
 
 interface DropdownProps {
   isOpen: boolean;
   isHiding: boolean;
   onClose: () => void;
-  position: { top: number; left: number; width: number; id?: string };
+  position: DropdownPosition;
   children: React.ReactNode;
   pointerEvents?: 'auto' | 'none';
   className?: string;

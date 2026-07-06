@@ -1,6 +1,6 @@
 // --- START OF FILE apps/frontend/src/components/property/RightPanel.tsx ---
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { WorkstationType, WorkflowNode, NodeType } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
@@ -28,6 +28,7 @@ import {
 } from './PropertyInputs';
 import { ScheduleTimePicker } from '../ScheduleRunner';
 import { runtimeClient } from '../../runtimeClient';
+import { resolveDropdownPosition, type DropdownPosition } from '../shared/dropdownPosition';
 
 // 静态配置（用于获取节点显示名称）
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
@@ -68,6 +69,14 @@ interface WorkflowBlockGroup {
   workflowShortId?: string;
   nodeCount?: number;
 }
+
+interface ParameterDropdownState {
+  activeId: string | null;
+  hidingId: string | null;
+  positions: Record<string, DropdownPosition>;
+}
+
+const DROPDOWN_EXIT_DURATION_MS = 260;
 
 function makeCanvasNodeId(sourceId: unknown, index: number): string {
   const suffix = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -219,42 +228,75 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     }, [node?.id, node?.type, node?.config?.check_battery_health, updateNodeConfig]);
 
     // Dropdown 状态管理
-    const [dropdownState, setDropdownState] = useState<{
-      activeId: string | null;
-      hidingId: string | null;
-      positions: Record<string, any>;
-    }>({
+    const [dropdownState, setDropdownState] = useState<ParameterDropdownState>({
       activeId: null,
       hidingId: null,
       positions: {}
     });
+    const closeDropdownTimerRef = useRef<number | null>(null);
 
-    const handleOpenDropdown = (id: string, event: React.MouseEvent) => {
+    const clearDropdownCloseTimer = useCallback(() => {
+      if (closeDropdownTimerRef.current === null) return;
+      window.clearTimeout(closeDropdownTimerRef.current);
+      closeDropdownTimerRef.current = null;
+    }, []);
+
+    const handleOpenDropdown = useCallback((id: string, event: React.MouseEvent) => {
+      clearDropdownCloseTimer();
       const rect = event.currentTarget.getBoundingClientRect();
+      const position = resolveDropdownPosition(rect, { id });
       setDropdownState(prev => ({
         ...prev,
         activeId: id,
+        hidingId: null,
         positions: {
           ...prev.positions,
-          [id]: { top: rect.bottom + 4, left: rect.left, width: rect.width, id }
+          [id]: position
         }
       }));
-    };
+    }, [clearDropdownCloseTimer]);
 
-    const handleCloseDropdown = (id: string) => {
-      setDropdownState(prev => ({ ...prev, hidingId: id }));
-      setTimeout(() => {
-        setDropdownState(prev => ({ ...prev, activeId: null, hidingId: null }));
-      }, 250);
-    };
+    const handleCloseDropdown = useCallback((id: string) => {
+      clearDropdownCloseTimer();
+      setDropdownState(prev => {
+        if (prev.activeId !== id && prev.hidingId !== id) return prev;
+        return { ...prev, hidingId: id };
+      });
+      closeDropdownTimerRef.current = window.setTimeout(() => {
+        setDropdownState(prev => {
+          if (prev.hidingId !== id) return prev;
+          const positions = { ...prev.positions };
+          delete positions[id];
+          return {
+            activeId: prev.activeId === id ? null : prev.activeId,
+            hidingId: null,
+            positions
+          };
+        });
+        closeDropdownTimerRef.current = null;
+      }, DROPDOWN_EXIT_DURATION_MS);
+    }, [clearDropdownCloseTimer]);
 
-    const dropdownContext = {
-      isOpen: !!dropdownState.activeId,
-      isHiding: !!dropdownState.hidingId,
-      position: dropdownState.activeId ? dropdownState.positions[dropdownState.activeId] : null,
+    useEffect(() => {
+      clearDropdownCloseTimer();
+      setDropdownState({ activeId: null, hidingId: null, positions: {} });
+    }, [node?.id, activeTab, clearDropdownCloseTimer]);
+
+    useEffect(() => clearDropdownCloseTimer, [clearDropdownCloseTimer]);
+
+    const dropdownContext = useMemo(() => ({
+      isOpen: (id: string) => dropdownState.activeId === id,
+      isHiding: (id: string) => dropdownState.hidingId === id,
+      getPosition: (id: string) => dropdownState.positions[id] || null,
       open: handleOpenDropdown,
       close: handleCloseDropdown
-    };
+    }), [
+      dropdownState.activeId,
+      dropdownState.hidingId,
+      dropdownState.positions,
+      handleOpenDropdown,
+      handleCloseDropdown
+    ]);
 
     if (!node) {
       return (

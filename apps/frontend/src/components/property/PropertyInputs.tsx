@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dropdown } from '../shared/Dropdown';
+import type { DropdownPosition } from '../shared/dropdownPosition';
 import { getParameterEnumLabel, getParameterPlaceholder, enumValues } from './propertyConfig';
 import { MfcDeviceInfo } from '../../modules/mfc/mfcTypes';
 import {
@@ -41,9 +42,9 @@ interface BaseInputProps {
   onChange: (key: string, val: any) => void;
   // Dropdown 相关 props，由父组件传递
   dropdownState: {
-    isOpen: boolean;
-    isHiding: boolean;
-    position: any;
+    isOpen: (id: string) => boolean;
+    isHiding: (id: string) => boolean;
+    getPosition: (id: string) => DropdownPosition | null;
     open: (id: string, e: React.MouseEvent) => void;
     close: (id: string) => void;
   };
@@ -111,6 +112,9 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
 }) => {
   const dropdownId = `enum-${paramKey}`;
   const val = value ?? defaultValue;
+  const isOpen = dropdownState.isOpen(dropdownId);
+  const isHiding = dropdownState.isHiding(dropdownId);
+  const position = dropdownState.getPosition(dropdownId);
 
   // 处理 boolean 转换
   const isBool = typeof defaultValue === 'boolean';
@@ -134,30 +138,32 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
         disabled={disabled}
       >
         <span>{getLabel(val)}</span>
-        <svg className={`dropdown__arrow ${dropdownState.isOpen && dropdownState.position ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+        <svg className={`dropdown__arrow ${isOpen && !isHiding ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
           <path d="M -8 -3 L 0 5 L 8 -3" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <Dropdown
-        isOpen={dropdownState.isOpen && dropdownState.position?.id === dropdownId}
-        isHiding={dropdownState.isHiding}
-        onClose={() => dropdownState.close(dropdownId)}
-        position={dropdownState.position || { top: 0, left: 0, width: 0 }}
-      >
-        {effectiveOptions.map((opt) => (
-          <div
-            key={opt}
-            className={`dropdown__option ${String(val) === opt ? 'is-selected' : ''}`}
-            onClick={() => {
-              const finalVal = isBool ? (opt === 'true') : opt;
-              onChange(paramKey, finalVal);
-              dropdownState.close(dropdownId);
-            }}
-          >
-            {getLabel(isBool ? (opt === 'true') : opt)}
-          </div>
-        ))}
-      </Dropdown>
+      {position && (
+        <Dropdown
+          isOpen={isOpen}
+          isHiding={isHiding}
+          onClose={() => dropdownState.close(dropdownId)}
+          position={position}
+        >
+          {effectiveOptions.map((opt) => (
+            <div
+              key={opt}
+              className={`dropdown__option ${String(val) === opt ? 'is-selected' : ''}`}
+              onClick={() => {
+                const finalVal = isBool ? (opt === 'true') : opt;
+                onChange(paramKey, finalVal);
+                dropdownState.close(dropdownId);
+              }}
+            >
+              {getLabel(isBool ? (opt === 'true') : opt)}
+            </div>
+          ))}
+        </Dropdown>
+      )}
     </div>
   );
 };
@@ -285,6 +291,9 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
   if (paramKey === 'deviceSelection') {
     const dropdownId = 'mfc-device-selection';
     const currentValue = value ?? defaultValue;
+    const isOpen = dropdownState.isOpen(dropdownId);
+    const isHiding = dropdownState.isHiding(dropdownId);
+    const position = dropdownState.getPosition(dropdownId);
 
     // 转换真实设备信息为下拉选择格式
     const deviceOptions = availableDevices.length > 0
@@ -307,28 +316,30 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
           title="选择MFC设备和气体类型"
         >
           <span>{label}</span>
-          <svg className={`dropdown__arrow ${dropdownState.isOpen && dropdownState.position?.id === dropdownId ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
+          <svg className={`dropdown__arrow ${isOpen && !isHiding ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
             <path d="M -8 -3 L 0 5 L 8 -3" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <Dropdown
-          isOpen={dropdownState.isOpen && dropdownState.position?.id === dropdownId}
-          isHiding={dropdownState.isHiding}
-          onClose={() => dropdownState.close(dropdownId)}
-          position={dropdownState.position || { top: 0, left: 0, width: 0 }}
-        >
-          {deviceOptions.map(d => (
-            <div key={d.value} className={`dropdown__option ${currentValue === d.value ? 'is-selected' : ''}`} onClick={() => {
-              if (d.value) {
-                // 只需要触发 deviceSelection，RightPanel 会处理所有字段更新
-                onChange('deviceSelection', d.value);
-              }
-              dropdownState.close(dropdownId);
-            }}>
-              {d.label}
-            </div>
-          ))}
-        </Dropdown>
+        {position && (
+          <Dropdown
+            isOpen={isOpen}
+            isHiding={isHiding}
+            onClose={() => dropdownState.close(dropdownId)}
+            position={position}
+          >
+            {deviceOptions.map(d => (
+              <div key={d.value} className={`dropdown__option ${currentValue === d.value ? 'is-selected' : ''}`} onClick={() => {
+                if (d.value) {
+                  // 只需要触发 deviceSelection，RightPanel 会处理所有字段更新
+                  onChange('deviceSelection', d.value);
+                }
+                dropdownState.close(dropdownId);
+              }}>
+                {d.label}
+              </div>
+            ))}
+          </Dropdown>
+        )}
       </div>
     )
   }
