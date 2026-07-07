@@ -6,6 +6,11 @@ export interface DirectorySelectionResult {
 export interface ZahnerflowDesktopBridge {
     selectDirectory: () => Promise<DirectorySelectionResult>;
     getRuntimeBaseUrl: () => string;
+    windowMinimize: () => void;
+    windowToggleMaximize: () => void;
+    windowClose: () => void;
+    isMaximized: () => boolean;
+    onMaximizedChanged: (callback: (maximized: boolean) => void) => () => void;
 }
 
 declare global {

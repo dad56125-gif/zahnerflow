@@ -366,14 +366,13 @@ function toggleMainWindowExpanded(): void {
 
   normalMainWindowBounds = mainWindow.getBounds();
   mainWindow.maximize();
-  animateCloseTabToTarget(true);
 }
 
 function ensureCloseTabSpace(): Rectangle | null {
   if (!mainWindow || mainWindow.isDestroyed()) return null;
 
   const bounds = mainWindow.getBounds();
-  if (mainWindow.isFullScreen()) return bounds;
+  if (mainWindow.isFullScreen() || mainWindow.isMaximized()) return bounds;
 
   const display = screen.getDisplayMatching(bounds);
   const minimumMainWindowY = display.workArea.y + closeTabOutsideHeight;
@@ -453,8 +452,14 @@ function wireCloseTabWindowToMainWindow(): void {
 
   const syncCloseTabWindow = () => {
     if (closeTabTransitioning) return;
-    positionCloseTabWindow();
-    closeTabWindow?.showInactive();
+    const expanded = isMainWindowExpanded();
+    mainWindow?.webContents.send('window:maximized-changed', expanded);
+    if (expanded) {
+      closeTabWindow?.hide();
+    } else {
+      positionCloseTabWindow();
+      closeTabWindow?.showInactive();
+    }
   };
 
   mainWindow.on('move', syncCloseTabWindow);
@@ -497,7 +502,7 @@ async function createWindow(): Promise<void> {
     show: false,
     frame: false,
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -536,6 +541,13 @@ ipcMain.handle('dialog:select-directory', async () => {
 
 ipcMain.on('runtime:get-base-url', (event) => {
   event.returnValue = runtimeBaseUrl;
+});
+
+ipcMain.on('window:minimize', () => mainWindow?.minimize());
+ipcMain.on('window:toggle-maximize', () => toggleMainWindowExpanded());
+ipcMain.on('window:close', () => mainWindow?.close());
+ipcMain.on('window:is-maximized', (event) => {
+  event.returnValue = isMainWindowExpanded();
 });
 
 app.on('before-quit', () => {

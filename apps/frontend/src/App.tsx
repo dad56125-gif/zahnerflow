@@ -10,6 +10,7 @@ import { MeasurementDashboard } from './components/measurement-dashboard/Measure
 import { Canvas } from './components/canvas/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
+import { WindowControls } from './components/WindowControls';
 import { runtimeClient, runtimeSocket, type RuntimeError } from './runtimeClient';
 import { ModalLayer } from './components/shared/OverlayLayer';
 
@@ -346,6 +347,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app-root">
       <ParticleBackground suspended={backgroundSuspended} />
+      <WindowControls />
       <TopBar
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}

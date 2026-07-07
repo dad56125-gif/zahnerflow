@@ -1,5 +1,53 @@
 /* === _layout.scss - 核心应用骨架布局 BEM === */
 
+/* ---------- 最大化时内嵌窗口控制 ---------- */
+
+.window-controls-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 3px;
+  height: 28px;
+  padding: 0 6px;
+  -webkit-app-region: no-drag;
+}
+
+.window-controls-bar__btn {
+  display: grid;
+  width: 32px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.94);
+  background: transparent;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  &--close:hover {
+    background: rgba(248, 113, 113, 0.62);
+  }
+
+  svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
 
 /* ==========================================================================
    1. 核心应用骨架
