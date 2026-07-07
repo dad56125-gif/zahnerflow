@@ -11,6 +11,7 @@ import { Canvas } from './components/canvas/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
 import ParticleBackground from './components/ParticleBackground';
 import { WindowControls } from './components/WindowControls';
+import { hasDesktopBridge } from './desktopBridge';
 import { runtimeClient, runtimeSocket, type RuntimeError } from './runtimeClient';
 import { ModalLayer } from './components/shared/OverlayLayer';
 
@@ -112,6 +113,9 @@ const AppContent: React.FC = () => {
   const [suppressedEtaNodeFingerprint, setSuppressedEtaNodeFingerprint] = useState<string | null>(null);
   const [blockedWorkflowBlockIds, setBlockedWorkflowBlockIds] = useState<string[]>([]);
   const [runMetadataWarning, setRunMetadataWarning] = useState<RunMetadataWarning | null>(null);
+  const [desktopWindowExpanded, setDesktopWindowExpanded] = useState(() =>
+    hasDesktopBridge() ? window.zahnerflowDesktop!.isMaximized() : false
+  );
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
@@ -121,6 +125,12 @@ const AppContent: React.FC = () => {
       setRenderedDevice(fixedDevice);
     }
   }, [fixedDevice]);
+
+  useEffect(() => {
+    if (!hasDesktopBridge()) return;
+    setDesktopWindowExpanded(window.zahnerflowDesktop!.isMaximized());
+    return window.zahnerflowDesktop!.onMaximizedChanged(setDesktopWindowExpanded);
+  }, []);
 
   // 获取实时系统状态
   const systemState = useSystemState();
@@ -345,9 +355,9 @@ const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <div className="app-root">
+    <div className={`app-root ${desktopWindowExpanded ? 'app-root--window-controls' : ''}`}>
       <ParticleBackground suspended={backgroundSuspended} />
-      <WindowControls />
+      <WindowControls expanded={desktopWindowExpanded} />
       <TopBar
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}
