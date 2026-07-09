@@ -13,6 +13,14 @@ import socketio
 import uvicorn
 
 from runtime.app_runtime import runtime
+from shared.contracts.events import (
+    RUNTIME_CONNECTED,
+    RUNTIME_JOIN_WORKFLOW,
+    RUNTIME_JOINED_WORKFLOW,
+    RUNTIME_LEAVE_WORKFLOW,
+    RUNTIME_LEFT_WORKFLOW,
+    WORKFLOW_SNAPSHOT,
+)
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 app = fastapi.FastAPI(title="ZahnerFlow Python Backend")
@@ -39,7 +47,7 @@ async def connect(sid, environ):
         "lastActivity": time.time(),
     }
     await sio.emit(
-        "connected",
+        RUNTIME_CONNECTED,
         {
             "message": "Welcome to ZahnerFlow WebSocket Gateway",
             "clientId": sid,
@@ -50,7 +58,7 @@ async def connect(sid, environ):
     )
     snapshot = dict(runtime.experiment_state)
     snapshot["timestamp"] = datetime.utcnow().isoformat() + "Z"
-    await sio.emit("systemStateSnapshot", snapshot, room=sid)
+    await sio.emit(WORKFLOW_SNAPSHOT, snapshot, room=sid)
 
 
 @sio.event
@@ -58,27 +66,27 @@ async def disconnect(sid):
     connected_clients.pop(sid, None)
 
 
-@sio.on("joinWorkflow")
+@sio.on(RUNTIME_JOIN_WORKFLOW)
 async def handle_join_workflow(sid, data):
     wfid = data.get("workflowId") if isinstance(data, dict) else data
     if sid in connected_clients:
         connected_clients[sid]["workflowIds"].add(wfid)
     sio.enter_room(sid, f"workflow:{wfid}")
     await sio.emit(
-        "joinedWorkflow",
+        RUNTIME_JOINED_WORKFLOW,
         {"workflowId": wfid, "message": f"Successfully joined workflow {wfid}", "timestamp": datetime.utcnow().isoformat() + "Z"},
         room=sid,
     )
 
 
-@sio.on("leaveWorkflow")
+@sio.on(RUNTIME_LEAVE_WORKFLOW)
 async def handle_leave_workflow(sid, data):
     wfid = data.get("workflowId") if isinstance(data, dict) else data
     if sid in connected_clients:
         connected_clients[sid]["workflowIds"].discard(wfid)
     sio.leave_room(sid, f"workflow:{wfid}")
     await sio.emit(
-        "leftWorkflow",
+        RUNTIME_LEFT_WORKFLOW,
         {"workflowId": wfid, "message": f"Successfully left workflow {wfid}", "timestamp": datetime.utcnow().isoformat() + "Z"},
         room=sid,
     )

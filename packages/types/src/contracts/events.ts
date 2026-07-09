@@ -5,7 +5,13 @@
  */
 
 export const DEVICE_STATUS_UPDATE = 'deviceStatusUpdate';
+export const RUNTIME_CONNECTED = 'connected';
+export const RUNTIME_JOINED_WORKFLOW = 'joinedWorkflow';
+export const RUNTIME_JOIN_WORKFLOW = 'joinWorkflow';
+export const RUNTIME_LEAVE_WORKFLOW = 'leaveWorkflow';
+export const RUNTIME_LEFT_WORKFLOW = 'leftWorkflow';
 export const WORKFLOW_EIS = 'eisDataReady';
+export const WORKFLOW_EXECUTION_FINISHED = 'executionFinished';
 export const WORKFLOW_LOOP_END = 'loopiteration_end';
 export const WORKFLOW_LOOP_START = 'loopiteration_start';
 export const WORKFLOW_MEASUREMENT = 'measurementData';

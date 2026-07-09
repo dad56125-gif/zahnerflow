@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { WORKFLOW_MEASUREMENT, WORKFLOW_NODES_RESET } from '../eventContracts';
 import type { EnrichedStreamData, RawStreamData } from '@zahnerflow/types';
 import { runtimeSocket } from '../runtimeClient';
 
@@ -34,12 +35,12 @@ if (isGlobalListenerSetup) return;
 runtimeSocket.connectSocket();
 
 // 🔥 SSOT: 自己监听 nodesReset 事件，不再依赖 executionStateBridge 调用
-runtimeSocket.on('nodesReset', () => {
+runtimeSocket.on(WORKFLOW_NODES_RESET, () => {
 GlobalMeasurementCache.clear();
 lastExecutionId = null;
 });
 
-runtimeSocket.on<EnrichedStreamData & { iterationPath?: Array<number | Record<string, any>> }>('measurementData', (payload) => {
+runtimeSocket.on<EnrichedStreamData & { iterationPath?: Array<number | Record<string, any>> }>(WORKFLOW_MEASUREMENT, (payload) => {
 // 🔥 2. 检测运行ID变化，如果是新的一轮运行，清空所有缓存
 // 这样当重新 Run 时，图表不会把旧点和新点连起来
 if (payload.executionId && payload.executionId !== lastExecutionId) {

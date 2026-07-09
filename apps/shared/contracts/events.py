@@ -6,8 +6,13 @@ WebSocket 事件名常量
 
 # === Device runtime 事件 ===
 DEVICE_STATUS_UPDATE = "deviceStatusUpdate"
+RUNTIME_CONNECTED = "connected"
 
 # === Workflow 事件 ===
+RUNTIME_JOIN_WORKFLOW = "joinWorkflow"
+RUNTIME_LEAVE_WORKFLOW = "leaveWorkflow"
+RUNTIME_JOINED_WORKFLOW = "joinedWorkflow"
+RUNTIME_LEFT_WORKFLOW = "leftWorkflow"
 WORKFLOW_NODE_STATUS = "nodeStatusUpdate"
 WORKFLOW_SNAPSHOT = "systemStateSnapshot"
 WORKFLOW_MEASUREMENT = "measurementData"
@@ -16,3 +21,4 @@ WORKFLOW_LOOP_START = "loopiteration_start"
 WORKFLOW_LOOP_END = "loopiteration_end"
 WORKFLOW_NODES_RESET = "nodesReset"
 WORKFLOW_NOTIFICATION = "notification"
+WORKFLOW_EXECUTION_FINISHED = "executionFinished"

@@ -12,6 +12,14 @@ from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
 from runtime.execution_eta import build_timeline
 from runtime.execution_recorder import finish_execution, finish_step, start_step
+from shared.contracts.events import (
+    DEVICE_STATUS_UPDATE,
+    WORKFLOW_EXECUTION_FINISHED,
+    WORKFLOW_LOOP_START,
+    WORKFLOW_NODE_STATUS,
+    WORKFLOW_NOTIFICATION,
+    WORKFLOW_SNAPSHOT,
+)
 
 
 DEVICE_CAPABILITIES = {
@@ -113,7 +121,7 @@ class AppRuntime:
     async def on_device_status(self, device: str, status: dict) -> None:
         ts = datetime.utcnow().isoformat() + "Z"
         envelope = self._device_status_envelope(device, status, ts)
-        await self.emit("deviceStatusUpdate", envelope)
+        await self.emit(DEVICE_STATUS_UPDATE, envelope)
 
         if device == "furnace":
             self.furnace_status = {"device": "furnace", **status}
@@ -149,7 +157,7 @@ class AppRuntime:
 
     async def on_device_connection(self, device: str, connected: bool) -> None:
         status = await self.device_status(device)
-        await self.emit("deviceStatusUpdate", self._device_status_envelope(device, status))
+        await self.emit(DEVICE_STATUS_UPDATE, self._device_status_envelope(device, status))
 
     async def on_experiment_state(self, payload: dict) -> None:
         now = datetime.utcnow().isoformat() + "Z"
@@ -171,7 +179,7 @@ class AppRuntime:
                 "timestamp": now,
             }
         )
-        await self.emit("systemStateSnapshot", self.experiment_state)
+        await self.emit(WORKFLOW_SNAPSHOT, self.experiment_state)
 
     async def on_execution_timeline_started(self, payload: dict) -> None:
         now = datetime.utcnow().isoformat() + "Z"
@@ -261,7 +269,7 @@ class AppRuntime:
 
     async def on_loop_iteration_started(self, payload: dict) -> None:
         await self.emit(
-            "loopiteration_start",
+            WORKFLOW_LOOP_START,
             {
                 "loopStartIndex": payload.get("loopStartIndex"),
                 "iteration": payload.get("iteration"),
@@ -272,7 +280,7 @@ class AppRuntime:
 
     async def on_node_status(self, payload: dict) -> None:
         await self.emit(
-            "nodeStatusUpdate",
+            WORKFLOW_NODE_STATUS,
             {"i": payload.get("nodeIndex"), "s": payload.get("status"), "d": payload.get("data")},
         )
 
@@ -333,9 +341,9 @@ class AppRuntime:
                 "timestamp": now,
             }
         )
-        await self.emit("systemStateSnapshot", self.experiment_state)
+        await self.emit(WORKFLOW_SNAPSHOT, self.experiment_state)
         await self.emit(
-            "executionFinished",
+            WORKFLOW_EXECUTION_FINISHED,
             {
                 "executionId": exec_id,
                 "status": status,
@@ -345,7 +353,7 @@ class AppRuntime:
             },
         )
         await self.emit(
-            "notification",
+            WORKFLOW_NOTIFICATION,
             {
                 "id": f"notification_{int(time.time() * 1000)}",
                 "type": "success" if status == "completed" else "error",

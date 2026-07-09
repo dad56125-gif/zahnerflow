@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { getWsUrl } from './config/env.config';
 import { getDesktopRuntimeBaseUrl } from './desktopBridge';
+import { DEVICE_STATUS_UPDATE } from './eventContracts';
 import type { RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -8,7 +9,7 @@ type QueryParams = Record<string, QueryValue>;
 type RequestBody = unknown;
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
-const deviceStatusUpdateEvent = 'deviceStatusUpdate';
+const deviceStatusUpdateEvent = DEVICE_STATUS_UPDATE;
 
 export interface RuntimeError {
   code: string;

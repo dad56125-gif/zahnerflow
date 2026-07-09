@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { WORKFLOW_NOTIFICATION } from '../eventContracts';
 import type { NotificationMessage } from '@zahnerflow/types';
 import { runtimeSocket } from '../runtimeClient';
 
@@ -81,7 +82,7 @@ export const useAppStore = create<AppState>()(
 
 // 初始化 WebSocket 通知监听
 if (typeof window !== 'undefined') {
-  runtimeSocket.on<NotificationMessage>('notification', (data) => {
+  runtimeSocket.on<NotificationMessage>(WORKFLOW_NOTIFICATION, (data) => {
     useAppStore.getState().addNotification({
       id: data.id,
       type: data.type as StoredNotification['type'],

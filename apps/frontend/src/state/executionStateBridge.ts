@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { runtimeClient, runtimeSocket } from '../runtimeClient';
+import {
+  WORKFLOW_LOOP_START,
+  WORKFLOW_NODE_STATUS,
+  WORKFLOW_NODES_RESET,
+  WORKFLOW_SNAPSHOT,
+} from '../eventContracts';
 import type { ExecutionSnapshot, LoopIterationEvent } from '@zahnerflow/types';
 // clearMeasurementCache 已解耦，现在由 useMeasurementStream 自己监听 nodesReset 事件
 
@@ -60,7 +66,7 @@ export const useExecutionStore = create<ExecutionState>()(
         // 1. 监听节点细粒度更新 (用于UI实时反馈：节点变色、数据更新)
         // 注意：这里使用 any 类型，因为实际传输的是简写格式以优化带宽
         // 预期格式: { i: index, s: status, d?: data } 而非完整的 NodeStatusUpdate
-        runtimeSocket.on('nodeStatusUpdate', (update: any) => {
+        runtimeSocket.on(WORKFLOW_NODE_STATUS, (update: any) => {
           // update 格式是 { i: number, s: string, d?: any } (简化的索引更新)
 
           const state = get();
@@ -91,7 +97,7 @@ export const useExecutionStore = create<ExecutionState>()(
 
         // 🔥 SSOT: 监听后端 nodesReset 事件，统一处理状态重置
         // clearMeasurementCache 已解耦到 useMeasurementStream 自己监听
-        runtimeSocket.on('nodesReset', (event) => {
+        runtimeSocket.on(WORKFLOW_NODES_RESET, (event) => {
           // 重置节点状态
           set({
             nodeStatuses: [],
@@ -107,7 +113,7 @@ export const useExecutionStore = create<ExecutionState>()(
         });
 
         // ✅ 监听循环迭代开始事件（重置循环内节点状态为 idle）
-        runtimeSocket.on('loopiteration_start', (event: LoopIterationEvent) => {
+        runtimeSocket.on(WORKFLOW_LOOP_START, (event: LoopIterationEvent) => {
           const state = get();
 
           // 重置循环内节点状态为 idle
@@ -133,7 +139,7 @@ export const useExecutionStore = create<ExecutionState>()(
 
         // 2. 监听全量系统快照 (作为执行状态的单一真理源 SSOT)
         // 替代了原本不存在的 onExecutionComplete，统一处理开始、暂停、完成、失败
-        runtimeSocket.on('systemStateSnapshot', (snapshot: ExecutionSnapshot) => {
+        runtimeSocket.on(WORKFLOW_SNAPSHOT, (snapshot: ExecutionSnapshot) => {
           const state = get();
 
           // ✅ 核心改动：直接把快照存入 Store

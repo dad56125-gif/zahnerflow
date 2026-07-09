@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from database import db
 from runtime.execution_eta import estimate_workflow
 from runtime.app_runtime import runtime
+from shared.contracts.events import WORKFLOW_NODES_RESET, WORKFLOW_SNAPSHOT
 from workflow_identity import workflow_fingerprint
 
 router = APIRouter(prefix="/api/executions", tags=["executions"])
@@ -516,8 +517,8 @@ async def reset_execution():
     runtime.reset_execution_state()
     if sio:
         timestamp = datetime.utcnow().isoformat() + "Z"
-        await sio.emit("nodesReset", {"targetStatus": "ready", "timestamp": timestamp})
+        await sio.emit(WORKFLOW_NODES_RESET, {"targetStatus": "ready", "timestamp": timestamp})
         snapshot = dict(runtime.experiment_state)
         snapshot["timestamp"] = timestamp
-        await sio.emit("systemStateSnapshot", snapshot)
+        await sio.emit(WORKFLOW_SNAPSHOT, snapshot)
     return {"success": True, "message": "Execution reset successfully", "timestamp": datetime.utcnow().isoformat() + "Z"}

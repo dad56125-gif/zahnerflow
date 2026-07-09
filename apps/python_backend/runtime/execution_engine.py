@@ -14,6 +14,7 @@ from runtime.temperature_control import (
     estimate_remaining_temperature_seconds,
     estimate_temperature_ramp_minutes,
 )
+from shared.contracts.events import WORKFLOW_EIS, WORKFLOW_MEASUREMENT
 
 
 class WorkflowCancelled(RuntimeError):
@@ -461,7 +462,7 @@ class ExecutionEngine:
 
         def stream_callback(data):
             self.runtime.emit_from_thread(
-                "measurementData",
+                WORKFLOW_MEASUREMENT,
                 {
                     "executionId": self.execution_id,
                     "stepIndex": step.get("originalIndex", 0),
@@ -483,7 +484,7 @@ class ExecutionEngine:
         eis_data = result.get("eis_data")
         if eis_data and ("eis_potentiostatic" in meas_type or "eis_galvanostatic" in meas_type):
             await self.runtime.emit(
-                "eisDataReady",
+                WORKFLOW_EIS,
                 {
                     "executionId": self.execution_id,
                     "nodeIndex": step.get("originalIndex", 0),

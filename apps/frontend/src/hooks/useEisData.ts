@@ -4,6 +4,7 @@
 * 用于 Nyquist 图一次性绘制 + 持久保存
 */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { WORKFLOW_EIS, WORKFLOW_NODES_RESET } from '../eventContracts';
 import { runtimeSocket } from '../runtimeClient';
 
 // EIS 数据点结构
@@ -45,7 +46,7 @@ if (isEisListenerSetup) return;
 // 确保 Socket 已连接
 runtimeSocket.connectSocket();
 
-runtimeSocket.on<any>('eisDataReady', (payload) => {
+runtimeSocket.on<any>(WORKFLOW_EIS, (payload) => {
 if (!payload.data || payload.nodeIndex === undefined) return;
 
 const { frequency, z_real, z_imag, point_count, csv_path } = payload.data;
@@ -96,7 +97,7 @@ eisListeners.forEach(handler => handler(payload.nodeIndex, iterationPath, eisDat
 });
 
 // 监听重置事件，清空缓存
-runtimeSocket.on('nodesReset', () => {
+runtimeSocket.on(WORKFLOW_NODES_RESET, () => {
 GlobalEisCache.clear();
 });
 
