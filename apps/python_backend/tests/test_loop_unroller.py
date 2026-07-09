@@ -266,6 +266,7 @@ async def _run_execution_engine_emits_loop_iteration_events(monkeypatch):
     runtime.execution.execution_id = "exec_loop"
     runtime.execution.workflow_id = "wf_loop"
     runtime.execution.status = "running"
+    runtime.execution._plan = runtime.plan_execution(runtime.execution.nodes)
 
     await runtime.execution._execute()
 
@@ -299,7 +300,10 @@ async def _run_execution_engine_can_start_from_unrolled_index(monkeypatch):
     runtime.execution.execution_id = "exec_start_from"
     runtime.execution.workflow_id = "wf_start_from"
     runtime.execution.status = "running"
-    runtime.execution._start_from_unrolled_index = 2
+    runtime.execution._plan = runtime.plan_execution(
+        runtime.execution.nodes,
+        start_from_unrolled_index=2,
+    )
 
     await runtime.execution._execute()
 
@@ -336,8 +340,11 @@ async def _run_execution_engine_runs_startup_before_mid_measurement_start(monkey
     runtime.execution.execution_id = "exec_start_from_measurement"
     runtime.execution.workflow_id = "wf_start_from_measurement"
     runtime.execution.status = "running"
-    runtime.execution._auto_startup_config = {"host": "simulator"}
-    runtime.execution._start_from_unrolled_index = 2
+    runtime.execution._plan = runtime.plan_execution(
+        runtime.execution.nodes,
+        auto_startup_config={"host": "simulator"},
+        start_from_unrolled_index=2,
+    )
 
     await runtime.execution._execute()
 

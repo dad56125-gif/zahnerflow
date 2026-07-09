@@ -12,8 +12,13 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from database import db
-from runtime.execution_eta import estimate_workflow
 from runtime.app_runtime import runtime
+from runtime.execution_planner import (
+    ExecutionPlanner,
+    ExecutionPlanningError,
+    WorkflowNotFoundError,
+    database_workflow_loader,
+)
 from shared.contracts.events import WORKFLOW_NODES_RESET, WORKFLOW_SNAPSHOT
 from workflow_identity import workflow_fingerprint
 
@@ -21,24 +26,40 @@ router = APIRouter(prefix="/api/executions", tags=["executions"])
 sio = None
 
 
-def _unroll_workflow_nodes(nodes: list[dict], auto_startup_config: dict | None = None) -> dict:
-    from loop_unroller import WorkflowBlockError, unroll_loops
+def _execution_planner() -> ExecutionPlanner:
+    return ExecutionPlanner(
+        devices=getattr(runtime, "devices", None),
+        workflow_loader=database_workflow_loader(db),
+    )
 
+
+def _resolve_execution_nodes(nodes: list[dict] | None, workflow_id: str | None) -> list[dict]:
     try:
-        return unroll_loops(nodes, auto_startup_config=auto_startup_config or {})
-    except WorkflowBlockError as exc:
+        return _execution_planner().resolve_nodes(nodes, workflow_id)
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Workflow not found") from exc
+    except ExecutionPlanningError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-def _start_from_unrolled_index(body: dict, total_steps: int) -> int:
-    raw_index = body.get("startFromUnrolledIndex", 0)
+def _load_execution_workflow(workflow_id: str) -> dict:
     try:
-        start_index = int(raw_index or 0)
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="startFromUnrolledIndex must be an integer")
-    if start_index < 0 or (total_steps > 0 and start_index >= total_steps):
-        raise HTTPException(status_code=400, detail="startFromUnrolledIndex is outside the expanded step range")
-    return start_index
+        return _execution_planner().load_workflow(workflow_id)
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Workflow not found") from exc
+    except ExecutionPlanningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _build_execution_plan(nodes: list[dict], auto_startup_config: dict | None = None, start_from_unrolled_index=0):
+    try:
+        return _execution_planner().plan(
+            nodes,
+            auto_startup_config=auto_startup_config or {},
+            start_from_unrolled_index=start_from_unrolled_index,
+        )
+    except ExecutionPlanningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _string_value(value) -> str:
@@ -184,10 +205,7 @@ async def create_execution(body: dict):
             raise HTTPException(status_code=400, detail="Nodes array is required when workflowId is null")
 
     if not nodes:
-        row = db.conn.execute("SELECT json_data FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        wf = json.loads(row["json_data"])
+        wf = _load_execution_workflow(workflow_id)
         nodes = wf["nodes"]
         workflow_name = wf["name"]
         resolved_workflow = wf
@@ -195,6 +213,13 @@ async def create_execution(body: dict):
     exec_id = f"exec_{int(time.time() * 1000)}_{random.randint(100, 999)}"
     now = datetime.utcnow().isoformat() + "Z"
 
+    plan = _build_execution_plan(
+        nodes,
+        auto_startup_config,
+        body.get("startFromUnrolledIndex", 0),
+    )
+    nodes = plan.nodes
+    start_from_unrolled_index = plan.start_from_unrolled_index
     wf_snapshot_payload = {
         **(resolved_workflow or {}),
         "id": workflow_id,
@@ -202,8 +227,6 @@ async def create_execution(body: dict):
         "nodes": nodes,
         "fingerprint": workflow_fingerprint(nodes),
     }
-    unrolled_preview = _unroll_workflow_nodes(nodes, auto_startup_config)
-    start_from_unrolled_index = _start_from_unrolled_index(body, len(unrolled_preview["steps"]))
     wf_snapshot = json.dumps(wf_snapshot_payload)
 
     db.conn.execute(
@@ -226,9 +249,8 @@ async def create_execution(body: dict):
                 "ownerName": owner_name or "",
                 "workflowName": workflow_name or "",
                 "workstationType": workstation_type,
-                "autoStartupConfig": auto_startup_config,
                 "pathConfig": path_config or {},
-                "startFromUnrolledIndex": start_from_unrolled_index,
+                "executionPlan": plan,
             }
         )
     except Exception as e:
@@ -245,53 +267,28 @@ async def create_execution(body: dict):
 @router.post("/unroll-preview")
 def preview_unrolled_execution(body: dict):
     workflow_id = body.get("workflowId")
-    nodes = body.get("nodes")
+    nodes = _resolve_execution_nodes(body.get("nodes"), workflow_id)
     auto_startup_config = body.get("autoStartupConfig") or {}
-
-    if not nodes and workflow_id:
-        row = db.conn.execute("SELECT json_data FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        workflow = json.loads(row["json_data"])
-        nodes = workflow.get("nodes") or []
-
-    if nodes is None:
-        raise HTTPException(status_code=400, detail="Nodes array is required")
-    if not isinstance(nodes, list):
-        raise HTTPException(status_code=400, detail="Nodes must be an array")
-
-    unrolled = _unroll_workflow_nodes(nodes, auto_startup_config)
+    plan = _build_execution_plan(nodes, auto_startup_config)
     return {
-        "nodeCount": len(nodes),
-        "steps": unrolled["steps"],
-        "summary": unrolled["summary"],
+        "nodeCount": len(plan.nodes),
+        "steps": plan.steps,
+        "summary": plan.summary,
     }
 
 
 @router.post("/estimate")
 def estimate_execution(body: dict):
     workflow_id = body.get("workflowId")
-    nodes = body.get("nodes")
-
-    if not nodes and workflow_id:
-        row = db.conn.execute("SELECT json_data FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        workflow = json.loads(row["json_data"])
-        nodes = workflow.get("nodes") or []
-
-    if nodes is None:
-        raise HTTPException(status_code=400, detail="Nodes array is required")
-    if not isinstance(nodes, list):
-        raise HTTPException(status_code=400, detail="Nodes must be an array")
-
-    unrolled = _unroll_workflow_nodes(nodes)
-    estimate = estimate_workflow(nodes, unrolled["steps"], runtime.devices)
+    nodes = _resolve_execution_nodes(body.get("nodes"), workflow_id)
+    auto_startup_config = body.get("autoStartupConfig") or {}
+    plan = _build_execution_plan(nodes, auto_startup_config)
     return {
         "workflowId": workflow_id,
-        "nodeCount": len(nodes),
-        "unrolledStepCount": len(unrolled["steps"]),
-        **estimate,
+        "nodeCount": len(plan.nodes),
+        "unrolledStepCount": len(plan.steps),
+        "eta": plan.eta,
+        "steps": plan.timeline["steps"],
     }
 
 

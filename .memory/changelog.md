@@ -576,3 +576,15 @@
 设计影响：自定义 Socket.IO 事件名由 Python 契约源统一维护，TypeScript 只使用生成结果；本次不改变线上事件字符串和 payload。
 
 验证：运行 `uv run python -m apps.shared.contracts.generate` 重新生成契约；检查后端 `sio.emit`/`sio.on` 和前端 `runtimeSocket.on` 已引用常量；后端导入检查通过，后端测试为 47 通过、2 个既有 macOS 路径断言失败；`git diff --check`、共享类型构建和前端类型/构建验证通过。
+
+## 2026-07-10 - 统一执行计划生成路径
+
+锚点：[执行-状态机]，[执行-计划]，[执行-ETA与事实记录]
+
+原因：工作流启动、展开预览、ETA 估算和执行引擎此前分别调用展开逻辑，可能因自动启动配置或展开规则差异产生不同的步骤数量、起始索引和时间线。
+
+变更：新增 `ExecutionPlanner` 和 `ExecutionPlan`，统一解析节点、展开、自动边界、ETA、时间线和起点校验；计划显式携带节点快照、步骤、摘要、ETA、时间线、合法起点和补回边界索引。预览、估算和启动路由消费 Planner，执行引擎直接消费同一计划，不再调用 `unroll_loops`；`AppRuntime` 使用计划时间线。
+
+设计影响：预览、估算、启动、进度和执行共享一次后端计划生成结果；执行引擎不再拥有第二套展开与 ETA 事实。
+
+验证：在 `apps/python_backend` 上下文运行 `PYTHONPATH=. uv run pytest -q tests/test_execution_planner.py tests/test_loop_unroller.py tests/test_execution_report_payload.py tests/test_workflow_identity.py`，31 个测试通过；`uv run python -m compileall apps/python_backend` 与 `git diff --check` 通过。

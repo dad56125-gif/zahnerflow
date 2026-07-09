@@ -10,6 +10,7 @@
 - `[设备-真机驱动]`：真机驱动作为 Python 类导入，不作为 FastAPI 服务启动。
 - `[设备-runtime状态契约]`：设备实时状态统一使用 runtime envelope。
 - `[执行-状态机]`：工作流执行是本地、单用户、进程内执行。
+- `[执行-计划]`：所有执行相关入口共享同一份后端 ExecutionPlan。
 - `[执行-ETA与事实记录]`：运行时间估算以后端执行事实为基准。
 - `[工作流-身份]`：工作流定义由节点结构和参数指纹确定。
 - `[数据-SQLite]`：SQLite 是本地持久化边界。
@@ -158,6 +159,22 @@
 禁止事项：除非本地单用户前提改变，否则禁止引入多用户执行队列、隐藏 worker 池或分布式调度；禁止依靠前端本地缓存作为执行恢复事实源。
 
 最近复核：2026-07-07，加入运行前用户、项目名称和样品名称确认后复核。
+
+## [执行-计划]
+
+当前规则：`ExecutionPlanner` 是执行规划的唯一入口。它解析请求节点或已保存工作流，展开循环、工作流块和高级节点，插入自动测量边界，计算 ETA 与时间线，并校验 `startFromUnrolledIndex`，最后返回 `ExecutionPlan`。
+
+计划内容：`ExecutionPlan` 持有深拷贝后的节点快照、展开步骤、展开摘要、ETA、时间线、合法起点和为中途开始测量补回自动 `startup` 的步骤索引。
+
+入口消费：`/unroll-preview` 读取步骤和摘要，`/estimate` 读取 ETA 和时间线；执行创建把同一节点快照写入 execution 记录，再把同一计划对象交给 `ExecutionEngine`。执行引擎只能消费该计划，不得重新解析、展开或估算。
+
+归属文件：`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/loop_unroller.py`、`apps/python_backend/runtime/execution_eta.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/app_runtime.py`。
+
+允许变化：可以扩展计划中的摘要、时间线、边界步骤、起点校验和 ETA 字段，但必须继续由 Planner 统一组合。
+
+禁止事项：禁止预览、估算、启动或执行引擎各自调用 `unroll_loops` 形成第二份步骤事实；禁止前端自行推导展开步骤、自动边界或起始索引；禁止让 ETA 反向控制设备执行。
+
+最近复核：2026-07-10，完成 ExecutionPlanner 整合并通过计划、展开、执行状态和工作流身份测试。
 
 ## [执行-ETA与事实记录]
 

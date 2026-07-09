@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import time
 from datetime import datetime, timezone
-from typing import Any
 
 from device_data_service import furnace_data, mfc_data
 from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
-from runtime.execution_eta import build_timeline
 from runtime.execution_recorder import finish_execution, finish_step, start_step
+from runtime.execution_planner import ExecutionPlan, ExecutionPlanner
 from shared.contracts.events import (
     DEVICE_STATUS_UPDATE,
     WORKFLOW_EXECUTION_FINISHED,
@@ -34,6 +34,7 @@ class AppRuntime:
         self.sio = None
         self.loop: asyncio.AbstractEventLoop | None = None
         self.devices = DeviceManager()
+        self.execution_planner = ExecutionPlanner(self.devices)
         self.execution = ExecutionEngine(self)
         self._poll_task: asyncio.Task | None = None
         self._running = False
@@ -184,7 +185,10 @@ class AppRuntime:
     async def on_execution_timeline_started(self, payload: dict) -> None:
         now = datetime.utcnow().isoformat() + "Z"
         self._execution_started_at = now
-        self._execution_timeline = build_timeline(payload.get("nodes", []), payload.get("steps", []), self.devices)
+        timeline = payload.get("timeline")
+        if not isinstance(timeline, dict):
+            raise ValueError("Execution timeline is required in the execution plan")
+        self._execution_timeline = copy.deepcopy(timeline)
         self._start_from_unrolled_index = max(0, int(payload.get("startFromUnrolledIndex") or 0))
         boundary_prelude_indices = {int(index) for index in payload.get("boundaryPreludeIndices") or []}
         for step in self._execution_timeline.get("steps", []):
@@ -532,6 +536,19 @@ class AppRuntime:
 
     async def start_execution(self, payload: dict) -> dict:
         return await self.execution.start(payload)
+
+    def plan_execution(
+        self,
+        nodes: list[dict],
+        *,
+        auto_startup_config: dict | None = None,
+        start_from_unrolled_index=0,
+    ) -> ExecutionPlan:
+        return self.execution_planner.plan(
+            nodes,
+            auto_startup_config=auto_startup_config,
+            start_from_unrolled_index=start_from_unrolled_index,
+        )
 
     async def pause_execution(self) -> dict:
         return await self.execution.pause()

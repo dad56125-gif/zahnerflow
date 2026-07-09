@@ -10,6 +10,7 @@ from typing import Optional
 
 from devices.furnace.limits import validate_furnace_temperature
 from runtime.execution_eta import params_for_eta
+from runtime.execution_planner import ExecutionPlan
 from runtime.temperature_control import (
     estimate_remaining_temperature_seconds,
     estimate_temperature_ramp_minutes,
@@ -39,12 +40,11 @@ class ExecutionEngine:
         self._cancel_requested = False
         self._pause_requested = False
         self._task: Optional[asyncio.Task] = None
+        self._plan: ExecutionPlan | None = None
         self._owner_name = ""
         self._workflow_name = ""
         self._workstation_type = None
-        self._auto_startup_config: dict = {}
         self._path_config: dict = {}
-        self._start_from_unrolled_index = 0
 
     @property
     def is_running(self) -> bool:
@@ -58,15 +58,18 @@ class ExecutionEngine:
         if self.is_running:
             raise RuntimeError("An execution is already active")
 
+        plan = payload.get("executionPlan")
+        if not isinstance(plan, ExecutionPlan):
+            raise RuntimeError("Execution plan is required")
+
         self.workflow_id = payload.get("workflowId")
         self.execution_id = payload.get("executionId", f"exec_{int(time.time() * 1000)}")
-        self.nodes = payload.get("nodes", [])
+        self._plan = plan
+        self.nodes = plan.nodes
         self._owner_name = payload.get("ownerName", "")
         self._workflow_name = payload.get("workflowName", "")
         self._workstation_type = payload.get("workstationType")
-        self._auto_startup_config = payload.get("autoStartupConfig") or {}
         self._path_config = payload.get("pathConfig") or {}
-        self._start_from_unrolled_index = max(0, int(payload.get("startFromUnrolledIndex") or 0))
         self.current_step_index = 0
         self._cancel_requested = False
         self._pause_requested = False
@@ -108,16 +111,16 @@ class ExecutionEngine:
         return {"message": "Execution cancellation requested"}
 
     async def _execute(self) -> None:
-        from loop_unroller import MEASUREMENT_NODE_TYPES, unroll_loops
-
         start_time = time.time()
         execution_id = self.execution_id
         workflow_id = self.workflow_id
-        unrolled = unroll_loops(self.nodes, auto_startup_config=self._auto_startup_config)
-        steps = unrolled["steps"]
+        plan = self._plan
+        if plan is None:
+            raise RuntimeError("Execution plan is required")
+
+        steps = plan.steps
         total_steps = len(steps)
-        start_from = min(self._start_from_unrolled_index, total_steps)
-        boundary_prelude_indices = _boundary_prelude_indices(steps, start_from, MEASUREMENT_NODE_TYPES)
+        start_from = plan.start_from_unrolled_index
         await self.runtime.on_execution_timeline_started(
             {
                 "executionId": execution_id,
@@ -127,14 +130,15 @@ class ExecutionEngine:
                 "ownerName": self._owner_name,
                 "workflowName": self._workflow_name,
                 "workstationType": self._workstation_type,
-                "startFromUnrolledIndex": self._start_from_unrolled_index,
-                "boundaryPreludeIndices": sorted(boundary_prelude_indices),
+                "startFromUnrolledIndex": start_from,
+                "boundaryPreludeIndices": list(plan.boundary_prelude_indices),
+                "timeline": plan.timeline,
             }
         )
 
         try:
             for unrolled_idx, step in enumerate(steps):
-                if unrolled_idx < start_from and unrolled_idx not in boundary_prelude_indices:
+                if unrolled_idx < start_from and unrolled_idx not in plan.boundary_prelude_indices:
                     continue
 
                 if self._cancel_requested:
@@ -145,7 +149,7 @@ class ExecutionEngine:
                 if self._cancel_requested:
                     raise WorkflowCancelled("Execution cancelled by user")
 
-                node = step.get("node") or self.nodes[step["originalIndex"]]
+                node = step.get("node") or plan.nodes[step["originalIndex"]]
                 node_type = node.get("type")
                 params = node.get("config") or {}
                 eta_params = params_for_eta(node_type, params)
@@ -164,7 +168,7 @@ class ExecutionEngine:
                     "nodeId": node["id"],
                     "nodeType": node_type,
                     "index": step["originalIndex"],
-                    "total": len(self.nodes),
+                    "total": len(plan.nodes),
                     "unrolledIndex": unrolled_idx,
                     "unrolledTotal": total_steps,
                     "iterationPath": step.get("iterationPath", []),
@@ -246,6 +250,7 @@ class ExecutionEngine:
         finally:
             self.status = "idle"
             self.execution_id = None
+            self._plan = None
 
     async def _dispatch_node(self, node: dict, step: dict, params: dict):
         node_type = node.get("type")
@@ -506,25 +511,3 @@ class ExecutionEngine:
             "csvPath": result.get("csv_path") or (eis_data.get("csv_path") if eis_data else None),
             "data_points": result.get("points") or (eis_data.get("point_count") if eis_data else 0),
         }
-
-
-def _boundary_prelude_indices(steps: list[dict], start_from: int, measurement_node_types: set[str]) -> set[int]:
-    if start_from <= 0:
-        return set()
-
-    has_remaining_measurement = any(
-        step.get("nodeType") in measurement_node_types
-        for step in steps[start_from:]
-    )
-    if not has_remaining_measurement:
-        return set()
-
-    startup_indices = [
-        index
-        for index, step in enumerate(steps[:start_from])
-        if step.get("nodeType") == "startup" and step.get("autoBoundary")
-    ]
-    if not startup_indices:
-        return set()
-
-    return {startup_indices[-1]}
