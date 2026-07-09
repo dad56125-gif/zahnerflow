@@ -564,3 +564,15 @@
 验证：
 1. 运行 `pnpm --filter zahnerflow-flowgram build` 成功完成 Vite 静态编译打包。
 2. 运行 `screenshot_temp.cjs` 自动模拟工作流添加和管式炉弹窗点击，全流程无超时，截图证实另存为按钮样式已恢复，文字和网格自适应暗/亮色主题。
+
+## 2026-07-10 - 统一 Socket.IO 事件名称契约
+
+锚点：[接口-事件契约]，[接口-前端契约]
+
+原因：共享事件常量和生成的 TypeScript 文件已经存在，但后端和前端运行时代码仍重复硬编码跨端事件名，事件改名时容易漏改一侧。
+
+变更：补齐连接、工作流加入/离开和执行完成事件常量，重新生成 `events.ts`；后端入口、运行时、执行路由以及前端 runtime client、执行状态、通知、测量和 EIS hooks 改为引用共享常量。
+
+设计影响：自定义 Socket.IO 事件名由 Python 契约源统一维护，TypeScript 只使用生成结果；本次不改变线上事件字符串和 payload。
+
+验证：运行 `uv run python -m apps.shared.contracts.generate` 重新生成契约；检查后端 `sio.emit`/`sio.on` 和前端 `runtimeSocket.on` 已引用常量；后端导入检查通过，后端测试为 47 通过、2 个既有 macOS 路径断言失败；`git diff --check`、共享类型构建和前端类型/构建验证通过。

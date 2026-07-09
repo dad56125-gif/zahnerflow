@@ -14,6 +14,7 @@
 - `[工作流-身份]`：工作流定义由节点结构和参数指纹确定。
 - `[数据-SQLite]`：SQLite 是本地持久化边界。
 - `[接口-前端契约]`：保留面向前端的 REST 和 Socket.IO 契约。
+- `[接口-事件契约]`：Socket.IO 自定义事件名称由共享契约统一维护并供两端运行时引用。
 - `[前端-组件目录]`：所有 UI 组件归入 `src/components/` 按模块组织。
 - `[前端-组件拆分]`：模块内子组件的拆分原则和职责边界。
 - `[前端-浮层系统]`：modal、dropdown、notification 和 chart modal 的浮层行为边界。
@@ -319,6 +320,18 @@ ETA 规则：
 禁止事项：禁止把架构清理的副作用变成当前前端仍在使用的 API 路径破坏；禁止在 TSX 中引入硬编码内联颜色和物理字号；禁止在图表及画布中使用写死的亮色/暗色绘图背景与文本色；禁止重引入 `shared/api.ts`、`services/api/client.ts`、`services/api/zahnerApi.ts`、`BaseDeviceApi.ts`、`BaseWebSocketService.ts`、`furnaceApi.ts`、`mfcApi.ts`、`furnaceWebSocket.service.ts`、`mfcWebSocket.service.ts`、`workflowService.ts` 或 `websocket.service.ts` 作为前端通信入口；禁止新增只做 `.btn` class 映射的薄按钮包装组件；禁止在按钮 TSX 中用视觉内联样式替代 `.btn` 体系；禁止在 `<input>` / `<select>` 上省略 `.input` / `.select` 基类；禁止在业务 SCSS 中重复定义输入框基础外观样式；禁止在 SVG stroke 中硬编码 `rgba(...)` 颜色值；禁止使用 `×`（U+00D7）、`▼` 或带 / 不带 variation selector 混用的 emoji 符号。
 
 最近复核：2026-07-07，加入执行启动前元数据确认契约后复核。
+
+## [接口-事件契约]
+
+当前规则：Socket.IO 自定义事件名称由 `apps/shared/contracts/events.py` 唯一维护，并生成到 `packages/types/src/contracts/events.ts`。Python 后端和前端运行时代码必须引用这些常量，不得重复硬编码跨端事件字符串；事件 payload 仍由对应共享契约或现有运行时结构负责。
+
+归属文件：`apps/shared/contracts/events.py`、`apps/shared/contracts/__init__.py`、`apps/shared/contracts/generate.py`、`packages/types/src/contracts/events.ts`、后端 `main.py`/runtime/路由、前端 `src/eventContracts.ts` 和 runtime client/hooks/state。
+
+允许变化：可以新增事件常量并重新生成 TypeScript 文件；可以扩展事件 payload 的共享类型。
+
+禁止事项：禁止只修改生成的 `events.ts`；禁止在运行时新增与契约并行的事件名字符串；禁止把未定义的事件作为跨端协议使用。
+
+最近复核：2026-07-10，后端和前端运行时代码已统一引用事件常量，原有事件字符串和 payload 不变。
 
 ## [前端-组件目录]
 
