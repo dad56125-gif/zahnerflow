@@ -1,4 +1,5 @@
 import type { UiIconName } from '../shared/uiIcons';
+import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 
 /**
  * 实验报告模块的规范化数据模型。
@@ -60,24 +61,9 @@ export interface ReportWarningInfo {
   createdAt?: string;
 }
 
-export const NODE_TYPE_LABELS: Record<string, string> = {
-  startup: '启动程序',
-  shutdown: '关闭程序',
-  loop_start: '循环开始',
-  loop_end: '循环结束',
-  wait_delay: '延时',
-  scheduled_start: '定时',
-  workflow_block: '工作流块',
-  ocp_measurement: 'OCP测量',
-  eis_potentiostatic: '恒电位EIS',
-  eis_galvanostatic: '恒电流EIS',
-  chronoamperometry: '计时电流法',
-  chronopotentiometry: '计时电位法',
-  voltage_ramp: '电压扫描',
-  current_ramp: '电流扫描',
-  change_temperature: '温度控制',
-  change_gas_flow: '气体流量控制',
-};
+export const NODE_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(NODE_CONFIGS).map(([type, config]) => [type, config.name]),
+);
 
 export const STATUS_ICON_NAMES: Record<string, UiIconName> = {
   completed: 'check',

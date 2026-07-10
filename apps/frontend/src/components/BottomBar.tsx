@@ -5,11 +5,11 @@ import { useCanvasStore } from '../state/canvasStore';
 import { NODE_CONFIGS } from '../types/NodeConfiguration';
 import type { ExecutionSnapshot } from '@zahnerflow/types';
 import type { SimpleLoopInfo } from './canvas/useLoopDetection';
+import { useAppStore } from '../state/appStore';
+import { deriveExecutionUiState } from '../state/executionStateBridge';
 
 interface BottomBarProps {
   isRunning: boolean;
-  isNotificationPanelOpen: boolean;
-  setIsNotificationPanelOpen: (open: boolean) => void;
   detectedLoops?: SimpleLoopInfo[];
   systemState?: ExecutionSnapshot | null;
   onProgressBarClick?: () => void;
@@ -18,14 +18,16 @@ interface BottomBarProps {
 
 export const BottomBar: React.FC<BottomBarProps> = ({
   isRunning,
-  isNotificationPanelOpen,
-  setIsNotificationPanelOpen,
   detectedLoops = [],
   systemState = null,
   onProgressBarClick,
   suppressPlannedEstimate = false
 }) => {
   const { nodes, selectedNodeId } = useCanvasStore();
+  const notificationPanelOpen = useAppStore(state => state.notificationPanelOpen);
+  const toggleNotificationPanel = useAppStore(state => state.toggleNotificationPanel);
+  const setNotificationPanelOpen = useAppStore(state => state.setNotificationPanelOpen);
+  const executionUi = deriveExecutionUiState(systemState, { isRunning });
 
   // ✅ 实时时钟状态
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
@@ -47,12 +49,8 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   const loopCount = detectedLoops.length;
 
   const getStatusMessage = (): string => {
-    if (systemState?.status === 'cancelling') {
-      return '正在停止，等待当前节点结束...';
-    }
-
-    if (isRunning) {
-      return '流程运行中...';
+    if (executionUi.phase !== 'idle') {
+      return executionUi.message;
     }
 
     if (selectedNode) {
@@ -69,10 +67,10 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         {/* 运行状态 */}
         <div
           className="bottom-bar__item notification-trigger"
-          onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
+          onClick={toggleNotificationPanel}
           title="点击打开通知面板"
         >
-          <span className={`bottom-bar__run-dot ${isRunning ? 'is-running' : 'is-ready'}`} />
+          <span className={`bottom-bar__run-dot ${executionUi.isActive ? 'is-running' : 'is-ready'}`} />
           <span className="bottom-bar__message">{getStatusMessage()}</span>
         </div>
       </div>
@@ -96,8 +94,8 @@ export const BottomBar: React.FC<BottomBarProps> = ({
 
       {/* 通知面板 */}
       <NotificationPanel
-        isOpen={isNotificationPanelOpen}
-        onClose={() => setIsNotificationPanelOpen(false)}
+        isOpen={notificationPanelOpen}
+        onClose={() => setNotificationPanelOpen(false)}
       />
     </div>
   );

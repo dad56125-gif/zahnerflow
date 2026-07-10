@@ -11,9 +11,10 @@ import { MeasurementChart } from './MeasurementChart';
 import { MeasurementTabBar } from './MeasurementTabBar';
 import { useBulkSelection } from './useBulkSelection';
 import type { ExecutionSnapshot, WorkflowNode } from '@zahnerflow/types';
-import { NODE_CONFIGS } from '../../types/NodeConfiguration';
+import { getNodePresentation, NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme } from '../../utils/colorUtils';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import { deriveExecutionUiState } from '../../state/executionStateBridge';
 
 interface MeasurementDashboardProps {
     isOpen: boolean;
@@ -21,36 +22,6 @@ interface MeasurementDashboardProps {
     systemState: ExecutionSnapshot | null;
     nodes: WorkflowNode[];
 }
-
-// 定义哪些节点类型支持图表显示
-const MEASUREMENT_NODE_TYPES = [
-    'eis_potentiostatic',
-    'eis_galvanostatic',
-    'ocp_measurement',
-    'chronoamperometry',
-    'chronopotentiometry',
-    'voltage_ramp',
-    'current_ramp',
-    // 高级测量节点
-    'galvanostatic_switching',
-    'potentiostatic_switching',
-    'galvanostatic_step_ramp',
-    'potentiostatic_step_ramp'
-];
-
-const TEST_TYPE_MAPPING: Record<string, { key: string; label: string }> = {
-    'eis_potentiostatic': { key: 'eis_potentiostatic', label: '恒电位EIS' },
-    'eis_galvanostatic': { key: 'eis_galvanostatic', label: '恒电流EIS' },
-    'chronoamperometry': { key: 'chrono', label: '计时法' },
-    'chronopotentiometry': { key: 'chrono', label: '计时法' },
-    'voltage_ramp': { key: 'ramp', label: '斜坡' },
-    'current_ramp': { key: 'ramp', label: '斜坡' },
-    'galvanostatic_switching': { key: 'switching_step', label: '开关/阶跃' },
-    'potentiostatic_switching': { key: 'switching_step', label: '开关/阶跃' },
-    'galvanostatic_step_ramp': { key: 'switching_step', label: '开关/阶跃' },
-    'potentiostatic_step_ramp': { key: 'switching_step', label: '开关/阶跃' },
-    'ocp_measurement': { key: 'ocp', label: 'OCP' }
-};
 
 export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
     isOpen,
@@ -61,10 +32,11 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
     const secondaryTabsRef = useRef<HTMLDivElement>(null);
     const secondaryTabsContentRef = useRef<HTMLDivElement>(null);
     const { bulkMode, handleBulkToggleClick: bulkToggleHandler, resetBulkSelection } = useBulkSelection();
+    const executionUi = deriveExecutionUiState(systemState);
 
     // 筛选出支持图表的测量节点
     const measurementNodes = useMemo(() => {
-        return nodes.filter(node => MEASUREMENT_NODE_TYPES.includes(node.type));
+        return nodes.filter(node => Boolean(getNodePresentation(node.type)?.chartKind));
     }, [nodes]);
 
     // 对测量节点进行大类分组
@@ -72,7 +44,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         const groups: Record<string, { key: string; label: string; nodes: WorkflowNode[] }> = {};
 
         measurementNodes.forEach(node => {
-            const mapping = TEST_TYPE_MAPPING[node.type] || { key: 'other', label: '其他' };
+            const mapping = getNodePresentation(node.type)?.chartGroup || { key: 'other', label: '其他' };
             if (!groups[mapping.key]) {
                 groups[mapping.key] = {
                     key: mapping.key,
@@ -179,7 +151,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         });
 
         if (runningNode) {
-            const mapping = TEST_TYPE_MAPPING[runningNode.type] || { key: 'other', label: '其他' };
+            const mapping = getNodePresentation(runningNode.type)?.chartGroup || { key: 'other', label: '其他' };
             setActiveTypeKey(mapping.key);
             setSelectedNodeIds(prev => {
                 const next = new Set(prev);
@@ -303,7 +275,6 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                         selectedNodeIds={selectedNodeIds}
                         visibleNodes={visibleNodes}
                         visibleNodeIndexMap={visibleNodeIndexMap}
-                        activeNodeIndex={activeNodeIndex}
                         systemState={systemState}
                         eisLegendScheme={eisLegendScheme}
                         bulkMode={bulkMode}
@@ -327,7 +298,6 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                         visibleNodes={visibleNodes}
                         visibleNodeIndexMap={visibleNodeIndexMap}
                         activeNode={activeNode}
-                        activeNodeIndex={activeNodeIndex}
                         systemState={systemState}
                         eisLegendScheme={eisLegendScheme}
                         bulkMode={bulkMode}
@@ -428,11 +398,9 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                             共 {measurementNodes.length} 个测量节点
                         </span>
                         <span>
-                            {systemState?.status === 'running'
+                            {executionUi.isRunning
                                 ? `正在执行步骤 ${(activeNodeIndex + 1)}/${nodes.length}`
-                                : systemState?.status === 'completed'
-                                    ? '执行完成'
-                                    : '就绪'
+                                : executionUi.label
                             }
                         </span>
                     </div>

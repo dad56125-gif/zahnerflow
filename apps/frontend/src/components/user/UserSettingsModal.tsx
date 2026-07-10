@@ -7,6 +7,7 @@ import { useDropdownPosition } from '../shared/useDropdownPosition';
 import { selectDesktopDirectory } from '../../desktopBridge';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import { presetAvatarUrl, resolveAvatarSrc } from '../../utils/avatarAssets';
 
 interface UserSettings {
     filePath: {
@@ -135,6 +136,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     // 头像裁剪与预设相关状态
     const avatarInputRef = useRef<HTMLInputElement>(null);
+    const skipNextAutoSaveRef = useRef(false);
     const [isCropping, setIsCropping] = useState(false);
     const [cropImage, setCropImage] = useState<string | null>(null);
     const [cropScale, setCropScale] = useState(1);
@@ -294,13 +296,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         try {
             const response: any = await runtimeClient.users.getSettings(currentUser);
             if (response?.success && response?.settings) {
-                // 兼容旧配置：确保 smtpSecure 和 onWarning 有默认值
-                if (response.settings.notification && response.settings.notification.smtpSecure !== true) {
-                    response.settings.notification.smtpSecure = true;
-                }
-                if (response.settings.notification && response.settings.notification.onWarning === undefined) {
-                    response.settings.notification.onWarning = false; // 默认不启用警告通知
-                }
+                skipNextAutoSaveRef.current = true;
                 setSettings(response.settings);
             }
         } catch (err) {
@@ -384,8 +380,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         try {
             const response: any = await runtimeClient.users.saveSettings(currentUser, settings);
             if (response?.success) {
-                // 同步文件路径到 UserContext（保持兼容）
-                setFilePathConfig(settings.filePath);
+                // 后端整包保存已经完成；这里只同步应用内缓存，避免再次写 filePath section。
+                setFilePathConfig(settings.filePath, { persist: false });
                 // 同时更新当前用户的头像，使左上角按钮能够同步刷新
                 setCurrentUserAvatar(settings.cloud.avatar || '');
             } else {
@@ -402,6 +398,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // 自动保存（防抖）
     useEffect(() => {
         if (!settings || !currentUser) return;
+        if (skipNextAutoSaveRef.current) {
+            skipNextAutoSaveRef.current = false;
+            return;
+        }
 
         const timeoutId = setTimeout(() => {
             saveSettings();
@@ -856,7 +856,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                     >
                                                         {settings.cloud.avatar ? (
                                                             <img 
-                                                                src={settings.cloud.avatar} 
+                                                                src={resolveAvatarSrc(settings.cloud.avatar)}
                                                                 alt="Avatar Preview" 
                                                                 style={{ 
                                                                     width: '100%', 
@@ -894,8 +894,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                     >
                                                         {/* 精确分类与排序：先摆放 30 个经典人头，再摆放 15 个动物头像 */}
                                                         {CLASSIC_AVATARS.map((presetNum) => {
-                                                            const url = `/presets/preset_${presetNum}.png`;
-                                                            const isSelected = settings.cloud.avatar === url;
+                                                            const url = presetAvatarUrl(presetNum);
+                                                            const isSelected = resolveAvatarSrc(settings.cloud.avatar) === url;
                                                             return (
                                                                 <div
                                                                     key={presetNum}

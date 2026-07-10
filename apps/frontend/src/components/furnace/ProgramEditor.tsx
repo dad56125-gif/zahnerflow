@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
 import type { ProgramSegment } from '../../modules/furnace/furnaceTypes';
 import { SegmentValidator } from '../../modules/furnace/segmentValidation';
+import { FURNACE_PROGRAM_SEGMENT_COUNT } from '../../modules/furnace/temperatureLimits';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 
 interface ProgramEditorProps {
@@ -56,7 +57,7 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
     if (!confirm('确认写入？')) return;
 
     const segments: ProgramSegment[] = [];
-    for (let i = 1; i <= 27; i++) {
+    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
       const temp = parseInt(inputs[`temp_${i}`] || '0');
       const time = parseInt(inputs[`time_${i}`] || '0');
       if (temp > 0 || time > 0 || time === -121) {
@@ -92,14 +93,14 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
           {/* 按列优先顺序生成：3列布局时，竖向显示 c01 c02 c03 ... */}
           {(() => {
             const COLS = 3;
-            const ROWS = 9; // 27 ÷ 3 = 9
+            const ROWS = Math.ceil(FURNACE_PROGRAM_SEGMENT_COUNT / COLS);
             const elements = [];
 
             // 按行遍历，每行从3列取元素
             for (let row = 0; row < ROWS; row++) {
               for (let col = 0; col < COLS; col++) {
                 const id = col * ROWS + row + 1; // 列优先索引
-                if (id > 27) continue;
+                if (id > FURNACE_PROGRAM_SEGMENT_COUNT) continue;
 
                 elements.push(
                   <div key={id} className="segment__item">

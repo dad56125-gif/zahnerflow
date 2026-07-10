@@ -12,6 +12,22 @@ export interface NodeConfig {
   defaultParameters?: Record<string, any>;
 }
 
+export type NodeChartKind = 'ivt' | 'eis';
+
+export interface NodeSummaryField {
+  label: string;
+  keys: string[];
+}
+
+export interface NodePresentationSpec {
+  chartKind?: NodeChartKind;
+  chartGroup?: {
+    key: string;
+    label: string;
+  };
+  summaryFields: NodeSummaryField[];
+}
+
 // 分组名称映射
 export const NODE_CATEGORY_NAMES: Record<NodeCategory, string> = {
   device: '设备',
@@ -328,6 +344,196 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     }
   }
 };
+
+// 节点的图表能力、图表分组和报告摘要字段只在此处定义。
+export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
+  startup: {
+    summaryFields: [{ label: '主机', keys: ['host'] }],
+  },
+  shutdown: { summaryFields: [] },
+  change_temperature: {
+    summaryFields: [
+      { label: '目标温度', keys: ['targetTemperature', 'temperature'] },
+      { label: '升温速率', keys: ['rate'] },
+      { label: '稳定时间', keys: ['stabilizationTime'] },
+    ],
+  },
+  change_gas_flow: {
+    summaryFields: [
+      { label: '气体', keys: ['gasType'] },
+      { label: '设备地址', keys: ['deviceAddress', 'address'] },
+      { label: '目标流量', keys: ['targetFlowRate', 'flowSccm', 'sccm'] },
+      { label: '稳定时间', keys: ['stabilizationTime'] },
+    ],
+  },
+  eis_potentiostatic: {
+    chartKind: 'eis',
+    chartGroup: { key: 'eis_potentiostatic', label: '恒电位EIS' },
+    summaryFields: [
+      { label: '直流偏置', keys: ['enableDcBias'] },
+      { label: '偏置电位', keys: ['eisPotential'] },
+      { label: '振幅', keys: ['eis_amplitude'] },
+      { label: '频率范围', keys: ['eisLowerFrequency', 'eisUpperFrequency'] },
+    ],
+  },
+  eis_galvanostatic: {
+    chartKind: 'eis',
+    chartGroup: { key: 'eis_galvanostatic', label: '恒电流EIS' },
+    summaryFields: [
+      { label: '偏置电流', keys: ['eisCurrent'] },
+      { label: '振幅', keys: ['eis_amplitude'] },
+      { label: '频率范围', keys: ['eisLowerFrequency', 'eisUpperFrequency'] },
+    ],
+  },
+  ocp_measurement: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'ocp', label: 'OCP' },
+    summaryFields: [
+      { label: '测量时长', keys: ['measurementDuration'] },
+      { label: '采样间隔', keys: ['samplingInterval'] },
+    ],
+  },
+  chronoamperometry: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'chrono', label: '计时法' },
+    summaryFields: [
+      { label: '极化电压', keys: ['polarizationVoltage'] },
+      { label: '测量时长', keys: ['measurementDuration'] },
+      { label: '采样间隔', keys: ['samplingInterval'] },
+    ],
+  },
+  chronopotentiometry: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'chrono', label: '计时法' },
+    summaryFields: [
+      { label: '极化电流', keys: ['polarizationCurrent'] },
+      { label: '测量时长', keys: ['measurementDuration'] },
+      { label: '采样间隔', keys: ['samplingInterval'] },
+    ],
+  },
+  voltage_ramp: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'ramp', label: '斜坡' },
+    summaryFields: [
+      { label: '起始电压', keys: ['start_voltage', 'startVoltage'] },
+      { label: '结束电压', keys: ['end_voltage', 'endVoltage'] },
+      { label: '测量时长', keys: ['measurementDuration'] },
+    ],
+  },
+  current_ramp: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'ramp', label: '斜坡' },
+    summaryFields: [
+      { label: '起始电流', keys: ['startCurrent', 'start_current'] },
+      { label: '结束电流', keys: ['endCurrent', 'end_current'] },
+      { label: '测量时长', keys: ['measurementDuration'] },
+    ],
+  },
+  loop_start: {
+    summaryFields: [{ label: '循环次数', keys: ['loopCount'] }],
+  },
+  loop_end: { summaryFields: [] },
+  wait_delay: {
+    summaryFields: [{ label: '等待时长', keys: ['duration'] }],
+  },
+  scheduled_start: {
+    summaryFields: [
+      { label: '小时', keys: ['hour'] },
+      { label: '分钟', keys: ['minute'] },
+      { label: '次日', keys: ['nextDay'] },
+    ],
+  },
+  workflow_block: {
+    summaryFields: [
+      { label: '工作流', keys: ['workflowName', 'workflowShortId', 'workflowId'] },
+      { label: '节点数', keys: ['nodeCount'] },
+    ],
+  },
+  galvanostatic_switching: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'switching_step', label: '开关/阶跃' },
+    summaryFields: [
+      { label: '电流1', keys: ['current_1', 'current1'] },
+      { label: '电流2', keys: ['current_2', 'current2'] },
+      { label: '保持时间1', keys: ['holdTime1'] },
+      { label: '保持时间2', keys: ['holdTime2'] },
+      { label: '循环次数', keys: ['cycles'] },
+    ],
+  },
+  potentiostatic_switching: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'switching_step', label: '开关/阶跃' },
+    summaryFields: [
+      { label: '电位1', keys: ['potential_1', 'potential1'] },
+      { label: '电位2', keys: ['potential_2', 'potential2'] },
+      { label: '保持时间1', keys: ['holdTime1'] },
+      { label: '保持时间2', keys: ['holdTime2'] },
+      { label: '循环次数', keys: ['cycles'] },
+    ],
+  },
+  galvanostatic_step_ramp: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'switching_step', label: '开关/阶跃' },
+    summaryFields: [
+      { label: '起始电流', keys: ['startCurrent', 'start_current'] },
+      { label: '结束电流', keys: ['endCurrent', 'end_current'] },
+      { label: '阶梯电流', keys: ['stepCurrent', 'step_current'] },
+      { label: '保持时间', keys: ['hold_time', 'holdTime'] },
+    ],
+  },
+  potentiostatic_step_ramp: {
+    chartKind: 'ivt',
+    chartGroup: { key: 'switching_step', label: '开关/阶跃' },
+    summaryFields: [
+      { label: '起始电位', keys: ['start_potential', 'startPotential'] },
+      { label: '结束电位', keys: ['end_potential', 'endPotential'] },
+      { label: '阶梯电位', keys: ['stepPotential', 'step_potential'] },
+      { label: '保持时间', keys: ['hold_time', 'holdTime'] },
+    ],
+  },
+};
+
+export function getNodeDisplayName(type: string): string {
+  return NODE_CONFIGS[type as NodeType]?.name ?? type;
+}
+
+export function getNodePresentation(type: string): NodePresentationSpec | undefined {
+  return NODE_PRESENTATION_SPECS[type as NodeType];
+}
+
+export function getNodeChartKind(type: string): NodeChartKind | undefined {
+  return getNodePresentation(type)?.chartKind;
+}
+
+function resolvePresentationParameters(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const record = raw as Record<string, unknown>;
+  const nested = record.config ?? record.data ?? record.parameters;
+  return nested && typeof nested === 'object' && !Array.isArray(nested)
+    ? nested as Record<string, unknown>
+    : record;
+}
+
+function formatPresentationValue(value: unknown): string {
+  if (Array.isArray(value)) return value.join(', ');
+  if (value && typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+export function summarizeNodeParameters(type: string, raw: unknown): string {
+  const params = resolvePresentationParameters(raw);
+  const spec = getNodePresentation(type);
+  const fields = spec?.summaryFields ?? [];
+  const parts = fields.flatMap((field) => {
+    const values = field.keys
+      .map(key => params[key])
+      .filter(value => value !== undefined && value !== null && value !== '');
+    if (values.length === 0) return [];
+    return [`${field.label}: ${values.map(formatPresentationValue).join('–')}`];
+  });
+
+  return parts.length > 0 ? parts.join(' | ') : '-';
+}
 
 // 节点分组列表
 export const NODE_GROUPS: Record<NodeCategory, NodeType[]> = {

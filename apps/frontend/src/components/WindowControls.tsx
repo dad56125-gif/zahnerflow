@@ -6,12 +6,12 @@ type WindowControlsProps = {
 };
 
 export const WindowControls: React.FC<WindowControlsProps> = ({ expanded }) => {
-  if (!expanded || !hasDesktopBridge()) return null;
+  if (!hasDesktopBridge()) return null;
 
   const bridge = window.zahnerflowDesktop!;
 
   return (
-    <div className="window-controls-bar">
+    <div className={`window-controls-bar ${expanded ? 'window-controls-bar--expanded' : ''}`}>
       <button
         type="button"
         className="window-controls-bar__btn"
@@ -27,8 +27,8 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ expanded }) => {
         type="button"
         className="window-controls-bar__btn"
         onClick={() => bridge.windowToggleMaximize()}
-        aria-label="还原窗口"
-        title="还原"
+        aria-label={expanded ? '还原窗口' : '最大化窗口'}
+        title={expanded ? '还原' : '最大化'}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M8 8H16V16H8Z" />

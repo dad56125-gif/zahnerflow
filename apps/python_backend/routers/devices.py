@@ -9,6 +9,7 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 
 from device_data_service import furnace_data, mfc_data
+from devices.furnace.limits import FURNACE_PROGRAM_SEGMENT_COUNT
 from runtime.app_runtime import runtime
 
 router = APIRouter(tags=["devices"])
@@ -57,6 +58,8 @@ async def device_api(device: str, path: str, request: Request):
         raise HTTPException(status_code=404, detail=f"Unknown device: {device}")
     except HTTPException:
         raise
+    except (TypeError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -91,7 +94,16 @@ async def _furnace_route(path: str, method: str, body_json: dict, query_params: 
     if path == "pause" and method == "POST":
         return await runtime.furnace_pause()
     if path == "segment/set" and method == "POST":
-        return await runtime.furnace_set_segment(body_json.get("segment"))
+        try:
+            segment = int(body_json.get("segment"))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="Program segment must be an integer") from exc
+        if not 1 <= segment <= FURNACE_PROGRAM_SEGMENT_COUNT:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Program segment must be between 1 and {FURNACE_PROGRAM_SEGMENT_COUNT}",
+            )
+        return await runtime.furnace_set_segment(segment)
     if path == "program/segments" and method == "GET":
         return {"segments": await runtime.furnace_read_segments()}
     if path == "program/segments" and method == "POST":
@@ -103,8 +115,6 @@ async def _furnace_route(path: str, method: str, body_json: dict, query_params: 
             return _real_serial_ports(list_ports)
         except Exception:
             return []
-    if path == "parameter/write" and method == "POST":
-        return await runtime.furnace_write_param(body_json.get("code"), body_json.get("value"))
     if path.startswith("program/segments/") and method == "GET":
         seg_id = int(path.split("/")[-1])
         segments = await runtime.furnace_read_segments()
@@ -144,11 +154,11 @@ async def _furnace_preset_route(path: str, method: str, body_json: dict):
             raise HTTPException(status_code=404, detail=f"Preset '{preset_name}' not found")
         current_segments = await runtime.furnace_read_segments()
         preset_segments = preset.get("segments", [])
-        if furnace_data.segments_equal(current_segments, preset_segments):
+        if furnace_data.segments_match(current_segments, preset_segments):
             return {"changed": False, "steps": ["No change (idempotent)."]}
         await runtime.furnace_write_segments(preset_segments)
         updated_segments = await runtime.furnace_read_segments()
-        if not furnace_data.segments_equal(updated_segments, preset_segments):
+        if not furnace_data.segments_match(updated_segments, preset_segments):
             try:
                 await runtime.furnace_write_segments(current_segments)
             except Exception:

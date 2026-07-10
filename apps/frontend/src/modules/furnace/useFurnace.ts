@@ -10,6 +10,7 @@ import type { DeviceError, LogEntry, DeviceConnectionStatus, HistoryQueryParams 
 import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
 import type { RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
 import { useRuntimeDeviceStatusSubscription } from '../common/useRuntimeDeviceStatusSubscription';
+import { FURNACE_PROGRAM_SEGMENT_COUNT } from './temperatureLimits';
 import {
   FurnaceStatus,
   ProgramSegment,
@@ -371,7 +372,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     await execute(async () => {
       const { segments } = await runtimeClient.devices.furnace.getProgramSegments<{ segments: ProgramSegment[] }>();
       updateState({ segments });
-    }, 'Read 27 segments');
+    }, `Read ${FURNACE_PROGRAM_SEGMENT_COUNT} segments`);
   }, [execute, updateState]);
 
   const set_segments = useCallback(

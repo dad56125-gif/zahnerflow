@@ -6,7 +6,11 @@ import threading
 from datetime import datetime, timezone
 from typing import Callable
 
-from devices.furnace.limits import validate_furnace_temperature
+from devices.furnace.limits import (
+    FURNACE_HARDWARE_SEGMENT_COUNT,
+    FURNACE_PROGRAM_SEGMENT_COUNT,
+    validate_furnace_program_segments,
+)
 from devices.furnace.simulator_device import FurnaceSimulator
 from devices.mfc.simulator_device import MfcSimulator
 from devices.zahner.simulator_device import ZahnerSimulator
@@ -210,7 +214,7 @@ class DeviceManager:
             d_time = self.furnace.read_param(0x56)
             current_seg = d_main["value"]
             seg_total_time = 0
-            if 1 <= current_seg <= 30:
+            if 1 <= current_seg <= FURNACE_HARDWARE_SEGMENT_COUNT:
                 d_set_time = self.furnace.read_param(0x1B + (current_seg - 1) * 2)
                 seg_total_time = d_set_time["value"]
             return {
@@ -251,33 +255,32 @@ class DeviceManager:
             self._record_command("furnace", "read_segments")
             if self._furnace_is_simulator:
                 with self.furnace._lock:
-                    return self.furnace.read_segments()
+                    return self.furnace.read_segments()[:FURNACE_PROGRAM_SEGMENT_COUNT]
             return [
                 {
                     "id": seg_id,
                     "temperature": self.furnace.read_param(0x1A + (seg_id - 1) * 2)["value"] / 10.0,
                     "time": self.furnace.read_param(0x1B + (seg_id - 1) * 2)["value"],
                 }
-                for seg_id in range(1, 31)
+                for seg_id in range(1, FURNACE_PROGRAM_SEGMENT_COUNT + 1)
             ]
 
     def furnace_write_segments(self, segments: list[dict]) -> dict:
         with self.furnace_lock:
             if not self.furnace:
                 raise RuntimeError("Furnace not connected")
-            self._record_command("furnace", f"write_segments count={len(segments)}")
-            for seg in segments:
-                validate_furnace_temperature(seg["temperature"], "segment temperature")
+            normalized_segments = validate_furnace_program_segments(segments)
+            self._record_command("furnace", f"write_segments count={len(normalized_segments)}")
             if self._furnace_is_simulator:
                 with self.furnace._lock:
-                    return self.furnace.write_segments(segments)
-            for seg in segments:
+                    return self.furnace.write_segments(normalized_segments)
+            for seg in normalized_segments:
                 temperature = float(seg["temperature"])
                 temp_code = 0x1A + (int(seg["id"]) - 1) * 2
                 time_code = 0x1B + (int(seg["id"]) - 1) * 2
                 self.furnace.write_param(temp_code, int(round(temperature * 10)))
                 self.furnace.write_param(time_code, int(round(float(seg["time"]))))
-            return {"success": True, "count": len(segments)}
+            return {"success": True, "count": len(normalized_segments)}
 
     def connect_mfc(self, config: dict) -> dict:
         port = config.get("port", "COM1")

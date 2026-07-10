@@ -13,6 +13,10 @@ import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme, IterationSymbol, getEisLegendVisual } from '../../utils/colorUtils';
 import { getBulkIconCells, BulkDisplayMode } from './useBulkSelection';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import {
+  deriveNodeExecutionUiPhase,
+  useExecutionStore,
+} from '../../state/executionStateBridge';
 
 // ─── Props ───────────────────────────────────────────────
 
@@ -38,8 +42,6 @@ interface MeasurementTabBarProps {
   /** 当前代表节点（标题药丸用） */
   activeNode?: WorkflowNode | null;
 
-  /** 当前执行步骤索引 */
-  activeNodeIndex: number;
   /** 执行状态快照 */
   systemState: ExecutionSnapshot | null;
 
@@ -96,11 +98,12 @@ const getLegendMarkerStyle = (color: string, symbol: IterationSymbol): React.CSS
 // ─── 组件 ────────────────────────────────────────────────
 
 export const MeasurementTabBar: React.FC<MeasurementTabBarProps> = (props) => {
+  const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
   if (props.measurementNodes.length === 0) return null;
 
   return props.variant === 'primary'
     ? renderPrimaryTabs(props)
-    : renderModalHeader(props);
+    : renderModalHeader(props, nodeStatuses);
 };
 
 // ─── 一级标签 ────────────────────────────────────────────
@@ -129,7 +132,7 @@ function renderPrimaryTabs(props: MeasurementTabBarProps) {
 
 // ─── Modal 内部标题栏 ────────────────────────────────────
 
-function renderModalHeader(props: MeasurementTabBarProps) {
+function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]) {
   const {
     groupedCategories,
     nodeIdToIndexMap,
@@ -138,7 +141,6 @@ function renderModalHeader(props: MeasurementTabBarProps) {
     visibleNodes,
     visibleNodeIndexMap,
     activeNode,
-    activeNodeIndex,
     systemState,
     eisLegendScheme,
     bulkMode,
@@ -230,12 +232,17 @@ function renderModalHeader(props: MeasurementTabBarProps) {
                 const globalIndex = nodeIdToIndexMap.get(node.id) ?? -1;
                 const isActive = selectedNodeIds.has(node.id);
 
-                const isNodePending = activeNodeIndex < globalIndex;
-                const isNodeRunning = activeNodeIndex === globalIndex && systemState?.status === 'running';
+                const nodePhase = deriveNodeExecutionUiPhase(
+                  nodeStatuses[globalIndex],
+                  globalIndex,
+                  systemState,
+                );
 
                 let stateClass = '';
-                if (isNodeRunning) stateClass = 'is-running';
-                else if (!isNodePending) stateClass = 'is-completed';
+                if (nodePhase === 'running' || nodePhase === 'paused' || nodePhase === 'cancelling') stateClass = 'is-running';
+                else if (nodePhase === 'completed') stateClass = 'is-completed';
+                else if (nodePhase === 'failed') stateClass = 'is-failed';
+                else if (nodePhase === 'cancelled') stateClass = 'is-cancelled';
                 else stateClass = 'is-pending';
 
                 const visibleIndex = visibleNodeIndexMap.get(node.id) ?? -1;
@@ -322,12 +329,21 @@ function renderModalHeader(props: MeasurementTabBarProps) {
       {/* 右侧：测量状态药丸 */}
       {(() => {
         const globalIndex = nodeIdToIndexMap.get(activeNode.id) ?? -1;
-        const isPending = activeNodeIndex < globalIndex;
-        const isRunning = activeNodeIndex === globalIndex && systemState?.status === 'running';
+        const nodePhase = deriveNodeExecutionUiPhase(
+          nodeStatuses[globalIndex],
+          globalIndex,
+          systemState,
+        );
+        const isPending = nodePhase === 'pending';
+        const isRunning = nodePhase === 'running';
+        const isFailed = nodePhase === 'failed';
+        const isCancelled = nodePhase === 'cancelled';
 
         let borderColor = 'rgba(24, 144, 255, 0.2)';
         if (isRunning) borderColor = 'rgba(82, 196, 26, 0.4)';
         else if (isPending) borderColor = 'rgba(250, 173, 20, 0.3)';
+        else if (isFailed) borderColor = 'rgba(255, 77, 79, 0.45)';
+        else if (isCancelled) borderColor = 'rgba(250, 173, 20, 0.4)';
 
         return (
           <div
@@ -342,7 +358,7 @@ function renderModalHeader(props: MeasurementTabBarProps) {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               transform: 'translateZ(0)',
               willChange: 'transform, filter, backdrop-filter',
-              color: isRunning ? '#52c41a' : isPending ? '#faad14' : '#1890ff',
+              color: isRunning ? '#52c41a' : isFailed ? '#ff4d4f' : isPending || isCancelled ? '#faad14' : '#1890ff',
               fontWeight: isRunning ? 'bold' : 'normal',
               pointerEvents: 'auto'
             }}
@@ -367,7 +383,11 @@ function renderModalHeader(props: MeasurementTabBarProps) {
                 测量中
               </span>
             )}
-            {!isPending && !isRunning && (
+            {nodePhase === 'paused' && <span>已暂停</span>}
+            {nodePhase === 'cancelling' && <span>停止中</span>}
+            {isFailed && <span><UiIconSvg name="error" />失败</span>}
+            {isCancelled && <span>已取消</span>}
+            {nodePhase === 'completed' && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <UiIconSvg name="check" />
                 已完成

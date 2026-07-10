@@ -30,20 +30,14 @@ import { ScheduleTimePicker } from '../ScheduleRunner';
 import { runtimeClient } from '../../runtimeClient';
 import { resolveDropdownPosition, type DropdownPosition } from '../shared/dropdownPosition';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import {
+  nextScheduledStart,
+  scheduledStartConfigFromDate,
+  scheduledStartDateFromConfig,
+} from '../../utils/scheduledStart';
 
 // 静态配置（用于获取节点显示名称）
-import { NODE_CONFIGS } from '../../types/NodeConfiguration';
-
-// 定义哪些节点类型支持图表显示
-const MEASUREMENT_NODE_TYPES: NodeType[] = [
-  'eis_potentiostatic',
-  'eis_galvanostatic',
-  'ocp_measurement',
-  'chronoamperometry',
-  'chronopotentiometry',
-  'voltage_ramp',
-  'current_ramp'
-];
+import { getNodeChartKind, NODE_CONFIGS } from '../../types/NodeConfiguration';
 
 interface WorkflowSummaryOption {
   id: string;
@@ -143,7 +137,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 3. 判断图表支持
     const supportsChart = useMemo(() => {
-      return node && MEASUREMENT_NODE_TYPES.includes(node.type as NodeType);
+      return Boolean(node && getNodeChartKind(node.type));
     }, [node]);
 
     // 自动切回 basic tab
@@ -535,27 +529,11 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
       if (node.type === 'scheduled_start') {
         const currentConfig = node.config || {};
-        const scheduledTime = new Date();
-        if (currentConfig.nextDay) {
-          scheduledTime.setDate(scheduledTime.getDate() + 1);
-        }
-        scheduledTime.setHours(Number(currentConfig.hour ?? 0), Number(currentConfig.minute ?? 0), 0, 0);
+        const scheduledTime = scheduledStartDateFromConfig(currentConfig);
         const resetScheduledStart = () => {
-          const next = new Date();
-          next.setMinutes(next.getMinutes() + 5);
-          let hour = next.getHours();
-          let minute = Math.ceil(next.getMinutes() / 5) * 5;
-          let nextDay = false;
-          if (minute >= 60) {
-            minute = 0;
-            hour = (hour + 1) % 24;
-            nextDay = hour === 0;
-          }
           updateNodeConfig(node.id, {
             ...(node.config || {}),
-            hour,
-            minute,
-            nextDay
+            ...scheduledStartConfigFromDate(nextScheduledStart()),
           });
         };
 
@@ -579,9 +557,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                 onConfirm={(time) => {
                   updateNodeConfig(node.id, {
                     ...(node.config || {}),
-                    hour: time.getHours(),
-                    minute: time.getMinutes(),
-                    nextDay: time.toDateString() !== new Date().toDateString()
+                    ...scheduledStartConfigFromDate(time),
                   });
                 }}
               />

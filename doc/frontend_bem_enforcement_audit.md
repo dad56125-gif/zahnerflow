@@ -1,5 +1,7 @@
 # Frontend SCSS BEM Enforcement Audit
 
+状态：1.0.0 历史审计快照。本文记录 2026-06-19 的前端 BEM 迁移检查结果；剩余事项不属于 1.0.0 待完成需求，已迁入 `doc/insight/1.0.0/next-version-notes.md`。
+
 审计日期：2026-06-19
 
 审计范围：`apps/frontend/src` 下 React/TSX、SCSS 入口链路、共享 UI 组件、画布组件和设备业务组件。

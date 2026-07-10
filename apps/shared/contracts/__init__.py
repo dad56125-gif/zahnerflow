@@ -31,6 +31,7 @@ from .workflow import (
     NodeStatus,
     WorkflowNode,
     Workflow,
+    IterationPathEntry,
     CurrentStep,
     ExecutionEtaSnapshot,
     ExecutionEtaStep,
@@ -41,6 +42,8 @@ from .workflow import (
     LoopIterationEvent,
     RawStreamData,
     EnrichedStreamData,
+    EisResultData,
+    EnrichedEisData,
 )
 from .common import (
     DeviceConnectionStatus,
@@ -86,6 +89,7 @@ __all__ = [
     "NodeStatus",
     "WorkflowNode",
     "Workflow",
+    "IterationPathEntry",
     "CurrentStep",
     "ExecutionEtaSnapshot",
     "ExecutionEtaStep",
@@ -96,6 +100,8 @@ __all__ = [
     "LoopIterationEvent",
     "RawStreamData",
     "EnrichedStreamData",
+    "EisResultData",
+    "EnrichedEisData",
     "DeviceConnectionStatus",
     "DeviceError",
     "LogEntry",

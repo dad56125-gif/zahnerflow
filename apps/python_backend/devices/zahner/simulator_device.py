@@ -10,7 +10,7 @@ import time
 from typing import Callable
 
 from devices.zahner import logic
-from devices.zahner.real_device import _calculate_stats, _normalize_parameters
+from devices.zahner.real_device import _calculate_stats
 
 
 class ZahnerSimulator:
@@ -33,7 +33,7 @@ class ZahnerSimulator:
 
     def measure(self, measurement_type: str, parameters: dict, stream_callback: Callable | None = None) -> dict:
         self._assert_available()
-        final_params = _normalize_parameters(measurement_type, parameters)
+        final_params = logic.normalize_measurement_parameters(measurement_type, parameters)
 
         if measurement_type in ("ocp", "open_circuit_potential"):
             measurement_type = "ocp_measurement"
@@ -174,14 +174,14 @@ class ZahnerSimulator:
             voltage = self.ocv + current * self.series_resistance + noise_v
             return voltage, current + noise_i, current
         if mode == "voltage_ramp":
-            start = float(params.get("start_voltage", params.get("start_value", 0.0)))
-            end = float(params.get("end_voltage", params.get("end_value", 1.0)))
+            start = float(params.get("start_voltage", 0.0))
+            end = float(params.get("end_voltage", 1.0))
             setpoint = self._ramp_setpoint(start, end, t, duration)
             current = (setpoint - self.ocv) / max(self.series_resistance, 1e-9) + noise_i
             return setpoint + noise_v, current, setpoint
         if mode == "current_ramp":
-            start = float(params.get("start_current", params.get("start_value", 0.0)))
-            end = float(params.get("end_current", params.get("end_value", 0.0)))
+            start = float(params.get("start_current", 0.0))
+            end = float(params.get("end_current", 0.0))
             setpoint = self._ramp_setpoint(start, end, t, duration)
             voltage = self.ocv + setpoint * self.series_resistance + noise_v
             return voltage, setpoint + noise_i, setpoint
@@ -193,10 +193,10 @@ class ZahnerSimulator:
         return start + (end - start) * min(max(t / duration, 0.0), 1.0)
 
     def _eis_frequencies(self, params: dict) -> list[float]:
-        lower = float(params.get("eis_lower_frequency", params.get("end_frequency", 0.1)))
-        upper = float(params.get("eis_upper_frequency", params.get("start_frequency", 100000.0)))
-        start = float(params.get("eis_start_frequency", params.get("start_frequency", upper)))
-        steps = int(params.get("eis_upper_steps", params.get("points_per_decade", 10)))
+        lower = float(params.get("eis_lower_frequency", 10.0))
+        upper = float(params.get("eis_upper_frequency", 100000.0))
+        start = float(params.get("eis_start_frequency", upper))
+        steps = int(params.get("eis_upper_steps", 10))
         lower = max(lower, 1e-9)
         upper = max(upper, lower)
         steps = max(1, steps)
@@ -213,11 +213,11 @@ class ZahnerSimulator:
         if not params.get("enable_dc_bias", measurement_type == "eis_galvanostatic"):
             return "OCP/Off"
         if measurement_type == "eis_potentiostatic":
-            return float(params.get("eis_potential", params.get("potential", 0.0)))
-        return float(params.get("eis_current", params.get("current", 0.0)))
+            return float(params.get("eis_potential", 0.0))
+        return float(params.get("eis_current", 0.0))
 
     def _output_path(self, params: dict) -> str:
-        output_path = params.get("output_path") or params.get("outputPath") or "c:/zahner_data"
+        output_path = params.get("output_path") or "c:/zahner_data"
         os.makedirs(output_path, exist_ok=True)
         return output_path
 

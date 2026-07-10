@@ -19,6 +19,13 @@ from runtime.execution_planner import (
     WorkflowNotFoundError,
     database_workflow_loader,
 )
+from runtime.execution_semantics import (
+    ExecutionIdMismatchError,
+    InvalidExecutionTransitionError,
+    NoActiveExecutionError,
+    is_active_execution_status,
+)
+from runtime.execution_recorder import finish_execution
 from shared.contracts.events import WORKFLOW_NODES_RESET, WORKFLOW_SNAPSHOT
 from workflow_identity import workflow_fingerprint
 
@@ -60,6 +67,11 @@ def _build_execution_plan(nodes: list[dict], auto_startup_config: dict | None = 
         )
     except ExecutionPlanningError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _runtime_has_active_execution() -> bool:
+    engine = getattr(runtime, "execution", None)
+    return bool(engine and engine.is_running) or is_active_execution_status(runtime.experiment_state.get("status"))
 
 
 def _string_value(value) -> str:
@@ -129,7 +141,6 @@ def _artifact_key(artifact: dict) -> tuple:
         artifact.get("executionId") or artifact.get("execution_id"),
         artifact.get("nodeId") or artifact.get("node_id"),
         artifact.get("filePath") or artifact.get("file_path"),
-        artifact.get("fileType") or artifact.get("file_type"),
     )
 
 
@@ -176,7 +187,7 @@ async def create_execution(body: dict):
     missing_metadata = _missing_run_metadata(owner_name, path_config)
     start_from_unrolled_index = 0
 
-    if runtime.experiment_state.get("status") in ("running", "paused", "cancelling"):
+    if _runtime_has_active_execution():
         raise HTTPException(status_code=400, detail="An execution is already active")
 
     if missing_metadata and not force_missing_metadata:
@@ -254,6 +265,10 @@ async def create_execution(body: dict):
             }
         )
     except Exception as e:
+        # The execution row is created before the in-process task starts so its
+        # steps can reference it. If startup itself fails, close that row rather
+        # than leaving a permanently active-looking record in SQLite.
+        finish_execution(exec_id, "failed", 0, str(e))
         raise HTTPException(status_code=500, detail=f"Failed to start execution: {e}")
 
     return {
@@ -395,6 +410,8 @@ def get_execution_report(id: str):
             s["result"] = _json_loads(s["result"]) or s["result"]
     artifacts = [dict(r) for r in db.conn.execute("SELECT * FROM execution_artifacts WHERE execution_id = ? ORDER BY created_at", (id,)).fetchall()]
     warnings = [dict(r) for r in db.conn.execute("SELECT * FROM execution_warnings WHERE execution_id = ? ORDER BY created_at", (id,)).fetchall()]
+    for artifact in artifacts:
+        artifact["metadata"] = _json_loads(artifact.get("metadata")) or {}
     for w in warnings:
         if w.get("metadata"):
             try:
@@ -435,6 +452,8 @@ def get_execution_report(id: str):
             "fileType": a.get("file_type"),
             "filePath": a.get("file_path"),
             "createdAt": a.get("created_at"),
+            "source": "persisted",
+            "dataPoints": (a.get("metadata") or {}).get("data_points"),
         }
         for a in artifacts
     ]
@@ -479,37 +498,30 @@ def get_execution_report(id: str):
 @router.put("/{id}/pause")
 async def pause_execution(id: str):
     try:
-        return await runtime.pause_execution()
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        return await runtime.pause_execution(id)
+    except Exception as exc:
+        raise _execution_command_http_error(exc) from exc
 
 
 @router.put("/{id}/resume")
 async def resume_execution(id: str):
     try:
-        return await runtime.resume_execution()
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        return await runtime.resume_execution(id)
+    except Exception as exc:
+        raise _execution_command_http_error(exc) from exc
 
 
 @router.delete("/{id}")
 async def cancel_execution(id: str):
-    current_id = runtime.experiment_state.get("executionId")
-    current_status = runtime.experiment_state.get("status")
-    if not current_id or current_status not in ("running", "paused", "cancelling"):
-        raise HTTPException(status_code=404, detail="No active execution to cancel")
-    if current_id != id:
-        raise HTTPException(status_code=409, detail="Execution id does not match active execution")
-
     try:
-        return await runtime.cancel_execution()
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        return await runtime.cancel_execution(id)
+    except Exception as exc:
+        raise _execution_command_http_error(exc) from exc
 
 
 @router.post("/reset")
 async def reset_execution():
-    if runtime.experiment_state.get("status") in ("running", "paused", "cancelling"):
+    if _runtime_has_active_execution():
         raise HTTPException(status_code=400, detail="Cannot reset while running")
     runtime.reset_execution_state()
     if sio:
@@ -519,3 +531,11 @@ async def reset_execution():
         snapshot["timestamp"] = timestamp
         await sio.emit(WORKFLOW_SNAPSHOT, snapshot)
     return {"success": True, "message": "Execution reset successfully", "timestamp": datetime.utcnow().isoformat() + "Z"}
+
+
+def _execution_command_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, NoActiveExecutionError):
+        return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, (ExecutionIdMismatchError, InvalidExecutionTransitionError)):
+        return HTTPException(status_code=409, detail=str(exc))
+    return HTTPException(status_code=500, detail=str(exc))

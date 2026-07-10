@@ -6,35 +6,13 @@ import { useEisData, EisDataPoint } from '../hooks/useEisData';
 import type { RawStreamData } from '@zahnerflow/types';
 import { DataTable, TableColumn } from './shared/DataTable';
 import { UiIconSvg } from './shared/UiIconSvg';
+import { getNodeChartKind } from '../types/NodeConfiguration';
 
 interface DataViewerProps {
   isVisible?: boolean;
   selectedNode: any;
   showChart?: boolean;
 }
-
-// IVT 测量节点类型（流式数据）
-const IVT_NODE_TYPES = [
-  'ocp_measurement',
-  'chronoamperometry',
-  'chronopotentiometry',
-  'voltage_ramp',
-  'current_ramp',
-  // 高级测量节点（使用合并的 IVT 数据）
-  'galvanostatic_switching',
-  'potentiostatic_switching',
-  'galvanostatic_step_ramp',
-  'potentiostatic_step_ramp'
-];
-
-// EIS 测量节点类型（一次性数据）
-const EIS_NODE_TYPES = [
-  'eis_potentiostatic',
-  'eis_galvanostatic'
-];
-
-// 所有支持数据表的节点类型
-const MEASUREMENT_NODE_TYPES = [...IVT_NODE_TYPES, ...EIS_NODE_TYPES];
 
 export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, selectedNode, showChart = true }) => {
   const [tableData, setTableData] = useState<RawStreamData[]>([]);
@@ -47,9 +25,10 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
   const nodeIndex = selectedNode ? nodes.findIndex(n => n.id === selectedNode.id) : -1;
   const activeExecutionId = systemState?.executionId || null;
 
-  const isMeasurementNode = selectedNode && MEASUREMENT_NODE_TYPES.includes(selectedNode.type);
-  const isEisNode = selectedNode && EIS_NODE_TYPES.includes(selectedNode.type);
-  const isIvtNode = selectedNode && IVT_NODE_TYPES.includes(selectedNode.type);
+  const chartKind = selectedNode ? getNodeChartKind(selectedNode.type) : undefined;
+  const isMeasurementNode = Boolean(chartKind);
+  const isEisNode = chartKind === 'eis';
+  const isIvtNode = chartKind === 'ivt';
 
   // IVT 流式数据 Hook（仅 IVT 节点启用）
   const { getFullHistory, consumeBuffer } = useMeasurementStream({
@@ -59,7 +38,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
 
   // EIS 数据 Hook（仅 EIS 节点启用）
   const { eisData } = useEisData({
-    nodeIndex: nodeIndex >= 0 && isEisNode ? nodeIndex : -1
+    nodeIndex: nodeIndex >= 0 && isEisNode ? nodeIndex : -1,
+    activeExecutionId,
   });
 
   // IVT: 初始化历史数据 & 监听新一轮执行

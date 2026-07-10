@@ -4,7 +4,7 @@
  * 提供质量流量控制器的状态管理，包括连接、设备发现、流量控制等功能
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import type { DeviceError, DeviceConnectionStatus, HistoryQueryParams, LogEntry } from '@zahnerflow/types';
 import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
@@ -267,6 +267,8 @@ export function useMfc(): [MfcState, MfcControls] {
       : [];
 
     setState((prev) => {
+      const connectionStatus = (envelope.connectionState?.status as DeviceConnectionStatus | undefined)
+        ?? (envelope.connected ? 'connected' : 'disconnected');
       const connectedAt = typeof envelope.connectionState?.connectedAt === 'string'
         ? envelope.connectionState.connectedAt
         : prev.connection_started_at;
@@ -282,7 +284,7 @@ export function useMfc(): [MfcState, MfcControls] {
         : prev.availableDevices;
       return {
         ...prev,
-        connection_status: envelope.connected ? 'connected' : 'disconnected',
+        connection_status: connectionStatus,
         connection_started_at: envelope.connected ? connectedAt : null,
         selected_port: envelope.connected ? connectedPort : prev.selected_port,
         devices: envelope.connected ? updatedDevices : [],
@@ -298,6 +300,14 @@ export function useMfc(): [MfcState, MfcControls] {
   }, []);
 
   const ensureRuntimeStatusSubscription = useRuntimeDeviceStatusSubscription('mfc', handleRuntimeStatusUpdate);
+
+  useEffect(() => {
+    ensureRuntimeStatusSubscription();
+    runtimeClient.devices.mfc
+      .runtimeStatus()
+      .then(handleRuntimeStatusUpdate)
+      .catch(() => undefined);
+  }, [ensureRuntimeStatusSubscription, handleRuntimeStatusUpdate]);
 
   // ==================== 智能初始化 ====================
 

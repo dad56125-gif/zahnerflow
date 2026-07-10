@@ -1,10 +1,11 @@
 import {
-  NODE_TYPE_LABELS,
   type ReportArtifactInfo,
   type ReportData,
   type ReportNodeInfo,
   type ReportWarningInfo,
 } from './types';
+import { getNodeDisplayName, summarizeNodeParameters } from '../../types/NodeConfiguration';
+import { formatIterationPath, toIterationPath } from '../../utils/iterationPath';
 
 interface ExecutionMetadata {
   id?: string;
@@ -67,7 +68,7 @@ function pickUnrolledSteps(payload: ReportApiPayload): Array<Record<string, unkn
 }
 
 function getNodeLabel(type: string): string {
-  return NODE_TYPE_LABELS[type] ?? type;
+  return getNodeDisplayName(type);
 }
 
 function formatValue(value: unknown): string {
@@ -134,14 +135,6 @@ function summarizeResult(result: Record<string, unknown>): string {
   return parts.length > 0 ? parts.join(' | ') : '';
 }
 
-function formatIterationLabel(raw: unknown): string {
-  if (!Array.isArray(raw) || raw.length === 0) {
-    return '-';
-  }
-
-  return raw.map((item) => `第${Number(item) + 1}轮`).join(' / ');
-}
-
 function formatBlockLabel(raw: unknown): string | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
   const labels = raw
@@ -152,34 +145,6 @@ function formatBlockLabel(raw: unknown): string | undefined {
     })
     .filter(Boolean);
   return labels.length > 0 ? labels.join(' / ') : undefined;
-}
-
-function summarizeNodeParams(type: string, raw: unknown): string {
-  if (!raw || typeof raw !== 'object') {
-    return '-';
-  }
-
-  const data = raw as Record<string, unknown>;
-
-  const candidates: Record<string, string[]> = {
-    change_temperature: ['targetTemperature', 'temperature', 'holdTime', 'duration'],
-    change_gas_flow: ['address', 'gasType', 'flowSccm', 'sccm', 'duration'],
-    wait_delay: ['duration', 'seconds', 'minutes'],
-    scheduled_start: ['hour', 'minute', 'nextDay'],
-    loop_start: ['iterations', 'count'],
-    chronoamperometry: ['voltage', 'duration'],
-    chronopotentiometry: ['current', 'duration'],
-    eis_potentiostatic: ['voltageBias', 'amplitude', 'startFrequency', 'endFrequency'],
-    eis_galvanostatic: ['currentBias', 'amplitude', 'startFrequency', 'endFrequency'],
-  };
-
-  const keys = candidates[type] ?? Object.keys(data).slice(0, 4);
-  const parts = keys
-    .filter((key) => key in data)
-    .map((key) => `${key}: ${formatValue(data[key])}`)
-    .filter(Boolean);
-
-  return parts.length > 0 ? parts.join(' | ') : '-';
 }
 
 function getDurationSeconds(step: Record<string, unknown>): number | undefined {
@@ -219,11 +184,11 @@ function toReportNodeFromStep(step: Record<string, unknown>, node: Record<string
   return {
     index: Number.isFinite(unrolledIndex) ? unrolledIndex + 1 : originalIndex + 1,
     originalIndex: Number.isFinite(originalIndex) ? originalIndex + 1 : 1,
-    iterationLabel: formatIterationLabel(step.iterationPath),
+    iterationLabel: formatIterationPath(toIterationPath(step.iterationPath)),
     blockLabel: formatBlockLabel(step.blockPath),
     type,
     label: getNodeLabel(type),
-    keyParams: summarizeNodeParams(type, rawParams),
+    keyParams: summarizeNodeParameters(type, rawParams),
     status,
     durationSeconds: getDurationSeconds(step),
     estimatedSeconds: toNumber(getRecordValue(step, ['estimatedSeconds', 'estimated_seconds'])),
@@ -247,7 +212,7 @@ function toReportNodeFromWorkflowNode(node: Record<string, unknown>, index: numb
     iterationLabel: '-',
     type,
     label: getNodeLabel(type),
-    keyParams: summarizeNodeParams(type, getNodeParams(node)),
+    keyParams: summarizeNodeParameters(type, getNodeParams(node)),
     status: 'pending',
     indentLevel: Number.isFinite(indentLevel) ? indentLevel : 0,
   };

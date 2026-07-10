@@ -172,6 +172,8 @@
   --shadow-button-hover: 0 8px 24px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 
   /* === 布局与组件尺寸 === */
+  --app-chrome-h: 0px;
+  --window-controls-h: 28px;
   --navbar-h: clamp(3rem, 2.5rem + 1vw, 4rem);
   --status-h: 2.5rem;
   --left-panel-w: clamp(16rem, 18.5vw, 20rem);
@@ -221,7 +223,7 @@
   --left-panel-r: calc(var(--space) + var(--left-panel-w));
   --property-l: calc(100vw - var(--space) - var(--property-w));
   --property-r: var(--space);
-  --canvas-t: calc(var(--space) + var(--navbar-h) + var(--space));
+  --canvas-t: calc(var(--app-chrome-h) + var(--space) + var(--navbar-h) + var(--space));
   --canvas-b: calc(var(--status-h) + (2 * var(--space)));
 
   /* === 动画系统 === */
@@ -261,6 +263,15 @@
   --notification-panel-max-height: clamp(400px, 60vh, 600px);
   --notification-panel-min-height: clamp(200px, 60vh, 300px);
   --notification-panel-z-index: var(--z-notification);
+}
+
+:root.zf-desktop-window {
+  --app-chrome-h: 28px;
+}
+
+:root.zf-desktop-window--expanded {
+  --app-chrome-h: 40px;
+  --window-controls-h: 40px;
 }
 
 /* === 响应式断点系统 === */

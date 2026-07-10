@@ -10,6 +10,7 @@ import { useWorkflowStore } from '../../state/currentWorkflowStore';
 import { buildReportData, formatDateTime, formatDuration } from './reportDataBuilder';
 import { WorkflowMapView } from './WorkflowMapView';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import { summarizeNodeParameters } from '../../types/NodeConfiguration';
 import {
   STATUS_ICON_NAMES,
   NODE_TYPE_LABELS,
@@ -162,6 +163,18 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
+  const invalidateRecordCaches = useCallback(() => {
+    setExpandedWorkflowIds(new Set());
+    setRunsByWorkflowId({});
+    setRunTotalByWorkflowId({});
+    setWorkflowDefinitionsById({});
+    setReportRecordsByRunId({});
+    setWorkflowMap(null);
+    setSelectedWorkflowId(null);
+    setSelectedRunId(null);
+    setRightMode('definition');
+  }, []);
+
   const workflowDefinition = selectedWorkflowId ? workflowDefinitionsById[selectedWorkflowId] || null : null;
   const reportRecord = selectedRunId ? reportRecordsByRunId[selectedRunId] || null : null;
 
@@ -202,8 +215,9 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    invalidateRecordCaches();
     void loadWorkflowSummaries();
-  }, [isOpen, loadWorkflowSummaries]);
+  }, [isOpen, loadWorkflowSummaries, invalidateRecordCaches]);
 
   useEffect(() => {
     if (!isOpen || visibleWorkflowSummaries.length === 0) return;
@@ -404,6 +418,12 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
       const current = items[wfId];
       return current ? { ...items, [wfId]: { ...current, isFavorite } } : items;
     });
+    setWorkflowMap((current) => current ? {
+      ...current,
+      nodes: current.nodes.map((node) => (
+        node.id === wfId ? { ...node, isFavorite } : node
+      )),
+    } : current);
   }, []);
 
   const updateWorkflowNameState = useCallback((wfId: string, name: string, updatedAt?: string) => {
@@ -688,7 +708,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                     <tr key={String(node.id ?? idx)} className={`indent-level-${indentLevel}`}>
                       <td>{idx + 1}</td>
                       <td>{NODE_TYPE_LABELS[type] ?? type}</td>
-                      <td className="report__node-params">{summarizeNodeParams(type, node)}</td>
+                      <td className="report__node-params">{summarizeNodeParameters(type, node)}</td>
                     </tr>
                   );
                 })}
@@ -1025,32 +1045,6 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
     </ModalLayer>
   );
 };
-
-// ── 节点参数摘要（定义面板用） ──
-function summarizeNodeParams(type: string, node: Record<string, unknown>): string {
-  const data = (node.data ?? node.parameters ?? node.config ?? {}) as Record<string, unknown>;
-  if (!data || typeof data !== 'object') return '-';
-
-  const candidates: Record<string, string[]> = {
-    change_temperature: ['targetTemperature', 'temperature', 'holdTime', 'duration'],
-    change_gas_flow: ['address', 'gasType', 'flowSccm', 'sccm', 'duration'],
-    wait_delay: ['duration', 'seconds', 'minutes'],
-    scheduled_start: ['hour', 'minute', 'nextDay'],
-    loop_start: ['iterations', 'count'],
-    chronoamperometry: ['voltage', 'duration'],
-    chronopotentiometry: ['current', 'duration'],
-    eis_potentiostatic: ['voltageBias', 'amplitude', 'startFrequency', 'endFrequency'],
-    eis_galvanostatic: ['currentBias', 'amplitude', 'startFrequency', 'endFrequency'],
-  };
-
-  const keys = candidates[type] ?? Object.keys(data).slice(0, 4);
-  const parts = keys
-    .filter((key) => key in data)
-    .map((key) => `${key}: ${data[key]}`)
-    .filter(Boolean);
-
-  return parts.length > 0 ? parts.join(' | ') : '-';
-}
 
 function buildWorkflowSystemSummary(nodes: Array<Record<string, unknown>>): string[] {
   const temperatures: string[] = [];

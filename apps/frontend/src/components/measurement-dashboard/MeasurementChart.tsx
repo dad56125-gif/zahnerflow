@@ -13,6 +13,15 @@ import type { ExecutionSnapshot } from '@zahnerflow/types';
 import { EisLegendScheme, getEisLegendVisual, getIterationColor } from '../../utils/colorUtils';
 import { useAppStore } from '../../state/appStore';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import {
+compareIterationKeys,
+formatIterationKey,
+} from '../../utils/iterationPath';
+import { getNodeChartKind, NODE_CONFIGS } from '../../types/NodeConfiguration';
+import {
+deriveNodeExecutionUiPhase,
+useExecutionStore,
+} from '../../state/executionStateBridge';
 
 echarts.use([
 LineChart,
@@ -32,9 +41,6 @@ height?: string | number; // 新增：容器高度
 overlayNodes?: Array<{ nodeIndex: number; label: string }>;
 eisLegendScheme?: EisLegendScheme;
 }
-
-// EIS 节点类型
-const EIS_NODE_TYPES = ['eis_potentiostatic', 'eis_galvanostatic'];
 
 // DOM Token 读取 CSS 变量辅助函数
 const getCssVariable = (varName: string, defaultValue: string = '') => {
@@ -105,9 +111,10 @@ eisLegendScheme = 'palette'
 const chartRef = useRef<HTMLDivElement>(null);
 const chartInstance = useRef<echarts.ECharts | null>(null);
 const theme = useAppStore(state => state.theme);
+const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
 
 // 判断是否为 EIS 节点
-const isEisNode = nodeType ? EIS_NODE_TYPES.includes(nodeType) : false;
+const isEisNode = nodeType ? getNodeChartKind(nodeType) === 'eis' : false;
 
 // 🔥 修改：historyRef 现在存储的是按迭代分组的数据
 // Key: iterationKey (e.g., "0", "0,1"), Value: { voltage, current }
@@ -129,12 +136,12 @@ initialized: false
 const [hasData, setHasData] = useState(false);
 const activeExecutionId = systemState?.executionId || null;
 
-const currentStepIndex = systemState?.currentStep?.index ?? -1;
-const isPending = currentStepIndex < nodeIndex;
-const isRunning = currentStepIndex === nodeIndex && systemState?.status === 'running';
+const nodePhase = deriveNodeExecutionUiPhase(nodeStatuses[nodeIndex], nodeIndex, systemState);
+const isPending = nodePhase === 'pending';
+const isRunning = nodePhase === 'running';
 
 // IVT 流式数据 Hook
-const { consumeBuffer, getIterationsForNode } = useMeasurementStream({
+const { consumeIterationBuffer, getIterationsForNode } = useMeasurementStream({
 nodeIndex,
 activeExecutionId
 });
@@ -144,7 +151,11 @@ const eisNodeIndices = overlayNodes && overlayNodes.length > 0
 ? overlayNodes.map(node => node.nodeIndex)
 : [nodeIndex];
 const overlayKey = `${overlayNodes?.map(node => `${node.nodeIndex}:${node.label}`).join('|') || `${nodeIndex}`}:${eisLegendScheme}`;
-const { getEisIterationsForNodes } = useEisData({ nodeIndex, nodeIndices: eisNodeIndices });
+const { getEisIterationsForNodes } = useEisData({
+nodeIndex,
+nodeIndices: eisNodeIndices,
+activeExecutionId,
+});
 
 // 初始化图表
 useEffect(() => {
@@ -226,7 +237,7 @@ updateChartWithIterations();
 }, 50);
 
 return () => clearTimeout(timer);
-}, [nodeIndex, isEisNode]);
+}, [activeExecutionId, getIterationsForNode, isEisNode, nodeIndex]);
 
 // 🔥 新增：更新图表以支持多个迭代系列
 const updateChartWithIterations = () => {
@@ -243,12 +254,7 @@ const r = rangeRef.current;
 const vRange = calcAxisRange(r.vMin, r.vMax);
 const iRange = calcAxisRange(r.iMin, r.iMax);
 
-const iterations = Array.from(historyRef.current.keys()).sort((a, b) => {
-// 单层迭代：直接比较数字
-const aNum = parseInt(a.split(',')[0]);
-const bNum = parseInt(b.split(',')[0]);
-return aNum - bNum;
-});
+const iterations = Array.from(historyRef.current.keys()).sort(compareIterationKeys);
 const totalIterations = iterations.length;
 
 // 🔥 关键：检测迭代数量是否变化，决定是否需要强制更新颜色
@@ -470,29 +476,21 @@ data: []
 useEffect(() => {
 if (isEisNode) return;  // EIS 节点不使用流式更新
 
-const chunk = consumeBuffer();
+const chunk = consumeIterationBuffer();
 if (chunk.length === 0) return;
 if (!hasData) setHasData(true);
 
-// 🔥 关键：从 systemState 获取当前迭代路径
-const currentIterPath = systemState?.currentStep?.iterationPath || [];
-const iterKey = currentIterPath.length > 0
-? currentIterPath.map(item => typeof item === 'number' ? item : `${item.loopStartIndex ?? item.loopNodeId}:${item.iteration}`).join(',')
-: '0';
-
-const newV = chunk.map(p => [p.t, p.v] as [number, number]);
-const newI = chunk.map(p => [p.t, p.i] as [number, number]);
-
-// 获取或创建该迭代的数据
-if (!historyRef.current.has(iterKey)) {
-historyRef.current.set(iterKey, { voltage: [], current: [] });
+for (const point of chunk) {
+if (!historyRef.current.has(point.iterationKey)) {
+historyRef.current.set(point.iterationKey, { voltage: [], current: [] });
 }
-const iterData = historyRef.current.get(iterKey)!;
-iterData.voltage.push(...newV);
-iterData.current.push(...newI);
+const iterData = historyRef.current.get(point.iterationKey)!;
+iterData.voltage.push([point.data.t, point.data.v]);
+iterData.current.push([point.data.t, point.data.i]);
+}
 
 // 增量更新 range（避免每次扫描全部历史）
-for (const p of chunk) {
+for (const { data: p } of chunk) {
 if (!rangeRef.current.initialized) {
 rangeRef.current = { vMin: p.v, vMax: p.v, iMin: p.i, iMax: p.i, initialized: true };
 } else {
@@ -505,7 +503,7 @@ if (p.i > rangeRef.current.iMax) rangeRef.current.iMax = p.i;
 
 // 更新图表
 updateChartWithIterations();
-}, [consumeBuffer, hasData, isEisNode, systemState]);
+}, [consumeIterationBuffer, hasData, isEisNode]);
 
 // EIS 数据渲染
 useEffect(() => {
@@ -532,11 +530,7 @@ let yMax = -Infinity;
 
 const series = activeOverlayNodes.flatMap(node => {
 const iterations = iterationsByNode.get(node.nodeIndex) || new Map();
-const sortedIterKeys = Array.from(iterations.keys()).sort((a, b) => {
-const aNum = parseInt(a.split(',')[0]);
-const bNum = parseInt(b.split(',')[0]);
-return aNum - bNum;
-});
+const sortedIterKeys = Array.from(iterations.keys()).sort(compareIterationKeys);
 
 return sortedIterKeys.map((iterKey) => {
 const data = iterations.get(iterKey)!;
@@ -544,7 +538,7 @@ if (data.xMin < xMin) xMin = data.xMin;
 if (data.xMax > xMax) xMax = data.xMax;
 if (data.yMin < yMin) yMin = data.yMin;
 if (data.yMax > yMax) yMax = data.yMax;
-const iterationSuffix = sortedIterKeys.length > 1 ? `-${iterKey}` : '';
+const iterationSuffix = sortedIterKeys.length > 1 ? `-${formatIterationKey(iterKey, '主流程')}` : '';
 const visual = getEisLegendVisual(seriesIndex, totalSeries || activeOverlayNodes.length || 1, eisLegendScheme);
 seriesIndex += 1;
 
@@ -580,7 +574,11 @@ chartInstance.current?.setOption({ series: [] });
 const getStatusTag = () => {
 if (isPending) return <span style={{ color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><UiIconSvg name="timer" />等待</span>;
 if (isRunning) return <span style={{ color: 'var(--color-success)', fontWeight: 'bold' }}>▶ 测量中</span>;
-if (currentStepIndex > nodeIndex) return <span style={{ color: 'var(--color-indigo-light)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><UiIconSvg name="check" />完成</span>;
+if (nodePhase === 'paused') return <span style={{ color: 'var(--color-warning)' }}>已暂停</span>;
+if (nodePhase === 'cancelling') return <span style={{ color: 'var(--color-warning)' }}>停止中</span>;
+if (nodePhase === 'failed') return <span style={{ color: 'var(--color-error)' }}><UiIconSvg name="error" />失败</span>;
+if (nodePhase === 'cancelled') return <span style={{ color: 'var(--color-warning)' }}>已取消</span>;
+if (nodePhase === 'completed') return <span style={{ color: 'var(--color-indigo-light)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><UiIconSvg name="check" />完成</span>;
 return null;
 };
 
@@ -597,12 +595,9 @@ return 'I-V-T';
 };
 
 // 判断是否为高级节点
-const isAdvancedNode = [
-'galvanostatic_switching',
-'potentiostatic_switching',
-'galvanostatic_step_ramp',
-'potentiostatic_step_ramp'
-].includes(nodeType || '');
+const isAdvancedNode = nodeType
+? NODE_CONFIGS[nodeType as keyof typeof NODE_CONFIGS]?.category === 'advanced_measurement'
+: false;
 
 return (
 <div

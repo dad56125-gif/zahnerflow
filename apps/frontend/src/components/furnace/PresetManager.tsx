@@ -5,6 +5,7 @@ import { runtimeClient } from '../../runtimeClient';
 import { ControlBar } from './components/ControlBar';
 import { SegmentEditor } from './components/SegmentEditor';
 import { SegmentValidator } from '../../modules/furnace/segmentValidation';
+import { FURNACE_PROGRAM_SEGMENT_COUNT } from '../../modules/furnace/temperatureLimits';
 
 interface PresetManagerProps {
   furnaceState: FurnaceState;
@@ -21,7 +22,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
   // 初始化输入框为空
   useEffect(() => {
     const emptyInputs: { [key: string]: string } = {};
-    for (let i = 1; i <= 27; i++) {
+    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
       emptyInputs[`temp_${i}`] = '';
       emptyInputs[`time_${i}`] = '';
     }
@@ -34,7 +35,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     if (presetSegments?.length) {
       // 第1步：创建空白输入对象
       const newInputs: { [key: string]: string } = {};
-      for (let i = 1; i <= 27; i++) {
+      for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
         newInputs[`temp_${i}`] = '';
         newInputs[`time_${i}`] = '';
       }
@@ -71,7 +72,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     if (!confirm('确认写入？')) return;
 
     const segments: ProgramSegment[] = [];
-    for (let i = 1; i <= 27; i++) {
+    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
       const temp = parseInt(inputs[`temp_${i}`] || '0');
       const time = parseInt(inputs[`time_${i}`] || '0');
       if (temp > 0 || time > 0 || time === -121) {
@@ -88,7 +89,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
   // 新建处理 - 清空数据和输入框，脱钩下拉菜单
   const handleNew = useCallback(() => {
     const emptyInputs: { [key: string]: string } = {};
-    for (let i = 1; i <= 27; i++) {
+    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
       emptyInputs[`temp_${i}`] = '';
       emptyInputs[`time_${i}`] = '';
     }
@@ -113,7 +114,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
 
     // 验证所有输入
     const segmentsForValidation: { id: number; temperature: string; time: string }[] = [];
-    for (let i = 1; i <= 27; i++) {
+    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
       const temp = inputs[`temp_${i}`] || '';
       const time = inputs[`time_${i}`] || '';
       if (temp.trim() !== '' || time.trim() !== '') {

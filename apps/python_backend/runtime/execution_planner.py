@@ -5,11 +5,18 @@ from __future__ import annotations
 import copy
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable
 
 from database import db
-from loop_unroller import MEASUREMENT_NODE_TYPES, WorkflowBlockError, unroll_loops
+from loop_unroller import WorkflowBlockError, unroll_loops
 from runtime.execution_eta import estimate_workflow
+from runtime.execution_semantics import (
+    MEASUREMENT_NODE_TYPES,
+    resolve_scheduled_start,
+    unsupported_executable_steps,
+    unsupported_source_nodes,
+)
 
 
 class ExecutionPlanningError(ValueError):
@@ -80,11 +87,15 @@ class ExecutionPlanner:
         *,
         auto_startup_config: dict | None = None,
         start_from_unrolled_index=0,
+        now: datetime | None = None,
     ) -> ExecutionPlan:
         if not isinstance(nodes, list):
             raise ExecutionPlanningError("Nodes must be an array")
 
         nodes_snapshot = copy.deepcopy(nodes)
+        unsupported_nodes = unsupported_source_nodes(nodes_snapshot)
+        if unsupported_nodes:
+            raise ExecutionPlanningError(_unsupported_nodes_message(unsupported_nodes))
         try:
             unrolled = unroll_loops(
                 nodes_snapshot,
@@ -95,7 +106,26 @@ class ExecutionPlanner:
             raise ExecutionPlanningError(str(exc)) from exc
 
         steps = unrolled["steps"]
-        estimate = estimate_workflow(nodes_snapshot, steps, self.devices)
+        unsupported_steps = unsupported_executable_steps(steps)
+        if unsupported_steps:
+            raise ExecutionPlanningError(_unsupported_nodes_message(unsupported_steps, expanded=True))
+
+        planned_at = now or datetime.now()
+        for step in steps:
+            if step.get("nodeType") != "scheduled_start":
+                continue
+            node = step.get("node") or nodes_snapshot[step["originalIndex"]]
+            try:
+                scheduled_at = resolve_scheduled_start(node.get("config") or {}, planned_at)
+            except (TypeError, ValueError) as exc:
+                raise ExecutionPlanningError(f"Invalid scheduled_start parameters: {exc}") from exc
+            if scheduled_at <= planned_at:
+                raise ExecutionPlanningError(
+                    f"Scheduled time has already passed: {scheduled_at.isoformat()}"
+                )
+            step["scheduledAt"] = scheduled_at.isoformat()
+
+        estimate = estimate_workflow(nodes_snapshot, steps, self.devices, now=planned_at)
         start_index = self._validate_start_index(start_from_unrolled_index, len(steps))
         boundary_prelude_indices = _boundary_prelude_indices(steps, start_index)
         timeline = {
@@ -156,3 +186,12 @@ def _boundary_prelude_indices(steps: list[dict], start_from: int) -> set[int]:
         return set()
 
     return {startup_indices[-1]}
+
+
+def _unsupported_nodes_message(items: list[tuple[int, str, str]], *, expanded: bool = False) -> str:
+    scope = "expanded step" if expanded else "workflow node"
+    details = ", ".join(
+        f"{scope} {index} ({node_id or 'no id'}): {node_type}"
+        for index, node_id, node_type in items
+    )
+    return f"Unsupported node type(s): {details}"

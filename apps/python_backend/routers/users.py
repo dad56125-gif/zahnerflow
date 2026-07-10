@@ -5,6 +5,7 @@ import sqlite3
 import time
 import random
 import json
+from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
@@ -14,6 +15,40 @@ from fastapi import APIRouter, Body, HTTPException
 from database import db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+DEFAULT_USER_SETTINGS = {
+    "filePath": {"basePath": "C:\\data\\archive", "projectName": "", "individualName": ""},
+    "notification": {
+        "email": "",
+        "enabled": False,
+        "onComplete": True,
+        "onError": True,
+        "onWarning": True,
+        "smtpServer": "smtp.qq.com",
+        "smtpPort": 465,
+        "smtpUser": "",
+        "smtpPassword": "",
+        "smtpSecure": True,
+    },
+    "cloud": {"provider": "none", "syncEnabled": False},
+}
+
+
+def _merge_settings(target: dict, source: dict) -> None:
+    for key, value in source.items():
+        if isinstance(value, dict) and isinstance(target.get(key), dict):
+            _merge_settings(target[key], value)
+        else:
+            target[key] = value
+
+
+def normalize_user_settings(settings: dict | None) -> dict:
+    """Return one complete settings document with backend-owned defaults."""
+
+    normalized = deepcopy(DEFAULT_USER_SETTINGS)
+    if isinstance(settings, dict):
+        _merge_settings(normalized, settings)
+    return normalized
 
 
 @router.post("", status_code=201)
@@ -53,41 +88,35 @@ def delete_user(user: str):
 def get_user_settings(user: str):
     row = db.conn.execute("SELECT settings_json FROM user_settings WHERE user = ?", (user,)).fetchone()
     if row:
-        settings = json.loads(row["settings_json"])
+        try:
+            settings = json.loads(row["settings_json"])
+        except (TypeError, json.JSONDecodeError):
+            settings = None
     else:
-        settings = {
-            "filePath": {"basePath": "C:\\data\\archive", "projectName": "", "individualName": ""},
-            "notification": {"email": "", "enabled": False, "onComplete": True, "onError": True,
-                             "onWarning": True, "smtpServer": "smtp.qq.com", "smtpPort": 465,
-                             "smtpUser": "", "smtpPassword": "", "smtpSecure": True},
-            "cloud": {"provider": "none", "syncEnabled": False}
-        }
-    return {"success": True, "settings": settings}
+        settings = None
+    return {"success": True, "settings": normalize_user_settings(settings)}
 
 
 @router.put("/{user}/settings")
 def save_user_settings(user: str, settings: dict):
+    if not isinstance(settings, dict):
+        raise HTTPException(status_code=400, detail="Settings must be an object")
     current = get_user_settings(user)["settings"]
-    def deep_merge(target, source):
-        for k, v in source.items():
-            if isinstance(v, dict) and k in target:
-                deep_merge(target[k], v)
-            else:
-                target[k] = v
-    deep_merge(current, settings)
+    _merge_settings(current, settings)
+    current = normalize_user_settings(current)
     now = datetime.utcnow().isoformat() + 'Z'
     db.conn.execute("INSERT OR REPLACE INTO user_settings (user, settings_json, updated_at) VALUES (?, ?, ?)",
                     (user, json.dumps(current), now))
     db.conn.commit()
-    return {"success": True, "message": "Settings saved successfully"}
+    return {"success": True, "message": "Settings saved successfully", "settings": current}
 
 
 @router.put("/{user}/settings/{section}")
 def update_settings_section(user: str, section: str, value: Any = Body(...)):
-    current = get_user_settings(user)["settings"]
-    current[section] = value
-    save_user_settings(user, current)
-    return {"success": True, "message": f"{section} settings saved"}
+    if section not in DEFAULT_USER_SETTINGS:
+        raise HTTPException(status_code=404, detail=f"Unknown settings section: {section}")
+    result = save_user_settings(user, {section: value})
+    return {**result, "message": f"{section} settings saved"}
 
 
 @router.post("/{user}/settings/test-email")

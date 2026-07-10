@@ -12,6 +12,7 @@ from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
 from runtime.execution_recorder import finish_execution, finish_step, start_step
 from runtime.execution_planner import ExecutionPlan, ExecutionPlanner
+from runtime.execution_semantics import is_active_execution_status, is_terminal_execution_status
 from shared.contracts.events import (
     DEVICE_STATUS_UPDATE,
     WORKFLOW_EXECUTION_FINISHED,
@@ -299,6 +300,8 @@ class AppRuntime:
                 unrolled_index=unrolled_index,
                 status=status,
                 result=data,
+                warnings=payload.get("warnings") or [],
+                artifacts=payload.get("artifacts") or [],
             )
             timeline_step = self._timeline_step(unrolled_index)
             if timeline_step and recorded and recorded.get("actualSeconds") is not None and status == "completed":
@@ -315,14 +318,50 @@ class AppRuntime:
                 "data": data,
             }
         )
+        for warning in payload.get("warnings") or []:
+            await self.emit(
+                WORKFLOW_NOTIFICATION,
+                {
+                    "id": f"notification_{int(time.time() * 1000)}",
+                    "type": "warning",
+                    "title": "测量安全停止",
+                    "message": warning.get("message") or "测量因安全限制提前停止",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "details": {
+                        "warningType": warning.get("warningType"),
+                        "metadata": warning.get("metadata") or {},
+                    },
+                },
+            )
+            try:
+                from email_service import email_service
+
+                await email_service.send_workflow_notification(
+                    type_="warning",
+                    workflow_id=self.experiment_state.get("workflowId"),
+                    user=self.experiment_state.get("ownerName", ""),
+                    details={
+                        "message": warning.get("message"),
+                        "warningType": warning.get("warningType"),
+                        "workflowName": self.experiment_state.get("workflowName", ""),
+                    },
+                )
+            except Exception as email_err:
+                print(f"[Runtime] Warning email notification error: {email_err}")
         now = datetime.utcnow().isoformat() + "Z"
+        active_status = self.execution.status
+        next_status = (
+            active_status
+            if status == "completed" and is_active_execution_status(active_status)
+            else status
+        )
         await self.on_experiment_state(
             {
                 "executionId": exec_id,
-                "status": "running" if status == "completed" else status,
+                "status": next_status,
                 "duration": self._elapsed_seconds(now),
                 "eta": self._eta_snapshot(now),
-                "error": data.get("error") if data and status == "failed" else None,
+                "error": (data.get("error") or data.get("reason")) if data and status == "failed" else None,
             }
         )
 
@@ -331,6 +370,8 @@ class AppRuntime:
         status = payload.get("status")
         duration_ms = payload.get("durationMs")
         error = payload.get("error")
+        if not is_terminal_execution_status(status):
+            raise ValueError(f"Execution finished with non-terminal status: {status}")
         if exec_id:
             finish_execution(exec_id, status, duration_ms, error)
 
@@ -356,21 +397,37 @@ class AppRuntime:
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             },
         )
+        notification_copy = {
+            "completed": {
+                "type": "success",
+                "title": "执行完成",
+                "message": f"{self.experiment_state.get('workflowName') or exec_id} 已完成",
+            },
+            "cancelled": {
+                "type": "info",
+                "title": "执行已取消",
+                "message": f"{self.experiment_state.get('workflowName') or exec_id} 已取消",
+            },
+            "failed": {
+                "type": "error",
+                "title": "执行失败",
+                "message": f"{self.experiment_state.get('workflowName') or exec_id} 执行失败",
+            },
+        }.get(
+            status,
+            {
+                "type": "info",
+                "title": "执行状态已更新",
+                "message": f"{self.experiment_state.get('workflowName') or exec_id} 状态：{status}",
+            },
+        )
         await self.emit(
             WORKFLOW_NOTIFICATION,
             {
                 "id": f"notification_{int(time.time() * 1000)}",
-                "type": "success" if status == "completed" else "error",
-                "title": "执行完成" if status == "completed" else "执行失败",
-                "message": (
-                    f"{self.experiment_state.get('workflowName') or exec_id} 已完成"
-                    if status == "completed"
-                    else f"{self.experiment_state.get('workflowName') or exec_id} 执行失败"
-                ),
+                **notification_copy,
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "details": {
-                    "executionId": exec_id,
-                    "workflowId": self.experiment_state.get("workflowId"),
                     "durationMs": duration_ms,
                     "error": error,
                 },
@@ -379,16 +436,17 @@ class AppRuntime:
         try:
             from email_service import email_service
 
-            await email_service.send_workflow_notification(
-                type_="completed" if status == "completed" else "failed",
-                workflow_id=self.experiment_state.get("workflowId"),
-                user=self.experiment_state.get("ownerName", ""),
-                details={
-                    "duration": duration_ms,
-                    "error": error,
-                    "workflowName": self.experiment_state.get("workflowName", ""),
-                },
-            )
+            if status != "cancelled":
+                await email_service.send_workflow_notification(
+                    type_="completed" if status == "completed" else "failed",
+                    workflow_id=self.experiment_state.get("workflowId"),
+                    user=self.experiment_state.get("ownerName", ""),
+                    details={
+                        "duration": duration_ms,
+                        "error": error,
+                        "workflowName": self.experiment_state.get("workflowName", ""),
+                    },
+                )
         except Exception as email_err:
             print(f"[Runtime] Email notification error: {email_err}")
 
@@ -550,14 +608,14 @@ class AppRuntime:
             start_from_unrolled_index=start_from_unrolled_index,
         )
 
-    async def pause_execution(self) -> dict:
-        return await self.execution.pause()
+    async def pause_execution(self, execution_id: str) -> dict:
+        return await self.execution.pause(execution_id)
 
-    async def resume_execution(self) -> dict:
-        return await self.execution.resume()
+    async def resume_execution(self, execution_id: str) -> dict:
+        return await self.execution.resume(execution_id)
 
-    async def cancel_execution(self) -> dict:
-        return await self.execution.cancel()
+    async def cancel_execution(self, execution_id: str) -> dict:
+        return await self.execution.cancel(execution_id)
 
     def reset_execution_state(self) -> None:
         self.experiment_state.update(

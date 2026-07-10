@@ -51,6 +51,13 @@ class Workflow(ContractModel):
 
 # ==================== 执行状态 ====================
 
+class IterationPathEntry(ContractModel):
+    """展开步骤所属的一层循环迭代。"""
+    loopNodeId: str = Field(description="循环开始节点 ID")
+    loopStartIndex: int = Field(description="循环开始节点在原工作流中的索引")
+    iteration: int = Field(description="当前迭代序号，从 1 开始")
+    totalIterations: int = Field(description="该层循环总迭代次数")
+
 class CurrentStep(ContractModel):
     """当前执行步骤"""
     nodeId: Optional[str] = Field(default=None, description="当前节点 ID")
@@ -59,7 +66,7 @@ class CurrentStep(ContractModel):
     total: int = Field(description="节点总数")
     unrolledIndex: Optional[int] = Field(default=None, description="循环展开后的步骤索引")
     unrolledTotal: Optional[int] = Field(default=None, description="展开后的总步骤数")
-    iterationPath: Optional[List[dict]] = Field(default=None, description="迭代路径，包含循环节点和迭代次数")
+    iterationPath: Optional[List[IterationPathEntry]] = Field(default=None, description="迭代路径，包含循环节点和迭代次数")
     blockPath: Optional[List[dict]] = Field(default=None, description="工作流块来源路径")
     estimatedSeconds: Optional[float] = Field(default=None, description="当前节点预计时长 (秒)")
     etaSource: Optional[str] = Field(default=None, description="当前节点 ETA 来源: rule / history / fallback / actual")
@@ -86,7 +93,7 @@ class ExecutionEtaStep(ContractModel):
     total: int = Field(description="原始节点总数")
     unrolledIndex: int = Field(description="循环展开后的步骤索引")
     unrolledTotal: int = Field(description="展开后的总步骤数")
-    iterationPath: List[dict] = Field(default_factory=list, description="迭代路径，包含循环节点和迭代次数")
+    iterationPath: List[IterationPathEntry] = Field(default_factory=list, description="迭代路径，包含循环节点和迭代次数")
     blockPath: List[dict] = Field(default_factory=list, description="工作流块来源路径")
     estimatedSeconds: float = Field(default=0, description="预计时长 (秒)")
     etaSource: str = Field(default="fallback", description="ETA 来源")
@@ -125,7 +132,7 @@ class UnrolledWorkflowStep(ContractModel):
     sourceIndex: Optional[int] = Field(default=None, description="节点在来源工作流中的索引")
     unrolledIndex: int = Field(description="展开后步骤索引")
     unrolledTotal: int = Field(description="展开后总步骤数")
-    iterationPath: List[dict] = Field(default_factory=list, description="循环迭代路径")
+    iterationPath: List[IterationPathEntry] = Field(default_factory=list, description="循环迭代路径")
     loopContextStack: List[int] = Field(default_factory=list, description="循环上下文栈")
     loopDepth: int = Field(default=0, description="循环嵌套深度")
     blockPath: List[dict] = Field(default_factory=list, description="工作流块来源路径")
@@ -177,11 +184,9 @@ class NodeStatusUpdate(ContractModel):
 
     某个节点的状态变化时推送。
     """
-    workflowId: str = Field(description="工作流 ID")
-    nodeId: str = Field(description="节点 ID")
-    status: str = Field(description="新状态")
-    data: Optional[Any] = Field(default=None, description="附加数据")
-    timestamp: str = Field(description="时间")
+    i: int = Field(description="原工作流节点索引")
+    s: str = Field(description="新状态")
+    d: Optional[Any] = Field(default=None, description="附加数据")
 
 
 class NodesResetEvent(ContractModel):
@@ -192,7 +197,7 @@ class NodesResetEvent(ContractModel):
     """
     targetStatus: str = Field(description="重置成什么状态")
     timestamp: str = Field(description="时间")
-    message: str = Field(description="提示信息")
+    message: Optional[str] = Field(default=None, description="可选提示信息")
 
 
 class LoopIterationEvent(ContractModel):
@@ -229,4 +234,23 @@ class EnrichedStreamData(ContractModel):
     executionId: str = Field(description="执行 ID")
     stepIndex: int = Field(description="步骤索引")
     nodeId: str = Field(description="节点 ID")
+    iterationPath: List[IterationPathEntry] = Field(default_factory=list, description="数据所属的循环迭代路径")
     data: RawStreamData = Field(description="原始数据")
+
+
+class EisResultData(ContractModel):
+    """EIS 完整结果事件中的阻抗数据。"""
+    frequency: List[float] = Field(description="频率数组 (Hz)")
+    z_real: List[float] = Field(alias="z_real", description="阻抗实部数组")
+    z_imag: List[float] = Field(alias="z_imag", description="阻抗虚部数组")
+    point_count: int = Field(alias="point_count", description="数据点数量")
+    csv_path: Optional[str] = Field(default=None, alias="csv_path", description="CSV 文件路径")
+
+
+class EnrichedEisData(ContractModel):
+    """带执行和循环上下文的 EIS 完整结果事件。"""
+    executionId: str = Field(description="执行 ID")
+    nodeIndex: int = Field(description="原工作流节点索引")
+    nodeId: str = Field(description="节点 ID")
+    iterationPath: List[IterationPathEntry] = Field(default_factory=list, description="数据所属的循环迭代路径")
+    data: EisResultData = Field(description="EIS 阻抗数据")

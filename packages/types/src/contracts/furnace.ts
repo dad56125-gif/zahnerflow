@@ -15,7 +15,7 @@ export interface FurnaceStatus {
   mv: number;
   /** 运行状态: running / paused / stopped / idle */
   status: string;
-  /** 当前程序段号 (1-27) */
+  /** 当前硬件段号 (1-30；28-30 为点变温保留段) */
   segment: number;
   /** 当前段已运行时间 (秒) */
   segmentTime: number;

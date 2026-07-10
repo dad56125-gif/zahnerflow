@@ -2,6 +2,7 @@
 import time
 import datetime
 import os
+import ntpath
 import csv
 import math
 from typing import Optional, Callable, Dict, Any
@@ -28,6 +29,269 @@ except ImportError:
 # ==========================================
 # 1. 辅助工具函数
 # ==========================================
+
+_PARAMETER_ALIASES = {
+    # 通用测量参数
+    "outputPath": "output_path",
+    "outputFileName": "filename",
+    "measurementDuration": "measurement_duration",
+    "samplingInterval": "sampling_interval",
+    "polarizationVoltage": "polarization_voltage",
+    "polarizationCurrent": "polarization_current",
+    "startVoltage": "start_voltage",
+    "endVoltage": "end_voltage",
+    "startVoltageReference": "start_voltage_reference",
+    "endVoltageReference": "end_voltage_reference",
+    "startCurrent": "start_current",
+    "endCurrent": "end_current",
+    "scanRate": "scan_rate",
+    "minCurrent": "min_current",
+    "maxCurrent": "max_current",
+    "minVoltage": "min_voltage",
+    "maxVoltage": "max_voltage",
+    # EIS
+    "enableDcBias": "enable_dc_bias",
+    "eisLowerFrequency": "eis_lower_frequency",
+    "eisStartFrequency": "eis_start_frequency",
+    "eisUpperFrequency": "eis_upper_frequency",
+    "eisAmplitude": "eis_amplitude",
+    "eisPotential": "eis_potential",
+    "eisCurrent": "eis_current",
+    "eisLowerPeriods": "eis_lower_periods",
+    "eisUpperPeriods": "eis_upper_periods",
+    "eisLowerSteps": "eis_lower_steps",
+    "eisUpperSteps": "eis_upper_steps",
+    "eisScanDirection": "eis_scan_direction",
+    "eisScanStrategy": "eis_scan_strategy",
+    # 高级节点原始配置，供展开步骤和输出目录共用
+    "startPotential": "start_potential",
+    "endPotential": "end_potential",
+    "stepCurrent": "step_current",
+    "stepPotential": "step_potential",
+    "holdTime": "hold_time",
+    "current1": "current_1",
+    "current2": "current_2",
+    "potential1": "potential_1",
+    "potential2": "potential_2",
+    "holdTime1": "hold_time_1",
+    "holdTime2": "hold_time_2",
+}
+
+_COMMON_PARAMETER_DEFAULTS = {
+    "output_path": "c:/zahner_data",
+    "filename": "measurement",
+    "measurement_duration": 60.0,
+    "sampling_interval": 1.0,
+}
+
+_MEASUREMENT_PARAMETER_DEFAULTS = {
+    "chronoamperometry": {
+        "polarization_voltage": 1.0,
+        "min_current": -1.0,
+        "max_current": 1.0,
+    },
+    "chronopotentiometry": {
+        "polarization_current": 0.01,
+        "min_voltage": -4.0,
+        "max_voltage": 4.0,
+    },
+    "voltage_ramp": {
+        "start_voltage": 0.0,
+        "end_voltage": 1.0,
+        "scan_rate": 0.01,
+    },
+    "current_ramp": {
+        "start_current": 0.0,
+        "end_current": 0.01,
+        "scan_rate": 0.0001,
+    },
+    "eis_potentiostatic": {
+        "eis_lower_frequency": 10.0,
+        "eis_upper_frequency": 100000.0,
+        "eis_amplitude": 0.01,
+        "eis_potential": 0.0,
+        "eis_lower_periods": 4,
+        "eis_upper_periods": 20,
+        "eis_lower_steps": 5,
+        "eis_upper_steps": 10,
+        "eis_scan_direction": "START_TO_MIN",
+        "eis_scan_strategy": "SINGLE_SINE",
+        "enable_dc_bias": False,
+    },
+    "eis_galvanostatic": {
+        "eis_lower_frequency": 10.0,
+        "eis_upper_frequency": 100000.0,
+        "eis_amplitude": 0.01,
+        "eis_current": 0.01,
+        "eis_lower_periods": 4,
+        "eis_upper_periods": 20,
+        "eis_lower_steps": 5,
+        "eis_upper_steps": 10,
+        "eis_scan_direction": "START_TO_MIN",
+        "eis_scan_strategy": "SINGLE_SINE",
+        "enable_dc_bias": True,
+    },
+    "galvanostatic_step_ramp": {
+        "start_current": 0.1,
+        "end_current": 1.0,
+        "step_current": 0.1,
+        "hold_time": 30.0,
+    },
+    "potentiostatic_step_ramp": {
+        "start_potential": 0.0,
+        "end_potential": 1.0,
+        "step_potential": 0.1,
+        "hold_time": 30.0,
+    },
+    "galvanostatic_switching": {
+        "current_1": 0.0,
+        "current_2": 0.01,
+        "hold_time_1": 30.0,
+        "hold_time_2": 30.0,
+        "cycles": 5,
+    },
+    "potentiostatic_switching": {
+        "potential_1": 0.0,
+        "potential_2": 0.5,
+        "hold_time_1": 30.0,
+        "hold_time_2": 30.0,
+        "cycles": 5,
+    },
+}
+
+_FLOAT_PARAMETER_KEYS = {
+    "polarization_voltage",
+    "polarization_current",
+    "measurement_duration",
+    "sampling_interval",
+    "min_current",
+    "max_current",
+    "min_voltage",
+    "max_voltage",
+    "start_voltage",
+    "end_voltage",
+    "scan_rate",
+    "start_current",
+    "end_current",
+    "potential",
+    "current",
+    "eis_lower_frequency",
+    "eis_start_frequency",
+    "eis_upper_frequency",
+    "eis_amplitude",
+    "eis_potential",
+    "eis_current",
+    "start_frequency",
+    "end_frequency",
+    "start_potential",
+    "end_potential",
+    "step_current",
+    "step_potential",
+    "current_1",
+    "current_2",
+    "potential_1",
+    "potential_2",
+    "hold_time",
+    "hold_time_1",
+    "hold_time_2",
+}
+
+_INTEGER_PARAMETER_KEYS = {
+    "points_per_decade",
+    "eis_lower_periods",
+    "eis_upper_periods",
+    "eis_lower_steps",
+    "eis_upper_steps",
+    "cycles",
+}
+
+
+def normalize_measurement_parameters(measurement_type: str, raw_params: dict | None) -> dict:
+    """Return the canonical snake_case parameter model consumed by Zahner logic.
+
+    Canonical keys win if a caller supplies both forms. Unknown runtime metadata
+    remains untouched, while recognized frontend aliases are removed so every
+    downstream consumer observes one value for each business parameter.
+    """
+    raw = dict(raw_params or {})
+    normalized = dict(_COMMON_PARAMETER_DEFAULTS)
+    normalized.update(_MEASUREMENT_PARAMETER_DEFAULTS.get(measurement_type, {}))
+
+    # Apply aliases first and canonical keys second, independent of input order.
+    normalized.update(
+        {
+            target: raw[source]
+            for source, target in _PARAMETER_ALIASES.items()
+            if source in raw
+        }
+    )
+    normalized.update(
+        {
+            key: value
+            for key, value in raw.items()
+            if key not in _PARAMETER_ALIASES
+        }
+    )
+
+    for key in _FLOAT_PARAMETER_KEYS:
+        if key in normalized:
+            normalized[key] = float(normalized[key])
+    for key in _INTEGER_PARAMETER_KEYS:
+        if key in normalized:
+            normalized[key] = int(normalized[key])
+
+    for key in ("start_voltage_reference", "end_voltage_reference"):
+        if key in normalized:
+            reference = str(normalized[key]).lower()
+            if reference not in ("absolute", "ocv"):
+                raise ValueError(f"Unsupported voltage reference: {reference}")
+            normalized[key] = reference
+
+    if measurement_type in ("eis_potentiostatic", "eis_galvanostatic"):
+        direction = str(normalized.get("eis_scan_direction", "START_TO_MIN")).upper()
+        if direction not in ("START_TO_MAX", "START_TO_MIN"):
+            raise ValueError(f"Unsupported EIS scan direction: {direction}")
+        normalized["eis_scan_direction"] = direction
+        strategy = str(
+            normalized.get("eis_scan_strategy", "SINGLE_SINE")
+        ).upper()
+        if strategy not in ("SINGLE_SINE", "MULTI_SINE"):
+            raise ValueError(f"Unsupported EIS scan strategy: {strategy}")
+        normalized["eis_scan_strategy"] = strategy
+
+        lower = normalized.get("eis_lower_frequency")
+        upper = normalized.get("eis_upper_frequency")
+        if lower is not None and upper is not None:
+            if lower > upper:
+                raise ValueError("EIS lower frequency must not exceed upper frequency")
+            # The scan direction is authoritative; a stale UI start value cannot
+            # contradict the selected direction.
+            normalized["eis_start_frequency"] = lower if direction == "START_TO_MAX" else upper
+
+    return normalized
+
+
+def _native_output_directory(params: dict, default: str) -> str:
+    """Create and return the host-native logical output directory."""
+    output_path = os.path.normpath(
+        os.path.expanduser(os.fspath(params.get("output_path") or default))
+    )
+    os.makedirs(output_path, exist_ok=True)
+    return output_path
+
+
+def _to_thales_windows_path(output_path: str) -> str:
+    """Adapt a logical host path for the Windows-only Thales EIS API boundary."""
+    raw_path = os.fspath(output_path)
+    windows_path = raw_path.replace("/", "\\")
+    drive, _ = ntpath.splitdrive(windows_path)
+    if not drive:
+        absolute_path = os.path.abspath(raw_path)
+        windows_path = absolute_path.replace("/", "\\")
+        drive, _ = ntpath.splitdrive(windows_path)
+        if not drive and windows_path.startswith("\\"):
+            windows_path = f"c:{windows_path}"
+    return ntpath.normpath(windows_path).lower()
 
 def accurate_timer(duration: float, interval: float):
     """
@@ -214,24 +478,9 @@ def _prepare_output_path(params: dict, measurement_type: str) -> str:
     """
     准备输出文件路径 (含智能文件名)
     """
-    output_path = params.get("output_path", "c:/zahner_data/default")
-    
-    # 使用新的命名函数
+    output_path = _native_output_directory(params, "c:/zahner_data/default")
     filename = build_filename(measurement_type, params)
-    
-    # 规范化路径 (Windows/Zahner 偏好)
-    if output_path.startswith('/'):
-        output_path = 'c:' + output_path
-    else:
-        # 确保是绝对路径或者是 C 盘路径
-        if not output_path[1:2] == ':':
-             output_path = os.path.abspath(output_path)
-             
-    output_path = output_path.replace('/', '\\')
-    os.makedirs(output_path, exist_ok=True)
-    
-    full_path = os.path.join(output_path, f"{filename}.csv")
-    return full_path
+    return os.path.join(output_path, f"{filename}.csv")
 
 # ==========================================
 # 2. 核心测量逻辑 (DC 类 - 支持流式推送)
@@ -402,9 +651,9 @@ def measure_ramp(device: ThalesRemoteScriptWrapper, params: dict, mode: str, cal
     
     # 提取起始和结束值
     if is_potentiostatic:
-        # 支持 "start_voltage" 或通用 "start_value"
-        start_val = float(params.get("start_voltage", params.get("start_value", 0.0)))
-        end_val = float(params.get("end_voltage", params.get("end_value", 1.0)))
+        # 参数入口已统一为规范字段。
+        start_val = float(params.get("start_voltage", 0.0))
+        end_val = float(params.get("end_voltage", 1.0))
         
         # 处理 OCV 参考 (仅适用于电位模式)
         ref_mode_start = params.get("start_voltage_reference", "absolute").lower()
@@ -423,8 +672,8 @@ def measure_ramp(device: ThalesRemoteScriptWrapper, params: dict, mode: str, cal
         device.setPotentiostatMode(PotentiostatMode.POTMODE_POTENTIOSTATIC)
         print(f"[Logic] Voltage Ramp: {start_val}V -> {end_val}V over {duration}s")
     else:
-        start_val = float(params.get("start_current", params.get("start_value", 0.0)))
-        end_val = float(params.get("end_current", params.get("end_value", 0.0)))
+        start_val = float(params.get("start_current", 0.0))
+        end_val = float(params.get("end_current", 0.0))
         device.setPotentiostatMode(PotentiostatMode.POTMODE_GALVANOSTATIC)
         print(f"[Logic] Current Ramp: {start_val}A -> {end_val}A over {duration}s")
 
@@ -517,22 +766,19 @@ def measure_eis(device: ThalesRemoteScriptWrapper, params: dict, mode: str) -> d
     """
     is_potentiostatic = (mode == 'potentiostatic')
     
-    # 路径处理
-    output_path = params.get("output_path", "c:/zahner_data/eis")
-    # 确保是 Windows 路径格式，且尽可能短，Thales 对路径长度敏感
-    if output_path.startswith('/'): output_path = 'c:' + output_path
-    output_path = output_path.replace('/', '\\').lower() 
+    # 执行与报告使用本机逻辑路径；仅 Thales API 调用使用 Windows 适配值。
+    output_path = _native_output_directory(params, "c:/zahner_data/eis")
+    thales_output_path = _to_thales_windows_path(output_path)
     
     # 使用智能文件名构建
     measurement_type = "eis_potentiostatic" if is_potentiostatic else "eis_galvanostatic"
     full_filename = build_filename(measurement_type, params)  # 注意：Thales 不需要扩展名
     
-    print(f"[Logic] EIS ({mode}) -> Path: {output_path}, File: {full_filename}")
+    print(f"[Logic] EIS ({mode}) -> Path: {thales_output_path}, File: {full_filename}")
 
     # 配置 Thales 文件系统
     try:
-        os.makedirs(output_path, exist_ok=True)
-        device.setEISOutputPath(output_path)
+        device.setEISOutputPath(thales_output_path)
         device.setEISNaming(FileNaming.INDIVIDUAL)
         device.setEISOutputFileName(full_filename)
     except Exception as e:

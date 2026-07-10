@@ -30,6 +30,17 @@ export interface Workflow {
   individualName?: string | null;
 }
 
+export interface IterationPathEntry {
+  /** 循环开始节点 ID */
+  loopNodeId: string;
+  /** 循环开始节点在原工作流中的索引 */
+  loopStartIndex: number;
+  /** 当前迭代序号，从 1 开始 */
+  iteration: number;
+  /** 该层循环总迭代次数 */
+  totalIterations: number;
+}
+
 export interface CurrentStep {
   /** 当前节点 ID */
   nodeId?: string | null;
@@ -44,7 +55,7 @@ export interface CurrentStep {
   /** 展开后的总步骤数 */
   unrolledTotal?: number | null;
   /** 迭代路径，包含循环节点和迭代次数 */
-  iterationPath?: Record<string, any>[] | null;
+  iterationPath?: IterationPathEntry[] | null;
   /** 工作流块来源路径 */
   blockPath?: Record<string, any>[] | null;
   /** 当前节点预计时长 (秒) */
@@ -88,7 +99,7 @@ export interface ExecutionEtaStep {
   /** 展开后的总步骤数 */
   unrolledTotal: number;
   /** 迭代路径，包含循环节点和迭代次数 */
-  iterationPath?: Record<string, any>[];
+  iterationPath?: IterationPathEntry[];
   /** 工作流块来源路径 */
   blockPath?: Record<string, any>[];
   /** 预计时长 (秒) */
@@ -151,7 +162,7 @@ export interface UnrolledWorkflowStep {
   /** 展开后总步骤数 */
   unrolledTotal: number;
   /** 循环迭代路径 */
-  iterationPath?: Record<string, any>[];
+  iterationPath?: IterationPathEntry[];
   /** 循环上下文栈 */
   loopContextStack?: number[];
   /** 循环嵌套深度 */
@@ -219,16 +230,12 @@ export interface ExecutionSnapshot {
 }
 
 export interface NodeStatusUpdate {
-  /** 工作流 ID */
-  workflowId: string;
-  /** 节点 ID */
-  nodeId: string;
+  /** 原工作流节点索引 */
+  i: number;
   /** 新状态 */
-  status: string;
+  s: string;
   /** 附加数据 */
-  data?: any | null;
-  /** 时间 */
-  timestamp: string;
+  d?: any | null;
 }
 
 export interface NodesResetEvent {
@@ -236,8 +243,8 @@ export interface NodesResetEvent {
   targetStatus: string;
   /** 时间 */
   timestamp: string;
-  /** 提示信息 */
-  message: string;
+  /** 可选提示信息 */
+  message?: string | null;
 }
 
 export interface LoopIterationEvent {
@@ -267,8 +274,36 @@ export interface EnrichedStreamData {
   stepIndex: number;
   /** 节点 ID */
   nodeId: string;
+  /** 数据所属的循环迭代路径 */
+  iterationPath?: IterationPathEntry[];
   /** 原始数据 */
   data: RawStreamData;
+}
+
+export interface EisResultData {
+  /** 频率数组 (Hz) */
+  frequency: number[];
+  /** 阻抗实部数组 */
+  z_real: number[];
+  /** 阻抗虚部数组 */
+  z_imag: number[];
+  /** 数据点数量 */
+  point_count: number;
+  /** CSV 文件路径 */
+  csv_path?: string | null;
+}
+
+export interface EnrichedEisData {
+  /** 执行 ID */
+  executionId: string;
+  /** 原工作流节点索引 */
+  nodeIndex: number;
+  /** 节点 ID */
+  nodeId: string;
+  /** 数据所属的循环迭代路径 */
+  iterationPath?: IterationPathEntry[];
+  /** EIS 阻抗数据 */
+  data: EisResultData;
 }
 
 /** 工作站类型 */

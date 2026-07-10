@@ -11,6 +11,7 @@ from datetime import datetime
 
 from database import db
 from runtime.execution_eta import canonical_params, learn_successful_duration, params_hash
+from runtime.execution_semantics import node_execution_spec
 
 
 def start_step(
@@ -71,26 +72,36 @@ def start_step(
     db.conn.commit()
 
 
-def finish_step(*, execution_id: str, unrolled_index: int, status: str, result: dict | None) -> dict | None:
+def finish_step(
+    *,
+    execution_id: str,
+    unrolled_index: int,
+    status: str,
+    result: dict | None,
+    warnings: list[dict] | None = None,
+    artifacts: list[dict] | None = None,
+) -> dict | None:
     now = datetime.utcnow().isoformat() + "Z"
     row = db.conn.execute(
         """
-        SELECT node_type, params, started_at
+        SELECT node_id, node_type, params, started_at
         FROM execution_steps
         WHERE execution_id = ? AND unrolled_index = ?
         """,
         (execution_id, unrolled_index),
     ).fetchone()
     actual_seconds = None
+    node_id = None
     node_type = None
     params = {}
     if row:
+        node_id = row["node_id"]
         node_type = row["node_type"]
         params = _json_loads(row["params"]) or {}
         actual_seconds = _seconds_between(row["started_at"], now)
 
-    result_json = json.dumps(result, ensure_ascii=False) if result else None
-    error = result.get("error") if result and status == "failed" else None
+    result_json = json.dumps(result, ensure_ascii=False) if result is not None else None
+    error = (result.get("error") or result.get("reason")) if result and status == "failed" else None
     db.conn.execute(
         """
         UPDATE execution_steps
@@ -99,9 +110,33 @@ def finish_step(*, execution_id: str, unrolled_index: int, status: str, result: 
         """,
         (status, now, actual_seconds, result_json, error, execution_id, unrolled_index),
     )
+    for warning in warnings or []:
+        _persist_warning(
+            execution_id=execution_id,
+            unrolled_index=unrolled_index,
+            warning=warning,
+            created_at=now,
+        )
+    for artifact in artifacts or []:
+        _persist_artifact(
+            execution_id=execution_id,
+            unrolled_index=unrolled_index,
+            node_id=node_id,
+            artifact=artifact,
+            created_at=now,
+        )
     db.conn.commit()
 
-    if status == "completed" and node_type and actual_seconds is not None:
+    spec = node_execution_spec(node_type)
+    measurement_status = result.get("measurementStatus") if result else None
+    learnable_outcome = not warnings and measurement_status in (None, "success", "completed")
+    if (
+        status == "completed"
+        and node_type
+        and actual_seconds is not None
+        and (not spec or spec.learn_duration)
+        and learnable_outcome
+    ):
         learn_successful_duration(node_type, params, actual_seconds)
 
     return {
@@ -110,6 +145,71 @@ def finish_step(*, execution_id: str, unrolled_index: int, status: str, result: 
         "nodeType": node_type,
         "params": params,
     }
+
+
+def _persist_warning(
+    *,
+    execution_id: str,
+    unrolled_index: int,
+    warning: dict,
+    created_at: str,
+) -> None:
+    warning_type = str(warning.get("warningType") or warning.get("warning_type") or "execution_warning")
+    message = str(warning.get("message") or warning_type)
+    metadata = dict(warning.get("metadata") or {})
+    metadata["unrolledIndex"] = unrolled_index
+    metadata_json = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    duplicate = db.conn.execute(
+        """
+        SELECT 1 FROM execution_warnings
+        WHERE execution_id = ? AND warning_type = ? AND message = ? AND metadata = ?
+        LIMIT 1
+        """,
+        (execution_id, warning_type, message, metadata_json),
+    ).fetchone()
+    if duplicate:
+        return
+    db.conn.execute(
+        """
+        INSERT INTO execution_warnings (execution_id, warning_type, message, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (execution_id, warning_type, message, metadata_json, created_at),
+    )
+
+
+def _persist_artifact(
+    *,
+    execution_id: str,
+    unrolled_index: int,
+    node_id: str | None,
+    artifact: dict,
+    created_at: str,
+) -> None:
+    file_type = str(artifact.get("fileType") or artifact.get("file_type") or "output_file")
+    file_path = artifact.get("filePath") or artifact.get("file_path")
+    if not file_path:
+        return
+    metadata = dict(artifact.get("metadata") or {})
+    metadata["unrolledIndex"] = unrolled_index
+    metadata_json = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    duplicate = db.conn.execute(
+        """
+        SELECT 1 FROM execution_artifacts
+        WHERE execution_id = ? AND node_id IS ? AND file_type = ? AND file_path = ? AND metadata = ?
+        LIMIT 1
+        """,
+        (execution_id, node_id, file_type, str(file_path), metadata_json),
+    ).fetchone()
+    if duplicate:
+        return
+    db.conn.execute(
+        """
+        INSERT INTO execution_artifacts (execution_id, node_id, file_type, file_path, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (execution_id, node_id, file_type, str(file_path), metadata_json, created_at),
+    )
 
 
 def finish_execution(exec_id: str, status: str, duration_ms: int, error: str | None) -> None:

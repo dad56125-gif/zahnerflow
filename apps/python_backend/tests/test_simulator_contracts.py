@@ -9,9 +9,10 @@ from types import SimpleNamespace
 import pytest
 
 from devices.mfc.real_device import ErrorCategory, MfcError
-from devices.zahner.real_device import _normalize_parameters
+from devices.zahner.logic import normalize_measurement_parameters
 from experiment_worker import build_output_path
 from runtime.device_manager import DeviceManager
+from devices.furnace.limits import validate_furnace_program_segments
 
 
 def test_device_manager_initial_disconnected_contract():
@@ -63,14 +64,36 @@ def test_furnace_simulator_status_segments_and_raw_temperature_contract():
         assert devices.furnace_write_param(0x00, 3)["segment"] == 3
 
         devices.furnace_write_param(0x1A, 750)
-        first_segment = devices.furnace_read_segments()[0]
+        program_segments = devices.furnace_read_segments()
+        assert len(program_segments) == 27
+        first_segment = program_segments[0]
         assert first_segment == {"id": 1, "temperature": 75.0, "time": 0}
 
         result = devices.furnace_write_segments([{"id": 1, "temperature": 80.0, "time": 5}])
         assert result == {"success": True, "count": 1}
         assert devices.furnace_read_segments()[0] == {"id": 1, "temperature": 80.0, "time": 5}
+
+        # Hardware segments 28-30 remain available to the change_temperature
+        # workflow node but are intentionally hidden from public programs.
+        devices.furnace_write_param(0x50, 9000)
+        devices.furnace_write_param(0x00, 28)
+        assert devices.furnace_status()["segment"] == 28
+        assert len(devices.furnace_read_segments()) == 27
     finally:
         devices.disconnect_all()
+
+
+def test_furnace_program_segments_reject_reserved_ids_and_invalid_values():
+    assert validate_furnace_program_segments(
+        [{"id": 27, "temperature": 1100, "time": -121}]
+    ) == [{"id": 27, "temperature": 1100.0, "time": -121}]
+
+    with pytest.raises(ValueError, match="reserved"):
+        validate_furnace_program_segments([{"id": 28, "temperature": 800, "time": 10}])
+    with pytest.raises(ValueError, match="between 25 and 1100"):
+        validate_furnace_program_segments([{"id": 1, "temperature": 20, "time": 10}])
+    with pytest.raises(ValueError, match="segment time"):
+        validate_furnace_program_segments([{"id": 1, "temperature": 800, "time": 10000}])
 
 
 def test_furnace_simulator_failure_profiles():
@@ -201,7 +224,7 @@ def test_zahner_simulator_dc_and_eis_measurement_contract(tmp_path):
 
 
 def test_zahner_eis_normalizes_frontend_scan_controls():
-    params_to_max = _normalize_parameters(
+    params_to_max = normalize_measurement_parameters(
         "eis_potentiostatic",
         {
             "eisScanDirection": "START_TO_MAX",
@@ -216,7 +239,7 @@ def test_zahner_eis_normalizes_frontend_scan_controls():
     assert params_to_max["eis_scan_strategy"] == "MULTI_SINE"
     assert params_to_max["eis_start_frequency"] == 0.1
 
-    params_to_min = _normalize_parameters(
+    params_to_min = normalize_measurement_parameters(
         "eis_potentiostatic",
         {
             "eisScanDirection": "START_TO_MIN",
@@ -229,7 +252,7 @@ def test_zahner_eis_normalizes_frontend_scan_controls():
     assert params_to_min["eis_start_frequency"] == 300000
 
     with pytest.raises(ValueError, match="lower frequency"):
-        _normalize_parameters(
+        normalize_measurement_parameters(
             "eis_potentiostatic",
             {
                 "eisLowerFrequency": 300000,
@@ -253,8 +276,9 @@ def test_output_path_uses_safe_windows_segments_and_user_project(tmp_path):
     assert "Project_01" in path
     assert "Sample_02" in path
     assert "_unassigned" not in path
+    assert os.path.commonpath([str(tmp_path), path]) == str(tmp_path)
     relative = os.path.relpath(path, str(tmp_path))
-    assert not any(char in relative for char in '<>:"/|?*')
+    assert all(not any(char in segment for char in '<>:"/\\|?*') for segment in relative.split(os.sep))
 
 
 def test_output_path_sanitizes_unassigned_workflow_name(tmp_path):
@@ -268,9 +292,10 @@ def test_output_path_sanitizes_unassigned_workflow_name(tmp_path):
     )
 
     relative = os.path.relpath(path, str(tmp_path))
+    assert os.path.commonpath([str(tmp_path), path]) == str(tmp_path)
     assert "_unassigned" in relative
     assert "工作流 2026_7_3 16_26_01" in relative
-    assert not any(char in relative for char in '<>:"/|?*')
+    assert all(not any(char in segment for char in '<>:"/\\|?*') for segment in relative.split(os.sep))
 
 
 def test_zahner_simulator_failure_profiles():

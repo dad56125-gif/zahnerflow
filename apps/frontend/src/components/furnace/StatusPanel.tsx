@@ -2,6 +2,10 @@ import React from 'react';
 import { TemperatureChart } from './FurnaceTemperatureChart';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
 import { SpacedCjkText } from '../common/SpacedCjkText';
+import {
+  FURNACE_PROGRAM_SEGMENT_COUNT,
+  isFurnaceTransientSegment,
+} from '../../modules/furnace/temperatureLimits';
 
 interface StatusPanelProps {
   furnaceState: FurnaceState;
@@ -82,14 +86,14 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           onClick={async () => {
             const input = document.getElementById('monitoringSegmentInput') as HTMLInputElement;
             const segment = parseInt(input.value);
-            if (segment >= 1 && segment <= 27) {
+            if (segment >= 1 && segment <= FURNACE_PROGRAM_SEGMENT_COUNT) {
               try {
                 await furnaceControls.set_segment(segment);
               } catch (error) {
                 alert(`设置程序段失败: ${error instanceof Error ? error.message : '未知错误'}`);
               }
             } else {
-              alert('程序段号必须在1-27之间（避免与温度节点地址冲突）');
+              alert(`程序段号必须在1-${FURNACE_PROGRAM_SEGMENT_COUNT}之间（后三段保留给点变温节点）`);
             }
           }}
           disabled={
@@ -103,8 +107,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
         <input
           type="number"
           min="1"
-          max="27"
-          placeholder="1-27"
+          max={FURNACE_PROGRAM_SEGMENT_COUNT}
+          placeholder={`1-${FURNACE_PROGRAM_SEGMENT_COUNT}`}
           className="input monitoring-segment-input"
           id="monitoringSegmentInput"
           disabled={
@@ -150,7 +154,11 @@ export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ fu
   const segmentTimeSet = Number(status?.segmentTimeSet ?? 0);
   const segmentProgress = segmentTimeSet > 0 ? (segmentTime / segmentTimeSet) * 100 : 0;
   const segment = Number(status?.segment);
-  const segmentLabel = Number.isFinite(segment) ? `${segment}/27` : '--/27';
+  const segmentLabel = Number.isFinite(segment)
+    ? isFurnaceTransientSegment(segment)
+      ? `点变温 (${segment})`
+      : `${segment}/${FURNACE_PROGRAM_SEGMENT_COUNT}`
+    : `--/${FURNACE_PROGRAM_SEGMENT_COUNT}`;
   const runElapsedMinutes = calculateRunElapsedMinutes(furnaceState.history_data);
   const formatTemperature = (value?: number) => (value !== undefined ? value.toFixed(1) : '--.-');
   const formatPercent = (value?: number) => (value !== undefined ? value.toFixed(1) : '--.-');

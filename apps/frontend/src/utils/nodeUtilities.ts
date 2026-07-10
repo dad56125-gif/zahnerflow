@@ -3,6 +3,7 @@
 import type { NodeType, NodeCategory, WorkflowNode, WorkstationType } from '@zahnerflow/types';
 import type { NodeConfig } from '../types/NodeConfiguration';
 import { NODE_CONFIGS, NODE_CATEGORY_NAMES, ZAHNER_NODE_CONFIGS, NODE_GROUPS, ZAHNER_NODE_GROUPS } from '../types/NodeConfiguration';
+import { nextScheduledStart, scheduledStartConfigFromDate } from './scheduledStart';
 
 // --- 1. 存储相关的常量与逻辑 ---
 const STORAGE_KEY_PREFIX = 'zahner_workflow_defaults_';
@@ -115,19 +116,12 @@ export function createWorkflowNode(type: NodeType): WorkflowNode {
 
   let config = getEffectiveDefaultParameters(type);
   if (type === 'scheduled_start') {
-    const next = new Date();
-    next.setMinutes(next.getMinutes() + 5);
+    const now = new Date();
+    const next = nextScheduledStart(now);
     config = {
       ...config,
-      hour: next.getHours(),
-      minute: Math.ceil(next.getMinutes() / 5) * 5,
-      nextDay: false
+      ...scheduledStartConfigFromDate(next, now),
     };
-    if (config.minute >= 60) {
-      config.hour = (config.hour + 1) % 24;
-      config.minute = 0;
-      config.nextDay = config.hour === 0;
-    }
   }
 
   return {

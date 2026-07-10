@@ -6,6 +6,7 @@ import { Dropdown } from '../shared/Dropdown';
 import { ModalLayer } from '../shared/OverlayLayer';
 import { renderCjkText, SpacedCjkText } from '../common/SpacedCjkText';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import { resolveAvatarSrc } from '../../utils/avatarAssets';
 
 interface UserSelectorProps {
   currentUser: string;
@@ -85,6 +86,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     offset: 8,
     minWidth: 200,
   });
+  const currentUserAvatarSrc = resolveAvatarSrc(currentUserAvatar);
 
   const handleCreateUser = async () => {
     if (!newUserName.trim()) return;
@@ -133,9 +135,9 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         className={`btn btn--md btn--primary ${highlightType === 'select' ? 'user-selector__highlight--active' : ''}`}
         onClick={() => dropdown.toggle()}
       >
-        {currentUserAvatar ? (
+        {currentUserAvatarSrc ? (
           <img
-            src={currentUserAvatar}
+            src={currentUserAvatarSrc}
             alt=""
             className="user-selector__avatar"
             style={{
@@ -254,7 +256,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                   >
                     {user.avatar ? (
                       <img
-                        src={user.avatar}
+                        src={resolveAvatarSrc(user.avatar)}
                         alt=""
                         style={{
                           width: '100%',

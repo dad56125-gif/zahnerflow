@@ -9,6 +9,8 @@ import threading
 import time
 from typing import Dict, List, Optional
 
+from .limits import FURNACE_HARDWARE_SEGMENT_COUNT
+
 
 class FurnaceSimulator:
     def __init__(self, profile: str = "normal"):
@@ -21,7 +23,10 @@ class FurnaceSimulator:
         self.current_segment = 1
         self.segment_time = 0
         self.segment_time_set = 0
-        self.segments: List[Dict] = [{"id": i, "temperature": 25.0, "time": 0} for i in range(1, 31)]
+        self.segments: List[Dict] = [
+            {"id": i, "temperature": 25.0, "time": 0}
+            for i in range(1, FURNACE_HARDWARE_SEGMENT_COUNT + 1)
+        ]
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()

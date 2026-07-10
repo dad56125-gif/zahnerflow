@@ -12,6 +12,10 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FloatingLayer } from './shared/OverlayLayer';
+import {
+    clampScheduledStart,
+    scheduledStartBounds,
+} from '../utils/scheduledStart';
 
 interface ScheduleRunnerProps {
     /** 是否显示弹窗 */
@@ -35,9 +39,7 @@ export const ScheduleTimePicker: React.FC<ScheduleTimePickerProps> = ({
     confirmText = '开始',
     onConfirm
 }) => {
-    const [hours, setHours] = useState(0);
-    const [minutes, setMinutes] = useState(0);
-    const [isNextDay, setIsNextDay] = useState(false);
+    const [selectedTime, setSelectedTime] = useState<Date>(() => scheduledStartBounds().min);
 
     const hourDigitRef = useRef<HTMLDivElement>(null);
     const minuteDigitRef = useRef<HTMLDivElement>(null);
@@ -52,111 +54,38 @@ export const ScheduleTimePicker: React.FC<ScheduleTimePickerProps> = ({
         el.addEventListener('animationend', onEnd);
     }, []);
 
-    const getMinTime = useCallback(() => {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() + 5);
-        return now;
-    }, []);
-
     useEffect(() => {
-        if (initialTime) {
-            setHours(initialTime.getHours());
-            setMinutes(initialTime.getMinutes());
-            setIsNextDay(initialTime.toDateString() !== new Date().toDateString());
-            return;
-        }
+        const bounds = scheduledStartBounds();
+        setSelectedTime(clampScheduledStart(initialTime || bounds.min, bounds));
+    }, [initialTime]);
 
-        const minTime = getMinTime();
-        setHours(minTime.getHours());
-        setMinutes(Math.ceil(minTime.getMinutes() / 5) * 5);
-        setIsNextDay(false);
-    }, [getMinTime, initialTime]);
+    const updateSelectedTime = useCallback((amount: number, unit: 'hour' | 'minute') => {
+        setSelectedTime((current) => {
+            const candidate = new Date(current);
+            if (unit === 'hour') {
+                candidate.setHours(candidate.getHours() + amount);
+            } else {
+                candidate.setMinutes(candidate.getMinutes() + amount);
+            }
+            return clampScheduledStart(candidate, scheduledStartBounds());
+        });
+    }, []);
 
     const handleHourWheel = useCallback((e: WheelEvent) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -1 : 1;
 
-        setHours(prev => {
-            let newHour = prev + delta;
-            const minTime = getMinTime();
-            const minHour = minTime.getHours();
-            const minMinute = minTime.getMinutes();
-
-            if (newHour > 23) {
-                if (!isNextDay) {
-                    setIsNextDay(true);
-                    return 0;
-                }
-                const now = new Date();
-                if (newHour > now.getHours()) {
-                    return now.getHours();
-                }
-            }
-
-            if (newHour < 0) {
-                if (isNextDay) {
-                    setIsNextDay(false);
-                    return 23;
-                }
-                return minHour;
-            }
-
-            if (!isNextDay && newHour < minHour) {
-                return minHour;
-            }
-
-            if (!isNextDay && newHour === minHour && minutes < minMinute) {
-                setMinutes(Math.ceil(minMinute / 5) * 5);
-            }
-
-            return newHour;
-        });
+        updateSelectedTime(delta, 'hour');
         triggerFlip(hourDigitRef.current);
-    }, [getMinTime, isNextDay, minutes, triggerFlip]);
+    }, [triggerFlip, updateSelectedTime]);
 
     const handleMinuteWheel = useCallback((e: WheelEvent) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -5 : 5;
 
-        setMinutes(prev => {
-            let newMinute = prev + delta;
-            const minTime = getMinTime();
-            const minHour = minTime.getHours();
-            const minMinute = minTime.getMinutes();
-
-            if (newMinute >= 60) {
-                newMinute = 0;
-                setHours(h => {
-                    if (h === 23 && !isNextDay) {
-                        setIsNextDay(true);
-                        return 0;
-                    }
-                    return Math.min(h + 1, 23);
-                });
-            }
-
-            if (newMinute < 0) {
-                newMinute = 55;
-                setHours(h => {
-                    if (h === 0 && isNextDay) {
-                        setIsNextDay(false);
-                        return 23;
-                    }
-                    if (!isNextDay && h <= minHour) {
-                        return minHour;
-                    }
-                    return Math.max(h - 1, 0);
-                });
-            }
-
-            if (!isNextDay && hours === minHour && newMinute < minMinute) {
-                return Math.ceil(minMinute / 5) * 5;
-            }
-
-            return newMinute;
-        });
+        updateSelectedTime(delta, 'minute');
         triggerFlip(minuteDigitRef.current);
-    }, [getMinTime, isNextDay, hours, triggerFlip]);
+    }, [triggerFlip, updateSelectedTime]);
 
     useEffect(() => {
         const hourEl = hourDigitRef.current;
@@ -180,16 +109,12 @@ export const ScheduleTimePicker: React.FC<ScheduleTimePickerProps> = ({
     }, [handleHourWheel, handleMinuteWheel]);
 
     const handleConfirm = () => {
-        const now = new Date();
-        const scheduledTime = new Date(now);
-
-        if (isNextDay) {
-            scheduledTime.setDate(scheduledTime.getDate() + 1);
-        }
-
-        scheduledTime.setHours(hours, minutes, 0, 0);
-        onConfirm(scheduledTime);
+        onConfirm(clampScheduledStart(selectedTime, scheduledStartBounds()));
     };
+
+    const hours = selectedTime.getHours();
+    const minutes = selectedTime.getMinutes();
+    const isNextDay = selectedTime.toDateString() !== new Date().toDateString();
 
     return (
         <>

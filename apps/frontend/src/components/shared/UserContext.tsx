@@ -22,12 +22,18 @@ interface UserContextType {
   createUser: (userData: { user: string; email?: string }) => Promise<User>;
   deleteUser: (user: string) => Promise<boolean>;
   filePathConfig: FilePathConfig;
-  setFilePathConfig: (config: FilePathConfig) => void;
+  setFilePathConfig: (config: FilePathConfig, options?: { persist?: boolean }) => void;
   currentUserAvatar: string;
   setCurrentUserAvatar: (avatar: string) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
+
+const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = {
+  basePath: 'C:\\data\\archive',
+  projectName: '',
+  individualName: ''
+};
 
 export const useUser = () => {
   const context = useContext(UserContext);
@@ -47,11 +53,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [currentUserAvatar, setCurrentUserAvatarState] = useState<string>('');
 
   // 文件路径配置状态
-  const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>({
-    basePath: 'C:\\data\\archive',
-    projectName: '',
-    individualName: ''
-  });
+  const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>(DEFAULT_FILE_PATH_CONFIG);
 
   // 标记是否正在加载用户配置，防止重复请求
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
@@ -114,11 +116,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     } catch (error) {
       console.warn(`[UserContext] 加载用户 "${user}" 的路径配置失败:`, error);
       // 失败时使用默认配置
-      setFilePathConfigState({
-        basePath: 'C:\\data\\archive',
-        projectName: '',
-        individualName: ''
-      });
+      setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
       setCurrentUserAvatarState('');
     } finally {
       setIsLoadingConfig(false);
@@ -140,11 +138,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       loadUserPathConfig(user);
     } else {
       // 用户被清空时，重置路径配置
-      setFilePathConfigState({
-        basePath: 'C:\\data\\archive',
-        projectName: '',
-        individualName: ''
-      });
+      setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
       setCurrentUserAvatarState('');
     }
   };
@@ -152,11 +146,11 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   /**
    * 设置文件路径配置（同时保存到后端）
    */
-  const setFilePathConfig = async (config: FilePathConfig) => {
+  const setFilePathConfig = async (config: FilePathConfig, options: { persist?: boolean } = {}) => {
     setFilePathConfigState(config);
 
     // 使用新的统一用户配置 API 保存
-    if (currentUser) {
+    if (currentUser && options.persist !== false) {
       try {
         await runtimeClient.users.saveSettingsSection(currentUser, 'filePath', config);
       } catch (error) {
@@ -206,11 +200,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         setCurrentUserState('');
         localStorage.removeItem('currentUser');
         // 重置路径配置
-        setFilePathConfigState({
-          basePath: 'C:\\data\\archive',
-          projectName: '',
-          individualName: ''
-        });
+        setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
       }
       return true;
     }

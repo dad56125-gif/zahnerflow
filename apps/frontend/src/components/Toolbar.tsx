@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
-import { useExecutionStore } from '../state/executionStateBridge';
+import { selectExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
 import { UnrollViewModal } from './UnrollViewModal';
 
 interface ToolbarProps {
@@ -87,12 +87,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const { clearCanvas, nodes } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
-  const nodeStatuses = useExecutionStore((state) => state.nodeStatuses);
+  const executionUi = useExecutionStore(selectExecutionUiState);
   const [showUnrollView, setShowUnrollView] = useState(false);
-
-  const hasFinishedStatus = nodeStatuses.some((status) =>
-    ['completed', 'failed', 'cancelled'].includes(String(status || ''))
-  );
 
   const getButtonStates = () => {
     if (!selectedWorkstation) {
@@ -107,39 +103,39 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       };
     }
 
-    if (hasError) {
+    if (executionUi.isCancelling) {
+      return {
+        fileOperationsDisabled: true,
+        workflowDisabled: true,
+        primaryButtonDisabled: true,
+        primaryButtonText: executionUi.label,
+        primaryButtonVariant: 'btn--warning' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
+      };
+    }
+
+    if (executionUi.isActive) {
+      return {
+        fileOperationsDisabled: true,
+        workflowDisabled: true,
+        primaryButtonDisabled: true,
+        primaryButtonText: executionUi.label,
+        primaryButtonVariant: 'btn--primary' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
+      };
+    }
+
+    if (hasError || executionUi.canReset) {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
         primaryButtonDisabled: false,
         primaryButtonText: '重置',
-        primaryButtonVariant: 'btn--warning' as const,
+        primaryButtonVariant: hasError ? 'btn--warning' as const : 'btn--secondary' as const,
         primaryButtonIcon: 'reset' as const,
         primaryAction: 'reset' as PrimaryAction
-      };
-    }
-
-    if (isCancelling) {
-      return {
-        fileOperationsDisabled: true,
-        workflowDisabled: true,
-        primaryButtonDisabled: true,
-        primaryButtonText: '停止中',
-        primaryButtonVariant: 'btn--warning' as const,
-        primaryButtonIcon: 'start' as const,
-        primaryAction: 'run' as PrimaryAction
-      };
-    }
-
-    if (isRunning) {
-      return {
-        fileOperationsDisabled: true,
-        workflowDisabled: true,
-        primaryButtonDisabled: true,
-        primaryButtonText: '运行中',
-        primaryButtonVariant: 'btn--primary' as const,
-        primaryButtonIcon: 'start' as const,
-        primaryAction: 'run' as PrimaryAction
       };
     }
 
@@ -159,10 +155,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       fileOperationsDisabled: false,
       workflowDisabled: false,
       primaryButtonDisabled: false,
-      primaryButtonText: hasFinishedStatus ? '重置' : '运行',
-      primaryButtonVariant: hasFinishedStatus ? 'btn--secondary' as const : 'btn--primary' as const,
-      primaryButtonIcon: hasFinishedStatus ? 'reset' as const : 'start' as const,
-      primaryAction: hasFinishedStatus ? 'reset' as PrimaryAction : 'run' as PrimaryAction
+      primaryButtonText: '运行',
+      primaryButtonVariant: 'btn--primary' as const,
+      primaryButtonIcon: 'start' as const,
+      primaryAction: 'run' as PrimaryAction
     };
   };
 

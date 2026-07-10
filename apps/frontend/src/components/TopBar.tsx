@@ -26,6 +26,8 @@ interface TopBarProps {
   simulatorActive?: boolean;
   onSimulatorPanelOpen?: () => void;
   hasRunMetadataWarning?: boolean;
+  furnaceConnected?: boolean;
+  mfcConnected?: boolean;
 }
 
 const DEVICE_ICON_PATHS = {
@@ -85,6 +87,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   simulatorActive = false,
   onSimulatorPanelOpen,
   hasRunMetadataWarning,
+  furnaceConnected = false,
+  mfcConnected = false,
 }) => {
   const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
@@ -265,7 +269,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <span className="btn-icon"><TopBarDeviceIcon type="furnace" /></span>
           <span className="btn-text"><SpacedCjkText text="管式炉" /></span>
-          <span className="device-status__indicator is-disconnected" />
+          <span className={`device-status__indicator is-${furnaceConnected ? 'connected' : 'disconnected'}`} />
         </div>
 
         <div
@@ -274,7 +278,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <span className="btn-icon"><TopBarDeviceIcon type="mfc" /></span>
           <span className="btn-text"><SpacedCjkText text="流量计" /></span>
-          <span className="device-status__indicator is-disconnected" />
+          <span className={`device-status__indicator is-${mfcConnected ? 'connected' : 'disconnected'}`} />
         </div>
 
         <div className="workstation-selector" ref={dropdownContainerRef}>

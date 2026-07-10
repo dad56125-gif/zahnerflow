@@ -5,12 +5,22 @@ from __future__ import annotations
 import asyncio
 import math
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from devices.furnace.limits import validate_furnace_temperature
 from runtime.execution_eta import params_for_eta
 from runtime.execution_planner import ExecutionPlan
+from runtime.execution_semantics import (
+    ExecutionIdMismatchError,
+    InvalidExecutionTransitionError,
+    MeasurementOutcome,
+    NoActiveExecutionError,
+    is_active_execution_status,
+    normalize_measurement_outcome,
+    parse_scheduled_at,
+    require_node_execution_spec,
+)
 from runtime.temperature_control import (
     estimate_remaining_temperature_seconds,
     estimate_temperature_ramp_minutes,
@@ -20,12 +30,6 @@ from shared.contracts.events import WORKFLOW_EIS, WORKFLOW_MEASUREMENT
 
 class WorkflowCancelled(RuntimeError):
     pass
-
-
-NON_INTERRUPTIBLE_NODE_TYPES = {
-    "eis_potentiostatic",
-    "eis_galvanostatic",
-}
 
 
 class ExecutionEngine:
@@ -48,7 +52,7 @@ class ExecutionEngine:
 
     @property
     def is_running(self) -> bool:
-        return self.status in ("running", "paused", "cancelling")
+        return is_active_execution_status(self.status)
 
     @property
     def is_cancelling(self) -> bool:
@@ -78,25 +82,26 @@ class ExecutionEngine:
         self._task = asyncio.create_task(self._execute())
         return {"status": "started", "executionId": self.execution_id}
 
-    async def pause(self) -> dict:
+    async def pause(self, expected_execution_id: str) -> dict:
+        self._require_execution_target(expected_execution_id)
         if self.status != "running":
-            raise RuntimeError("No running execution to pause")
+            raise InvalidExecutionTransitionError(f"Cannot pause execution while status is {self.status}")
         self._pause_requested = True
         self.status = "paused"
         await self.runtime.on_experiment_state({"executionId": self.execution_id, "status": "paused", "error": None})
         return {"message": "Execution paused"}
 
-    async def resume(self) -> dict:
+    async def resume(self, expected_execution_id: str) -> dict:
+        self._require_execution_target(expected_execution_id)
         if self.status != "paused":
-            raise RuntimeError("No paused execution to resume")
+            raise InvalidExecutionTransitionError(f"Cannot resume execution while status is {self.status}")
         self._pause_requested = False
         self.status = "running"
         await self.runtime.on_experiment_state({"executionId": self.execution_id, "status": "running", "error": None})
         return {"message": "Execution resumed"}
 
-    async def cancel(self) -> dict:
-        if not self.is_running:
-            raise RuntimeError("No running execution to cancel")
+    async def cancel(self, expected_execution_id: str) -> dict:
+        self._require_execution_target(expected_execution_id)
         self._cancel_requested = True
         self._pause_requested = False
         self.status = "cancelling"
@@ -109,6 +114,12 @@ class ExecutionEngine:
             }
         )
         return {"message": "Execution cancellation requested"}
+
+    def _require_execution_target(self, expected_execution_id: str) -> None:
+        if not self.execution_id or not self.is_running:
+            raise NoActiveExecutionError("No active execution")
+        if self.execution_id != expected_execution_id:
+            raise ExecutionIdMismatchError("Execution id does not match active execution")
 
     async def _execute(self) -> None:
         start_time = time.time()
@@ -141,18 +152,14 @@ class ExecutionEngine:
                 if unrolled_idx < start_from and unrolled_idx not in plan.boundary_prelude_indices:
                     continue
 
-                if self._cancel_requested:
-                    raise WorkflowCancelled("Execution cancelled by user")
-
-                while self._pause_requested and not self._cancel_requested:
-                    await asyncio.sleep(0.5)
-                if self._cancel_requested:
-                    raise WorkflowCancelled("Execution cancelled by user")
+                await self._wait_until_runnable()
 
                 node = step.get("node") or plan.nodes[step["originalIndex"]]
                 node_type = node.get("type")
                 params = node.get("config") or {}
                 eta_params = params_for_eta(node_type, params)
+                if step.get("scheduledAt"):
+                    eta_params["scheduledAt"] = step["scheduledAt"]
                 self.current_step_index = step["originalIndex"]
 
                 for loop_event in step.get("loopEvents", []):
@@ -163,6 +170,7 @@ class ExecutionEngine:
                             **loop_event,
                         }
                     )
+                await self._wait_until_runnable()
 
                 step_info = {
                     "nodeId": node["id"],
@@ -186,17 +194,27 @@ class ExecutionEngine:
 
                 step_finished = False
                 try:
-                    result = await self._dispatch_node(node, step, params)
+                    await self._wait_until_runnable()
+                    dispatch_result = await self._dispatch_node(node, step, params)
+                    outcome = dispatch_result if isinstance(dispatch_result, MeasurementOutcome) else None
+                    status = outcome.step_status if outcome else "completed"
+                    result = outcome.result if outcome else dispatch_result
                     await self.runtime.on_execution_step_finished(
                         {
                             "executionId": execution_id,
                             "nodeIndex": step["originalIndex"],
                             "unrolledIndex": unrolled_idx,
-                            "status": "completed",
+                            "status": status,
                             "data": result,
+                            "warnings": list(outcome.warnings) if outcome else [],
+                            "artifacts": list(outcome.artifacts) if outcome else [],
                         }
                     )
                     step_finished = True
+                    if status == "cancelled":
+                        raise WorkflowCancelled(result.get("reason") or "Measurement cancelled")
+                    if status == "failed":
+                        raise RuntimeError(result.get("reason") or "Measurement failed")
                     if self._cancel_requested:
                         raise WorkflowCancelled("Execution cancelled after current step completed")
                 except WorkflowCancelled as e:
@@ -212,19 +230,19 @@ class ExecutionEngine:
                         )
                     raise
                 except Exception as e:
-                    await self.runtime.on_execution_step_finished(
-                        {
-                            "executionId": execution_id,
-                            "nodeIndex": step["originalIndex"],
-                            "unrolledIndex": unrolled_idx,
-                            "status": "failed",
-                            "data": {"error": str(e)},
-                        }
-                    )
+                    if not step_finished:
+                        await self.runtime.on_execution_step_finished(
+                            {
+                                "executionId": execution_id,
+                                "nodeIndex": step["originalIndex"],
+                                "unrolledIndex": unrolled_idx,
+                                "status": "failed",
+                                "data": {"error": str(e)},
+                            }
+                        )
                     raise
 
             duration_ms = int((time.time() - start_time) * 1000)
-            self.status = "completed"
             await self.runtime.on_execution_finished(
                 {
                     "executionId": execution_id,
@@ -236,8 +254,11 @@ class ExecutionEngine:
             )
         except Exception as e:
             duration_ms = int((time.time() - start_time) * 1000)
-            final_status = "cancelled" if self._cancel_requested or self.status in ("cancelled", "cancelling") else "failed"
-            self.status = final_status
+            final_status = (
+                "cancelled"
+                if isinstance(e, WorkflowCancelled) or self._cancel_requested or self.status in ("cancelled", "cancelling")
+                else "failed"
+            )
             await self.runtime.on_execution_finished(
                 {
                     "executionId": execution_id,
@@ -254,40 +275,36 @@ class ExecutionEngine:
 
     async def _dispatch_node(self, node: dict, step: dict, params: dict):
         node_type = node.get("type")
-        if node_type == "startup":
+        spec = require_node_execution_spec(node_type)
+        if spec.dispatch_kind == "zahner_startup":
             await asyncio.to_thread(self.devices.connect_zahner, params or {})
             return None
-        if node_type == "shutdown":
+        if spec.dispatch_kind == "zahner_shutdown":
             await asyncio.to_thread(self.devices.disconnect_zahner)
             return None
-        if node_type in ("delay", "wait_delay"):
+        if spec.dispatch_kind == "wait":
             await self._execute_wait_delay(float(params.get("duration", 1)))
             return None
-        if node_type == "scheduled_start":
-            scheduled_at = self._scheduled_datetime(params)
+        if spec.dispatch_kind == "scheduled_wait":
+            scheduled_value = step.get("scheduledAt")
+            if not scheduled_value:
+                raise RuntimeError("scheduled_start is missing the absolute scheduledAt from its execution plan")
+            scheduled_at = parse_scheduled_at(scheduled_value)
             delay = (scheduled_at - datetime.now()).total_seconds()
             if delay <= 0:
                 raise RuntimeError(f"Scheduled time has already passed: {scheduled_at.isoformat()}")
             await self._execute_wait_delay(delay)
             return {"scheduledFor": scheduled_at.isoformat()}
-        if node_type == "change_temperature":
+        if spec.dispatch_kind == "change_temperature":
             return await self._execute_change_temperature(params)
-        if node_type == "change_gas_flow":
+        if spec.dispatch_kind == "change_gas_flow":
             return await self._execute_change_gas_flow(params)
-        if node_type in (
-            "eis_potentiostatic",
-            "eis_galvanostatic",
-            "ocp",
-            "ocp_measurement",
-            "voltage_ramp",
-            "current_ramp",
-            "chronoamperometry",
-            "chronopotentiometry",
-            "measurement",
-        ):
-            meas_type = params.get("measurement_type") if node_type == "measurement" else node_type
-            return await self._execute_measurement(node, meas_type, params, step)
-        return None
+        if spec.dispatch_kind == "measurement":
+            meas_type = params.get("measurement_type") if node_type == "measurement" else spec.measurement_type
+            if not meas_type:
+                raise RuntimeError("measurement node is missing measurement_type")
+            return await self._execute_measurement(node, meas_type, params, step, interruptible=spec.interruptible)
+        raise RuntimeError(f"Unsupported dispatch kind for {node_type}: {spec.dispatch_kind}")
 
     async def _execute_wait_delay(self, duration: float):
         deadline = time.monotonic() + max(0.0, duration)
@@ -296,15 +313,13 @@ class ExecutionEngine:
                 raise WorkflowCancelled("Wait node cancelled by user")
             await asyncio.sleep(min(0.25, max(0.0, deadline - time.monotonic())))
 
-    def _scheduled_datetime(self, params: dict) -> datetime:
-        now = datetime.now()
-        hour = max(0, min(23, int(params.get("hour", 0) or 0)))
-        minute = max(0, min(59, int(params.get("minute", 0) or 0)))
-        scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if params.get("nextDay"):
-            scheduled += timedelta(days=1)
-        return scheduled
-
+    async def _wait_until_runnable(self) -> None:
+        if self._cancel_requested:
+            raise WorkflowCancelled("Execution cancelled by user")
+        while self._pause_requested and not self._cancel_requested:
+            await asyncio.sleep(0.25)
+        if self._cancel_requested:
+            raise WorkflowCancelled("Execution cancelled by user")
 
     async def _execute_change_temperature(self, params: dict):
         def do_change():
@@ -325,11 +340,13 @@ class ExecutionEngine:
                 cooling_linear_floor=cooling_linear_floor,
             )
             calculated_duration = int(math.ceil(ramp_minutes))
-            self.devices.furnace_write_param(0x50, int(round(current_temp)))
+            # AI-518P program temperatures use raw tenths of a degree, including
+            # the reserved 28-30 scratch segments used by this node.
+            self.devices.furnace_write_param(0x50, int(round(current_temp * 10)))
             self.devices.furnace_write_param(0x51, calculated_duration)
-            self.devices.furnace_write_param(0x52, int(round(target_temp)))
+            self.devices.furnace_write_param(0x52, int(round(target_temp * 10)))
             self.devices.furnace_write_param(0x53, 5001)
-            self.devices.furnace_write_param(0x54, int(round(target_temp)))
+            self.devices.furnace_write_param(0x54, int(round(target_temp * 10)))
             self.devices.furnace_write_param(0x00, 28)
             self.devices.furnace_write_param(0x15, 0)
 
@@ -353,7 +370,7 @@ class ExecutionEngine:
             while True:
                 if self._cancel_requested:
                     self.devices.furnace_write_param(0x15, 12)
-                    raise RuntimeError("Execution cancelled")
+                    raise WorkflowCancelled("Temperature change cancelled by user")
                 time.sleep(2.0)
                 status = self.devices.furnace_status()
                 now = time.monotonic()
@@ -408,7 +425,7 @@ class ExecutionEngine:
             for _ in range(stabilization_time):
                 if self._cancel_requested:
                     self.devices.mfc_set_setpoint(addr, 0)
-                    raise RuntimeError("Execution cancelled")
+                    raise WorkflowCancelled("Gas flow change cancelled by user")
                 time.sleep(1.0)
                 status = self.devices.mfc_read_status(addr)
                 flow = status.get("flowSccm", 0)
@@ -420,7 +437,15 @@ class ExecutionEngine:
 
         return await asyncio.to_thread(do_change)
 
-    async def _execute_measurement(self, node: dict, meas_type: str, params: dict, step: dict):
+    async def _execute_measurement(
+        self,
+        node: dict,
+        meas_type: str,
+        params: dict,
+        step: dict,
+        *,
+        interruptible: bool = True,
+    ) -> MeasurementOutcome:
         from experiment_worker import build_output_path
 
         timestamp = time.strftime("%y%m%d_%H%M%S")
@@ -462,7 +487,7 @@ class ExecutionEngine:
             "output_path": output_path,
             "environment_context": env_context,
         }
-        if meas_type not in NON_INTERRUPTIBLE_NODE_TYPES:
+        if interruptible:
             measurement_params["_cancel_requested"] = lambda: self._cancel_requested
 
         def stream_callback(data):
@@ -483,10 +508,7 @@ class ExecutionEngine:
             if self._cancel_requested:
                 raise WorkflowCancelled("Measurement cancelled by user") from e
             raise
-        if not result:
-            return None
-
-        eis_data = result.get("eis_data")
+        eis_data = result.get("eis_data") if isinstance(result, dict) else None
         if eis_data and ("eis_potentiostatic" in meas_type or "eis_galvanostatic" in meas_type):
             await self.runtime.emit(
                 WORKFLOW_EIS,
@@ -505,9 +527,4 @@ class ExecutionEngine:
                 },
             )
 
-        return {
-            "outputDir": output_path,
-            "outputFile": result.get("output_file") or result.get("full_path"),
-            "csvPath": result.get("csv_path") or (eis_data.get("csv_path") if eis_data else None),
-            "data_points": result.get("points") or (eis_data.get("point_count") if eis_data else 0),
-        }
+        return normalize_measurement_outcome(result, output_dir=output_path)

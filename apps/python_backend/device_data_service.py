@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 from database import db
-from devices.furnace.limits import validate_furnace_temperature
+from devices.furnace.limits import validate_furnace_program_segments
 
 RAW_SAMPLE_RETENTION_SECONDS = 30 * 24 * 60 * 60
 
@@ -64,7 +64,7 @@ class FurnaceDataService:
         }
 
     def create_preset(self, name: str, segments: list, summary: str = "") -> dict:
-        self._validate_segments(segments)
+        segments = validate_furnace_program_segments(segments)
         now = datetime.utcnow().isoformat() + 'Z'
         try:
             db.conn.execute(
@@ -79,7 +79,7 @@ class FurnaceDataService:
         return {"name": name, "segments": segments, "summary": summary, "createdAt": now, "updatedAt": now}
 
     def update_preset(self, name: str, segments: list) -> dict:
-        self._validate_segments(segments)
+        segments = validate_furnace_program_segments(segments)
         now = datetime.utcnow().isoformat() + 'Z'
         cursor = db.conn.execute(
             "UPDATE furnace_presets SET segments_json = ?, updated_at = ? WHERE name = ?",
@@ -101,19 +101,16 @@ class FurnaceDataService:
             return None
         return self.create_preset(new_name, src["segments"], src.get("summary", ""))
 
-    def segments_equal(self, a: list, b: list) -> bool:
-        if len(a) != len(b):
-            return False
-        return all(
-            x.get("id") == y.get("id")
-            and x.get("temperature") == y.get("temperature")
-            and x.get("time") == y.get("time")
-            for x, y in zip(a, b)
-        )
+    def segments_match(self, actual: list, expected: list) -> bool:
+        """Compare the addressed preset segments against a full 1-27 device read."""
 
-    def _validate_segments(self, segments: list) -> None:
-        for segment in segments:
-            validate_furnace_temperature(segment.get("temperature", 0), "preset segment temperature")
+        actual_by_id = {int(segment.get("id", 0)): segment for segment in actual}
+        return all(
+            (current := actual_by_id.get(int(segment.get("id", 0)))) is not None
+            and current.get("temperature") == segment.get("temperature")
+            and current.get("time") == segment.get("time")
+            for segment in expected
+        )
 
     # ---------- 采样数据 ----------
 

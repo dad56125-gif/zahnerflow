@@ -12,6 +12,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from database import db
+from runtime.execution_semantics import (
+    node_execution_spec,
+    parse_scheduled_at,
+    resolve_scheduled_start,
+)
 from runtime.temperature_control import estimate_temperature_wait_seconds
 
 
@@ -37,24 +42,13 @@ def params_hash(params: dict | None) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-MEASUREMENT_NODE_TYPES = {
-    "eis_potentiostatic",
-    "eis_galvanostatic",
-    "ocp",
-    "ocp_measurement",
-    "voltage_ramp",
-    "current_ramp",
-    "chronoamperometry",
-    "chronopotentiometry",
-}
-
-
 def params_for_eta(node_type: str | None, params: dict | None) -> dict:
     eta_params = dict(params or {})
+    spec = node_execution_spec(node_type)
     if node_type == "measurement":
         eta_params["measurement_type"] = eta_params.get("measurement_type", "measurement")
-    elif node_type in MEASUREMENT_NODE_TYPES:
-        eta_params.setdefault("measurement_type", node_type)
+    elif spec and spec.dispatch_kind == "measurement":
+        eta_params.setdefault("measurement_type", spec.measurement_type or node_type)
     return eta_params
 
 
@@ -63,15 +57,29 @@ def node_for_eta(node: dict) -> dict:
     return {**node, "config": params_for_eta(node_type, node.get("config") or {})}
 
 
-def estimate_node_seconds(node_type: str | None, params: dict | None, devices=None) -> dict:
+def estimate_node_seconds(
+    node_type: str | None,
+    params: dict | None,
+    devices=None,
+    *,
+    scheduled_at: datetime | None = None,
+    now: datetime | None = None,
+) -> dict:
     node_type = node_type or "unknown"
     clean_params = canonical_params(params)
     digest = params_hash(clean_params)
-    historical = _lookup_historical_estimate(node_type, digest)
+    spec = node_execution_spec(node_type)
+    historical = _lookup_historical_estimate(node_type, digest) if not spec or spec.learn_duration else None
     if historical:
         return historical
 
-    rule_seconds = _rule_estimate_seconds(node_type, clean_params, devices)
+    rule_seconds = _rule_estimate_seconds(
+        node_type,
+        clean_params,
+        devices,
+        scheduled_at=scheduled_at,
+        now=now,
+    )
     if rule_seconds is not None:
         return {
             "seconds": max(0.0, float(rule_seconds)),
@@ -90,17 +98,34 @@ def estimate_node_seconds(node_type: str | None, params: dict | None, devices=No
     }
 
 
-def build_timeline(nodes: list[dict], steps: list[dict], devices=None) -> dict:
+def build_timeline(nodes: list[dict], steps: list[dict], devices=None, *, now: datetime | None = None) -> dict:
     timeline_steps = []
     total_seconds = 0.0
+    planned_at = now or datetime.now()
+    projected_at = planned_at
     eta_nodes = [node_for_eta(node) for node in nodes]
     for unrolled_index, step in enumerate(steps):
         node = node_for_eta(step.get("node") or eta_nodes[step["originalIndex"]])
         node_type = node.get("type")
         params = node.get("config") or {}
-        estimate = estimate_node_seconds(node_type, params, devices)
+        scheduled_at = None
+        if node_type == "scheduled_start":
+            scheduled_value = step.get("scheduledAt")
+            scheduled_at = (
+                parse_scheduled_at(scheduled_value)
+                if scheduled_value
+                else resolve_scheduled_start(params, planned_at)
+            )
+        estimate = estimate_node_seconds(
+            node_type,
+            params,
+            devices,
+            scheduled_at=scheduled_at,
+            now=projected_at,
+        )
         seconds = float(estimate["seconds"])
         total_seconds += seconds
+        projected_at += timedelta(seconds=seconds)
         timeline_steps.append(
             {
                 "nodeId": node.get("id"),
@@ -116,6 +141,7 @@ def build_timeline(nodes: list[dict], steps: list[dict], devices=None) -> dict:
                 "etaConfidence": estimate["confidence"],
                 "etaSampleCount": estimate["sampleCount"],
                 "paramsHash": estimate["paramsHash"],
+                **({"scheduledAt": scheduled_at.isoformat()} if scheduled_at else {}),
             }
         )
     return {"steps": timeline_steps, "estimatedTotalSeconds": total_seconds}
@@ -139,8 +165,14 @@ def build_eta_snapshot(timeline: dict, updated_at: str | None = None) -> dict:
     }
 
 
-def estimate_workflow(nodes: list[dict], steps: list[dict], devices=None) -> dict:
-    timeline = build_timeline(nodes, steps, devices)
+def estimate_workflow(
+    nodes: list[dict],
+    steps: list[dict],
+    devices=None,
+    *,
+    now: datetime | None = None,
+) -> dict:
+    timeline = build_timeline(nodes, steps, devices, now=now)
     return {
         "eta": build_eta_snapshot(timeline),
         "steps": timeline["steps"],
@@ -234,24 +266,29 @@ def _combined_source(sources: set[str | None]) -> str:
     return "mixed"
 
 
-def _rule_estimate_seconds(node_type: str, params: dict, devices=None) -> float | None:
-    if node_type in ("delay", "wait_delay"):
+def _rule_estimate_seconds(
+    node_type: str,
+    params: dict,
+    devices=None,
+    *,
+    scheduled_at: datetime | None = None,
+    now: datetime | None = None,
+) -> float | None:
+    spec = node_execution_spec(node_type)
+    eta_kind = spec.eta_kind if spec else node_type
+    if eta_kind == "delay":
         return float(params.get("duration", 1))
-    if node_type == "scheduled_start":
-        now = datetime.now()
-        hour = max(0, min(23, int(params.get("hour", 0) or 0)))
-        minute = max(0, min(59, int(params.get("minute", 0) or 0)))
-        scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if params.get("nextDay"):
-            scheduled += timedelta(days=1)
-        return max(0.0, (scheduled - now).total_seconds())
-    if node_type == "startup":
+    if eta_kind == "scheduled_start":
+        reference = now or datetime.now()
+        scheduled = scheduled_at or resolve_scheduled_start(params, reference)
+        return max(0.0, (scheduled - reference).total_seconds())
+    if eta_kind == "startup":
         return 3.0
-    if node_type == "shutdown":
+    if eta_kind == "shutdown":
         return 3.0
-    if node_type == "change_gas_flow":
+    if eta_kind == "change_gas_flow":
         return float(params.get("stabilizationTime", 10))
-    if node_type == "change_temperature":
+    if eta_kind == "change_temperature":
         target = params.get("targetTemperature")
         rate = float(params.get("rate", 5) or 5)
         stabilization = float(params.get("stabilizationTime", 30) or 0)
@@ -286,6 +323,7 @@ def _rule_estimate_seconds(node_type: str, params: dict, devices=None) -> float 
 
 
 def _fallback_seconds(node_type: str) -> float:
-    if node_type in ("eis_potentiostatic", "eis_galvanostatic"):
+    spec = node_execution_spec(node_type)
+    if spec and spec.measurement_type in ("eis_potentiostatic", "eis_galvanostatic"):
         return 300.0
     return 60.0

@@ -165,11 +165,11 @@ def generate():
     )
     from contracts.workflow import (
         WorkstationType, NodeType, NodeCategory, NodeStatus,
-        WorkflowNode, Workflow, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
+        WorkflowNode, Workflow, IterationPathEntry, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
         ExecutionEtaStep, WorkflowEtaEstimate,
         ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
         NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
-        RawStreamData, EnrichedStreamData,
+        RawStreamData, EnrichedStreamData, EisResultData, EnrichedEisData,
     )
     from contracts.common import (
         DeviceConnectionStatus, DeviceError, LogEntry, LogEntryType,
@@ -232,11 +232,11 @@ def generate():
         " */",
         "",
     ]
-    for model in [WorkflowNode, Workflow, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep,
+    for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep,
                   WorkflowEtaEstimate, ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
                   ExecutionSnapshot,
                   NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
-                  RawStreamData, EnrichedStreamData]:
+                  RawStreamData, EnrichedStreamData, EisResultData, EnrichedEisData]:
         workflow_content.append(model_to_interface(model))
         workflow_content.append("")
 

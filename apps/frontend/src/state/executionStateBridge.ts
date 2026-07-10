@@ -7,7 +7,13 @@ import {
   WORKFLOW_NODES_RESET,
   WORKFLOW_SNAPSHOT,
 } from '../eventContracts';
-import type { ExecutionSnapshot, LoopIterationEvent } from '@zahnerflow/types';
+import type {
+  ExecutionSnapshot,
+  LoopIterationEvent,
+  NodesResetEvent,
+  NodeStatus,
+  NodeStatusUpdate,
+} from '@zahnerflow/types';
 // clearMeasurementCache 已解耦，现在由 useMeasurementStream 自己监听 nodesReset 事件
 
 export interface StartExecutionOptions {
@@ -21,7 +27,7 @@ export interface StartExecutionOptions {
   forceStartWithMissingRunMetadata?: boolean;
 }
 
-interface ExecutionState {
+export interface ExecutionState {
   isRunning: boolean;
   isPaused: boolean;
   executionId: string | null;
@@ -55,6 +61,134 @@ interface ExecutionState {
   resetExecutionState: () => void;
 }
 
+const ACTIVE_EXECUTION_STATUSES = new Set<NodeStatus>(['running', 'paused', 'cancelling']);
+const TERMINAL_EXECUTION_STATUSES = new Set<NodeStatus>(['completed', 'failed', 'cancelled']);
+
+export interface ExecutionUiState {
+  phase: NodeStatus;
+  isActive: boolean;
+  isTerminal: boolean;
+  isRunning: boolean;
+  isPaused: boolean;
+  isCancelling: boolean;
+  isCompleted: boolean;
+  isFailed: boolean;
+  isCancelled: boolean;
+  canReset: boolean;
+  label: string;
+  message: string;
+  color: string;
+}
+
+export type NodeExecutionUiPhase =
+  | 'pending'
+  | 'running'
+  | 'paused'
+  | 'cancelling'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export function isActiveExecutionStatus(status: string | null | undefined): boolean {
+  return ACTIVE_EXECUTION_STATUSES.has(status as NodeStatus);
+}
+
+export function isTerminalExecutionStatus(status: string | null | undefined): boolean {
+  return TERMINAL_EXECUTION_STATUSES.has(status as NodeStatus);
+}
+
+export function deriveExecutionUiState(
+  snapshot: ExecutionSnapshot | null | undefined,
+  fallback: { isRunning?: boolean; isPaused?: boolean; error?: string | null } = {},
+): ExecutionUiState {
+  let phase = String(snapshot?.status || '') as NodeStatus;
+  if (!ACTIVE_EXECUTION_STATUSES.has(phase) && !TERMINAL_EXECUTION_STATUSES.has(phase) && phase !== 'idle') {
+    phase = fallback.error ? 'failed' : fallback.isPaused ? 'paused' : fallback.isRunning ? 'running' : 'idle';
+  }
+
+  const isActive = isActiveExecutionStatus(phase);
+  const isTerminal = isTerminalExecutionStatus(phase);
+  const labels: Record<NodeStatus, string> = {
+    idle: '就绪',
+    running: '运行中',
+    paused: '已暂停',
+    cancelling: '停止中',
+    completed: '已完成',
+    failed: '执行失败',
+    cancelled: '已取消',
+  };
+  const messages: Record<NodeStatus, string> = {
+    idle: '就绪',
+    running: '流程运行中...',
+    paused: '流程已暂停',
+    cancelling: '正在停止，等待当前节点结束...',
+    completed: '流程已完成',
+    failed: '流程执行失败',
+    cancelled: '流程已取消',
+  };
+  const colors: Record<NodeStatus, string> = {
+    idle: 'var(--color-neutral)',
+    running: 'var(--color-primary)',
+    paused: 'var(--color-primary)',
+    cancelling: 'var(--color-warning)',
+    completed: 'var(--color-success)',
+    failed: 'var(--color-danger)',
+    cancelled: 'var(--color-warning)',
+  };
+
+  return {
+    phase,
+    isActive,
+    isTerminal,
+    isRunning: phase === 'running',
+    isPaused: phase === 'paused',
+    isCancelling: phase === 'cancelling',
+    isCompleted: phase === 'completed',
+    isFailed: phase === 'failed',
+    isCancelled: phase === 'cancelled',
+    canReset: isTerminal,
+    label: labels[phase],
+    message: messages[phase],
+    color: colors[phase],
+  };
+}
+
+export function deriveNodeExecutionUiPhase(
+  nodeStatus: string | null | undefined,
+  nodeIndex: number,
+  snapshot: ExecutionSnapshot | null | undefined,
+): NodeExecutionUiPhase {
+  const execution = deriveExecutionUiState(snapshot);
+  const currentIndex = snapshot?.currentStep?.index;
+
+  if (nodeStatus === 'run' || nodeStatus === 'running') {
+    if (currentIndex === nodeIndex && execution.isPaused) return 'paused';
+    if (currentIndex === nodeIndex && execution.isCancelling) return 'cancelling';
+    return 'running';
+  }
+  if (nodeStatus === 'success' || nodeStatus === 'completed') return 'completed';
+  if (nodeStatus === 'failed') return 'failed';
+  if (nodeStatus === 'cancelled') return 'cancelled';
+  if (nodeStatus === 'paused') return 'paused';
+  if (nodeStatus === 'cancelling') return 'cancelling';
+
+  if (currentIndex !== undefined && currentIndex !== null) {
+    if (nodeIndex < currentIndex) return 'completed';
+    if (nodeIndex > currentIndex) return 'pending';
+    if (execution.isActive || execution.isTerminal) {
+      return execution.phase === 'idle' ? 'pending' : execution.phase;
+    }
+  }
+
+  if (execution.isCompleted) return 'completed';
+  return 'pending';
+}
+
+export const selectExecutionUiState = (state: ExecutionState): ExecutionUiState => deriveExecutionUiState(
+  state.lastSnapshot,
+  { isRunning: state.isRunning, isPaused: state.isPaused, error: state.error },
+);
+
 export const useExecutionStore = create<ExecutionState>()(
   devtools(
     (set, get) => {
@@ -63,12 +197,8 @@ export const useExecutionStore = create<ExecutionState>()(
         // 确保 WebSocket 连接已建立
         runtimeSocket.connectSocket();
 
-        // 1. 监听节点细粒度更新 (用于UI实时反馈：节点变色、数据更新)
-        // 注意：这里使用 any 类型，因为实际传输的是简写格式以优化带宽
-        // 预期格式: { i: index, s: status, d?: data } 而非完整的 NodeStatusUpdate
-        runtimeSocket.on(WORKFLOW_NODE_STATUS, (update: any) => {
-          // update 格式是 { i: number, s: string, d?: any } (简化的索引更新)
-
+        // 1. 监听节点细粒度索引更新（与共享 NodeStatusUpdate 契约一致）
+        runtimeSocket.on<NodeStatusUpdate>(WORKFLOW_NODE_STATUS, (update) => {
           const state = get();
           // 仅当 update 包含索引且当前有执行ID时处理
           if (update && update.i !== undefined && state.executionId) {
@@ -97,7 +227,7 @@ export const useExecutionStore = create<ExecutionState>()(
 
         // 🔥 SSOT: 监听后端 nodesReset 事件，统一处理状态重置
         // clearMeasurementCache 已解耦到 useMeasurementStream 自己监听
-        runtimeSocket.on(WORKFLOW_NODES_RESET, (event) => {
+        runtimeSocket.on<NodesResetEvent>(WORKFLOW_NODES_RESET, () => {
           // 重置节点状态
           set({
             nodeStatuses: [],
@@ -157,7 +287,7 @@ export const useExecutionStore = create<ExecutionState>()(
           // 或者如果当前正在运行，根据快照更新状态
 
           // 情况 A: 执行结束 (Completed / Failed / Cancelled)
-          if (['completed', 'failed', 'cancelled'].includes(status)) {
+          if (isTerminalExecutionStatus(status)) {
             // 只有当快照的 executionId 匹配当前 store 的 ID，或者 store 认为正在运行时才处理
             // 防止处理旧的残留快照
             if (state.executionId === executionId || state.isRunning) {
@@ -169,7 +299,7 @@ export const useExecutionStore = create<ExecutionState>()(
           }
 
           // 情况 B: 正在运行或暂停 (Running / Paused)
-          else if (status === 'running' || status === 'paused' || status === 'cancelling') {
+          else if (isActiveExecutionStatus(status)) {
             const isPaused = status === 'paused';
             updates.error = error || null;
 

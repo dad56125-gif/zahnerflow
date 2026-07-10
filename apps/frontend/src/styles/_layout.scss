@@ -4,7 +4,7 @@
 
 .window-controls-bar {
   position: absolute;
-  inset-block-start: calc(var(--space) * 0.5);
+  inset-block-start: 0;
   inset-inline-end: var(--space);
   display: flex;
   justify-content: flex-end;
@@ -55,8 +55,6 @@
    ========================================================================== */
 
 .app-root {
-  --window-controls-h: 28px;
-
   display: grid;
   grid-template-columns:
     [L-start] var(--left-panel-w)
@@ -77,8 +75,8 @@
   overflow: hidden;
 }
 
-.app-root--window-controls {
-  padding-block-start: calc(var(--space) + var(--window-controls-h));
+.app-root--desktop-window {
+  padding-block-start: calc(var(--space) + var(--app-chrome-h));
 }
 
 .top-bar {
@@ -301,8 +299,8 @@
     gap: var(--size-2xs);
   }
 
-  .app-root--window-controls {
-    padding-block-start: calc(clamp(0.5rem, 1vw, 0.75rem) + var(--window-controls-h));
+  .app-root--desktop-window {
+    padding-block-start: calc(clamp(0.5rem, 1vw, 0.75rem) + var(--app-chrome-h));
   }
 
   .canvas-area { grid-area: 2 / 1 / 3 / 2; }

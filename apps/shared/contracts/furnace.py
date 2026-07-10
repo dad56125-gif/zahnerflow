@@ -5,7 +5,7 @@
 前端通过代码生成器自动产生对应的 TypeScript 类型。
 """
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing import Optional, List
 from ._base import ContractModel
 
@@ -24,7 +24,7 @@ class FurnaceStatus(ContractModel):
     sv: float = Field(description="Set Value — 设定目标温度 (℃)")
     mv: float = Field(description="Manipulated Value — 加热器输出功率 (0-100%)")
     status: str = Field(description="运行状态: running / paused / stopped / idle")
-    segment: int = Field(description="当前程序段号 (1-27)")
+    segment: int = Field(ge=1, le=30, description="当前硬件段号 (1-30；28-30 为点变温保留段)")
     segment_time: float = Field(description="当前段已运行时间 (秒)")
     segment_time_set: float = Field(description="当前段设定时间 (秒)")
 
@@ -37,8 +37,18 @@ class ProgramSegment(ContractModel):
     时间为 -121 时表示停止符（程序到此结束）。
     """
     id: int = Field(ge=1, le=27, description="段号 (1-27)")
-    temperature: float = Field(ge=0, le=1100, description="目标温度 (℃)")
+    temperature: float = Field(ge=25, le=1100, description="目标温度 (℃)")
     time: float = Field(description="保持时间 (分钟), -121=停止符")
+
+    @field_validator("time")
+    @classmethod
+    def validate_time(cls, value: float) -> float:
+        if not float(value).is_integer():
+            raise ValueError("程序段时间必须为整数")
+        integer = int(value)
+        if integer not in (-121, 0) and not 1 <= integer <= 9999:
+            raise ValueError("程序段时间必须为 -121、0 或 1-9999")
+        return value
 
 
 class FurnacePreset(ContractModel):
@@ -61,10 +71,10 @@ class FurnaceConnectRequest(ContractModel):
     告诉后端如何通过串口连接加热炉。
     """
     port: str = Field(description="串口号 (如 COM3)")
-    baudrate: int = Field(default=115200, description="通信波特率")
+    baudrate: int = Field(default=9600, description="通信波特率")
     address: int = Field(default=1, description="Modbus 设备地址")
-    stopbits: int = Field(default=1, description="停止位")
-    timeout: float = Field(default=0.3, description="超时时间 (秒)")
+    stopbits: int = Field(default=2, description="停止位")
+    timeout: float = Field(default=1.0, description="超时时间 (秒)")
 
 
 class FurnaceConfig(ContractModel):

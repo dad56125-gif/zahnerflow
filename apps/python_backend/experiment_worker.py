@@ -2,8 +2,11 @@
 实验执行工具函数。
 保留 build_output_path、normalize_path 等路径构建工具。
 """
-from datetime import datetime
+from datetime import datetime, timezone
+import os
 import re
+
+from devices.zahner.logic import normalize_measurement_parameters
 
 
 # ============================================================
@@ -11,7 +14,12 @@ import re
 # ============================================================
 
 def normalize_path(p: str) -> str:
-    return p.replace('/', '\\').rstrip('\\')
+    path = os.path.expanduser(str(p or "").strip())
+    if os.sep == "/":
+        path = path.replace("\\", "/")
+    else:
+        path = path.replace("/", "\\")
+    return os.path.normpath(path)
 
 
 def safe_path_segment(value, fallback: str = "_unnamed") -> str:
@@ -31,14 +39,17 @@ def get_test_type_from_measurement(measurement_type: str) -> str:
         'chronoamperometry': 'ca',
         'chronopotentiometry': 'cp',
         'voltage_ramp': 'lsv',
-        'current_ramp': 'cv'
+        'current_ramp': 'gsv'
     }
     return test_type_map.get(measurement_type, 'general')
 
 
 def build_advanced_node_folder_name(parent_node_type: str, options: dict) -> str:
-    config = options.get('nodeConfig') or {}
-    timestamp = datetime.utcnow().strftime('%y%m%d_%H%M%S')
+    config = normalize_measurement_parameters(
+        parent_node_type,
+        options.get('nodeConfig') or {},
+    )
+    timestamp = datetime.now(timezone.utc).strftime('%y%m%d_%H%M%S')
 
     def format_current(val):
         if val == 0: return '0mA'
@@ -56,30 +67,30 @@ def build_advanced_node_folder_name(parent_node_type: str, options: dict) -> str
         return f"{int(round(val * 1e6))}uV"
 
     if parent_node_type == 'galvanostatic_step_ramp':
-        start = format_current(config.get('startCurrent', 0.1))
-        end = format_current(config.get('endCurrent', 1.0))
-        step = format_current(config.get('stepCurrent', 0.1))
-        hold = int(round(config.get('holdTime', 30)))
+        start = format_current(config['start_current'])
+        end = format_current(config['end_current'])
+        step = format_current(config['step_current'])
+        hold = int(round(config['hold_time']))
         return f"ChronoRamp_{start}-{end}_step{step}_{hold}s_{timestamp}"
     elif parent_node_type == 'potentiostatic_step_ramp':
-        start = format_voltage(config.get('startPotential', 0))
-        end = format_voltage(config.get('endPotential', 1.0))
-        step = format_voltage(config.get('stepPotential', 0.1))
-        hold = int(round(config.get('holdTime', 30)))
+        start = format_voltage(config['start_potential'])
+        end = format_voltage(config['end_potential'])
+        step = format_voltage(config['step_potential'])
+        hold = int(round(config['hold_time']))
         return f"ChronoRamp_{start}-{end}_step{step}_{hold}s_{timestamp}"
     elif parent_node_type == 'galvanostatic_switching':
-        c1 = format_current(config.get('current1', 0))
-        c2 = format_current(config.get('current2', 0.01))
-        t1 = int(round(config.get('holdTime1', 30)))
-        t2 = int(round(config.get('holdTime2', 30)))
-        cycles = config.get('cycles', 5)
+        c1 = format_current(config['current_1'])
+        c2 = format_current(config['current_2'])
+        t1 = int(round(config['hold_time_1']))
+        t2 = int(round(config['hold_time_2']))
+        cycles = config['cycles']
         return f"ChronoSwitch_{c1}-{c2}_{t1}s-{t2}s_cycles_{cycles}_{timestamp}"
     elif parent_node_type == 'potentiostatic_switching':
-        v1 = format_voltage(config.get('potential1', 0))
-        v2 = format_voltage(config.get('potential2', 0.5))
-        t1 = int(round(config.get('holdTime1', 30)))
-        t2 = int(round(config.get('holdTime2', 30)))
-        cycles = config.get('cycles', 5)
+        v1 = format_voltage(config['potential_1'])
+        v2 = format_voltage(config['potential_2'])
+        t1 = int(round(config['hold_time_1']))
+        t2 = int(round(config['hold_time_2']))
+        cycles = config['cycles']
         return f"ChronoSwitch_{v1}-{v2}_{t1}s-{t2}s_cycles_{cycles}_{timestamp}"
     else:
         return f"Advanced_{timestamp}"
@@ -110,18 +121,20 @@ def build_output_path(options: dict) -> str:
     workflow_segment = safe_path_segment(workflow_id or workflow_name or 'unknown_workflow', "unknown_workflow")
 
     if project_segment and individual_segment:
-        basePath_res = f"{normalized_base}\\{project_segment}\\{individual_segment}\\{final_test_type}"
+        path_segments = [project_segment, individual_segment, final_test_type]
     elif project_segment:
-        basePath_res = f"{normalized_base}\\{project_segment}\\_unnamed\\{final_test_type}"
+        path_segments = [project_segment, "_unnamed", final_test_type]
     else:
-        timestamp = safe_path_segment(workflow_timestamp or datetime.utcnow().strftime('%y%m%d_%H%M%S'))
-        basePath_res = f"{normalized_base}\\_unassigned\\{workflow_segment}\\{timestamp}\\{final_test_type}"
+        timestamp = safe_path_segment(
+            workflow_timestamp or datetime.now(timezone.utc).strftime('%y%m%d_%H%M%S')
+        )
+        path_segments = ["_unassigned", workflow_segment, timestamp, final_test_type]
 
     if parent_node_type:
         folder_name = safe_path_segment(build_advanced_node_folder_name(parent_node_type, options))
-        basePath_res = f"{basePath_res}\\{folder_name}"
+        path_segments.append(folder_name)
 
-    return basePath_res
+    return os.path.normpath(os.path.join(normalized_base, *path_segments))
 
 
 # ============================================================

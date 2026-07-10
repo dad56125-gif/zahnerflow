@@ -2,30 +2,13 @@
 
 from __future__ import annotations
 
-
+from runtime.execution_semantics import ADVANCED_MEASUREMENT_TYPES, MEASUREMENT_NODE_TYPES
 
 LOOP_START = "loop_start"
 LOOP_END = "loop_end"
 WORKFLOW_BLOCK = "workflow_block"
 IGNORED_BLOCK_NODE_TYPES = {"startup", "shutdown"}
 BOUNDARY_NODE_TYPES = {"startup", "shutdown"}
-ADVANCED_MEASUREMENT_TYPES = {
-    "galvanostatic_switching",
-    "potentiostatic_switching",
-    "galvanostatic_step_ramp",
-    "potentiostatic_step_ramp",
-}
-MEASUREMENT_NODE_TYPES = {
-    "eis_potentiostatic",
-    "eis_galvanostatic",
-    "ocp",
-    "ocp_measurement",
-    "voltage_ramp",
-    "current_ramp",
-    "chronoamperometry",
-    "chronopotentiometry",
-    "measurement",
-}
 
 
 class WorkflowBlockError(ValueError):

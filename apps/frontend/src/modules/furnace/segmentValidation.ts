@@ -6,7 +6,8 @@
 import {
   FURNACE_TEMPERATURE_MAX_C,
   FURNACE_TEMPERATURE_MIN_C,
-  FURNACE_TEMPERATURE_RANGE_LABEL
+  FURNACE_TEMPERATURE_RANGE_LABEL,
+  FURNACE_PROGRAM_SEGMENT_COUNT
 } from './temperatureLimits';
 
 export interface ValidationResult {
@@ -137,7 +138,7 @@ export class SegmentValidator {
    * @returns 是否有至少一个程序段的温度或时间不为空
    */
   static hasValidData(inputs: { [key: string]: string }): boolean {
-    for (let i = 1; i <= 27; i++) {
+    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
       const temp = inputs[`temp_${i}`] || '';
       const time = inputs[`time_${i}`] || '';
       if (temp.trim() !== '' || time.trim() !== '') {

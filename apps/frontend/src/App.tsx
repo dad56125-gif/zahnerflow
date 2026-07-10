@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
 import type { WorkstationType, WorkflowNode } from '@zahnerflow/types';
 import { getNodeGroupsByWorkstation } from './utils/nodeUtilities';
 
@@ -16,13 +16,15 @@ import { runtimeClient, runtimeSocket, type RuntimeError } from './runtimeClient
 import { ModalLayer } from './components/shared/OverlayLayer';
 
 import { useCanvasStore } from './state/canvasStore';
+import { useAppStore } from './state/appStore';
 import { useWorkflowStore } from './state/currentWorkflowStore';
-import { useExecutionStore, useSystemState } from './state/executionStateBridge';
+import { deriveExecutionUiState, useExecutionStore, useSystemState } from './state/executionStateBridge';
 // clearMeasurementCache 现在由 executionStore 的 nodesReset 监听统一处理
 
 import { MFCModal } from './components/mfc/MFCModal';
 import { useMfc } from './modules/mfc/useMfc';
 import { useFurnace } from './modules/furnace/useFurnace';
+import { isFurnaceReady, isMfcReady } from './modules/common/runtimeDeviceSelectors';
 import { DeviceModal } from './components/furnace/FurnaceDeviceModal';
 import { ReportGeneratorModal } from './components/report/ReportGeneratorModal';
 import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
@@ -102,7 +104,7 @@ const AppContent: React.FC = () => {
   const [selectedWorkstation, setSelectedWorkstation] = useState<WorkstationType | null>(null);
   const [workstationNodeGroups, setWorkstationNodeGroups] = useState<any>({} as any);
 
-  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const setNotificationPanelOpen = useAppStore(state => state.setNotificationPanelOpen);
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [renderedDevice, setRenderedDevice] = useState<'furnace' | 'mfc' | null>(null);
   const [detectedLoops, setDetectedLoops] = useState<SimpleLoopInfo[]>([]);
@@ -116,6 +118,7 @@ const AppContent: React.FC = () => {
   const [desktopWindowExpanded, setDesktopWindowExpanded] = useState(() =>
     hasDesktopBridge() ? window.zahnerflowDesktop!.isMaximized() : false
   );
+  const desktopBridgeAvailable = hasDesktopBridge();
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
@@ -132,9 +135,24 @@ const AppContent: React.FC = () => {
     return window.zahnerflowDesktop!.onMaximizedChanged(setDesktopWindowExpanded);
   }, []);
 
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('zf-desktop-window', desktopBridgeAvailable);
+    document.documentElement.classList.toggle('zf-desktop-window--expanded', desktopBridgeAvailable && desktopWindowExpanded);
+
+    return () => {
+      document.documentElement.classList.remove('zf-desktop-window', 'zf-desktop-window--expanded');
+    };
+  }, [desktopBridgeAvailable, desktopWindowExpanded]);
+
   // 获取实时系统状态
   const systemState = useSystemState();
-  const isCancelling = systemState?.status === 'cancelling';
+  const executionUi = deriveExecutionUiState(
+    systemState,
+    { isRunning, error: executionError },
+  );
+  const isCancelling = executionUi.isCancelling;
+  const furnaceReady = isFurnaceReady(furnaceState);
+  const mfcReady = isMfcReady(mfcState);
   const simulatorActive = hasActiveSimulator(simulatorSettings);
   const backgroundSuspended = showUnrollView || !!fixedDevice || showSimulatorPanel || showMeasurementDashboard || showReportModal;
 
@@ -219,7 +237,7 @@ const AppContent: React.FC = () => {
   // 监听执行错误，自动打开通知面板
   useEffect(() => {
     if (hasError) {
-      setIsNotificationPanelOpen(true);
+      setNotificationPanelOpen(true);
     }
   }, [hasError]);
 
@@ -231,7 +249,7 @@ const AppContent: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!systemState || !['running', 'paused', 'cancelling'].includes(systemState.status)) return;
+    if (!systemState || !executionUi.isActive) return;
     const snapshotNodes = systemState.nodes || [];
     if (snapshotNodes.length === 0) return;
 
@@ -250,7 +268,7 @@ const AppContent: React.FC = () => {
     if (systemState.workflowName) {
       useWorkflowStore.getState().setDraftWorkflowName(systemState.workflowName);
     }
-  }, [systemState, selectedWorkstation, applyWorkstation]);
+  }, [systemState, executionUi.isActive, selectedWorkstation, applyWorkstation]);
 
   const handleFilePathSave = (config: any) => {
     // filepath config saved
@@ -286,7 +304,7 @@ const AppContent: React.FC = () => {
   // --- 执行控制逻辑 ---
   const runFlow = async (options: RunFlowOptions = {}) => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
-      setIsNotificationPanelOpen(true);
+      setNotificationPanelOpen(true);
       return;
     }
     try {
@@ -322,7 +340,7 @@ const AppContent: React.FC = () => {
         return;
       }
       console.error('工作流执行失败:', error);
-      setIsNotificationPanelOpen(true);
+      setNotificationPanelOpen(true);
     }
   };
 
@@ -355,7 +373,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <div className={`app-root ${desktopWindowExpanded ? 'app-root--window-controls' : ''}`}>
+    <div className={`app-root ${desktopBridgeAvailable ? 'app-root--desktop-window' : ''} ${desktopWindowExpanded ? 'app-root--window-controls' : ''}`}>
       <ParticleBackground suspended={backgroundSuspended} />
       <WindowControls expanded={desktopWindowExpanded} />
       <TopBar
@@ -364,6 +382,8 @@ const AppContent: React.FC = () => {
         onWorkstationSelect={handleWorkstationSelect}
         selectedWorkstationId={selectedWorkstation}
         simulatorActive={simulatorActive}
+        furnaceConnected={furnaceReady}
+        mfcConnected={mfcReady}
         onSimulatorPanelOpen={() => setShowSimulatorPanel(true)}
         hasRunMetadataWarning={Boolean(runMetadataWarning)}
       />
@@ -374,8 +394,8 @@ const AppContent: React.FC = () => {
           onPanelChange={setActivePanel}
           nodeGroups={workstationNodeGroups}
           selectedWorkstation={selectedWorkstation}
-          furnaceConnected={furnaceState.connection_status === 'connected' && !!furnaceState.device_status}
-          mfcConnected={mfcState.connection_status === 'connected' && mfcState.devices.length > 0}
+          furnaceConnected={furnaceReady}
+          mfcConnected={mfcReady}
         />
       </div>
 
@@ -449,8 +469,6 @@ const AppContent: React.FC = () => {
 
       <BottomBar
         isRunning={isRunning}
-        isNotificationPanelOpen={isNotificationPanelOpen}
-        setIsNotificationPanelOpen={setIsNotificationPanelOpen}
         detectedLoops={detectedLoops}
         systemState={systemState}
         onProgressBarClick={() => setShowMeasurementDashboard(true)}
