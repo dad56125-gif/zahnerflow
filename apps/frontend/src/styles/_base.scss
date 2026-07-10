@@ -633,8 +633,6 @@ a:hover {
   transition: var(--transition);
   position: relative;
   overflow: visible;
-  will-change: backdrop-filter;
-  transform: translateZ(0);
 }
 
 .glass::before {

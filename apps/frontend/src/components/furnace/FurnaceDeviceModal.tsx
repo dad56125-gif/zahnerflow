@@ -28,6 +28,8 @@ interface DeviceModalProps {
   simulatorSettings: SimulatorSettings;
 }
 
+type FurnaceTab = 'monitoring' | 'segments' | 'history';
+
 export const DeviceModal: React.FC<DeviceModalProps> = ({
   device,
   onClose,
@@ -42,14 +44,12 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   if (!device) return null;
 
   // 当前选项卡状态
-  const [activeTab, setActiveTab] = useState<'monitoring' | 'segments' | 'history'>('monitoring');
-  const [contentTab, setContentTab] = useState<'monitoring' | 'segments' | 'history'>('monitoring');
+  const [activeTab, setActiveTab] = useState<FurnaceTab>('monitoring');
   const [mountedTabs, setMountedTabs] = useState({
     monitoring: true,
     segments: false,
     history: false,
   });
-  const pendingContentTabRef = useRef<number | null>(null);
   const isConnected = furnaceState.connection_status === 'connected';
   const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
 
@@ -111,40 +111,21 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     '--device-tab-index': activeTabIndex,
     '--device-tab-count': 3,
   } as React.CSSProperties;
-  const isFullWidthTab = contentTab === 'segments' || contentTab === 'history';
-  const activateTab = (tab: 'monitoring' | 'segments' | 'history') => {
-    if (pendingContentTabRef.current !== null) {
-      window.clearTimeout(pendingContentTabRef.current);
-      pendingContentTabRef.current = null;
-    }
+  const isFullWidthTab = activeTab === 'segments' || activeTab === 'history';
+  const activateTab = (tab: FurnaceTab) => {
     setMountedTabs((current) => (
       current[tab]
         ? current
         : { ...current, [tab]: true }
     ));
     setActiveTab(tab);
-    if (tab === 'segments' && contentTab !== 'segments') {
-      pendingContentTabRef.current = window.setTimeout(() => {
-        setContentTab('segments');
-        pendingContentTabRef.current = null;
-      }, 240);
-      return;
-    }
-    setContentTab(tab);
   };
-
-  useEffect(() => () => {
-    if (pendingContentTabRef.current !== null) {
-      window.clearTimeout(pendingContentTabRef.current);
-    }
-  }, []);
 
   useEffect(() => {
     const browserWindow = typeof window !== 'undefined' ? window : null;
     let timeoutIds: number[] = [];
-    let idleIds: number[] = [];
 
-    const scheduleMount = (tab: 'segments', delay: number) => {
+    const scheduleMount = (tab: Exclude<FurnaceTab, 'monitoring'>, delay: number) => {
       const mountTab = () => {
         setMountedTabs((current) => (
           current[tab]
@@ -152,17 +133,6 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
             : { ...current, [tab]: true }
         ));
       };
-
-      if (browserWindow && 'requestIdleCallback' in browserWindow) {
-        const timeoutId = browserWindow.setTimeout(() => {
-          const idleId = browserWindow.requestIdleCallback(() => {
-            mountTab();
-          }, { timeout: 240 });
-          idleIds.push(idleId);
-        }, delay);
-        timeoutIds.push(timeoutId);
-        return;
-      }
 
       if (!browserWindow) {
         mountTab();
@@ -173,16 +143,16 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
       timeoutIds.push(timeoutId);
     };
 
+    // 首屏保持监控页；后续页面以独立的短任务按顺序预挂载。
+    // 程序段只创建本地表单，历史页只加载活动汇总，曲线仍由用户选日触发。
     scheduleMount('segments', 80);
+    scheduleMount('history', 180);
 
     return () => {
       if (!browserWindow) {
         return;
       }
       timeoutIds.forEach((id) => browserWindow.clearTimeout(id));
-      if ('cancelIdleCallback' in browserWindow) {
-        idleIds.forEach((id) => browserWindow.cancelIdleCallback(id));
-      }
     };
   }, []);
 
@@ -228,33 +198,43 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
             <div className="furnace-modal__main">
               {/* 选项卡内容 */}
               <div className="tabs__content">
-                <div className={`tabs__panel ${contentTab === 'monitoring' ? 'is-active' : 'is-inactive'}`}>
+                <div className={`tabs__panel ${activeTab === 'monitoring' ? 'is-active' : 'is-inactive'}`}>
                   <StatusPanel
                     furnaceState={furnaceState}
                     furnaceControls={furnaceControls}
                   />
                 </div>
                 {mountedTabs.segments && (
-                  <div className={`tabs__panel ${contentTab === 'segments' ? 'is-active' : 'is-inactive'}`}>
+                  <div className={`tabs__panel ${activeTab === 'segments' ? 'is-active' : 'is-inactive'}`}>
                     <div className="furnace-segments-combo">
                       <section className="furnace-segments-combo__pane">
                         <ProgramEditor
-                          furnaceState={furnaceState}
-                          furnaceControls={furnaceControls}
+                          segments={furnaceState.segments}
+                          isConnected={isConnected}
+                          isLoading={furnaceState.loading}
+                          onRead={furnaceControls.get_segments}
+                          onWrite={furnaceControls.set_segments}
                         />
                       </section>
                       <section className="furnace-segments-combo__pane">
                         <PresetManager
-                          furnaceState={furnaceState}
-                          furnaceControls={furnaceControls}
+                          presets={furnaceState.presets}
+                          segments={furnaceState.segments}
+                          isConnected={isConnected}
+                          isLoading={furnaceState.loading}
+                          onSetSegments={furnaceControls.set_segments}
+                          onGetSegments={furnaceControls.get_segments}
+                          onLoadPresets={furnaceControls.load_presets}
+                          onCreatePreset={furnaceControls.create_preset}
+                          onUpdatePreset={furnaceControls.update_preset}
                         />
                       </section>
                     </div>
                   </div>
                 )}
                 {mountedTabs.history && (
-                  <div className={`tabs__panel ${contentTab === 'history' ? 'is-active' : 'is-inactive'}`}>
-                    <HistoryTab isActive={contentTab === 'history'} />
+                  <div className={`tabs__panel ${activeTab === 'history' ? 'is-active' : 'is-inactive'}`}>
+                    <HistoryTab isActive={activeTab === 'history'} shouldLoadSummary />
                   </div>
                 )}
               </div>
@@ -475,7 +455,7 @@ type ActivityHoverState = {
   y: number;
 };
 
-function HistoryTab({ isActive }: { isActive: boolean }) {
+function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; shouldLoadSummary: boolean }) {
   const [rangeEnd, setRangeEnd] = useState(() => new Date());
   const [summaryRows, setSummaryRows] = useState<FurnaceActivitySummaryRow[]>([]);
   const [chartSamples, setChartSamples] = useState<FurnaceChartSample[]>([]);
@@ -531,9 +511,9 @@ function HistoryTab({ isActive }: { isActive: boolean }) {
   };
 
   useEffect(() => {
-    if (!isActive || hasLoadedSummary) return;
+    if (!shouldLoadSummary || hasLoadedSummary) return;
     void loadActivitySummary();
-  }, [hasLoadedSummary, isActive]);
+  }, [hasLoadedSummary, shouldLoadSummary]);
 
   useEffect(() => {
     if (!isActive) return;

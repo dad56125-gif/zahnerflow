@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
-import type { ProgramSegment } from '../../modules/furnace/furnaceTypes';
+import React, { memo, useState, useEffect, useCallback } from 'react';
+import type { FurnacePresetMeta, ProgramSegment } from '../../modules/furnace/furnaceTypes';
 import { runtimeClient } from '../../runtimeClient';
 import { ControlBar } from './components/ControlBar';
 import { SegmentEditor } from './components/SegmentEditor';
@@ -8,26 +7,42 @@ import { SegmentValidator } from '../../modules/furnace/segmentValidation';
 import { FURNACE_PROGRAM_SEGMENT_COUNT } from '../../modules/furnace/temperatureLimits';
 
 interface PresetManagerProps {
-  furnaceState: FurnaceState;
-  furnaceControls: FurnaceControls;
+  presets: FurnacePresetMeta[];
+  segments: ProgramSegment[];
+  isConnected: boolean;
+  isLoading: boolean;
+  onSetSegments: (segments: ProgramSegment[]) => Promise<void>;
+  onGetSegments: () => Promise<void>;
+  onLoadPresets: () => Promise<void>;
+  onCreatePreset: (preset: { name: string; segments: ProgramSegment[]; summary?: string }) => Promise<void>;
+  onUpdatePreset: (name: string, segments: ProgramSegment[]) => Promise<void>;
 }
 
-export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furnaceControls }) => {
-  const [inputs, setInputs] = useState<{ [key: string]: string }>({});
+const createEmptyInputs = () => {
+  const emptyInputs: { [key: string]: string } = {};
+  for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
+    emptyInputs[`temp_${i}`] = '';
+    emptyInputs[`time_${i}`] = '';
+  }
+  return emptyInputs;
+};
+
+export const PresetManager: React.FC<PresetManagerProps> = memo(({
+  presets,
+  segments,
+  isConnected,
+  isLoading,
+  onSetSegments,
+  onGetSegments,
+  onLoadPresets,
+  onCreatePreset,
+  onUpdatePreset,
+}) => {
+  const [inputs, setInputs] = useState<{ [key: string]: string }>(createEmptyInputs);
   const [currentPresetName, setCurrentPresetName] = useState('');
   const [selectedPresetName, setSelectedPresetName] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
   const [presetSegments, setPresetSegments] = useState<ProgramSegment[]>([]);
-
-  // 初始化输入框为空
-  useEffect(() => {
-    const emptyInputs: { [key: string]: string } = {};
-    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
-      emptyInputs[`temp_${i}`] = '';
-      emptyInputs[`time_${i}`] = '';
-    }
-    setInputs(emptyInputs);
-  }, []);
 
   // 当presetSegments变化时更新输入框
   // 重要：先清空所有输入框，再加载预设数据，避免保留之前"读取运行"获取的残留值
@@ -58,7 +73,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     setSelectedPresetName(presetName);
     const preset = await runtimeClient.devices.furnace.presets.get<{ segments: ProgramSegment[] }>(presetName);
     setPresetSegments(preset.segments);
-  }, [furnaceControls]);
+  }, []);
 
   // 写入处理 - 只有当有有效数据时才执行写入，带安全确认框
   // 注意：写入后需要重新读取设备段，确保 furnaceState.segments 包含完整数据
@@ -81,19 +96,14 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     }
 
     // 写入预设段到设备
-    await furnaceControls.set_segments(segments);
+    await onSetSegments(segments);
     // 重新读取设备的完整程序段，确保"设置程序段"标签页能看到完整数据
-    await furnaceControls.get_segments();
-  }, [inputs, furnaceControls]);
+    await onGetSegments();
+  }, [inputs, onGetSegments, onSetSegments]);
 
   // 新建处理 - 清空数据和输入框，脱钩下拉菜单
   const handleNew = useCallback(() => {
-    const emptyInputs: { [key: string]: string } = {};
-    for (let i = 1; i <= FURNACE_PROGRAM_SEGMENT_COUNT; i++) {
-      emptyInputs[`temp_${i}`] = '';
-      emptyInputs[`time_${i}`] = '';
-    }
-    setInputs(emptyInputs);
+    setInputs(createEmptyInputs());
     setCurrentPresetName('');
     setSelectedPresetName('');
     setValidationErrors({});
@@ -138,42 +148,42 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
 
     try {
       // 检查是否为现有预设
-      const existingPreset = furnaceState.presets.find(p => p.name === currentPresetName);
+      const existingPreset = presets.find(p => p.name === currentPresetName);
 
       if (existingPreset) {
         if (!confirm(`确认覆盖预设 [${currentPresetName}] 吗？`)) {
           return;
         }
-        await furnaceControls.update_preset(currentPresetName, validationResult.validated_segments);
+        await onUpdatePreset(currentPresetName, validationResult.validated_segments);
       } else {
-        await furnaceControls.create_preset({
+        await onCreatePreset({
           name: currentPresetName,
           segments: validationResult.validated_segments,
           summary: `预设程序段：${currentPresetName}`
         });
       }
 
-      await furnaceControls.load_presets();
+      await onLoadPresets();
       alert(`预设 "${currentPresetName}" 保存成功！`);
     } catch (error) {
       console.error('Failed to save preset:', error);
       alert('保存失败，请检查网络连接！');
-      await furnaceControls.load_presets();
+      await onLoadPresets();
     }
-  }, [currentPresetName, inputs, furnaceState.presets, furnaceControls]);
+  }, [currentPresetName, inputs, onCreatePreset, onLoadPresets, onUpdatePreset, presets]);
 
   // 读取运行处理 - 直接从设置程序段复制数据到预设程序段
   const handleLoadRun = useCallback(async () => {
     try {
-      await furnaceControls.get_segments();
-      setPresetSegments([...furnaceState.segments]);
+      await onGetSegments();
+      setPresetSegments([...segments]);
       setCurrentPresetName('');
       setSelectedPresetName('');
       setValidationErrors({});
     } catch (error) {
       console.error('Failed to load running segments:', error);
     }
-  }, [furnaceControls, furnaceState.segments]);
+  }, [onGetSegments, segments]);
 
   // 输入变化处理 - 支持对象和函数两种形式
   const handleInputsChange = useCallback((
@@ -194,7 +204,9 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
     <div className="presets-tab">
       {/* 顶部控制栏 */}
       <ControlBar
-        furnace_state={furnaceState}
+        presets={presets}
+        isConnected={isConnected}
+        isLoading={isLoading}
         current_preset_name={currentPresetName}
         selected_preset_name={selectedPresetName}
         has_valid_data={hasValidData}
@@ -208,7 +220,7 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
 
       {/* 程序段编辑器 */}
       <SegmentEditor
-        furnace_state={furnaceState}
+        isConnected={isConnected}
         inputs={inputs}
         on_inputs_change={handleInputsChange}
         validation_errors={validationErrors}
@@ -216,4 +228,4 @@ export const PresetManager: React.FC<PresetManagerProps> = ({ furnaceState, furn
 
     </div>
   );
-};
+});

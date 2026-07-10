@@ -1,23 +1,20 @@
 import React, { useCallback } from 'react';
-import type { FurnaceState } from '../../../modules/furnace/useFurnace';
 import { SegmentValidator } from '../../../modules/furnace/segmentValidation';
 import { FURNACE_PROGRAM_SEGMENT_COUNT } from '../../../modules/furnace/temperatureLimits';
 
 interface SegmentEditorProps {
-  furnace_state: FurnaceState;
+  isConnected: boolean;
   inputs: { [key: string]: string };
   on_inputs_change: (inputs: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => void;
   validation_errors: { [key: string]: string };
 }
 
 export const SegmentEditor: React.FC<SegmentEditorProps> = ({
-  furnace_state,
+  isConnected,
   inputs,
   on_inputs_change,
   validation_errors
 }) => {
-  const is_connected = furnace_state.connection_status === 'connected';
-
   const handle_input_change = useCallback((field: string, value: string) => {
     const new_inputs = { ...inputs, [field]: value };
 
@@ -64,7 +61,7 @@ export const SegmentEditor: React.FC<SegmentEditorProps> = ({
                       className={`input segment__input ${validation_errors[`temp_${id}`] ? 'has-error' : ''}`}
                       value={inputs[`temp_${id}`] ?? ''}
                       onChange={(e) => handle_input_change(`temp_${id}`, e.target.value)}
-                      disabled={!is_connected}
+                      disabled={!isConnected}
                       title={validation_errors[`temp_${id}`] || ''}
                     />
                     <span className="unit">°C</span>
@@ -79,7 +76,7 @@ export const SegmentEditor: React.FC<SegmentEditorProps> = ({
                       className={`input segment__input ${validation_errors[`time_${id}`] ? 'has-error' : ''}`}
                       value={inputs[`time_${id}`] ?? ''}
                       onChange={(e) => handle_input_change(`time_${id}`, e.target.value)}
-                      disabled={!is_connected}
+                      disabled={!isConnected}
                       title={validation_errors[`time_${id}`] || ''}
                     />
                     <span className="unit">min</span>

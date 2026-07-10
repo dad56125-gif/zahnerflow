@@ -41,4 +41,7 @@
   // 模块样式（在此引入作为备用兜底，防止局部引入失效）
   @import './_report.scss';
   @import '../components/_execution-history.scss';
+
+  // 滚动区必须最后覆盖高开销的玻璃合成效果。
+  @import './_scroll-rendering.scss';
 }

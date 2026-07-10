@@ -9,6 +9,7 @@ import { BottomBar } from './components/BottomBar';
 import { MeasurementDashboard } from './components/measurement-dashboard/MeasurementDashboard';
 import { Canvas } from './components/canvas/Canvas';
 import { setupAutoGlassEffect } from './utils/glassEffect';
+import { installScrollRenderingSafety } from './utils/scrollRenderingSafety';
 import ParticleBackground from './components/ParticleBackground';
 import { WindowControls } from './components/WindowControls';
 import { hasDesktopBridge } from './desktopBridge';
@@ -276,6 +277,8 @@ const AppContent: React.FC = () => {
     const observer = setupAutoGlassEffect();
     return () => observer?.disconnect();
   }, []);
+
+  useLayoutEffect(() => installScrollRenderingSafety(), []);
 
   useEffect(() => {
     const handleSettings = (event: Event) => {

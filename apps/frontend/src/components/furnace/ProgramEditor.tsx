@@ -1,32 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
+import React, { memo, useState, useEffect, useCallback } from 'react';
 import type { ProgramSegment } from '../../modules/furnace/furnaceTypes';
 import { SegmentValidator } from '../../modules/furnace/segmentValidation';
 import { FURNACE_PROGRAM_SEGMENT_COUNT } from '../../modules/furnace/temperatureLimits';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 
 interface ProgramEditorProps {
-  furnaceState: FurnaceState;
-  furnaceControls: FurnaceControls;
+  segments: ProgramSegment[];
+  isConnected: boolean;
+  isLoading: boolean;
+  onRead: () => Promise<void>;
+  onWrite: (segments: ProgramSegment[]) => Promise<void>;
 }
 
-export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furnaceControls }) => {
+export const ProgramEditor: React.FC<ProgramEditorProps> = memo(({
+  segments,
+  isConnected,
+  isLoading,
+  onRead,
+  onWrite,
+}) => {
   const [inputs, setInputs] = useState<{ [key: string]: string }>({});
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
   // 初始化输入框
   useEffect(() => {
-    if (furnaceState.segments?.length) {
+    if (segments.length) {
       const newInputs: { [key: string]: string } = {};
-      furnaceState.segments.forEach(segment => {
+      segments.forEach(segment => {
         newInputs[`temp_${segment.id}`] = segment.temperature.toString();
         newInputs[`time_${segment.id}`] = segment.time.toString();
       });
       setInputs(prev => ({ ...prev, ...newInputs }));
     }
-  }, [furnaceState.segments]);
-
-  const isConnected = furnaceState.connection_status === 'connected';
+  }, [segments]);
 
   const handleInputChange = useCallback((field: string, value: string) => {
     const newInputs = { ...inputs, [field]: value };
@@ -45,8 +51,8 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
   }, [inputs]);
 
   const handleRead = useCallback(() => {
-    furnaceControls.get_segments();
-  }, [furnaceControls]);
+    void onRead();
+  }, [onRead]);
 
   const handleWrite = useCallback(() => {
     if (!SegmentValidator.hasValidData(inputs)) {
@@ -64,8 +70,8 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
         segments.push({ id: i, temperature: temp, time: time });
       }
     }
-    furnaceControls.set_segments(segments);
-  }, [inputs, furnaceControls]);
+    void onWrite(segments);
+  }, [inputs, onWrite]);
 
   return (
     <div className="presets-tab">
@@ -74,16 +80,16 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
         <button
           className="btn btn--sm btn--primary"
           onClick={handleRead}
-          disabled={!isConnected || furnaceState.loading}
+          disabled={!isConnected || isLoading}
         >
-          {furnaceState.loading ? <SpacedCjkText text="读取中..." /> : <SpacedCjkText text="读取程序段" />}
+          {isLoading ? <SpacedCjkText text="读取中..." /> : <SpacedCjkText text="读取程序段" />}
         </button>
         <button
           className="btn btn--sm btn--success"
           onClick={handleWrite}
-          disabled={!isConnected || furnaceState.loading}
+          disabled={!isConnected || isLoading}
         >
-          {furnaceState.loading ? <SpacedCjkText text="写入中..." /> : <SpacedCjkText text="写入程序段" />}
+          {isLoading ? <SpacedCjkText text="写入中..." /> : <SpacedCjkText text="写入程序段" />}
         </button>
       </div>
 
@@ -143,4 +149,4 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = ({ furnaceState, furn
       </div>
     </div>
   );
-};
+});

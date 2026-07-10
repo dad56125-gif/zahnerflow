@@ -1,11 +1,13 @@
 import React, { useRef, useCallback } from 'react';
-import type { FurnaceState } from '../../../modules/furnace/useFurnace';
+import type { FurnacePresetMeta } from '../../../modules/furnace/furnaceTypes';
 import { Dropdown } from '../../shared/Dropdown';
 import { useDropdownPosition } from '../../shared/useDropdownPosition';
 import { renderCjkText, SpacedCjkText } from '../../common/SpacedCjkText';
 
 interface ControlBarProps {
-  furnace_state: FurnaceState;
+  presets: FurnacePresetMeta[];
+  isConnected: boolean;
+  isLoading: boolean;
   current_preset_name: string;
   selected_preset_name: string;
   has_valid_data: boolean;
@@ -18,7 +20,9 @@ interface ControlBarProps {
 }
 
 export const ControlBar: React.FC<ControlBarProps> = ({
-  furnace_state,
+  presets,
+  isConnected,
+  isLoading,
   current_preset_name,
   selected_preset_name,
   has_valid_data,
@@ -29,8 +33,6 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   on_save,
   on_load_run
 }) => {
-  const is_connected = furnace_state.connection_status === 'connected';
-  const is_loading = furnace_state.loading;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +59,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         ref={triggerRef}
         className="btn btn--sm btn--secondary preset__selector"
         onClick={() => dropdown.toggle()}
-        disabled={!is_connected || is_loading}
+        disabled={!isConnected || isLoading}
       >
         {renderCjkText(selectedLabel)}
       </button>
@@ -76,7 +78,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
           >
             <SpacedCjkText text="选择预设程序段" />
           </div>
-          {furnace_state.presets.map(preset => (
+          {presets.map(preset => (
             <div
               key={preset.name}
               className={`dropdown__item ${selected_preset_name === preset.name ? 'is-active' : ''}`}
@@ -92,7 +94,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
       <button
         className="btn btn--sm btn--warning"
         onClick={on_write}
-        disabled={!is_connected || is_loading}
+        disabled={!isConnected || isLoading}
       >
         <SpacedCjkText text="写入" />
       </button>
@@ -104,14 +106,14 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         placeholder="请输入/编辑预设名称"
         value={current_preset_name}
         onChange={(e) => on_preset_name_change(e.target.value)}
-        disabled={!is_connected || is_loading}
+        disabled={!isConnected || isLoading}
       />
 
       {/* 新建按钮 */}
       <button
         className="btn btn--sm btn--secondary"
         onClick={on_new}
-        disabled={!is_connected || is_loading}
+        disabled={!isConnected || isLoading}
       >
         <SpacedCjkText text="新建" />
       </button>
@@ -120,7 +122,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
       <button
         className="btn btn--sm btn--success"
         onClick={on_save}
-        disabled={!canSave || is_loading}
+        disabled={!canSave || isLoading}
       >
         <SpacedCjkText text="保存" />
       </button>
@@ -129,7 +131,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
       <button
         className="btn btn--sm btn--primary"
         onClick={on_load_run}
-        disabled={!is_connected || is_loading}
+        disabled={!isConnected || isLoading}
       >
         <SpacedCjkText text="读取运行" />
       </button>
