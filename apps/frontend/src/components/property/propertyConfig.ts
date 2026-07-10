@@ -27,12 +27,12 @@ export const getParameterLabel = (key: string, nodeType?: string): string => {
     // EIS测量参数
     eisLowerFrequency: '低频限制 (Hz)',
     eisUpperFrequency: '高频限制 (Hz)',
-    eisStartFrequency: '起始频率 (Hz)',
+    eisStartFrequency: '起始频率（由扫描方向自动确定）',
     eisLowerPeriods: '低频区测量周期数',
     eisUpperPeriods: '高频区测量周期数',
     eisLowerSteps: '低频区每十倍频程扫描点数',
     eisUpperSteps: '高频区每十倍频程扫描点数',
-    eisScanDirection: '扫描方向',
+    eisScanDirection: '扫描方向（自动确定起始频率）',
     eisScanStrategy: '扫描策略',
     eis_amplitude: `交流扰动幅值 ${getEisAmplitudeUnit()}`,
     eisPotential: '直流偏置电位 (V)',
@@ -128,7 +128,7 @@ export const getParameterPlaceholder = (key: string): string => {
     endCurrent: '输入结束电流，单位：安培',
     eisLowerFrequency: '输入低频限制，单位：赫兹',
     eisUpperFrequency: '输入高频限制，单位：赫兹',
-    eisStartFrequency: '输入起始频率，单位：赫兹',
+    eisStartFrequency: '由扫描方向自动确定',
     eisLowerPeriods: '输入低频区测量周期数',
     eisUpperPeriods: '输入高频区测量周期数',
     eisLowerSteps: '输入低频区每十倍频程扫描点数',
@@ -164,8 +164,8 @@ export const enumValues: Record<string, string[]> = {
 export const getParameterEnumLabel = (key: string, value: string): string => {
   const enumLabels: Record<string, Record<string, string>> = {
     eisScanDirection: {
-      'START_TO_MAX': '从起始频率到最低频率',
-      'START_TO_MIN': '从起始频率到最高频率'
+      'START_TO_MAX': '由低频扫向高频',
+      'START_TO_MIN': '由高频扫向低频'
     },
     eisScanStrategy: {
       'SINGLE_SINE': '单正弦波',
@@ -202,7 +202,7 @@ export const getHiddenParameters = (nodeType: string): string[] => {
   if (nodeType === 'change_gas_flow') return ['currentFlowRate', 'deviceAddress', 'gasType', 'maxFlowSccm', 'stabilizationTime'];
   if (nodeType === 'workflow_block') return ['workflowShortId', 'nodeCount', 'hasNestedWorkflowBlock'];
   if (nodeType === 'eis_galvanostatic' || nodeType === 'eis_potentiostatic') {
-    return ['eisLowerPeriods', 'eisUpperPeriods', 'eisLowerSteps', 'eisUpperSteps', 'eisScanDirection', 'eisScanStrategy'];
+    return ['eisStartFrequency', 'eisLowerPeriods', 'eisUpperPeriods', 'eisLowerSteps', 'eisUpperSteps', 'eisScanStrategy'];
   }
   return [];
 };

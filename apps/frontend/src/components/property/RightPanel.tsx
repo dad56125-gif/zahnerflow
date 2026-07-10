@@ -354,37 +354,31 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         });
       } else if (
         (node.type === 'eis_potentiostatic' || node.type === 'eis_galvanostatic') &&
-        ['eisStartFrequency', 'eisUpperFrequency', 'eisLowerFrequency'].includes(key)
+        key === 'eisScanDirection'
       ) {
-        // 频率连锁机制：确保 高频限制 >= 起始频率 >= 低频限制
+        const newConfig: Record<string, any> = { ...currentConfig, eisScanDirection: value };
+        newConfig.eisStartFrequency = value === 'START_TO_MAX'
+          ? Number(newConfig.eisLowerFrequency)
+          : Number(newConfig.eisUpperFrequency);
+        updateNodeConfig(node.id, newConfig);
+      } else if (
+        (node.type === 'eis_potentiostatic' || node.type === 'eis_galvanostatic') &&
+        ['eisUpperFrequency', 'eisLowerFrequency'].includes(key)
+      ) {
+        // 扫描方向决定起始端点：向最高频扫时从低频限制开始，反之从高频限制开始。
         const newValue = Number(value);
-        let newConfig = { ...currentConfig, [key]: newValue };
+        const newConfig: Record<string, any> = { ...currentConfig, [key]: newValue };
 
-        if (key === 'eisStartFrequency') {
-          // 修改起始：若超过上限，拉高上限；若低于下限，拉低下限
-          if (newValue > (newConfig.eisUpperFrequency || 0)) {
-            newConfig.eisUpperFrequency = newValue;
-          }
-          if (newValue < (newConfig.eisLowerFrequency || 0)) {
-            newConfig.eisLowerFrequency = newValue;
-          }
-        } else if (key === 'eisUpperFrequency') {
-          // 修改上限：若低于起始，同步降低起始；由于起始可能低于下限，需再次级联
-          if (newValue < (newConfig.eisStartFrequency || 0)) {
-            newConfig.eisStartFrequency = newValue;
-            if (newValue < (newConfig.eisLowerFrequency || 0)) {
-              newConfig.eisLowerFrequency = newValue;
-            }
-          }
-        } else if (key === 'eisLowerFrequency') {
-          // 修改下限：若超过起始，同步提高起始；由于起始可能超过上限，需再次级联
-          if (newValue > (newConfig.eisStartFrequency || 0)) {
-            newConfig.eisStartFrequency = newValue;
-            if (newValue > (newConfig.eisUpperFrequency || 0)) {
-              newConfig.eisUpperFrequency = newValue;
-            }
-          }
+        if (key === 'eisUpperFrequency') {
+          newConfig.eisLowerFrequency = Math.min(Number(newConfig.eisLowerFrequency), newValue);
+        } else {
+          newConfig.eisUpperFrequency = Math.max(Number(newConfig.eisUpperFrequency), newValue);
         }
+        const direction = newConfig.eisScanDirection || 'START_TO_MAX';
+        newConfig.eisScanDirection = direction;
+        newConfig.eisStartFrequency = direction === 'START_TO_MAX'
+          ? Number(newConfig.eisLowerFrequency)
+          : Number(newConfig.eisUpperFrequency);
         updateNodeConfig(node.id, newConfig);
       } else {
         updateNodeConfig(node.id, { ...currentConfig, [key]: value });
