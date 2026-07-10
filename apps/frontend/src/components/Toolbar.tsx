@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
-import { selectExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
+import { deriveExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
 import { UnrollViewModal } from './UnrollViewModal';
+import type { RunFlowHandler } from '../types/executionControl';
 
 interface ToolbarProps {
-  onRunFlow: (options?: { startFromUnrolledIndex?: number }) => void;
+  onRunFlow: RunFlowHandler;
   onResetFlow?: () => void;
   selectedWorkstation: string | null;
   isRunning: boolean;
@@ -87,7 +88,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const { clearCanvas, nodes } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
-  const executionUi = useExecutionStore(selectExecutionUiState);
+  const executionSnapshot = useExecutionStore(state => state.lastSnapshot);
+  const executionStoreIsRunning = useExecutionStore(state => state.isRunning);
+  const executionStoreIsPaused = useExecutionStore(state => state.isPaused);
+  const executionError = useExecutionStore(state => state.error);
+  const executionUi = useMemo(
+    () => deriveExecutionUiState(executionSnapshot, {
+      isRunning: executionStoreIsRunning,
+      isPaused: executionStoreIsPaused,
+      error: executionError,
+    }),
+    [executionError, executionSnapshot, executionStoreIsPaused, executionStoreIsRunning],
+  );
   const [showUnrollView, setShowUnrollView] = useState(false);
 
   const getButtonStates = () => {
@@ -174,7 +186,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       onResetFlow?.();
       return;
     }
-    onRunFlow();
+    void onRunFlow();
   };
 
   const handleClearCanvas = () => {
@@ -245,10 +257,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         nodes={nodes}
         autoStartupConfig={autoStartupConfig}
         canRunFromStep={!buttonStates.primaryButtonDisabled && buttonStates.primaryAction === 'run'}
-        onRunFromStep={(startFromUnrolledIndex) => {
-          setUnrollViewOpen(false);
-          onRunFlow({ startFromUnrolledIndex });
-        }}
+        runMetadataWarning={runMetadataWarning}
+        onRunFromStep={(startFromUnrolledIndex) => onRunFlow({ startFromUnrolledIndex })}
       />
 
     </>

@@ -514,9 +514,17 @@ function resolvePresentationParameters(raw: unknown): Record<string, unknown> {
     : record;
 }
 
+export function formatPresentationNumber(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  return String(Number(value.toPrecision(12)));
+}
+
 function formatPresentationValue(value: unknown): string {
   if (Array.isArray(value)) return value.join(', ');
   if (value && typeof value === 'object') return JSON.stringify(value);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return formatPresentationNumber(value);
+  }
   return String(value);
 }
 

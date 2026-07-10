@@ -149,13 +149,15 @@
 
 当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`；流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
 
+展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为三栏步骤浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为不可选择的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
+
 时间线规则：计划中的 `timeline.steps` 与 `eta.estimatedTotalSeconds` 来自同一次 `estimate_workflow` 计算。运行时复制计划时间线并在每个实际步骤开始或结束后更新快照；它可以依据执行事实修正剩余显示，但不得为了显示而再次展开工作流或另算一套步骤总数。
 
-归属文件：`apps/python_backend/loop_unroller.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/runtime/execution_eta.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/frontend/src/components/UnrollViewModal.tsx`、`apps/frontend/src/components/ProgressBar.tsx`。
+归属文件：`apps/python_backend/loop_unroller.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/runtime/execution_eta.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/frontend/src/components/UnrollViewModal.tsx`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/types/executionControl.ts`、`apps/frontend/src/components/ProgressBar.tsx`。
 
 允许变化：可以扩展估算规则、节点类型和报告字段。
 
-禁止事项：禁止在前端维护另一套展开事实；禁止路由或执行引擎绕过 Planner 单独展开；禁止让 ETA 反向改变执行行为。
+禁止事项：禁止在前端维护另一套展开事实、过滤后重编号或用可见位置替代 `unrolledIndex`；禁止从顶层画布索引反推工作流块内部循环；禁止路由或执行引擎绕过 Planner 单独展开；禁止让 ETA 反向改变执行行为。
 
 ## [工作流-身份]
 
@@ -221,13 +223,13 @@
 
 ## [前端-派生与展示规则]
 
-当前规则：执行 phase 的标签、颜色、可重置性和 active/terminal 判断由 `deriveExecutionUiState`/selector 统一派生，Toolbar、ProgressBar 和 BottomBar 不各自解释状态。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart 和报告共同消费。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
+当前规则：执行 phase 的标签、颜色、可重置性和 active/terminal 判断由 `deriveExecutionUiState` 统一派生；React 组件订阅稳定的 store 原始字段后缓存派生结果，Toolbar、ProgressBar 和 BottomBar 不各自解释状态，也不直接订阅每次新建对象的 selector。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费；参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
 
-归属文件：`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
+归属文件：`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
 
 允许变化：可以扩展节点展示配置、状态文案和选择器，但同一业务判断必须继续由一个 selector、helper 或配置表输出。
 
-禁止事项：禁止在页面或组件中重新维护节点类型白名单、执行状态分支、设备就绪组合条件、迭代 key 或定时跨日算法。
+禁止事项：禁止在页面或组件中重新维护节点类型白名单、执行状态分支、设备就绪组合条件、迭代 key、展开分组身份或定时跨日算法；禁止把每次返回新对象的派生函数直接作为 Zustand 订阅 selector。
 
 ## [前端-浮层系统]
 

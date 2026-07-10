@@ -30,6 +30,7 @@ import { ReportGeneratorModal } from './components/report/ReportGeneratorModal';
 import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
 import { UserProvider, useUser } from './components/shared/UserContext';
 import type { SimpleLoopInfo } from './components/canvas/useLoopDetection';
+import type { RunFlowOptions, RunFlowOutcome } from './types/executionControl';
 import {
   SIMULATOR_SETTINGS_EVENT,
   SimulatorSettings,
@@ -40,10 +41,6 @@ import {
 } from './modules/simulator/simulatorSettings';
 
 const RUN_METADATA_CONFIRM_MS = 5000;
-
-type RunFlowOptions = {
-  startFromUnrolledIndex?: number;
-};
 
 type MissingRunMetadataDetails = {
   code?: string;
@@ -302,10 +299,10 @@ const AppContent: React.FC = () => {
   }, []);
 
   // --- 执行控制逻辑 ---
-  const runFlow = async (options: RunFlowOptions = {}) => {
+  const runFlow = async (options: RunFlowOptions = {}): Promise<RunFlowOutcome> => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
       setNotificationPanelOpen(true);
-      return;
+      return 'blocked';
     }
     try {
       const workflowStore = useWorkflowStore.getState();
@@ -331,16 +328,18 @@ const AppContent: React.FC = () => {
         forceStartWithMissingRunMetadata,
       });
       setRunMetadataWarning(null);
+      return 'started';
     } catch (error) {
       if (isMissingRunMetadataError(error)) {
         setRunMetadataWarning({
           message: runMetadataWarningMessage(error.details),
           expiresAt: Date.now() + RUN_METADATA_CONFIRM_MS,
         });
-        return;
+        return 'confirmation-required';
       }
       console.error('工作流执行失败:', error);
       setNotificationPanelOpen(true);
+      return 'failed';
     }
   };
 
@@ -365,7 +364,7 @@ const AppContent: React.FC = () => {
   // 包装回调
   const handleRunFlow = useCallback(async (options: RunFlowOptions = {}) => {
     setSuppressedEtaNodeFingerprint(null);
-    await runFlow(options);
+    return runFlow(options);
   }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, filePathConfig, zahnerAutoStartupConfig, workflowBlockRunBlocked, runMetadataWarning]);
 
   const handleLoopDetected = useCallback((loops: SimpleLoopInfo[]) => {

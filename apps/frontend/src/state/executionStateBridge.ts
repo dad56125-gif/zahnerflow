@@ -184,11 +184,6 @@ export function deriveNodeExecutionUiPhase(
   return 'pending';
 }
 
-export const selectExecutionUiState = (state: ExecutionState): ExecutionUiState => deriveExecutionUiState(
-  state.lastSnapshot,
-  { isRunning: state.isRunning, isPaused: state.isPaused, error: state.error },
-);
-
 export const useExecutionStore = create<ExecutionState>()(
   devtools(
     (set, get) => {

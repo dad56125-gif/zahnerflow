@@ -1,8 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ModalLayer } from './shared/OverlayLayer';
-import type { WorkflowNode } from '@zahnerflow/types';
-import { NODE_CONFIGS } from '../types/NodeConfiguration';
+import React, {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import type { WorkflowNode, WorkflowUnrollPreview } from '@zahnerflow/types';
 import { runtimeClient } from '../runtimeClient';
+import type { RunFlowOutcome } from '../types/executionControl';
+import {
+    buildUnrollExplorerModel,
+    buildUnrollRenderItems,
+    type UnrollExplorerGroup,
+    type UnrollExplorerGroupKind,
+    type UnrollExplorerRow,
+    type UnrollRenderItem,
+} from './unrollViewModel';
+import { ModalLayer } from './shared/OverlayLayer';
 import { NodeIconSvg } from './NodeIconSvg';
 import { UiIconSvg } from './shared/UiIconSvg';
 
@@ -12,70 +25,49 @@ interface UnrollViewModalProps {
     nodes: WorkflowNode[];
     autoStartupConfig?: Record<string, any>;
     canRunFromStep?: boolean;
-    onRunFromStep?: (startFromUnrolledIndex: number) => void;
+    runMetadataWarning?: string | null;
+    onRunFromStep?: (startFromUnrolledIndex: number) => Promise<RunFlowOutcome>;
 }
 
-type BackendUnrollPreview = {
-    nodeCount: number;
-    steps: UnrolledStepWithAdvancedMeta[];
-    summary?: Record<string, any>;
+type PreviewState =
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'success'; preview: WorkflowUnrollPreview }
+    | { status: 'error'; message: string };
+
+const EMPTY_PREVIEW: WorkflowUnrollPreview = {
+    nodeCount: 0,
+    steps: [],
+    summary: {},
 };
 
-type UnrolledStepWithAdvancedMeta = {
-    nodeId: string;
-    nodeType: string;
-    originalIndex: number;
-    sourceIndex?: number | null;
-    unrolledIndex: number;
-    unrolledTotal: number;
-    iterationPath?: Array<Record<string, any>>;
-    loopContextStack?: number[];
-    loopDepth?: number;
-    blockPath?: Array<Record<string, any>>;
-    parentNodeType?: string;
-    parentNodeId?: string | null;
-    stepIndex?: number;
-    totalSteps?: number;
-    stepValue?: number;
-    cycleIndex?: number;
-    node?: {
-        id?: string;
-        type?: string;
-        config?: Record<string, any>;
-        auto?: boolean;
-    };
+const GROUP_LABELS: Record<UnrollExplorerGroupKind, string> = {
+    loop: '循环轮次',
+    workflow: '工作流块',
+    advanced: '高级步骤',
 };
 
-type CollapsibleRangeKind = 'loop' | 'advanced' | 'workflow';
-
-type CollapsibleRange = {
-    key: string;
-    kind: CollapsibleRangeKind;
-    title: string;
-    meta: string;
-    start: number;
-    end: number;
-    depth: number;
-};
-
-const HIDDEN_PREVIEW_NODE_TYPES = new Set(['startup', 'shutdown']);
-
-const getLoopCount = (node?: WorkflowNode): number => {
-    const rawCount = node?.config?.loopCount ?? node?.config?.loop_count ?? 1;
-    const loopCount = Number(rawCount);
-    return Number.isFinite(loopCount) && loopCount > 0 ? Math.floor(loopCount) : 1;
-};
-
-const formatCompactNumber = (value: unknown): string => {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
-        return String(value);
+function errorMessage(error: unknown): string {
+    if (error && typeof error === 'object' && 'message' in error) {
+        const message = String(error.message || '').trim();
+        if (message) return message;
     }
-    return String(Number(numericValue.toFixed(6)));
-};
+    return '展开预览失败，请检查工作流配置后重试';
+}
+
+function GroupIcon({ kind }: { kind: UnrollExplorerGroupKind }) {
+    if (kind === 'loop') return <UiIconSvg name="loop" />;
+    if (kind === 'workflow') return <UiIconSvg name="workflow" />;
+    return <UiIconSvg name="activity" />;
+}
+
+function rowTitle(row: UnrollExplorerRow): string {
+    return row.advancedLabel || row.displayName;
+}
 
 /**
- * 展开视图 Modal - 显示工作流展开后的所有执行步骤
+ * 后端 ExecutionPlan 的只读步骤浏览器。组件只管理请求、展示和选择，
+ * 不在前端重新展开、排序或推导执行索引。
  */
 export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
     isOpen,
@@ -83,465 +75,470 @@ export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
     nodes,
     autoStartupConfig,
     canRunFromStep = false,
-    onRunFromStep
+    runMetadataWarning,
+    onRunFromStep,
 }) => {
+    const [previewState, setPreviewState] = useState<PreviewState>({ status: 'idle' });
+    const [retryVersion, setRetryVersion] = useState(0);
     const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(() => new Set());
     const [selectedUnrolledIndex, setSelectedUnrolledIndex] = useState<number | null>(null);
-    const [preview, setPreview] = useState<BackendUnrollPreview | null>(null);
-    const [previewError, setPreviewError] = useState<string | null>(null);
-    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+    const [query, setQuery] = useState('');
+    const [isStarting, setIsStarting] = useState(false);
+    const [runNotice, setRunNotice] = useState<string | null>(null);
+    const requestIdRef = useRef(0);
+    const sequenceRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!isOpen) return;
 
-        if (!nodes || nodes.length === 0) {
-            setPreview({ nodeCount: 0, steps: [], summary: { totalSteps: 0, physicalNodeCount: 0, maxLoopDepth: 0, loops: [] } });
-            setPreviewError(null);
-            setSelectedUnrolledIndex(null);
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
+        setSelectedUnrolledIndex(null);
+        setCollapsedKeys(new Set());
+        setQuery('');
+        setRunNotice(null);
+        setIsStarting(false);
+
+        if (nodes.length === 0) {
+            setPreviewState({ status: 'success', preview: EMPTY_PREVIEW });
             return;
         }
 
-        let cancelled = false;
-        setIsLoadingPreview(true);
-        setPreviewError(null);
-        setSelectedUnrolledIndex(null);
-        setCollapsedKeys(new Set());
+        let active = true;
+        setPreviewState({ status: 'loading' });
 
         runtimeClient.executions
-            .unrollPreview<BackendUnrollPreview>({
+            .unrollPreview({
                 nodes,
                 autoStartupConfig: autoStartupConfig || {},
             })
-            .then((result) => {
-                if (!cancelled) {
-                    setPreview(result);
+            .then((preview) => {
+                if (active && requestIdRef.current === requestId) {
+                    setPreviewState({ status: 'success', preview });
                 }
             })
             .catch((error) => {
-                if (!cancelled) {
-                    setPreview(null);
-                    setPreviewError(error?.message || '展开预览失败');
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoadingPreview(false);
+                if (active && requestIdRef.current === requestId) {
+                    setPreviewState({ status: 'error', message: errorMessage(error) });
                 }
             });
 
         return () => {
-            cancelled = true;
+            active = false;
         };
-    }, [autoStartupConfig, isOpen, nodes]);
+    }, [autoStartupConfig, isOpen, nodes, retryVersion]);
 
-    const unrollResult = preview || {
-        nodeCount: 0,
-        steps: [],
-        summary: { totalSteps: 0, physicalNodeCount: 0, maxLoopDepth: 0, loops: [] }
-    };
-
-    const visibleSteps = useMemo(
-        () => (unrollResult.steps as UnrolledStepWithAdvancedMeta[])
-            .filter((step) => !HIDDEN_PREVIEW_NODE_TYPES.has(step.nodeType)),
-        [unrollResult.steps]
+    const preview = previewState.status === 'success' ? previewState.preview : EMPTY_PREVIEW;
+    const model = useMemo(() => buildUnrollExplorerModel(preview), [preview]);
+    const renderItems = useMemo(
+        () => buildUnrollRenderItems(model, collapsedKeys, query),
+        [collapsedKeys, model, query],
     );
-
-    // 获取节点配置信息
-    const getNodeConfig = (nodeType: string) => {
-        return NODE_CONFIGS[nodeType as keyof typeof NODE_CONFIGS] || {
-            name: nodeType,
-            icon: 'workflow',
-            category: 'unknown'
-        };
-    };
-
-    // 根据原始节点获取参数预览
-    const getParamPreview = (step: UnrolledStepWithAdvancedMeta): string => {
-        const node = step.node || nodes.find(n => n.id === step.nodeId);
-        if (!node?.config) return '';
-
-        const config = node.config;
-        const params: string[] = [];
-
-        // 根据节点类型提取关键参数
-        switch (step.nodeType) {
-            case 'eis_potentiostatic':
-            case 'eis_galvanostatic':
-                if (config.eisLowerFrequency && config.eisUpperFrequency) {
-                    params.push(`${config.eisLowerFrequency}~${config.eisUpperFrequency}Hz`);
-                }
-                break;
-            case 'chronoamperometry':
-                if (config.polarizationVoltage !== undefined) {
-                    params.push(`${formatCompactNumber(config.polarizationVoltage)}V`);
-                }
-                if (config.measurementDuration) {
-                    params.push(`${config.measurementDuration}s`);
-                }
-                break;
-            case 'chronopotentiometry':
-                if (config.polarizationCurrent !== undefined) {
-                    params.push(`${(config.polarizationCurrent * 1000).toFixed(1)}mA`);
-                }
-                if (config.measurementDuration) {
-                    params.push(`${config.measurementDuration}s`);
-                }
-                break;
-            case 'change_temperature':
-                if (config.targetTemperature !== undefined) {
-                    params.push(`${config.targetTemperature}°C`);
-                }
-                break;
-            case 'change_gas_flow':
-                if (config.targetFlowRate !== undefined) {
-                    params.push(`${config.targetFlowRate} sccm`);
-                }
-                break;
-            case 'wait_delay':
-                if (config.duration) {
-                    params.push(`${config.duration}s`);
-                }
-                break;
-            case 'scheduled_start': {
-                const hour = String(config.hour ?? 0).padStart(2, '0');
-                const minute = String(config.minute ?? 0).padStart(2, '0');
-                params.push(`${config.nextDay ? '次日 ' : ''}${hour}:${minute}`);
-                break;
-            }
-            case 'ocp_measurement':
-                if (config.measurementDuration) {
-                    params.push(`${config.measurementDuration}s`);
-                }
-                break;
-            default:
-                // 高级节点显示步骤信息
-                if ((step as any).stepIndex !== undefined && (step as any).totalSteps !== undefined) {
-                    params.push(`步骤 ${(step as any).stepIndex + 1}/${(step as any).totalSteps}`);
-                }
-                if ((step as any).stepValue !== undefined) {
-                    params.push(`值: ${formatCompactNumber((step as any).stepValue)}`);
-                }
-                if ((step as any).cycleIndex !== undefined) {
-                    params.push(`周期 ${(step as any).cycleIndex + 1}`);
-                }
-        }
-
-        return params.join(' · ');
-    };
-
-    const formatIterationLabel = (iterationPath: Array<Record<string, any>> = []): string => {
-        return iterationPath
-            .map((item) => {
-                const iteration = Number(item.iteration ?? 0);
-                const total = Number(item.totalIterations ?? 0);
-                return total > 0 ? `${iteration}/${total}` : String(iteration || '');
-            })
-            .filter(Boolean)
-            .join('-');
-    };
-
-    const formatBlockLabel = (blockPath: Array<Record<string, any>> = []): string => {
-        return blockPath
-            .map((item) => String(item.blockWorkflowName || item.blockWorkflowId || '工作流块'))
-            .filter(Boolean)
-            .join(' / ');
-    };
-
-    const collapsibleRanges = useMemo<CollapsibleRange[]>(() => {
-        const steps = visibleSteps;
-        const ranges: CollapsibleRange[] = [];
-        const loopRangeMap = new Map<string, CollapsibleRange>();
-        const workflowRangeMap = new Map<string, CollapsibleRange>();
-
-        steps.forEach((step, index) => {
-            const iterationPath = step.iterationPath || [];
-            const loopContextStack = step.loopContextStack || [];
-
-            iterationPath.forEach((iteration, depthIndex) => {
-                const loopStartIndex = loopContextStack[depthIndex] ?? iteration.loopStartIndex;
-                const loopNode = typeof loopStartIndex === 'number' ? nodes[loopStartIndex] : undefined;
-                const loopCount = getLoopCount(loopNode);
-                const key = `loop:${loopStartIndex ?? depthIndex}:${iterationPath.slice(0, depthIndex + 1).map((item) => item.iteration).join('.')}`;
-                const existing = loopRangeMap.get(key);
-
-                if (existing) {
-                    existing.end = index;
-                } else {
-                    loopRangeMap.set(key, {
-                        key,
-                        kind: 'loop',
-                        title: `第${depthIndex + 1}层循环 · 第${Number(iteration.iteration ?? 0)}轮`,
-                        meta: `${loopCount}次 · 原节点 #${(loopStartIndex ?? 0) + 1}`,
-                        start: index,
-                        end: index,
-                        depth: depthIndex + 1
-                    });
-                }
-            });
-        });
-
-        loopRangeMap.forEach((range) => {
-            if (range.end > range.start) {
-                ranges.push(range);
-            }
-        });
-
-        let index = 0;
-        while (index < steps.length) {
-            const step = steps[index];
-
-            if (!step.parentNodeType) {
-                index++;
-                continue;
-            }
-
-            const start = index;
-            const iterationKey = formatIterationLabel(step.iterationPath || []);
-            index++;
-
-            while (
-                index < steps.length &&
-                steps[index].parentNodeId === step.parentNodeId &&
-                steps[index].parentNodeType === step.parentNodeType &&
-                formatIterationLabel(steps[index].iterationPath || []) === iterationKey
-            ) {
-                index++;
-            }
-
-            const end = index - 1;
-            if (end > start) {
-                const parentConfig = getNodeConfig(step.parentNodeType);
-                const childConfig = getNodeConfig(step.nodeType);
-                ranges.push({
-                    key: `advanced:${step.parentNodeId || step.nodeId}:${step.parentNodeType}:${iterationKey}`,
-                    kind: 'advanced',
-                    title: parentConfig.name,
-                    meta: `展开为${childConfig.name}`,
-                    start,
-                    end,
-                    depth: (step.iterationPath || []).length + 1
-                });
-            }
-        }
-
-        steps.forEach((step, stepIndex) => {
-            if (!step.blockPath || step.blockPath.length === 0) return;
-
-            const lastBlock = step.blockPath[step.blockPath.length - 1];
-            const workflowName = String(lastBlock.blockWorkflowName || lastBlock.blockWorkflowId || '工作流块');
-            const key = `workflow:${lastBlock.blockNodeId || 'block'}:${formatIterationLabel(step.iterationPath || [])}`;
-            const existing = workflowRangeMap.get(key);
-            if (existing) {
-                existing.end = stepIndex;
-            } else {
-                workflowRangeMap.set(key, {
-                    key,
-                    kind: 'workflow',
-                    title: workflowName,
-                    meta: '工作流块子节点',
-                    start: stepIndex,
-                    end: stepIndex,
-                    depth: (step.iterationPath || []).length + 1
-                });
-            }
-        });
-
-        workflowRangeMap.forEach((range) => {
-            ranges.push(range);
-        });
-
-        return ranges.sort((a, b) => a.start - b.start || b.end - a.end || a.depth - b.depth);
-    }, [nodes, visibleSteps]);
-
-    const activeCollapsedRanges = useMemo(() => {
-        const kindPriority: Record<CollapsibleRangeKind, number> = {
-            workflow: 0,
-            loop: 1,
-            advanced: 2
-        };
-        const selectedRanges = collapsibleRanges
-            .filter((range) => collapsedKeys.has(range.key))
-            .sort((a, b) => (
-                a.start - b.start ||
-                kindPriority[a.kind] - kindPriority[b.kind] ||
-                b.end - a.end
-            ));
-        const activeRanges = new Map<number, CollapsibleRange>();
-        let coveredUntil = -1;
-
-        selectedRanges.forEach((range) => {
-            if (range.start <= coveredUntil) return;
-            activeRanges.set(range.start, range);
-            coveredUntil = range.end;
-        });
-
-        return activeRanges;
-    }, [collapsedKeys, collapsibleRanges]);
-
-    const rangeStates = useMemo(() => {
-        const buildState = (kind: CollapsibleRangeKind) => {
-            const ranges = collapsibleRanges.filter((range) => range.kind === kind);
-            return {
-                count: ranges.length,
-                isCollapsed: ranges.some((range) => collapsedKeys.has(range.key))
-            };
-        };
-
-        return {
-            loop: buildState('loop'),
-            advanced: buildState('advanced'),
-            workflow: buildState('workflow')
-        };
-    }, [collapsedKeys, collapsibleRanges]);
-
-    const toggleRangesByKind = (kind: CollapsibleRangeKind) => {
-        setCollapsedKeys((current) => {
-            const next = new Set(current);
-            const targetRanges = collapsibleRanges.filter((range) => range.kind === kind);
-            const hasCollapsedRange = targetRanges.some((range) => next.has(range.key));
-
-            targetRanges.forEach((range) => {
-                if (hasCollapsedRange) {
-                    next.delete(range.key);
-                } else {
-                    next.add(range.key);
-                }
-            });
-            return next;
-        });
-    };
-
-    const expandAllGroups = () => {
-        setCollapsedKeys(new Set());
-    };
-
-    const expandRange = (key: string) => {
-        setCollapsedKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-        });
-    };
-
-    const renderStepCard = (step: UnrolledStepWithAdvancedMeta, index: number) => {
-        const nodeConfig = getNodeConfig(step.nodeType);
-        const paramPreview = getParamPreview(step);
-        const iterPath = formatIterationLabel(step.iterationPath || []);
-        const blockLabel = formatBlockLabel(step.blockPath || []);
-        const isSelected = selectedUnrolledIndex === step.unrolledIndex;
-
-        return (
-            <button
-                key={`card:${step.nodeId}:${index}`}
-                type="button"
-                className={`unroll-step-card unroll-step-card--selectable ${isSelected ? 'is-selected' : ''}`}
-                onClick={() => setSelectedUnrolledIndex(step.unrolledIndex)}
-                aria-pressed={isSelected}
-            >
-                {/* 序号 + 图标 + 名称 */}
-                <div className="unroll-step-card__header">
-                    <span className="unroll-step-card__index">
-                        #{index + 1}
-                    </span>
-                    <span className="unroll-step-card__node-icon">
-                        <NodeIconSvg nodeType={step.nodeType} fallback={nodeConfig.icon} />
-                    </span>
-                    <span className="unroll-step-card__name">
-                        {nodeConfig.name}
-                    </span>
-                </div>
-
-                {/* 迭代路径 */}
-                {(step.iterationPath || []).length > 0 && (
-                    <div className="unroll-step-card__iteration">
-                        <span className="unroll-step-card__meta-icon"><UiIconSvg name="loop" /></span>
-                        <span>迭代 [{iterPath}]</span>
-                    </div>
-                )}
-
-                {blockLabel && (
-                    <div className="unroll-step-card__iteration unroll-step-card__iteration--block">
-                        <span className="unroll-step-card__meta-icon">
-                            <NodeIconSvg nodeType="workflow_block" fallback="workflow_block" />
-                        </span>
-                        <span>{blockLabel}</span>
-                    </div>
-                )}
-
-                {/* 参数预览 */}
-                {paramPreview && (
-                    <div className="unroll-step-card__preview">
-                        {paramPreview}
-                    </div>
-                )}
-            </button>
-        );
-    };
-
-    const renderCollapsedRangeCard = (range: CollapsibleRange) => {
-        return (
-            <button
-                key={`collapsed:${range.key}`}
-                type="button"
-                className={`unroll-step-card unroll-step-card--collapsed unroll-step-card--collapsed-${range.kind}`}
-                onClick={() => expandRange(range.key)}
-                aria-label={`展开${range.title}`}
-            >
-                <div className="unroll-step-card__header">
-                    <span className="unroll-step-card__index">
-                        #{range.start + 1}-{range.end + 1}
-                    </span>
-                    <span className="unroll-step-card__collapse-icon">+</span>
-                    <span className="unroll-step-card__name">
-                        {range.title}
-                    </span>
-                </div>
-                <div className="unroll-step-card__preview">
-                    已收缩 {range.end - range.start + 1} 步 · {range.meta}
-                </div>
-            </button>
-        );
-    };
-
-    const renderVisibleSteps = () => {
-        const renderedItems: React.ReactNode[] = [];
-        const steps = visibleSteps;
-        let index = 0;
-
-        while (index < steps.length) {
-            const collapsedRange = activeCollapsedRanges.get(index);
-            if (collapsedRange) {
-                renderedItems.push(renderCollapsedRangeCard(collapsedRange));
-                index = collapsedRange.end + 1;
-                continue;
-            }
-
-            renderedItems.push(renderStepCard(steps[index], index));
-            index++;
-        }
-
-        return renderedItems;
-    };
-
-    const selectedStep = selectedUnrolledIndex === null
+    const selectedRow = selectedUnrolledIndex === null
         ? null
-        : (unrollResult.steps as UnrolledStepWithAdvancedMeta[])
-            .find((step) => step.unrolledIndex === selectedUnrolledIndex);
+        : model.rowByUnrolledIndex.get(selectedUnrolledIndex) || null;
 
-    const renderRangeToggle = (kind: CollapsibleRangeKind, label: string) => {
-        const state = rangeStates[kind];
-        const actionLabel = state.isCollapsed ? '展开' : '收缩';
+    const groupsByKind = useMemo(() => {
+        const grouped: Record<UnrollExplorerGroupKind, UnrollExplorerGroup[]> = {
+            loop: [],
+            workflow: [],
+            advanced: [],
+        };
+        model.groups.forEach((group) => grouped[group.kind].push(group));
+        return grouped;
+    }, [model.groups]);
 
+    const selectedIsVisible = selectedRow
+        ? renderItems.some((item) => item.kind === 'row' && item.row.key === selectedRow.key)
+        : false;
+    const selectedIsFiltered = selectedRow
+        ? Boolean(query.trim()) && !selectedIsVisible
+        : false;
+    const selectedIsCollapsed = selectedRow
+        ? !query.trim() && !selectedIsVisible
+        : false;
+
+    const toggleGroup = (key: string) => {
+        setCollapsedKeys((current) => {
+            const next = new Set(current);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
+    const scrollToRow = (unrolledIndex: number) => {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                const target = sequenceRef.current?.querySelector<HTMLElement>(
+                    `[data-unrolled-index="${unrolledIndex}"]`,
+                );
+                target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                target?.focus({ preventScroll: true });
+            });
+        });
+    };
+
+    const navigateToGroup = (group: UnrollExplorerGroup) => {
+        const firstPosition = group.memberPositions[0];
+        const firstRow = model.rows[firstPosition];
+        if (!firstRow) return;
+
+        setCollapsedKeys((current) => {
+            const next = new Set(current);
+            model.groups.forEach((candidate) => {
+                if (candidate.memberRowKeys.includes(firstRow.key)) {
+                    next.delete(candidate.key);
+                }
+            });
+            return next;
+        });
+        setQuery('');
+        setSelectedUnrolledIndex(firstRow.unrolledIndex);
+        scrollToRow(firstRow.unrolledIndex);
+    };
+
+    const showFullSequence = () => {
+        setQuery('');
+        setCollapsedKeys(new Set());
+        sequenceRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const runFromSelected = async (close: () => void) => {
+        if (!selectedRow || !selectedRow.isSelectable || !canRunFromStep || !onRunFromStep || isStarting) {
+            return;
+        }
+
+        setIsStarting(true);
+        setRunNotice(null);
+        try {
+            const outcome = await onRunFromStep(selectedRow.unrolledIndex);
+            if (outcome === 'started') {
+                close();
+                return;
+            }
+            if (outcome === 'confirmation-required') {
+                setRunNotice('运行信息尚不完整，请核对下方提示后再次确认；所选起点已保留。');
+            } else if (outcome === 'blocked') {
+                setRunNotice('当前状态不允许启动，请检查设备、工作站和工作流状态。');
+            } else {
+                setRunNotice('启动未完成，请检查通知与后端状态后重试；所选起点已保留。');
+            }
+        } catch (error) {
+            setRunNotice(errorMessage(error));
+        } finally {
+            setIsStarting(false);
+        }
+    };
+
+    const renderOutlineGroup = (group: UnrollExplorerGroup) => {
+        const collapsed = collapsedKeys.has(group.key);
+        return (
+            <div
+                className={`unroll-outline-item ${collapsed ? 'is-collapsed' : ''}`}
+                key={group.key}
+            >
+                <button
+                    type="button"
+                    className="unroll-outline-item__main"
+                    onClick={() => navigateToGroup(group)}
+                    title={`定位到${group.title}`}
+                >
+                    <span className={`unroll-outline-item__icon unroll-outline-item__icon--${group.kind}`}>
+                        <GroupIcon kind={group.kind} />
+                    </span>
+                    <span className="unroll-outline-item__copy">
+                        <span className="unroll-outline-item__title">{group.title}</span>
+                        <span className="unroll-outline-item__meta">
+                            {group.meta} · {group.stepCount} 步
+                        </span>
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    className="unroll-outline-item__toggle"
+                    onClick={() => toggleGroup(group.key)}
+                    aria-label={`${collapsed ? '展开' : '收起'}${group.title}`}
+                    aria-expanded={!collapsed}
+                >
+                    {collapsed ? '+' : '−'}
+                </button>
+            </div>
+        );
+    };
+
+    const renderStepRow = (row: UnrollExplorerRow) => {
+        if (row.isAutomaticBoundary) {
+            const isStartup = row.step.nodeType === 'startup';
+            return (
+                <div
+                    key={row.key}
+                    className={`unroll-sequence-boundary unroll-sequence-boundary--${isStartup ? 'startup' : 'shutdown'}`}
+                    data-unrolled-index={row.unrolledIndex}
+                    role="note"
+                >
+                    <span className="unroll-sequence-boundary__ordinal">#{row.ordinal}</span>
+                    <span className="unroll-sequence-boundary__rail" aria-hidden="true" />
+                    <span className="unroll-sequence-boundary__icon">
+                        <NodeIconSvg nodeType={row.step.nodeType} fallback={<UiIconSvg name="settings" />} />
+                    </span>
+                    <span className="unroll-sequence-boundary__copy">
+                        <strong>{isStartup ? '自动启动测量程序' : '自动停止测量程序'}</strong>
+                        <span>系统边界 · 纳入真实执行序号，不可作为手动起点</span>
+                    </span>
+                    <span className="unroll-sequence-boundary__badge">系统</span>
+                </div>
+            );
+        }
+
+        const selected = selectedUnrolledIndex === row.unrolledIndex;
+        const iconNodeType = row.advancedMeta?.parentNodeType || row.step.nodeType;
         return (
             <button
+                key={row.key}
                 type="button"
-                className={`btn btn--xs unroll-controls__toggle ${state.isCollapsed ? 'is-active' : ''}`}
-                onClick={() => toggleRangesByKind(kind)}
-                disabled={state.count === 0}
-                aria-pressed={state.isCollapsed}
+                id={`unroll-step-${row.unrolledIndex}`}
+                className={`unroll-sequence-row ${selected ? 'is-selected' : ''}`}
+                data-unrolled-index={row.unrolledIndex}
+                onClick={() => {
+                    setSelectedUnrolledIndex(row.unrolledIndex);
+                    setRunNotice(null);
+                }}
+                aria-pressed={selected}
             >
-                {actionLabel}{label}{state.count > 0 ? ` (${state.count})` : ''}
+                <span className="unroll-sequence-row__ordinal">#{row.ordinal}</span>
+                <span className="unroll-sequence-row__rail" aria-hidden="true" />
+                <span className="unroll-sequence-row__icon">
+                    <NodeIconSvg nodeType={iconNodeType} fallback={<UiIconSvg name="workflow" />} />
+                </span>
+                <span className="unroll-sequence-row__content">
+                    <span className="unroll-sequence-row__headline">
+                        <strong>{rowTitle(row)}</strong>
+                        {row.advancedMeta && (
+                            <span className="unroll-sequence-row__actual">实际执行：{row.displayName}</span>
+                        )}
+                    </span>
+                    <span className="unroll-sequence-row__summary">
+                        {row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary}
+                    </span>
+                    {(row.iterationLabel || row.blockLabel || row.advancedMeta) && (
+                        <span className="unroll-sequence-row__context">
+                            {row.iterationLabel && <span className="is-loop">{row.iterationLabel}</span>}
+                            {row.blockLabel && <span className="is-workflow">{row.blockLabel}</span>}
+                            {row.advancedMeta?.stepLabel && <span className="is-advanced">{row.advancedMeta.stepLabel}</span>}
+                        </span>
+                    )}
+                </span>
+                <span className="unroll-sequence-row__select">选择</span>
             </button>
+        );
+    };
+
+    const renderCollapsedGroup = (
+        item: Extract<UnrollRenderItem, { kind: 'collapsed' }>,
+    ) => {
+        const { collapseKey, group, renderKey } = item;
+        return (
+        <button
+            key={renderKey}
+            type="button"
+            className={`unroll-collapsed-group unroll-collapsed-group--${group.kind}`}
+            onClick={() => toggleGroup(collapseKey)}
+            aria-label={`展开${group.title}`}
+        >
+            <span className="unroll-collapsed-group__range">
+                #{group.firstOrdinal}{group.lastOrdinal !== group.firstOrdinal ? `–${group.lastOrdinal}` : ''}
+            </span>
+            <span className="unroll-collapsed-group__icon"><GroupIcon kind={group.kind} /></span>
+            <span className="unroll-collapsed-group__copy">
+                <strong>{group.title}</strong>
+                <span>{group.meta} · 已收起 {group.stepCount} 步</span>
+            </span>
+            <span className="unroll-collapsed-group__action">展开</span>
+        </button>
+        );
+    };
+
+    const renderSuccessBody = (close: () => void) => {
+        if (model.totalSteps === 0) {
+            return (
+                <div className="unroll-state unroll-state--empty">
+                    <span className="unroll-state__icon"><UiIconSvg name="inbox" /></span>
+                    <strong>{nodes.length === 0 ? '当前画布还没有节点' : '当前配置没有可执行步骤'}</strong>
+                    <span>{nodes.length === 0 ? '添加节点后即可查看真实执行序列。' : '请检查循环次数、高级节点周期或工作流块内容。'}</span>
+                </div>
+            );
+        }
+
+        return (
+            <div className="unroll-explorer">
+                <aside className="unroll-explorer__outline" aria-label="展开结构导航">
+                    <div className="unroll-panel-heading">
+                        <span className="unroll-panel-heading__eyebrow">结构导航</span>
+                        <strong>执行上下文</strong>
+                    </div>
+                    <button type="button" className="unroll-outline-all" onClick={showFullSequence}>
+                        <span className="unroll-outline-all__icon"><UiIconSvg name="list" /></span>
+                        <span>
+                            <strong>完整执行序列</strong>
+                            <small>{model.totalSteps} 个计划步骤</small>
+                        </span>
+                    </button>
+                    <div className="unroll-outline-scroll">
+                        {(Object.keys(GROUP_LABELS) as UnrollExplorerGroupKind[]).map((kind) => {
+                            const groups = groupsByKind[kind];
+                            if (groups.length === 0) return null;
+                            return (
+                                <section className="unroll-outline-section" key={kind}>
+                                    <div className="unroll-outline-section__heading">
+                                        <span>{GROUP_LABELS[kind]}</span>
+                                        <span>{groups.length}</span>
+                                    </div>
+                                    {groups.map(renderOutlineGroup)}
+                                </section>
+                            );
+                        })}
+                    </div>
+                </aside>
+
+                <section className="unroll-explorer__sequence" aria-label="真实执行序列">
+                    <div className="unroll-sequence-toolbar">
+                        <label className="unroll-search">
+                            <span className="unroll-search__label">筛选步骤</span>
+                            <input
+                                type="search"
+                                value={query}
+                                onChange={(event) => setQuery(event.target.value)}
+                                placeholder="名称、参数、循环或工作流块"
+                                autoFocus
+                            />
+                        </label>
+                        <div className="unroll-sequence-toolbar__actions">
+                            <span>{query.trim() ? `${renderItems.length} 项匹配` : `${model.totalSteps} 项`}</span>
+                            <button
+                                type="button"
+                                className="btn btn--xs unroll-reset-button"
+                                onClick={showFullSequence}
+                                disabled={collapsedKeys.size === 0 && !query.trim()}
+                            >
+                                全部展开
+                            </button>
+                        </div>
+                    </div>
+                    <div className="unroll-sequence-list" ref={sequenceRef}>
+                        {renderItems.length > 0 ? renderItems.map((item) => (
+                            item.kind === 'row' ? renderStepRow(item.row) : renderCollapsedGroup(item)
+                        )) : (
+                            <div className="unroll-sequence-no-results" role="status">
+                                没有匹配“{query.trim()}”的执行步骤
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <aside className="unroll-explorer__detail" aria-label="所选步骤详情">
+                    <div className="unroll-panel-heading">
+                        <span className="unroll-panel-heading__eyebrow">步骤检查器</span>
+                        <strong>{selectedRow ? `计划 #${selectedRow.ordinal}` : '尚未选择步骤'}</strong>
+                    </div>
+                    {selectedRow ? (
+                        <div className="unroll-detail">
+                            <div className="unroll-detail__identity">
+                                <span className="unroll-detail__icon">
+                                    <NodeIconSvg
+                                        nodeType={selectedRow.advancedMeta?.parentNodeType || selectedRow.step.nodeType}
+                                        fallback={<UiIconSvg name="workflow" />}
+                                    />
+                                </span>
+                                <span>
+                                    <strong>{rowTitle(selectedRow)}</strong>
+                                    <small>真实索引 {selectedRow.unrolledIndex} · 共 {model.totalSteps} 步</small>
+                                </span>
+                            </div>
+
+                            {(selectedIsCollapsed || selectedIsFiltered) && (
+                                <div className="unroll-detail__visibility" role="status">
+                                    此步骤仍保持选中，但当前被{selectedIsFiltered ? '筛选条件隐藏' : '收起的结构隐藏'}。
+                                </div>
+                            )}
+
+                            <dl className="unroll-detail__facts">
+                                {selectedRow.advancedMeta && (
+                                    <>
+                                        <dt>高级节点</dt>
+                                        <dd>{selectedRow.advancedMeta.parentDisplayName}</dd>
+                                        <dt>内部位置</dt>
+                                        <dd>
+                                            {[selectedRow.advancedMeta.stepLabel, selectedRow.advancedMeta.cycleLabel, selectedRow.advancedMeta.valueLabel]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </dd>
+                                        <dt>实际步骤</dt>
+                                        <dd>{selectedRow.displayName}</dd>
+                                    </>
+                                )}
+                                <dt>画布来源</dt>
+                                <dd>节点 #{selectedRow.step.originalIndex + 1}</dd>
+                                {selectedRow.iterationLabel && (
+                                    <>
+                                        <dt>循环路径</dt>
+                                        <dd>{selectedRow.iterationLabel}</dd>
+                                    </>
+                                )}
+                                {selectedRow.blockLabel && (
+                                    <>
+                                        <dt>工作流块</dt>
+                                        <dd>{selectedRow.blockLabel}</dd>
+                                    </>
+                                )}
+                                <dt>参数摘要</dt>
+                                <dd>{selectedRow.parameterSummary === '-' ? '无额外参数' : selectedRow.parameterSummary}</dd>
+                            </dl>
+
+                            <div className="unroll-detail__start-note">
+                                <span className="unroll-detail__start-note-icon"><UiIconSvg name="info" /></span>
+                                <span>将从计划 #{selectedRow.ordinal} 继续。若后续仍有测量，后端会在需要时先补执行自动启动边界。</span>
+                            </div>
+
+                            {runMetadataWarning && (
+                                <div className="unroll-detail__warning" role="alert">
+                                    <span><UiIconSvg name="warning" /></span>
+                                    <span>{runMetadataWarning}</span>
+                                </div>
+                            )}
+                            {runNotice && (
+                                <div className="unroll-detail__notice" role="status" aria-live="polite">
+                                    {runNotice}
+                                </div>
+                            )}
+
+                            <div className="unroll-detail__actions">
+                                <button
+                                    type="button"
+                                    className="btn btn--md btn--primary"
+                                    disabled={!canRunFromStep || !onRunFromStep || isStarting}
+                                    onClick={() => void runFromSelected(close)}
+                                >
+                                    {isStarting
+                                        ? '正在启动…'
+                                        : runMetadataWarning
+                                            ? '确认并从此步运行'
+                                            : '从此步开始运行'}
+                                </button>
+                                {!canRunFromStep && (
+                                    <span className="unroll-detail__disabled-reason">当前执行状态不可启动新流程</span>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="unroll-detail-placeholder">
+                            <span><UiIconSvg name="skip" /></span>
+                            <strong>选择一个普通步骤</strong>
+                            <p>这里会显示它在真实执行计划中的位置、循环上下文和参数。系统自动边界不可作为手动起点。</p>
+                        </div>
+                    )}
+                </aside>
+            </div>
         );
     };
 
@@ -552,92 +549,76 @@ export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
                 if (!open) onClose();
             }}
             id="unroll-view-modal"
+            closeOnBackdrop={!isStarting}
+            closeOnEscape={!isStarting}
         >
             {({ close }) => (
-            <div
-                className="modal__content unroll-view-modal workspace-device-modal"
-            >
-                {/* 标题栏 */}
-                <div className="modal__header">
-                    <h3>展开所有执行步骤</h3>
-                    <div className="unroll-summary">
-                        <span className="unroll-badge unroll-badge--indigo">
-                            总步骤: {visibleSteps.length}
-                        </span>
-                        <span className="unroll-badge unroll-badge--success">
-                            物理节点: {unrollResult.summary?.physicalNodeCount ?? unrollResult.nodeCount}
-                        </span>
-                        {(unrollResult.summary?.maxLoopDepth ?? 0) > 0 && (
-                            <span className="unroll-badge unroll-badge--warning">
-                                最大嵌套: {unrollResult.summary?.maxLoopDepth}层
+                <div
+                    className="modal__content unroll-view-modal workspace-device-modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="unroll-view-title"
+                >
+                    <div className="modal__header unroll-view-modal__header">
+                        <div className="unroll-view-modal__title">
+                            <span>执行计划</span>
+                            <h3 id="unroll-view-title">展开所有执行步骤</h3>
+                            <p>{previewState.status === 'success' ? `由 ${preview.nodeCount} 个画布节点生成` : '正在读取后端执行计划'}</p>
+                        </div>
+                        <div className="unroll-summary" aria-label="展开摘要">
+                            <span className="unroll-badge unroll-badge--indigo">
+                                计划 {previewState.status === 'success' ? model.totalSteps : '—'}
                             </span>
-                        )}
-                    </div>
-                    <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={close}>✕</button>
-                </div>
-
-                {/* 节点网格 */}
-                <div className="modal__body unroll-view-body">
-                    {isLoadingPreview ? (
-                        <div className="unroll-empty">
-                            正在展开工作流...
-                        </div>
-                    ) : previewError ? (
-                        <div className="unroll-empty">
-                            {previewError}
-                        </div>
-                    ) : visibleSteps.length === 0 ? (
-                        <div className="unroll-empty">
-                            当前工作流为空，请添加节点后再查看
-                        </div>
-                    ) : (
-                        <>
-                            <div className="unroll-selection">
-                                <span className="unroll-selection__text">
-                                    {selectedStep
-                                        ? `已选择 #${visibleSteps.findIndex((step) => step.unrolledIndex === selectedUnrolledIndex) + 1} ${getNodeConfig(selectedStep.nodeType).name}`
-                                        : '点击任意展开步骤，可从该步骤开始运行'}
+                            <span className="unroll-badge unroll-badge--success">
+                                可选 {previewState.status === 'success' ? model.selectableStepCount : '—'}
+                            </span>
+                            {model.automaticBoundaryCount > 0 && (
+                                <span className="unroll-badge unroll-badge--system">
+                                    系统 {model.automaticBoundaryCount}
                                 </span>
+                            )}
+                            {model.maxLoopDepth > 0 && (
+                                <span className="unroll-badge unroll-badge--warning">
+                                    嵌套 {model.maxLoopDepth} 层
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close"
+                            onClick={close}
+                            aria-label="关闭展开步骤"
+                            disabled={isStarting}
+                        >
+                            <UiIconSvg name="close" />
+                        </button>
+                    </div>
+
+                    <div className="modal__body unroll-view-body">
+                        {previewState.status === 'loading' && (
+                            <div className="unroll-state unroll-state--loading" role="status" aria-live="polite">
+                                <span className="unroll-state__spinner" aria-hidden="true" />
+                                <strong>正在生成真实执行计划</strong>
+                                <span>循环、工作流块、高级节点与系统边界都由后端统一展开。</span>
+                            </div>
+                        )}
+                        {previewState.status === 'error' && (
+                            <div className="unroll-state unroll-state--error" role="alert">
+                                <span className="unroll-state__icon"><UiIconSvg name="error" /></span>
+                                <strong>无法生成展开预览</strong>
+                                <span>{previewState.message}</span>
                                 <button
                                     type="button"
-                                    className="btn btn--xs btn--primary"
-                                    disabled={!selectedStep || !canRunFromStep}
-                                    onClick={() => {
-                                        if (selectedUnrolledIndex !== null) {
-                                            onRunFromStep?.(selectedUnrolledIndex);
-                                        }
-                                    }}
+                                    className="btn btn--sm btn--secondary"
+                                    onClick={() => setRetryVersion((value) => value + 1)}
                                 >
-                                    从此步骤开始运行
+                                    重新加载
                                 </button>
                             </div>
-                            {collapsibleRanges.length > 0 && (
-                                <div className="unroll-controls">
-                                    <span className="unroll-controls__summary">
-                                        当前保持全展开，收缩只临时隐藏重复范围
-                                    </span>
-                                    <div className="unroll-controls__actions">
-                                        {renderRangeToggle('loop', '循环')}
-                                        {renderRangeToggle('advanced', '高级')}
-                                        {renderRangeToggle('workflow', '组节点')}
-                                        <button
-                                            type="button"
-                                            className="btn btn--xs unroll-controls__toggle unroll-controls__toggle--reset"
-                                            onClick={expandAllGroups}
-                                            disabled={collapsedKeys.size === 0}
-                                        >
-                                            全部展开
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="unroll-grid">
-                                {renderVisibleSteps()}
-                            </div>
-                        </>
-                    )}
+                        )}
+                        {previewState.status === 'success' && renderSuccessBody(close)}
+                    </div>
                 </div>
-            </div>
             )}
         </ModalLayer>
     );

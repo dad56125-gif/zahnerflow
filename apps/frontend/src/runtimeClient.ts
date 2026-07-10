@@ -2,12 +2,22 @@ import { io, Socket } from 'socket.io-client';
 import { getWsUrl } from './config/env.config';
 import { getDesktopRuntimeBaseUrl } from './desktopBridge';
 import { DEVICE_STATUS_UPDATE } from './eventContracts';
-import type { RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
+import type {
+  RuntimeDeviceStatusEnvelope,
+  WorkflowNode,
+  WorkflowUnrollPreview,
+} from '@zahnerflow/types';
 
 type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = Record<string, QueryValue>;
 type RequestBody = unknown;
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+export interface UnrollPreviewRequest {
+  nodes?: WorkflowNode[];
+  workflowId?: string | null;
+  autoStartupConfig?: Record<string, unknown>;
+}
 
 const deviceStatusUpdateEvent = DEVICE_STATUS_UPDATE;
 
@@ -143,7 +153,8 @@ export const runtimeClient = {
 
   executions: {
     start: <T>(body: RequestBody) => post<T>('/api/executions', body),
-    unrollPreview: <T>(body: RequestBody) => post<T>('/api/executions/unroll-preview', body),
+    unrollPreview: (body: UnrollPreviewRequest) =>
+      post<WorkflowUnrollPreview>('/api/executions/unroll-preview', body),
     estimate: <T>(body: RequestBody) => post<T>('/api/executions/estimate', body),
     list: <T>(params?: QueryParams) => get<T>('/api/executions', params),
     get: <T>(id: string) => get<T>(`/api/executions/${encodeURIComponent(id)}`),

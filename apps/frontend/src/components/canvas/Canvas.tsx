@@ -9,6 +9,7 @@ import { Toolbar } from '../Toolbar';
 import { LoopBoundary } from './LoopBoundary';
 import { useLayout, DisplayNode } from './useLayout';
 import { useLoopDetection, SimpleLoopInfo } from './useLoopDetection';
+import type { RunFlowHandler } from '../../types/executionControl';
 
 interface CanvasProps {
   selectedWorkstation: WorkstationType | null;
@@ -16,7 +17,7 @@ interface CanvasProps {
   isCancelling?: boolean;
   hasError: boolean;
   workflowBlockRunBlocked?: boolean;
-  onRunFlow?: (options?: { startFromUnrolledIndex?: number }) => void;
+  onRunFlow?: RunFlowHandler;
   onResetFlow?: () => void;
   onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
   onGenerateReport?: () => void;
