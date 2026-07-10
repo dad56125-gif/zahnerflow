@@ -1,17 +1,15 @@
 /*
  * Scroll rendering contract
  *
- * A scroll container plus descendant backdrop filters, mask images and forced
- * compositor layers can make Chromium/Electron reveal an already-rendered
- * element one or more frames late.  The runtime marks every computed native
- * scroll surface with this class, including modal content mounted later.
+ * A scroll container that becomes a forced compositor layer can make
+ * Chromium/Electron reveal an already-rendered element one or more frames
+ * late. The runtime marks every computed native scroll surface with this
+ * class, including modal content mounted later.
  */
 .scroll-render-safe {
   contain: paint;
   isolation: isolate;
   content-visibility: visible;
-  mask-image: none !important;
-  -webkit-mask-image: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   will-change: auto !important;
