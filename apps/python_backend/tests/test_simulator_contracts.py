@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from devices.mfc.real_device import ErrorCategory, MfcError
+from devices.zahner.real_device import _normalize_parameters
 from experiment_worker import build_output_path
 from runtime.device_manager import DeviceManager
 
@@ -197,6 +198,44 @@ def test_zahner_simulator_dc_and_eis_measurement_contract(tmp_path):
         assert len(eis["eis_data"]["frequency"]) == len(eis["eis_data"]["z_real"]) == len(eis["eis_data"]["z_imag"])
     finally:
         devices.disconnect_all()
+
+
+def test_zahner_eis_normalizes_frontend_scan_controls():
+    params_to_max = _normalize_parameters(
+        "eis_potentiostatic",
+        {
+            "eisScanDirection": "START_TO_MAX",
+            "eisScanStrategy": "MULTI_SINE",
+            "eisLowerFrequency": 0.1,
+            "eisUpperFrequency": 300000,
+            "eisStartFrequency": 1000,
+        },
+    )
+
+    assert params_to_max["eis_scan_direction"] == "START_TO_MAX"
+    assert params_to_max["eis_scan_strategy"] == "MULTI_SINE"
+    assert params_to_max["eis_start_frequency"] == 0.1
+
+    params_to_min = _normalize_parameters(
+        "eis_potentiostatic",
+        {
+            "eisScanDirection": "START_TO_MIN",
+            "eisLowerFrequency": 0.1,
+            "eisUpperFrequency": 300000,
+            "eisStartFrequency": 1000,
+        },
+    )
+
+    assert params_to_min["eis_start_frequency"] == 300000
+
+    with pytest.raises(ValueError, match="lower frequency"):
+        _normalize_parameters(
+            "eis_potentiostatic",
+            {
+                "eisLowerFrequency": 300000,
+                "eisUpperFrequency": 0.1,
+            },
+        )
 
 
 def test_output_path_uses_safe_windows_segments_and_user_project(tmp_path):

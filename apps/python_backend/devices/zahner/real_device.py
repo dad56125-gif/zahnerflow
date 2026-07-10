@@ -119,6 +119,8 @@ def _normalize_parameters(measurement_type: str, raw_params: dict) -> dict:
         "eisUpperPeriods": "eis_upper_periods",
         "eisLowerSteps": "eis_lower_steps",
         "eisUpperSteps": "eis_upper_steps",
+        "eisScanDirection": "eis_scan_direction",
+        "eisScanStrategy": "eis_scan_strategy",
     }
     for source, target in aliases.items():
         if source in raw_params and target not in raw_params:
@@ -157,6 +159,19 @@ def _normalize_parameters(measurement_type: str, raw_params: dict) -> dict:
     for key in ("eis_lower_periods", "eis_upper_periods", "eis_lower_steps", "eis_upper_steps"):
         if key in final_params:
             final_params[key] = int(final_params[key])
+
+    if measurement_type in ("eis_potentiostatic", "eis_galvanostatic"):
+        direction = final_params.get("eis_scan_direction", "START_TO_MIN")
+        if direction not in ("START_TO_MAX", "START_TO_MIN"):
+            raise ValueError(f"Unsupported EIS scan direction: {direction}")
+        final_params["eis_scan_direction"] = direction
+
+        lower = final_params.get("eis_lower_frequency")
+        upper = final_params.get("eis_upper_frequency")
+        if lower is not None and upper is not None:
+            if lower > upper:
+                raise ValueError("EIS lower frequency must not exceed upper frequency")
+            final_params["eis_start_frequency"] = lower if direction == "START_TO_MAX" else upper
     return final_params
 
 
