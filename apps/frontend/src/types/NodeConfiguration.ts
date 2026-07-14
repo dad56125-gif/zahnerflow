@@ -43,7 +43,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'startup',
     name: '启动程序',
     category: 'device',
-    description: '启动电化学工作站程序 (FastAPI)',
+    description: '连接并启动电化学工作站程序，为后续的电化学测量建立可用的设备运行环境。',
     icon: 'startup',
     defaultParameters: {
       host: 'localhost'
@@ -54,7 +54,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'shutdown',
     name: '停止程序',
     category: 'device',
-    description: '停止电化学工作站程序',
+    description: '结束当前电化学工作站程序，在工作流收尾或不再需要设备时释放对应的运行资源。',
     icon: 'shutdown',
     defaultParameters: {}
   },
@@ -63,7 +63,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'change_temperature',
     name: '改变温度',
     category: 'device',
-    description: 'Furnace自动温度控制节点',
+    description: '控制 Furnace 以指定速率升温或降温至目标温度，并在到达目标后按设定时间稳定，适合在测量前建立热环境。',
     icon: 'change_temperature',
     defaultParameters: {
       targetTemperature: 25,
@@ -79,7 +79,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'change_gas_flow',
     name: '更改气体流量',
     category: 'device',
-    description: 'MFC气体流量控制节点',
+    description: '控制指定 MFC 通道的气体流量至目标值，并等待流量稳定，为后续实验步骤提供一致的气氛条件。',
     icon: 'change_gas_flow',
     defaultParameters: {
       deviceSelection: '1:N2',
@@ -97,7 +97,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'eis_potentiostatic',
     name: '恒电位EIS',
     category: 'basic_measurement',
-    description: '恒电位电化学阻抗谱测量 (FastAPI)',
+    description: '在恒定电位或指定直流偏置下进行电化学阻抗谱扫描，用于分析体系在不同频率下的阻抗响应。',
     icon: 'eis_potentiostatic',
     defaultParameters: {
       eisLowerFrequency: 0.1,
@@ -119,7 +119,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'eis_galvanostatic',
     name: '恒电流EIS',
     category: 'basic_measurement',
-    description: '恒电流电化学阻抗谱测量 (FastAPI)',
+    description: '在恒定电流或指定直流偏置下进行电化学阻抗谱扫描，用于分析体系在不同频率下的阻抗响应。',
     icon: 'eis_galvanostatic',
     defaultParameters: {
       eisLowerFrequency: 0.05,
@@ -140,7 +140,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'ocp_measurement',
     name: '开路电位测量',
     category: 'basic_measurement',
-    description: '开路电位测量 (FastAPI)',
+    description: '断开外加极化后记录体系的开路电位随时间变化，可用于观察电位稳定性或评估电池状态。',
     icon: 'ocp_measurement',
     defaultParameters: {
       check_battery_health: false,
@@ -153,7 +153,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'chronoamperometry',
     name: '计时安培法',
     category: 'basic_measurement',
-    description: '计时安培法测量 (FastAPI)',
+    description: '施加恒定电位并记录电流随时间的变化，用于观察瞬态电流响应、反应动力学或扩散过程。',
     icon: 'chronoamperometry',
     defaultParameters: {
       polarizationVoltage: 1.0,
@@ -168,7 +168,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'chronopotentiometry',
     name: '计时电位法',
     category: 'basic_measurement',
-    description: '计时电位法测量 (FastAPI)',
+    description: '施加恒定电流并记录电位随时间的变化，用于观察电位响应、极化行为及体系随时间的变化。',
     icon: 'chronopotentiometry',
     defaultParameters: {
       polarizationCurrent: 10e-3,
@@ -183,7 +183,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'voltage_ramp',
     name: '电压斜坡',
     category: 'basic_measurement',
-    description: '电压斜坡测量 (线性扫描伏安法)',
+    description: '按设定的电压范围和时间连续扫描，同时记录电流响应，用于获得线性扫描伏安曲线并分析氧化还原行为。',
     icon: 'voltage_ramp',
     defaultParameters: {
       start_voltage: -0.5,
@@ -201,7 +201,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'current_ramp',
     name: '电流斜坡',
     category: 'basic_measurement',
-    description: '电流斜坡测量 (电位动态扫描)',
+    description: '按设定的电流范围和时间连续改变电流，同时记录电位响应，用于分析体系的动态极化特征。',
     icon: 'current_ramp',
     defaultParameters: {
       startCurrent: -10e-3,
@@ -218,7 +218,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'loop_start',
     name: '循环开始',
     category: 'flow_control',
-    description: '定义循环参数和开始位置',
+    description: '标记循环区域的开始，并设置该区域需要重复执行的次数；它必须与对应的循环结束节点配对使用。',
     icon: 'loop_start',
     defaultParameters: {
       loopCount: 1
@@ -229,7 +229,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'loop_end',
     name: '循环结束',
     category: 'flow_control',
-    description: '标记循环结束位置',
+    description: '标记循环区域的结束位置；执行时返回循环开始节点，直到达到设定的循环次数。',
     icon: 'loop_end',
     defaultParameters: {}
   },
@@ -238,7 +238,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'wait_delay',
     name: '等待',
     category: 'flow_control',
-    description: '在工作流执行过程中插入指定时间的等待',
+    description: '让工作流暂停指定时长后再继续执行，适合等待设备状态、温度或气体流量完成自然稳定。',
     icon: 'wait_delay',
     defaultParameters: {
       duration: 1.0
@@ -249,7 +249,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'scheduled_start',
     name: '定时',
     category: 'flow_control',
-    description: '等待到指定时间后继续执行工作流',
+    description: '将工作流暂停至指定的时刻，再继续执行后续节点，适合安排定时实验或与外部过程对齐。',
     icon: 'scheduled_start',
     defaultParameters: {
       hour: 0,
@@ -262,7 +262,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'workflow_block',
     name: '工作流块',
     category: 'flow_control',
-    description: '引用一个已归档工作流作为组合步骤',
+    description: '将已归档的实验记录作为一个组合步骤引用到当前工作流中，便于复用经过验证的节点序列。',
     icon: 'workflow_block',
     defaultParameters: {
       workflowId: '',
@@ -278,7 +278,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'galvanostatic_switching',
     name: '恒电流切换',
     category: 'advanced_measurement',
-    description: '在两个电流值之间周期性切换',
+    description: '在两个电流设定值之间按周期交替切换，并记录电位响应，用于研究周期性电流激励下的体系行为。',
     icon: 'galvanostatic_switching',
     defaultParameters: {
       current_1: 0.0,
@@ -296,7 +296,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'potentiostatic_switching',
     name: '恒电位切换',
     category: 'advanced_measurement',
-    description: '在两个电位值之间周期性切换',
+    description: '在两个电位设定值之间按周期交替切换，并记录电流响应，用于研究周期性电位激励下的体系行为。',
     icon: 'potentiostatic_switching',
     defaultParameters: {
       potential_1: 0.0,
@@ -314,7 +314,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'galvanostatic_step_ramp',
     name: '恒电流阶梯',
     category: 'advanced_measurement',
-    description: '电流阶梯式变化，每阶保持固定时间',
+    description: '按设定步长逐级改变电流，每个电流台阶保持固定时间并记录电位响应，用于获得分段极化特征。',
     icon: 'galvanostatic_step_ramp',
     defaultParameters: {
       startCurrent: 0.1,
@@ -331,7 +331,7 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     type: 'potentiostatic_step_ramp',
     name: '恒电位阶梯',
     category: 'advanced_measurement',
-    description: '电位阶梯式变化，每阶保持固定时间',
+    description: '按设定步长逐级改变电位，每个电位台阶保持固定时间并记录电流响应，用于获得分段极化特征。',
     icon: 'potentiostatic_step_ramp',
     defaultParameters: {
       start_potential: 0.0,
@@ -541,6 +541,71 @@ export function summarizeNodeParameters(type: string, raw: unknown): string {
   });
 
   return parts.length > 0 ? parts.join(' | ') : '-';
+}
+
+function descriptionParameter(params: Record<string, unknown>, keys: string[], fallback = '未设置'): string {
+  const value = keys.map(key => params[key]).find(entry => entry !== undefined && entry !== null && entry !== '');
+  return value === undefined ? fallback : formatPresentationValue(value);
+}
+
+function descriptionNumber(params: Record<string, unknown>, keys: string[], unit: string, fallback = '未设置'): string {
+  return `${descriptionParameter(params, keys, fallback)}${unit}`;
+}
+
+/** 将节点用途与当前参数组合成面向用户的解释性说明。 */
+export function getNodeDescription(type: string, raw: unknown): string {
+  const params = resolvePresentationParameters(raw);
+  const base = NODE_CONFIGS[type as NodeType]?.description || '该节点暂无说明。';
+
+  switch (type as NodeType) {
+    case 'change_temperature':
+      return `${base} 当前会将温度调整到 ${descriptionNumber(params, ['targetTemperature', 'temperature'], ' ℃')}，按 ${descriptionNumber(params, ['rate'], ' ℃/min')} 变化，并在到达目标后稳定 ${descriptionNumber(params, ['stabilizationTime'], ' s')}。`;
+    case 'change_gas_flow':
+      return `${base} 当前选择 ${descriptionParameter(params, ['gasType'], '目标气体')}，目标流量为 ${descriptionNumber(params, ['targetFlowRate', 'flowSccm', 'sccm'], ' sccm')}，达到设定值后继续稳定 ${descriptionNumber(params, ['stabilizationTime'], ' s')}。`;
+    case 'eis_potentiostatic': {
+      const biasEnabled = params.enableDcBias === true || params.enableDcBias === 'true';
+      const biasText = biasEnabled
+        ? `直流偏置已打开，将额外施加 ${descriptionNumber(params, ['eisPotential'], ' V')} 的电位`
+        : '直流偏置未打开，不会额外施加直流电位';
+      return `${base} ${biasText}；交流振幅为 ${descriptionNumber(params, ['eis_amplitude'], ' V')}，频率从 ${descriptionNumber(params, ['eisLowerFrequency'], ' Hz')} 到 ${descriptionNumber(params, ['eisUpperFrequency'], ' Hz')} 扫描。`;
+    }
+    case 'eis_galvanostatic':
+      return `${base} 测量时以 ${descriptionNumber(params, ['eisCurrent'], ' A')} 作为直流电流，交流振幅为 ${descriptionNumber(params, ['eis_amplitude'], ' A')}，频率从 ${descriptionNumber(params, ['eisLowerFrequency'], ' Hz')} 到 ${descriptionNumber(params, ['eisUpperFrequency'], ' Hz')} 扫描。`;
+    case 'ocp_measurement':
+      return `${base} 节点将在 ${descriptionNumber(params, ['measurementDuration'], ' s')} 内每隔 ${descriptionNumber(params, ['samplingInterval'], ' s')} 记录一次电位，整个过程不施加外部电压或电流。`;
+    case 'chronoamperometry':
+      return `${base} 测量期间会保持 ${descriptionNumber(params, ['polarizationVoltage'], ' V')} 的极化电压，并持续 ${descriptionNumber(params, ['measurementDuration'], ' s')}、每隔 ${descriptionNumber(params, ['samplingInterval'], ' s')} 记录电流。`;
+    case 'chronopotentiometry':
+      return `${base} 测量期间会保持 ${descriptionNumber(params, ['polarizationCurrent'], ' A')} 的极化电流，并持续 ${descriptionNumber(params, ['measurementDuration'], ' s')}、每隔 ${descriptionNumber(params, ['samplingInterval'], ' s')} 记录电位。`;
+    case 'voltage_ramp':
+      return `${base} 电压将从 ${descriptionNumber(params, ['start_voltage', 'startVoltage'], ' V')} 变化到 ${descriptionNumber(params, ['end_voltage', 'endVoltage'], ' V')}，在 ${descriptionNumber(params, ['measurementDuration'], ' s')} 内完成扫描。`;
+    case 'current_ramp':
+      return `${base} 电流将从 ${descriptionNumber(params, ['startCurrent', 'start_current'], ' A')} 变化到 ${descriptionNumber(params, ['endCurrent', 'end_current'], ' A')}，在 ${descriptionNumber(params, ['measurementDuration'], ' s')} 内完成扫描。`;
+    case 'loop_start':
+      return `${base} 当前循环次数为 ${descriptionParameter(params, ['loopCount'])}；循环开始与循环结束之间的所有节点都会按此次数重复执行。`;
+    case 'loop_end':
+      return `${base} 执行到这里会返回对应的循环开始节点；实际重复次数由循环开始节点的“循环次数”参数决定。`;
+    case 'wait_delay':
+      return `${base} 当前会暂停 ${descriptionNumber(params, ['duration'], ' s')}，暂停期间不执行后续节点，时间到后再继续。`;
+    case 'scheduled_start':
+      return `${base} 当前计划时间为 ${descriptionParameter(params, ['hour'], '小时')}时 ${descriptionParameter(params, ['minute'], '分钟')}分${params.nextDay ? '（次日）' : ''}，到达该时刻后才会继续执行。`;
+    case 'workflow_block':
+      return `${base} 当前引用“${descriptionParameter(params, ['workflowName', 'workflowShortId', 'workflowId'])}”，执行时会把其中的 ${descriptionParameter(params, ['nodeCount'], '若干')} 个节点作为一个组合步骤运行。`;
+    case 'galvanostatic_switching':
+      return `${base} 当前会在 ${descriptionNumber(params, ['current_1', 'current1'], ' A')} 与 ${descriptionNumber(params, ['current_2', 'current2'], ' A')} 之间切换，每个状态保持 ${descriptionNumber(params, ['holdTime1'], ' s')} / ${descriptionNumber(params, ['holdTime2'], ' s')}，共 ${descriptionParameter(params, ['cycles'])} 个循环。`;
+    case 'potentiostatic_switching':
+      return `${base} 当前会在 ${descriptionNumber(params, ['potential_1', 'potential1'], ' V')} 与 ${descriptionNumber(params, ['potential_2', 'potential2'], ' V')} 之间切换，每个状态保持 ${descriptionNumber(params, ['holdTime1'], ' s')} / ${descriptionNumber(params, ['holdTime2'], ' s')}，共 ${descriptionParameter(params, ['cycles'])} 个循环。`;
+    case 'galvanostatic_step_ramp':
+      return `${base} 电流将从 ${descriptionNumber(params, ['startCurrent', 'start_current'], ' A')} 开始，以 ${descriptionNumber(params, ['stepCurrent', 'step_current'], ' A')} 为步长增加到 ${descriptionNumber(params, ['endCurrent', 'end_current'], ' A')}，每阶保持 ${descriptionNumber(params, ['hold_time', 'holdTime'], ' s')}。`;
+    case 'potentiostatic_step_ramp':
+      return `${base} 电位将从 ${descriptionNumber(params, ['start_potential', 'startPotential'], ' V')} 开始，以 ${descriptionNumber(params, ['stepPotential', 'step_potential'], ' V')} 为步长增加到 ${descriptionNumber(params, ['end_potential', 'endPotential'], ' V')}，每阶保持 ${descriptionNumber(params, ['hold_time', 'holdTime'], ' s')}。`;
+    case 'startup':
+      return `${base} 当前连接主机为 ${descriptionParameter(params, ['host'])}，启动成功后工作流才会继续执行。`;
+    case 'shutdown':
+      return `${base} 工作流执行到此节点后结束工作站程序；该节点不需要额外参数。`;
+    default:
+      return `${base} 当前参数：${summarizeNodeParameters(type, raw)}。`;
+  }
 }
 
 // 节点分组列表

@@ -114,6 +114,27 @@ export interface ExecutionEtaStep {
   paramsHash: string;
 }
 
+export interface NodeTiming {
+  /** 节点 ID */
+  nodeId?: string | null;
+  /** 节点类型 */
+  nodeType?: string | null;
+  /** 原工作流节点索引 */
+  index: number;
+  /** 循环展开后的步骤索引 */
+  unrolledIndex?: number | null;
+  /** 节点执行状态 */
+  status: string;
+  /** 节点预计时长 (秒) */
+  estimatedSeconds?: number | null;
+  /** 节点开始时间 (ISO) */
+  startedAt?: string | null;
+  /** 节点结束时间 (ISO) */
+  endedAt?: string | null;
+  /** 节点实际耗时 (秒) */
+  actualSeconds?: number | null;
+}
+
 export interface WorkflowEtaEstimate {
   /** 工作流 ID */
   workflowId?: string | null;
@@ -221,6 +242,8 @@ export interface ExecutionSnapshot {
   duration?: number;
   /** 运行时间估算 */
   eta?: ExecutionEtaSnapshot | null;
+  /** 本次执行的节点级计时记录 */
+  nodeTimings?: NodeTiming[];
   /** 错误信息 */
   error?: string | null;
   /** 快照时间 */

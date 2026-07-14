@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { ExecutionSnapshot, WorkflowEtaEstimate, WorkflowNode } from '@zahnerflow/types';
 import { runtimeClient } from '../runtimeClient';
-import { formatDuration } from '../utils/timeFormat';
+import { formatCountdown, formatDuration } from '../utils/timeFormat';
 import { deriveExecutionUiState } from '../state/executionStateBridge';
 
 interface ProgressBarProps {
@@ -181,16 +181,3 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         </div>
     );
 };
-
-function formatCountdown(totalSeconds: number): string {
-    const seconds = Math.max(0, Math.ceil(totalSeconds));
-    if (seconds < 60) return `${seconds} 秒`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes < 60) {
-        return remainingSeconds > 0 ? `${minutes} 分 ${remainingSeconds} 秒` : `${minutes} 分`;
-    }
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return remainingMinutes > 0 ? `${hours} 小时 ${remainingMinutes} 分` : `${hours} 小时`;
-}

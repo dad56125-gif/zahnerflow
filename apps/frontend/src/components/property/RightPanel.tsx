@@ -1,13 +1,13 @@
 // --- START OF FILE apps/frontend/src/components/property/RightPanel.tsx ---
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { WorkstationType, WorkflowNode, NodeType } from '@zahnerflow/types';
+import type { WorkstationType, WorkflowNode, NodeType, WorkflowEtaEstimate } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
 import { DataViewer } from '../DataViewer';
 import { useUser } from '../shared/UserContext';
 // 确保 useSystemState 来自正确的执行 Store
-import { useSystemState } from '../../state/executionStateBridge'; // 直接从源文件导入
+import { deriveExecutionUiState, useSystemState } from '../../state/executionStateBridge';
 
 // 导入工具函数
 import {
@@ -30,6 +30,7 @@ import { ScheduleTimePicker } from '../ScheduleRunner';
 import { runtimeClient } from '../../runtimeClient';
 import { resolveDropdownPosition, type DropdownPosition } from '../shared/dropdownPosition';
 import { UiIconSvg } from '../shared/UiIconSvg';
+import { formatCountdown, formatDuration } from '../../utils/timeFormat';
 import {
   nextScheduledStart,
   scheduledStartConfigFromDate,
@@ -37,7 +38,7 @@ import {
 } from '../../utils/scheduledStart';
 
 // 静态配置（用于获取节点显示名称）
-import { getNodeChartKind, NODE_CONFIGS } from '../../types/NodeConfiguration';
+import { getNodeChartKind, NODE_CONFIGS, getNodeDescription } from '../../types/NodeConfiguration';
 
 interface WorkflowSummaryOption {
   id: string;
@@ -113,6 +114,21 @@ function getWorkflowBlockGroup(node: WorkflowNode | undefined): WorkflowBlockGro
   return group as WorkflowBlockGroup;
 }
 
+function formatDateTime(value: string | Date | null | undefined): string {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+}
+
 interface RightPanelProps {
   selectedWorkstation: WorkstationType | null;
   mfcState: MfcState;
@@ -128,6 +144,11 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 2. 获取实时系统状态
     const systemState = useSystemState();
+    const executionUi = useMemo(() => deriveExecutionUiState(systemState), [systemState]);
+    const [nodeRemainingSeconds, setNodeRemainingSeconds] = useState<number | null>(null);
+    const [nodeElapsedSeconds, setNodeElapsedSeconds] = useState(0);
+    const [plannedEstimate, setPlannedEstimate] = useState<WorkflowEtaEstimate | null>(null);
+    const [plannedStartTime, setPlannedStartTime] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
     const [workflowOptions, setWorkflowOptions] = useState<WorkflowSummaryOption[]>([]);
     const [workflowBlockDefinition, setWorkflowBlockDefinition] = useState<WorkflowDefinitionPayload | null>(null);
@@ -289,6 +310,88 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     useEffect(() => clearDropdownCloseTimer, [clearDropdownCloseTimer]);
 
+    useEffect(() => {
+      if (executionUi.phase !== 'idle' || nodes.length === 0) {
+        setPlannedEstimate(null);
+        setPlannedStartTime(null);
+        return;
+      }
+
+      let cancelled = false;
+      const start = new Date().toISOString();
+      const timer = window.setTimeout(async () => {
+        try {
+          const estimate = await runtimeClient.executions.estimate<WorkflowEtaEstimate>({ nodes });
+          if (!cancelled) {
+            setPlannedEstimate(estimate);
+            setPlannedStartTime(start);
+          }
+        } catch {
+          if (!cancelled) {
+            setPlannedEstimate(null);
+            setPlannedStartTime(start);
+          }
+        }
+      }, 350);
+
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
+    }, [executionUi.phase, nodes]);
+
+    useEffect(() => {
+      const currentStep = systemState?.currentStep;
+      const eta = systemState?.eta;
+      const nodeIndex = node ? nodes.findIndex(canvasNode => canvasNode.id === node.id) : -1;
+      const isCurrentNode = Boolean(
+        node && currentStep && (
+          currentStep.nodeId
+            ? currentStep.nodeId === node.id
+            : (nodeIndex >= 0 && currentStep.index === nodeIndex)
+        )
+      );
+      const currentTiming = systemState?.nodeTimings?.find(
+        timing => timing.unrolledIndex !== null && timing.unrolledIndex === currentStep?.unrolledIndex
+      );
+      const estimatedSeconds = currentTiming?.estimatedSeconds
+        ?? eta?.currentStepEstimatedSeconds
+        ?? currentStep?.estimatedSeconds;
+      const timingStartedAt = currentTiming?.startedAt;
+
+      if (!isCurrentNode || estimatedSeconds === null || estimatedSeconds === undefined) {
+        setNodeRemainingSeconds(null);
+        setNodeElapsedSeconds(0);
+        return;
+      }
+
+      const updatedAtMs = new Date(
+        timingStartedAt || eta?.updatedAt || systemState?.timestamp || new Date().toISOString()
+      ).getTime();
+      const updateDisplay = () => {
+        const shouldTick = executionUi.isRunning || executionUi.isCancelling;
+        const elapsedSeconds = shouldTick
+          ? Math.max(0, (Date.now() - updatedAtMs) / 1000)
+          : (eta?.currentStepElapsedSeconds ?? 0);
+        setNodeElapsedSeconds(elapsedSeconds);
+        setNodeRemainingSeconds(Math.max(0, Number(estimatedSeconds) - elapsedSeconds));
+      };
+
+      updateDisplay();
+      if (!executionUi.isRunning && !executionUi.isCancelling) return;
+      const timer = window.setInterval(updateDisplay, 1000);
+      return () => window.clearInterval(timer);
+    }, [
+      executionUi.isCancelling,
+      executionUi.isRunning,
+      nodes,
+      node?.id,
+      systemState?.currentStep,
+      systemState?.eta,
+      systemState?.nodeTimings,
+      systemState?.timestamp,
+    ]);
+
     const dropdownContext = useMemo(() => ({
       isOpen: (id: string) => dropdownState.activeId === id,
       isHiding: (id: string) => dropdownState.hidingId === id,
@@ -322,6 +425,115 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 获取静态配置名称
     const nodeName = NODE_CONFIGS[node.type]?.name || node.type;
+    const currentStep = systemState?.currentStep;
+    const nodeIndex = nodes.findIndex(canvasNode => canvasNode.id === node.id);
+    const isCurrentNode = Boolean(
+      currentStep && (
+        currentStep.nodeId
+          ? currentStep.nodeId === node.id
+          : (nodeIndex >= 0 && currentStep.index === nodeIndex)
+      )
+    );
+    const selectedNodeTiming = [...(systemState?.nodeTimings || [])]
+      .reverse()
+      .find(timing => timing.nodeId === node.id || (!timing.nodeId && timing.index === nodeIndex));
+    const runningNodeTiming = currentStep?.unrolledIndex !== undefined
+      ? systemState?.nodeTimings?.find(timing => timing.unrolledIndex === currentStep.unrolledIndex)
+      : undefined;
+    const activeNodeTiming = runningNodeTiming || (selectedNodeTiming?.status === 'running' ? selectedNodeTiming : undefined);
+    const isNodeRunning = Boolean(activeNodeTiming && activeNodeTiming.status === 'running') || (isCurrentNode && executionUi.isActive);
+    const isNodeTerminal = Boolean(selectedNodeTiming && selectedNodeTiming.status !== 'running');
+    const plannedNodeStep = (plannedEstimate?.steps || []).find(step => step.nodeId === node.id)
+      || (plannedEstimate?.steps || []).find(step => step.index === nodeIndex);
+    const plannedNodeStartOffset = plannedNodeStep
+      ? (plannedEstimate?.steps || [])
+        .filter(step => step.unrolledIndex < plannedNodeStep.unrolledIndex)
+        .reduce((total, step) => total + Number(step.estimatedSeconds || 0), 0)
+      : 0;
+    const plannedNodeStartTime = plannedStartTime && plannedNodeStep
+      ? new Date(new Date(plannedStartTime).getTime() + plannedNodeStartOffset * 1000)
+      : plannedStartTime;
+
+    const renderNodeExecutionCountdown = () => {
+      if (!isNodeRunning || !isCurrentNode) return null;
+      return (
+        <div className="property-group">
+          <label className="property-label">当前节点剩余时间</label>
+          <div className="property-value-static">
+            {nodeRemainingSeconds === null
+              ? '预计时长不可用'
+              : executionUi.isPaused
+                ? `已暂停 · ${formatCountdown(nodeRemainingSeconds)}`
+                : executionUi.isCancelling
+                  ? `停止中 · ${formatCountdown(nodeRemainingSeconds)}`
+                  : formatCountdown(nodeRemainingSeconds)}
+          </div>
+        </div>
+      );
+    };
+
+    const renderExecutionTime = () => {
+      if (isNodeRunning) {
+        const startedAt = activeNodeTiming?.startedAt || (isCurrentNode ? systemState?.timestamp : null);
+        const estimatedSeconds = activeNodeTiming?.estimatedSeconds
+          ?? currentStep?.estimatedSeconds
+          ?? null;
+        const estimatedFinishTime = startedAt && estimatedSeconds !== null
+          ? new Date(new Date(startedAt).getTime() + Number(estimatedSeconds) * 1000)
+          : null;
+        return (
+          <>
+            <div className="property-group">
+              <label className="property-label">开始时间</label>
+              <div className="property-value-static">{formatDateTime(startedAt)}</div>
+            </div>
+            <div className="property-group">
+              <label className="property-label">运行时间</label>
+              <div className="property-value-static">{formatDuration(nodeElapsedSeconds)}</div>
+            </div>
+            <div className="property-group">
+              <label className="property-label">预计完成时间</label>
+              <div className="property-value-static">{formatDateTime(estimatedFinishTime)}</div>
+            </div>
+            {renderNodeExecutionCountdown()}
+          </>
+        );
+      }
+
+      if (isNodeTerminal) {
+        return (
+          <>
+            <div className="property-group">
+              <label className="property-label">结束时间</label>
+              <div className="property-value-static">{formatDateTime(selectedNodeTiming?.endedAt)}</div>
+            </div>
+            <div className="property-group">
+              <label className="property-label">总耗时</label>
+              <div className="property-value-static">
+                {formatDuration(Number(selectedNodeTiming?.actualSeconds || 0))}
+              </div>
+            </div>
+          </>
+        );
+      }
+
+      return (
+        <>
+          <div className="property-group">
+            <label className="property-label">预计开始时间</label>
+            <div className="property-value-static">{formatDateTime(plannedNodeStartTime)}</div>
+          </div>
+          <div className="property-group">
+            <label className="property-label">预计总时间</label>
+            <div className="property-value-static">
+              {plannedNodeStep?.estimatedSeconds !== undefined
+                ? formatDuration(plannedNodeStep.estimatedSeconds)
+                : '预估不可用'}
+            </div>
+          </div>
+        </>
+      );
+    };
 
     // 参数更新逻辑：直接操作 config 对象
     const handleParamChange = (key: string, value: any) => {
@@ -467,6 +679,16 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         <div className="property-group">
           <label className="property-label">类型</label>
           <div className="property-value-static">{nodeName}</div>
+        </div>
+        <div className="property-group node-description">
+          <label className="property-label">节点说明</label>
+          <p className="node-description__text">
+            {getNodeDescription(node.type, node.config)}
+          </p>
+        </div>
+        <div className="properties-section">
+          <h3 className="section-title">时间</h3>
+          {renderExecutionTime()}
         </div>
         {getWorkflowBlockGroup(node) && (
           <div className="workflow-block-preview">

@@ -102,6 +102,19 @@ class ExecutionEtaStep(ContractModel):
     paramsHash: str = Field(description="持续时间相关参数指纹")
 
 
+class NodeTiming(ContractModel):
+    """一个节点在本次执行中的实际计时记录。"""
+    nodeId: Optional[str] = Field(default=None, description="节点 ID")
+    nodeType: Optional[str] = Field(default=None, description="节点类型")
+    index: int = Field(description="原工作流节点索引")
+    unrolledIndex: Optional[int] = Field(default=None, description="循环展开后的步骤索引")
+    status: NodeStatus = Field(description="节点执行状态")
+    estimatedSeconds: Optional[float] = Field(default=None, description="节点预计时长 (秒)")
+    startedAt: Optional[str] = Field(default=None, description="节点开始时间 (ISO)")
+    endedAt: Optional[str] = Field(default=None, description="节点结束时间 (ISO)")
+    actualSeconds: Optional[float] = Field(default=None, description="节点实际耗时 (秒)")
+
+
 class WorkflowEtaEstimate(ContractModel):
     """执行前工作流 ETA 预估"""
     workflowId: Optional[str] = Field(default=None, description="工作流 ID")
@@ -171,6 +184,7 @@ class ExecutionSnapshot(ContractModel):
     endTime: Optional[str] = Field(default=None, description="结束时间 (ISO)")
     duration: float = Field(default=0, description="已运行时长 (秒)")
     eta: Optional[ExecutionEtaSnapshot] = Field(default=None, description="运行时间估算")
+    nodeTimings: List[NodeTiming] = Field(default_factory=list, description="本次执行的节点级计时记录")
     error: Optional[str] = Field(default=None, description="错误信息")
     timestamp: str = Field(description="快照时间")
     results: Optional[List[Any]] = Field(default=None, description="节点执行结果")

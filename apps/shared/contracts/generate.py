@@ -166,7 +166,7 @@ def generate():
     from contracts.workflow import (
         WorkstationType, NodeType, NodeCategory, NodeStatus,
         WorkflowNode, Workflow, IterationPathEntry, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
-        ExecutionEtaStep, WorkflowEtaEstimate,
+        ExecutionEtaStep, NodeTiming, WorkflowEtaEstimate,
         ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
         NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
         RawStreamData, EnrichedStreamData, EisResultData, EnrichedEisData,
@@ -232,7 +232,7 @@ def generate():
         " */",
         "",
     ]
-    for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep,
+    for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming,
                   WorkflowEtaEstimate, ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
                   ExecutionSnapshot,
                   NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,

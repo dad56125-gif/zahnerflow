@@ -374,6 +374,13 @@
   padding-top: var(--size-sm);
 }
 
+.node-description__text {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--size-sm);
+  line-height: 1.65;
+}
+
 .property-group {
   display: flex;
   flex-direction: column;

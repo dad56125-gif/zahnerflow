@@ -55,6 +55,7 @@ class AppRuntime:
             "endTime": None,
             "duration": 0,
             "eta": None,
+            "nodeTimings": [],
             "error": None,
         }
         self._execution_started_at: str | None = None
@@ -177,6 +178,7 @@ class AppRuntime:
                 "endTime": payload.get("endTime", self.experiment_state.get("endTime")),
                 "duration": payload.get("duration", self._elapsed_seconds(now)),
                 "eta": payload.get("eta", self._eta_snapshot(now)),
+                "nodeTimings": payload.get("nodeTimings", self.experiment_state.get("nodeTimings", [])),
                 "error": payload.get("error", self.experiment_state.get("error")),
                 "timestamp": now,
             }
@@ -202,6 +204,7 @@ class AppRuntime:
                 step["etaConfidence"] = 1.0
         self._current_step_started_at = None
         self._current_unrolled_index = None
+        self.experiment_state["nodeTimings"] = []
         await self.on_experiment_state(
             {
                 "executionId": payload.get("executionId"),
@@ -236,6 +239,22 @@ class AppRuntime:
 
         self._current_unrolled_index = unrolled_index
         self._current_step_started_at = now
+        node_timing = {
+            "nodeId": step_info.get("nodeId"),
+            "nodeType": step_info.get("nodeType"),
+            "index": step_info.get("index", 0),
+            "unrolledIndex": unrolled_index,
+            "status": "running",
+            "estimatedSeconds": step_info.get("estimatedSeconds"),
+            "startedAt": now,
+            "endedAt": None,
+            "actualSeconds": None,
+        }
+        node_timings = [
+            timing for timing in self.experiment_state.get("nodeTimings", [])
+            if timing.get("unrolledIndex") != unrolled_index
+        ]
+        node_timings.append(node_timing)
 
         if payload.get("executionId") and unrolled_index is not None:
             start_step(
@@ -259,6 +278,7 @@ class AppRuntime:
                 "currentStep": step_info,
                 "duration": self._elapsed_seconds(now),
                 "eta": self._eta_snapshot(now),
+                "nodeTimings": node_timings,
                 "error": None,
             }
         )
@@ -294,6 +314,7 @@ class AppRuntime:
         unrolled_index = payload.get("unrolledIndex")
         status = payload.get("status")
         data = payload.get("data")
+        recorded = None
         if exec_id and unrolled_index is not None:
             recorded = finish_step(
                 execution_id=exec_id,
@@ -309,6 +330,19 @@ class AppRuntime:
                 timeline_step["etaSource"] = "actual"
                 timeline_step["etaConfidence"] = 1.0
                 timeline_step["completed"] = True
+
+        now = datetime.utcnow().isoformat() + "Z"
+        node_timings = list(self.experiment_state.get("nodeTimings", []))
+        for timing in reversed(node_timings):
+            if timing.get("unrolledIndex") != unrolled_index:
+                continue
+            timing["status"] = status
+            timing["endedAt"] = now
+            timing["actualSeconds"] = (
+                recorded.get("actualSeconds") if recorded and recorded.get("actualSeconds") is not None
+                else _seconds_between(timing.get("startedAt"), now)
+            )
+            break
 
         await self.on_node_status(
             {
@@ -361,6 +395,7 @@ class AppRuntime:
                 "status": next_status,
                 "duration": self._elapsed_seconds(now),
                 "eta": self._eta_snapshot(now),
+                "nodeTimings": node_timings,
                 "error": (data.get("error") or data.get("reason")) if data and status == "failed" else None,
             }
         )
@@ -382,6 +417,7 @@ class AppRuntime:
                 "duration": (duration_ms or 0) / 1000,
                 "endTime": now,
                 "eta": self._eta_snapshot(now, finished=True),
+                "nodeTimings": self.experiment_state.get("nodeTimings", []),
                 "error": error,
                 "timestamp": now,
             }
