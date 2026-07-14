@@ -14,6 +14,7 @@ import uvicorn
 
 from runtime.app_runtime import runtime
 from shared.contracts.events import (
+    DEVICE_STATUS_UPDATE,
     RUNTIME_CONNECTED,
     RUNTIME_JOIN_WORKFLOW,
     RUNTIME_JOINED_WORKFLOW,
@@ -59,6 +60,12 @@ async def connect(sid, environ):
     snapshot = dict(runtime.experiment_state)
     snapshot["timestamp"] = datetime.utcnow().isoformat() + "Z"
     await sio.emit(WORKFLOW_SNAPSHOT, snapshot, room=sid)
+    for device in ("furnace", "mfc", "zahner"):
+        await sio.emit(
+            DEVICE_STATUS_UPDATE,
+            await runtime.runtime_device_status(device),
+            room=sid,
+        )
 
 
 @sio.event

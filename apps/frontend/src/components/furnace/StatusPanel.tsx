@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TemperatureChart } from './FurnaceTemperatureChart';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
+import { calculateDisplayedRuntimeSeconds } from '../../modules/furnace/runtimeDisplay';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 import {
   FURNACE_PROGRAM_SEGMENT_COUNT,
@@ -50,7 +51,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.device_status?.status === 'running'
+            furnaceState.runtime_state?.executionStatus === 'running'
           }
         >
           <SpacedCjkText text="运行" />
@@ -62,8 +63,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.device_status?.status === 'paused' ||
-            furnaceState.device_status?.status === 'stopped'
+            furnaceState.runtime_state?.executionStatus !== 'running'
           }
         >
           <SpacedCjkText text="保温" />
@@ -75,7 +75,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.device_status?.status === 'stopped'
+            ['stopped', 'completed'].includes(furnaceState.runtime_state?.executionStatus || '')
           }
         >
           <SpacedCjkText text="停止" />
@@ -99,7 +99,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
           disabled={
             furnaceState.connection_status !== 'connected' ||
             furnaceState.loading ||
-            furnaceState.device_status?.status === 'stopped'
+            ['stopped', 'completed'].includes(furnaceState.runtime_state?.executionStatus || '')
           }
         >
           <SpacedCjkText text="更改程序段" />
@@ -125,30 +125,8 @@ interface FurnaceDashboardPanelProps {
   furnaceState: FurnaceState;
 }
 
-const calculateRunElapsedMinutes = (historyData: FurnaceState['history_data']) => {
-  let runEndIndex = -1;
-  for (let index = historyData.length - 1; index >= 0; index -= 1) {
-    if (historyData[index].status === 'running') {
-      runEndIndex = index;
-      break;
-    }
-  }
-  if (runEndIndex < 0) return 0;
-
-  let runStart = historyData[runEndIndex];
-  for (let index = runEndIndex; index >= 0; index -= 1) {
-    const sample = historyData[index];
-    if (sample.status !== 'running') break;
-    runStart = sample;
-  }
-
-  const startTime = new Date(runStart.timestamp).getTime();
-  const endTime = new Date(historyData[runEndIndex].timestamp).getTime();
-  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime < startTime) return 0;
-  return (endTime - startTime) / 60000;
-};
-
 export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ furnaceState }) => {
+  const [displayNow, setDisplayNow] = useState(() => Date.now());
   const status = furnaceState.device_status;
   const segmentTime = Number(status?.segmentTime ?? 0);
   const segmentTimeSet = Number(status?.segmentTimeSet ?? 0);
@@ -159,7 +137,7 @@ export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ fu
       ? `点变温 (${segment})`
       : `${segment}/${FURNACE_PROGRAM_SEGMENT_COUNT}`
     : `--/${FURNACE_PROGRAM_SEGMENT_COUNT}`;
-  const runElapsedMinutes = calculateRunElapsedMinutes(furnaceState.history_data);
+  const runElapsedMinutes = calculateDisplayedRuntimeSeconds(furnaceState.runtime_state, displayNow) / 60;
   const formatTemperature = (value?: number) => (value !== undefined ? value.toFixed(1) : '--.-');
   const formatPercent = (value?: number) => (value !== undefined ? value.toFixed(1) : '--.-');
   const formatMinutes = (value: number) => (value > 0 ? `${value.toFixed(value % 1 === 0 ? 0 : 1)} min` : '-- min');
@@ -169,6 +147,12 @@ export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ fu
     : status?.status === 'paused'
       ? 'warning'
       : 'muted';
+
+  useEffect(() => {
+    if (furnaceState.runtime_state?.executionStatus !== 'running') return undefined;
+    const timer = window.setInterval(() => setDisplayNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [furnaceState.runtime_state?.executionStatus, furnaceState.runtime_state?.currentRunStartedAt]);
 
   return (
     <section className="device-dashboard device-dashboard--compact device-dashboard--furnace-strip">

@@ -230,6 +230,25 @@ class Database:
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS device_runtime_state (
+              device TEXT PRIMARY KEY,
+              state_json TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS device_runtime_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              device TEXT NOT NULL,
+              event_type TEXT NOT NULL,
+              execution_id TEXT,
+              from_status TEXT,
+              to_status TEXT,
+              payload_json TEXT,
+              occurred_at TEXT NOT NULL
+            )
+            """,
+            """
             CREATE VIEW IF NOT EXISTS furnace_history_view AS
             SELECT timestamp, pv, sv, mv, status_code, segment, segment_time, segment_time_set, 0 as tier
             FROM furnace_metrics_recent
@@ -248,6 +267,7 @@ class Database:
             "CREATE INDEX IF NOT EXISTS idx_furnace_recent_time ON furnace_metrics_recent(timestamp)",
             "CREATE INDEX IF NOT EXISTS idx_furnace_events_time ON furnace_events(timestamp)",
             "CREATE INDEX IF NOT EXISTS idx_mfc_samples_time_address ON mfc_samples(timestamp, address)",
+            "CREATE INDEX IF NOT EXISTS idx_device_runtime_events_device_time ON device_runtime_events(device, occurred_at)",
         ]
 
         for statement in schema_statements:

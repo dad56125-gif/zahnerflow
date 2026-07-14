@@ -47,6 +47,13 @@ class DeviceManager:
             "mfc": {},
             "zahner": {},
         }
+        # 每次物理连接生命周期变化都递增，用于让 AppRuntime 丢弃断开后
+        # 才返回的旧轮询结果或旧异步响应。
+        self._connection_generation = {
+            "furnace": 0,
+            "mfc": 0,
+            "zahner": 0,
+        }
 
     def _record_command(self, device: str, command: str, error: Exception | str | None = None, **extra) -> None:
         entry = {
@@ -92,6 +99,14 @@ class DeviceManager:
 
     def device_connection_info(self, device: str) -> dict:
         return dict(self._connection_info.get(device, {}))
+
+    def connection_generation(self, device: str) -> int:
+        return int(self._connection_generation.get(device, 0))
+
+    def _bump_connection_generation(self, device: str) -> int:
+        generation = self.connection_generation(device) + 1
+        self._connection_generation[device] = generation
+        return generation
 
     def _set_connection_info(self, device: str, *, port: str | None = None, mode: str, profile: str | None = None) -> None:
         self._connection_info[device] = {
@@ -154,6 +169,8 @@ class DeviceManager:
                 self.furnace_connected = False
                 self._furnace_is_simulator = False
 
+            self._bump_connection_generation("furnace")
+
             if port == "COM_SIMULATOR":
                 self.furnace = FurnaceSimulator(profile=config.get("simulatorProfile", "normal"))
                 self.furnace.connected = True
@@ -190,6 +207,7 @@ class DeviceManager:
 
     def disconnect_furnace(self) -> None:
         with self.furnace_lock:
+            self._bump_connection_generation("furnace")
             if self.furnace:
                 try:
                     self.furnace.disconnect()
@@ -301,6 +319,8 @@ class DeviceManager:
                 self.mfc_connected = False
                 self._mfc_is_simulator = False
 
+            self._bump_connection_generation("mfc")
+
             if port == "COM_SIMULATOR":
                 self.mfc = MfcSimulator(profile=config.get("simulatorProfile", "normal"))
                 self.mfc.connected = True
@@ -335,6 +355,7 @@ class DeviceManager:
 
     def disconnect_mfc(self) -> None:
         with self.mfc_lock:
+            self._bump_connection_generation("mfc")
             if self.mfc:
                 try:
                     self.mfc.disconnect()
@@ -345,6 +366,21 @@ class DeviceManager:
             self._mfc_is_simulator = False
             self._clear_connection_info("mfc")
             self._record_command("mfc", "disconnect")
+
+    def reset_mfc_scan_devices(self) -> None:
+        """开始一次新的扫描快照，移除上一次扫描发现的设备。"""
+        with self.mfc_lock:
+            if not self.mfc:
+                raise RuntimeError("MFC not connected")
+            if self._mfc_is_simulator:
+                with self.mfc._lock:
+                    self.mfc.devices.clear()
+            else:
+                session = self.mfc.ensure_session()
+                with session.lock:
+                    session.devices.clear()
+            self._diagnostics.setdefault("mfc", {})["lastScanDeviceCount"] = 0
+            self._record_command("mfc", "scan reset")
 
     def mfc_status(self) -> dict:
         with self.mfc_lock:
@@ -433,6 +469,7 @@ class DeviceManager:
         host = config.get("host", "localhost")
         if self.zahner_connected:
             return {"connected": True, "already": True, "mode": "simulator" if self._zahner_is_simulator else "real"}
+        self._bump_connection_generation("zahner")
         if host == "simulator":
             profile = config.get("simulatorProfile", "normal")
             if profile == "connect-fail":
@@ -453,6 +490,7 @@ class DeviceManager:
         return {"connected": True, "mode": "real"}
 
     def disconnect_zahner(self) -> None:
+        self._bump_connection_generation("zahner")
         if self.zahner:
             try:
                 self.zahner.disconnect()

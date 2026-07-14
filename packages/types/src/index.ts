@@ -7,5 +7,6 @@
 export * from './contracts/index.js';
 
 export type {
+  RuntimeDeviceState,
   RuntimeDeviceStatusEnvelope
 } from './contracts/runtimeDevice.js';

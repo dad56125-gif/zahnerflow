@@ -176,7 +176,7 @@ def generate():
         ChartDataPoint, NotificationMessage, HistoryQueryParams,
     )
     from contracts.runtime_device import (
-        RuntimeDeviceStatusEnvelope,
+        RuntimeDeviceState, RuntimeDeviceStatusEnvelope,
     )
     import contracts.events as events_module
 
@@ -305,7 +305,7 @@ def generate():
         " */",
         "",
     ]
-    for model in [RuntimeDeviceStatusEnvelope]:
+    for model in [RuntimeDeviceState, RuntimeDeviceStatusEnvelope]:
         runtime_device_content.append(model_to_interface(model))
         runtime_device_content.append("")
 

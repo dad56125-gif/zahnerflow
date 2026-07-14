@@ -5,9 +5,16 @@ from __future__ import annotations
 import asyncio
 import copy
 import time
+import uuid
 from datetime import datetime, timezone
 
-from device_data_service import furnace_data, mfc_data
+from device_data_service import (
+    furnace_data,
+    load_runtime_state,
+    mfc_data,
+    record_runtime_event,
+    save_runtime_state,
+)
 from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
 from runtime.execution_recorder import finish_execution, finish_step, start_step
@@ -39,9 +46,6 @@ class AppRuntime:
         self.execution = ExecutionEngine(self)
         self._poll_task: asyncio.Task | None = None
         self._running = False
-        self.furnace_status: dict = {"connected": False}
-        self.mfc_status: dict = {"connected": False, "devices": []}
-        self.zahner_status: dict = {"connected": False}
         self.experiment_state: dict = {
             "status": "idle",
             "executionId": None,
@@ -66,6 +70,14 @@ class AppRuntime:
         self._mfc_scan_lock = asyncio.Lock()
         self._mfc_scan_active = False
         self._mfc_scan_cancel_requested = False
+        self._connect_attempt_tokens = {device: 0 for device in DEVICE_CAPABILITIES}
+        self._connection_locks = {device: asyncio.Lock() for device in DEVICE_CAPABILITIES}
+        self._runtime_states = {
+            "furnace": _new_runtime_state("furnace"),
+            "mfc": _new_runtime_state("mfc"),
+            "zahner": _new_runtime_state("zahner"),
+        }
+        self._restore_runtime_states()
 
     def set_sio(self, sio) -> None:
         self.sio = sio
@@ -73,6 +85,159 @@ class AppRuntime:
     @property
     def is_running(self) -> bool:
         return self._running
+
+    def _restore_runtime_states(self) -> None:
+        """恢复业务记录，但永不恢复物理连接、设备对象或扫描 session。"""
+        for device, default_state in self._runtime_states.items():
+            persisted = load_runtime_state(device)
+            if not persisted:
+                continue
+            state = {**default_state, **persisted}
+            state["stateVersion"] = int(state.get("stateVersion") or 0)
+            state["accumulatedRunSeconds"] = max(0.0, float(state.get("accumulatedRunSeconds") or 0))
+
+            active_execution = state.get("executionStatus") in {"running", "paused"}
+            physical_state_was_live = (
+                state.get("connectionStatus") != "disconnected"
+                or state.get("connectedPort") is not None
+                or state.get("connectedAt") is not None
+                or state.get("deviceStatus") is not None
+                or bool(state.get("scannedDevices"))
+            )
+            if active_execution:
+                # 进程重启后无法证明物理设备在这段离线时间内持续运行。
+                # 只结算到最后一次后端快照，不把重启期间的时间算进业务时长。
+                last_confirmed_at = state.get("updatedAt") or _utc_now()
+                state["accumulatedRunSeconds"] = _accumulated_seconds(state, last_confirmed_at)
+                state["currentRunStartedAt"] = None
+                state["executionStatus"] = "error"
+                state["stoppedAt"] = _utc_now()
+                state["lastError"] = _runtime_error(
+                    "RUNTIME_RESTARTED",
+                    "后端重启时未恢复物理设备连接，活动运行已标记为错误",
+                    state["stoppedAt"],
+                )
+
+            # 物理对象、连接和扫描 session 不跨进程恢复。即使旧快照已经写成
+            # disconnected，也要清除可能残留的 deviceStatus/scannedDevices。
+            state["connectionStatus"] = "disconnected"
+            state["connectedPort"] = None
+            state["connectedAt"] = None
+            state["deviceStatus"] = None
+            state["scannedDevices"] = []
+            if physical_state_was_live or active_execution:
+                state["updatedAt"] = _utc_now()
+                state["stateVersion"] += 1
+                save_runtime_state(device, state)
+            self._runtime_states[device] = state
+
+    def _commit_runtime_state_sync(
+        self,
+        device: str,
+        updates: dict,
+        *,
+        event_type: str | None = None,
+        now: str | None = None,
+    ) -> dict:
+        state = self._runtime_states[device]
+        previous = copy.deepcopy(state)
+        state.update(copy.deepcopy(updates))
+        state["stateVersion"] = int(previous.get("stateVersion") or 0) + 1
+        state["updatedAt"] = now or _utc_now()
+        save_runtime_state(device, state)
+        if event_type:
+            connection_transition = previous.get("connectionStatus") != state.get("connectionStatus")
+            execution_transition = device == "furnace" and (
+                previous.get("executionStatus") != state.get("executionStatus")
+                or event_type.startswith("furnace_")
+            )
+            if event_type in {"communication_succeeded", "communication_disconnected", "communication_error"} and not (
+                connection_transition or execution_transition
+            ):
+                return copy.deepcopy(state)
+            record_runtime_event(
+                device,
+                event_type,
+                execution_id=state.get("executionId"),
+                from_status=(previous.get("executionStatus") if execution_transition else previous.get("connectionStatus")),
+                to_status=(state.get("executionStatus") if execution_transition else state.get("connectionStatus")),
+                payload={"stateVersion": state["stateVersion"]},
+                occurred_at=state["updatedAt"],
+            )
+        return copy.deepcopy(state)
+
+    async def _commit_runtime_state(
+        self,
+        device: str,
+        updates: dict,
+        *,
+        event_type: str | None = None,
+        now: str | None = None,
+        broadcast: bool = True,
+    ) -> dict:
+        state = self._commit_runtime_state_sync(device, updates, event_type=event_type, now=now)
+        if broadcast:
+            await self.emit(DEVICE_STATUS_UPDATE, self._device_status_envelope(device))
+        return state
+
+    def _sync_furnace_execution_from_device(
+        self,
+        updates: dict,
+        event_type: str,
+        status: dict,
+        now: str,
+    ) -> tuple[dict, str]:
+        """只把设备明确返回的运行/暂停/停止状态同步到业务状态。
+
+        不从历史样本或前端刷新时间创建运行起点。若设备在后端没有收到开始
+        事件前就处于运行态，则保留既有业务状态，避免伪造运行时长。
+        """
+        state = self._runtime_states["furnace"]
+        status_code = int(status.get("statusCode") or 0)
+        execution_status = state.get("executionStatus")
+        if execution_status == "running" and status_code == 4:
+            updates.update(
+                {
+                    "executionStatus": "paused",
+                    "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                    "currentRunStartedAt": None,
+                }
+            )
+            return updates, "furnace_pause_confirmed"
+        if execution_status in {"running", "paused"} and status_code == 12:
+            updates.update(
+                {
+                    "executionStatus": "stopped",
+                    "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                    "currentRunStartedAt": None,
+                    "stoppedAt": now,
+                }
+            )
+            return updates, "furnace_stop_confirmed"
+        if execution_status == "paused" and status_code == 0:
+            updates.update(
+                {
+                    "executionStatus": "running",
+                    "currentRunStartedAt": now,
+                }
+            )
+            return updates, "furnace_resume_confirmed"
+        if execution_status in {"idle", "stopped", "completed", "error"} and status_code in {0, 4}:
+            # 设备在本后端没有收到开始事件却已经处于运行/暂停态，不能用
+            # 历史样本补造起点；以错误态暴露“硬件状态未被本次业务确认”。
+            updates.update(
+                {
+                    "executionStatus": "error",
+                    "currentRunStartedAt": None,
+                    "lastError": _runtime_error(
+                        "UNTRACKED_DEVICE_EXECUTION",
+                        "设备已处于运行或暂停态，但后端没有对应的开始事件",
+                        now,
+                    ),
+                }
+            )
+            return updates, "furnace_execution_untracked"
+        return updates, event_type
 
     async def start(self) -> None:
         self.loop = asyncio.get_running_loop()
@@ -82,13 +247,55 @@ class AppRuntime:
 
     async def stop(self) -> None:
         self._running = False
+        for device in DEVICE_CAPABILITIES:
+            self._connect_attempt_tokens[device] += 1
         if self._poll_task:
             self._poll_task.cancel()
             try:
                 await self._poll_task
             except asyncio.CancelledError:
                 pass
-        await asyncio.to_thread(self.devices.disconnect_all)
+        for device in ("furnace", "mfc", "zahner"):
+            state = self._runtime_states[device]
+            now = _utc_now()
+            updates = {
+                "connectionStatus": "disconnected",
+                "connectedPort": None,
+                "connectedAt": None,
+                "deviceStatus": None,
+                "scannedDevices": [],
+            }
+            if device == "furnace" and state.get("executionStatus") in {"running", "paused"}:
+                updates.update(
+                    {
+                        "executionStatus": "error",
+                        "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                        "currentRunStartedAt": None,
+                        "stoppedAt": now,
+                        "lastError": _runtime_error(
+                            "RUNTIME_SHUTDOWN",
+                            "后端关闭时无法继续确认 Furnace 程序运行状态",
+                            now,
+                        ),
+                    }
+                )
+            if state["connectionStatus"] != "disconnected" or any(
+                state.get(key) != value for key, value in updates.items()
+            ):
+                self._commit_runtime_state_sync(
+                    device,
+                    updates,
+                    event_type="runtime_shutdown",
+                    now=now,
+                )
+        disconnect_methods = {
+            "furnace": self.devices.disconnect_furnace,
+            "mfc": self.devices.disconnect_mfc,
+            "zahner": self.devices.disconnect_zahner,
+        }
+        for device, disconnect_method in disconnect_methods.items():
+            async with self._connection_locks[device]:
+                await asyncio.to_thread(disconnect_method)
 
     async def emit(self, event: str, payload: dict) -> None:
         if self.sio:
@@ -108,45 +315,113 @@ class AppRuntime:
 
     async def poll_once(self) -> None:
         if self.devices.furnace_connected:
+            generation = self.devices.connection_generation("furnace")
             try:
                 status = await asyncio.to_thread(self.devices.furnace_status)
-                await self.on_device_status("furnace", status)
+                if generation == self.devices.connection_generation("furnace"):
+                    await self.on_device_status("furnace", status, generation=generation)
             except Exception as e:
                 print(f"[Runtime] Furnace poll error: {e}")
+                await self.on_device_communication_error("furnace", e, generation=generation)
 
         if self.devices.mfc_connected:
+            generation = self.devices.connection_generation("mfc")
             try:
                 status = await asyncio.to_thread(self.devices.mfc_status)
-                await self.on_device_status("mfc", status)
+                if generation == self.devices.connection_generation("mfc"):
+                    await self.on_device_status("mfc", status, generation=generation)
             except Exception as e:
                 print(f"[Runtime] MFC poll error: {e}")
+                await self.on_device_communication_error("mfc", e, generation=generation)
 
-    async def on_device_status(self, device: str, status: dict) -> None:
-        ts = datetime.utcnow().isoformat() + "Z"
-        envelope = self._device_status_envelope(device, status, ts)
-        await self.emit(DEVICE_STATUS_UPDATE, envelope)
+    async def on_device_status(
+        self,
+        device: str,
+        status: dict,
+        generation: int | None = None,
+        source: str = "poll",
+        attempt_token: int | None = None,
+    ) -> None:
+        if generation is not None and generation != self.devices.connection_generation(device):
+            return
+        if attempt_token is not None and attempt_token != self._connect_attempt_tokens[device]:
+            return
+        if device == "mfc" and self._mfc_scan_active and source not in {"scan", "connection"}:
+            return
 
+        now = _utc_now()
+        connected = bool(status.get("connected", False))
+        if not connected:
+            state = self._runtime_states[device]
+            updates = {
+                "connectionStatus": "disconnected",
+                "connectedPort": None,
+                "connectedAt": None,
+                "deviceStatus": None,
+                "scannedDevices": [],
+                "lastError": None,
+            }
+            if device == "furnace" and state.get("executionStatus") in {"running", "paused"}:
+                updates.update(
+                    {
+                        "executionStatus": "error",
+                        "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                        "currentRunStartedAt": None,
+                        "stoppedAt": now,
+                        "lastError": _runtime_error(
+                            "DEVICE_DISCONNECTED_DURING_EXECUTION",
+                            "设备通信返回断开，当前 Furnace 程序进入错误状态",
+                            now,
+                        ),
+                    }
+                )
+            await self._commit_runtime_state(
+                device,
+                updates,
+                event_type="communication_disconnected",
+                now=now,
+            )
+            return
+
+        clean_status = _without_connected(status)
         if device == "furnace":
-            self.furnace_status = {"device": "furnace", **status}
-            pv = status.get("pv", 0)
-            sv = status.get("sv", 0)
-            mv = status.get("mv", 0)
-            sc = status.get("statusCode", 0)
-            segment = status.get("segment", 0)
-            segment_time = status.get("segmentTime", 0)
-            segment_time_set = status.get("segmentTimeSet", 0)
+            updates = {
+                "connectionStatus": "connected",
+                "connectedPort": self.devices.device_connection_info("furnace").get("port"),
+                "connectedAt": self.devices.device_connection_info("furnace").get("connectedAt"),
+                "deviceStatus": clean_status,
+                "currentSegmentIndex": status.get("segment"),
+                "lastSuccessfulCommunicationAt": now,
+                "lastError": None,
+            }
+            event_type = "communication_succeeded"
+            updates, event_type = self._sync_furnace_execution_from_device(updates, event_type, status, now)
+            await self._commit_runtime_state(device, updates, event_type=event_type)
+
             furnace_data.add_sample(
-                pv=pv,
-                sv=sv,
-                mv=mv,
-                status_code=sc,
-                segment=segment,
-                segment_time=segment_time,
-                segment_time_set=segment_time_set,
+                pv=status.get("pv", 0),
+                sv=status.get("sv", 0),
+                mv=status.get("mv", 0),
+                status_code=status.get("statusCode", 0),
+                segment=status.get("segment", 0),
+                segment_time=status.get("segmentTime", 0),
+                segment_time_set=status.get("segmentTimeSet", 0),
             )
         elif device == "mfc":
-            self.mfc_status = {"device": "mfc", **status}
-            devices = status.get("devices", [])
+            devices = list(status.get("devices", []))
+            await self._commit_runtime_state(
+                device,
+                {
+                    "connectionStatus": "connected",
+                    "connectedPort": self.devices.device_connection_info("mfc").get("port"),
+                    "connectedAt": self.devices.device_connection_info("mfc").get("connectedAt"),
+                    "deviceStatus": clean_status,
+                    "scannedDevices": devices,
+                    "lastSuccessfulCommunicationAt": now,
+                    "lastError": None,
+                },
+                event_type="communication_succeeded",
+            )
             for dev in devices:
                 addr = dev.get("address")
                 if addr is not None:
@@ -157,10 +432,46 @@ class AppRuntime:
                         digital_setpoint_percent=dev.get("digitalSetpointPercent", 0),
                         active_setpoint_percent=dev.get("activeSetpointPercent", 0),
                     )
+        else:
+            await self._commit_runtime_state(
+                device,
+                {
+                    "connectionStatus": "connected",
+                    "connectedPort": self.devices.device_connection_info(device).get("port"),
+                    "connectedAt": self.devices.device_connection_info(device).get("connectedAt"),
+                    "deviceStatus": clean_status,
+                    "lastSuccessfulCommunicationAt": now,
+                    "lastError": None,
+                },
+                event_type="communication_succeeded",
+            )
 
-    async def on_device_connection(self, device: str, connected: bool) -> None:
-        status = await self.device_status(device)
-        await self.emit(DEVICE_STATUS_UPDATE, self._device_status_envelope(device, status))
+    async def on_device_communication_error(
+        self,
+        device: str,
+        error: Exception | str,
+        generation: int | None = None,
+    ) -> None:
+        if generation is not None and generation != self.devices.connection_generation(device):
+            return
+        now = _utc_now()
+        state = self._runtime_states[device]
+        updates = {
+            "connectionStatus": "communication_error",
+            "deviceStatus": None,
+            "lastError": _runtime_error("DEVICE_COMMUNICATION_ERROR", str(error), now),
+        }
+        if device == "furnace" and state.get("executionStatus") in {"running", "paused"}:
+            if state.get("executionStatus") == "running":
+                updates["accumulatedRunSeconds"] = _accumulated_seconds(state, now)
+            updates.update(
+                {
+                    "executionStatus": "error",
+                    "currentRunStartedAt": None,
+                    "stoppedAt": now,
+                }
+            )
+        await self._commit_runtime_state(device, updates, event_type="communication_error")
 
     async def on_experiment_state(self, payload: dict) -> None:
         now = datetime.utcnow().isoformat() + "Z"
@@ -487,52 +798,176 @@ class AppRuntime:
             print(f"[Runtime] Email notification error: {email_err}")
 
     async def connect_device(self, device: str, config: dict) -> dict:
-        if device == "furnace":
-            result = await asyncio.to_thread(self.devices.connect_furnace, config)
-            await self.on_device_connection("furnace", True)
-            return {"device": "furnace", **result}
-        if device == "mfc":
-            result = await asyncio.to_thread(self.devices.connect_mfc, config)
-            await self.on_device_connection("mfc", True)
-            return {"device": "mfc", **result}
-        if device == "zahner":
-            result = await asyncio.to_thread(self.devices.connect_zahner, config)
-            await self.on_device_connection("zahner", True)
-            return {"device": "zahner", **result}
-        raise ValueError(f"Unknown device: {device}")
+        if device not in DEVICE_CAPABILITIES:
+            raise ValueError(f"Unknown device: {device}")
+
+        self._connect_attempt_tokens[device] += 1
+        attempt_token = self._connect_attempt_tokens[device]
+        requested_port = config.get("port") if isinstance(config, dict) else None
+        await self._commit_runtime_state(
+            device,
+            {
+                "connectionStatus": "connecting",
+                "connectedPort": requested_port,
+                "connectedAt": None,
+                "deviceStatus": None,
+                "scannedDevices": [],
+                "lastError": None,
+            },
+            event_type="connect_started",
+        )
+
+        connect_method = {
+            "furnace": self.devices.connect_furnace,
+            "mfc": self.devices.connect_mfc,
+            "zahner": self.devices.connect_zahner,
+        }[device]
+        status_method = {
+            "furnace": self.devices.furnace_status,
+            "mfc": self.devices.mfc_status,
+            "zahner": self.devices.zahner_status,
+        }[device]
+        disconnect_method = {
+            "furnace": self.devices.disconnect_furnace,
+            "mfc": self.devices.disconnect_mfc,
+            "zahner": self.devices.disconnect_zahner,
+        }[device]
+        connection_lock = self._connection_locks[device]
+        await connection_lock.acquire()
+        try:
+            result = await asyncio.to_thread(connect_method, config)
+            generation = self.devices.connection_generation(device)
+            if attempt_token != self._connect_attempt_tokens[device]:
+                return {
+                    "device": device,
+                    **result,
+                    "runtimeStatus": self._device_status_envelope(device),
+                }
+            if device == "mfc":
+                # 新连接从空的当前扫描快照开始，不能把上一次 session 的发现结果
+                # 当成这次连接已经确认的设备。
+                await asyncio.to_thread(self.devices.reset_mfc_scan_devices)
+            status = await asyncio.to_thread(status_method)
+            await self.on_device_status(
+                device,
+                status,
+                generation=generation,
+                source="connection",
+                attempt_token=attempt_token,
+            )
+            envelope = self._device_status_envelope(device)
+            return {
+                "device": device,
+                **result,
+                "runtimeStatus": envelope,
+            }
+        except Exception as error:
+            if attempt_token == self._connect_attempt_tokens[device]:
+                try:
+                    # 只有当前连接尝试拥有的 token 才能清理物理设备，防止旧
+                    # 请求失败时把新请求刚建立的连接一起断开。
+                    await asyncio.to_thread(disconnect_method)
+                except Exception:
+                    pass
+            else:
+                raise
+            await self._commit_runtime_state(
+                device,
+                {
+                    "connectionStatus": "disconnected",
+                    "connectedPort": None,
+                    "connectedAt": None,
+                    "deviceStatus": None,
+                    "scannedDevices": [],
+                    "lastError": _runtime_error("DEVICE_CONNECT_ERROR", str(error), _utc_now()),
+                },
+                event_type="connect_failed",
+            )
+            raise
+        finally:
+            connection_lock.release()
 
     async def disconnect_device(self, device: str) -> dict:
-        if device == "furnace":
-            await asyncio.to_thread(self.devices.disconnect_furnace)
-        elif device == "mfc":
-            await asyncio.to_thread(self.devices.disconnect_mfc)
-        elif device == "zahner":
-            await asyncio.to_thread(self.devices.disconnect_zahner)
-        else:
+        if device not in DEVICE_CAPABILITIES:
             raise ValueError(f"Unknown device: {device}")
-        await self.on_device_connection(device, False)
-        return {"device": device, "connected": False}
+        # 让并发中的 connect 请求失去提交 runtime 快照的资格。
+        self._connect_attempt_tokens[device] += 1
+        async with self._connection_locks[device]:
+            if device == "furnace":
+                await asyncio.to_thread(self.devices.disconnect_furnace)
+            elif device == "mfc":
+                await asyncio.to_thread(self.devices.disconnect_mfc)
+            elif device == "zahner":
+                await asyncio.to_thread(self.devices.disconnect_zahner)
+        now = _utc_now()
+        state = self._runtime_states[device]
+        updates = {
+            "connectionStatus": "disconnected",
+            "connectedPort": None,
+            "connectedAt": None,
+            "deviceStatus": None,
+            "scannedDevices": [],
+            "lastError": None,
+        }
+        if device == "furnace" and state.get("executionStatus") in {"running", "paused"}:
+            updates.update(
+                {
+                    "executionStatus": "error",
+                    "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                    "currentRunStartedAt": None,
+                    "stoppedAt": now,
+                    "lastError": _runtime_error(
+                        "DEVICE_DISCONNECTED_DURING_EXECUTION",
+                        "设备断开导致当前 Furnace 程序进入错误状态",
+                        now,
+                    ),
+                }
+            )
+        await self._commit_runtime_state(device, updates, event_type="disconnect_completed", now=now)
+        return {
+            "device": device,
+            "connected": False,
+            "runtimeStatus": self._device_status_envelope(device),
+        }
 
     async def device_status(self, device: str) -> dict:
-        if device == "furnace":
-            return await asyncio.to_thread(self.devices.furnace_status)
+        if device not in self._runtime_states:
+            raise ValueError(f"Unknown device: {device}")
+        state = self._runtime_states[device]
+        if state["connectionStatus"] != "connected":
+            return {"connected": False, **({"devices": []} if device == "mfc" else {})}
+        status = copy.deepcopy(state.get("deviceStatus") or {})
         if device == "mfc":
-            return await asyncio.to_thread(self.devices.mfc_status)
-        if device == "zahner":
-            return await asyncio.to_thread(self.devices.zahner_status)
-        raise ValueError(f"Unknown device: {device}")
+            status["devices"] = copy.deepcopy(state.get("scannedDevices") or [])
+        status["connected"] = True
+        return status
 
     async def runtime_device_status(self, device: str) -> dict:
-        status = await self.device_status(device)
-        return self._device_status_envelope(device, status)
+        if device not in self._runtime_states:
+            raise ValueError(f"Unknown device: {device}")
+        return self._device_status_envelope(device)
 
-    def _device_status_envelope(self, device: str, status: dict, timestamp: str | None = None) -> dict:
-        connected = bool(status.get("connected", False))
-        payload = {key: value for key, value in status.items() if key != "connected"}
-        device_count = len(status.get("devices", [])) if device == "mfc" else (1 if connected else 0)
+    def _device_status_envelope(self, device: str, status: dict | None = None, timestamp: str | None = None) -> dict:
+        state = copy.deepcopy(self._runtime_states[device])
+        direct_status = status is not None
+        if direct_status:
+            connected = bool(status.get("connected", False))
+            payload = _without_connected(status)
+            device_count = len(status.get("devices", [])) if device == "mfc" else (1 if connected else 0)
+        else:
+            connected = state["connectionStatus"] == "connected"
+            payload = copy.deepcopy(state.get("deviceStatus") or {}) if connected else {}
+            if device == "mfc":
+                payload["devices"] = copy.deepcopy(state.get("scannedDevices") or [])
+            device_count = len(state.get("scannedDevices") or []) if device == "mfc" else (1 if connected else 0)
         profile = self.devices.device_profile(device)
         diagnostics = self.devices.device_diagnostics(device)
         connection_info = self.devices.device_connection_info(device)
+        connection_status = state["connectionStatus"]
+        if direct_status and state["stateVersion"] == 0:
+            connection_status = "connected" if connected else "disconnected"
+        last_error = state.get("lastError") or diagnostics.get("lastError")
+        error_message = last_error.get("message") if isinstance(last_error, dict) else last_error
         return {
             "device": device,
             "connected": connected,
@@ -541,31 +976,161 @@ class AppRuntime:
             "timestamp": timestamp or datetime.utcnow().isoformat() + "Z",
             "payload": payload,
             "connectionState": {
-                "status": "connected" if connected else "disconnected",
+                "status": connection_status,
                 "mode": self.devices.device_mode(device),
                 "profile": profile,
                 **connection_info,
+                "port": state.get("connectedPort") if not connection_info.get("port") else connection_info.get("port"),
+                "connectedAt": state.get("connectedAt") or connection_info.get("connectedAt"),
             },
             "diagnostics": diagnostics,
             "capabilities": DEVICE_CAPABILITIES.get(device, []),
             "deviceCount": device_count,
-            "error": status.get("error") or diagnostics.get("lastError"),
+            "error": error_message,
+            "runtimeState": state,
+            "stateVersion": state["stateVersion"],
+            "updatedAt": state["updatedAt"],
         }
 
+    async def _finish_furnace_action(
+        self,
+        action: str,
+        status: dict,
+        now: str | None = None,
+        execution_id: str | None = None,
+    ) -> dict:
+        now = now or _utc_now()
+        state = self._runtime_states["furnace"]
+        if execution_id:
+            current_execution_id = state.get("executionId")
+            current_execution_status = state.get("executionStatus")
+            stale_active_run = action == "run" and current_execution_status in {"running", "paused"}
+            stale_stop = action == "stop" and current_execution_id != execution_id
+            if (stale_active_run or stale_stop) and current_execution_id != execution_id:
+                raise RuntimeError(
+                    f"Stale Furnace execution event {execution_id}; "
+                    f"current execution is {current_execution_id or 'none'}"
+                )
+        connection_info = self.devices.device_connection_info("furnace")
+        updates = {
+            "connectionStatus": "connected",
+            "connectedPort": connection_info.get("port"),
+            "connectedAt": connection_info.get("connectedAt"),
+            "deviceStatus": _without_connected(status),
+            "currentSegmentIndex": status.get("segment"),
+            "lastSuccessfulCommunicationAt": now,
+            "lastError": None,
+        }
+        if action == "run":
+            if state.get("executionStatus") == "paused" and state.get("executionId"):
+                updates.update({"executionStatus": "running", "currentRunStartedAt": now})
+                event_type = "furnace_resumed"
+            elif state.get("executionStatus") == "running":
+                updates.update(
+                    {
+                        "executionStatus": "running",
+                        "executionId": state.get("executionId") or execution_id,
+                    }
+                )
+                event_type = "furnace_run_idempotent"
+            else:
+                updates.update(
+                    {
+                        "executionStatus": "running",
+                        "executionId": execution_id or f"furnace_{uuid.uuid4().hex}",
+                        "startedAt": now,
+                        "currentRunStartedAt": now,
+                        "accumulatedRunSeconds": 0.0,
+                        "stoppedAt": None,
+                    }
+                )
+                event_type = "furnace_started"
+        elif action == "pause":
+            updates.update(
+                {
+                    "executionStatus": "paused",
+                    "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                    "currentRunStartedAt": None,
+                }
+            )
+            event_type = "furnace_paused"
+        elif action == "stop":
+            updates.update(
+                {
+                    "executionStatus": "stopped",
+                    "accumulatedRunSeconds": _accumulated_seconds(state, now),
+                    "currentRunStartedAt": None,
+                    "stoppedAt": now,
+                }
+            )
+            event_type = "furnace_stopped"
+        elif action == "segment":
+            updates["currentSegmentIndex"] = status.get("segment")
+            event_type = "furnace_segment_changed"
+        else:
+            event_type = "furnace_command_succeeded"
+
+        await self._commit_runtime_state("furnace", updates, event_type=event_type, now=now)
+        furnace_data.add_sample(
+            pv=status.get("pv", 0),
+            sv=status.get("sv", 0),
+            mv=status.get("mv", 0),
+            status_code=status.get("statusCode", 0),
+            segment=status.get("segment", 0),
+            segment_time=status.get("segmentTime", 0),
+            segment_time_set=status.get("segmentTimeSet", 0),
+        )
+        return self._device_status_envelope("furnace")
+
+    async def furnace_external_action(self, action: str, execution_id: str | None = None) -> dict:
+        """确认由工作流线程直接写入的 Furnace 运行命令。
+
+        温度节点仍由执行器负责协议写入和数值计算；这里仅在写入成功后读取
+        一次后端设备状态，并把业务运行生命周期提交给 AppRuntime。这样工作流
+        不会产生一条绕过 runtime 快照的 Furnace 状态链。
+        """
+        status = await asyncio.to_thread(self.devices.furnace_status)
+        if not status.get("connected"):
+            raise RuntimeError("Furnace status confirmation reported disconnected")
+        return await self._finish_furnace_action("run" if action == "run" else "stop", status, execution_id=execution_id)
+
+    def confirm_furnace_action_from_worker(self, action: str, execution_id: str | None = None) -> dict | None:
+        """在执行器工作线程中同步等待 AppRuntime 确认业务状态。"""
+        if not self.loop or self.loop.is_closed():
+            return None
+        future = asyncio.run_coroutine_threadsafe(
+            self.furnace_external_action(action, execution_id=execution_id),
+            self.loop,
+        )
+        return future.result()
+
+    async def _run_furnace_action(self, code: int, value: int, action: str) -> dict:
+        if self._runtime_states["furnace"]["connectionStatus"] != "connected":
+            raise RuntimeError("Furnace not connected")
+        await asyncio.to_thread(self.devices.furnace_write_param, code, value)
+        status = await asyncio.to_thread(self.devices.furnace_status)
+        if not status.get("connected"):
+            raise RuntimeError("Furnace status confirmation reported disconnected")
+        return await self._finish_furnace_action(action, status)
+
     async def furnace_run(self) -> dict:
-        return await asyncio.to_thread(self.devices.furnace_write_param, 0x15, 0)
+        return await self._run_furnace_action(0x15, 0, "run")
 
     async def furnace_stop(self) -> dict:
-        return await asyncio.to_thread(self.devices.furnace_write_param, 0x15, 12)
+        return await self._run_furnace_action(0x15, 12, "stop")
 
     async def furnace_pause(self) -> dict:
-        return await asyncio.to_thread(self.devices.furnace_write_param, 0x15, 4)
+        return await self._run_furnace_action(0x15, 4, "pause")
 
     async def furnace_set_segment(self, segment: int) -> dict:
-        return await asyncio.to_thread(self.devices.furnace_write_param, 0x00, segment)
+        return await self._run_furnace_action(0x00, segment, "segment")
 
     async def furnace_write_param(self, code: int, value: int) -> dict:
-        return await asyncio.to_thread(self.devices.furnace_write_param, code, value)
+        action = {0: "run", 4: "pause", 12: "stop"}.get(value) if code == 0x15 else None
+        if action:
+            return await self._run_furnace_action(code, value, action)
+        result = await asyncio.to_thread(self.devices.furnace_write_param, code, value)
+        return result
 
     async def furnace_read_segments(self) -> list[dict]:
         return await asyncio.to_thread(self.devices.furnace_read_segments)
@@ -573,8 +1138,36 @@ class AppRuntime:
     async def furnace_write_segments(self, segments: list[dict]) -> dict:
         return await asyncio.to_thread(self.devices.furnace_write_segments, segments)
 
-    async def mfc_scan(self, address: int) -> dict:
-        return await asyncio.to_thread(self.devices.mfc_scan, address)
+    async def mfc_scan(self, address: int, reset: bool = False) -> dict:
+        if self._mfc_scan_active:
+            return await self._mfc_scan_once(address, reset=reset)
+
+        # 独立扫描请求与范围扫描共用同一把锁，避免两个请求交错写入同一个
+        # DeviceManager session。reset 由扫描 session 的第一请求明确传入；
+        # 不能在每个单地址 HTTP 请求中自动清空，否则范围扫描会只剩最后一个地址。
+        async with self._mfc_scan_lock:
+            self._mfc_scan_active = True
+            self._mfc_scan_cancel_requested = False
+            try:
+                return await self._mfc_scan_once(address, reset=reset)
+            finally:
+                self._mfc_scan_active = False
+                self._mfc_scan_cancel_requested = False
+
+    async def _mfc_scan_once(self, address: int, reset: bool = False) -> dict:
+        if reset and self.devices.mfc_connected:
+            await asyncio.to_thread(self.devices.reset_mfc_scan_devices)
+            await self._publish_mfc_scan_snapshot()
+        result = await asyncio.to_thread(self.devices.mfc_scan, address)
+        await self._publish_mfc_scan_snapshot()
+        return result
+
+    async def _publish_mfc_scan_snapshot(self) -> None:
+        if not self.devices.mfc_connected:
+            return
+        generation = self.devices.connection_generation("mfc")
+        status = await asyncio.to_thread(self.devices.mfc_status)
+        await self.on_device_status(device="mfc", status=status, generation=generation, source="scan")
 
     async def mfc_scan_range(
         self,
@@ -590,13 +1183,16 @@ class AppRuntime:
         async with self._mfc_scan_lock:
             self._mfc_scan_active = True
             self._mfc_scan_cancel_requested = False
-            self.devices.record_mfc_scan_range(
-                diagnostic_start_address if diagnostic_start_address is not None else start_address,
-                diagnostic_end_address if diagnostic_end_address is not None else end_address,
-            )
             discovered: list[dict] = []
 
             try:
+                if self.devices.mfc_connected:
+                    await asyncio.to_thread(self.devices.reset_mfc_scan_devices)
+                    await self._publish_mfc_scan_snapshot()
+                self.devices.record_mfc_scan_range(
+                    diagnostic_start_address if diagnostic_start_address is not None else start_address,
+                    diagnostic_end_address if diagnostic_end_address is not None else end_address,
+                )
                 for address in range(start_address, end_address + 1):
                     if self._mfc_scan_cancel_requested:
                         break
@@ -740,6 +1336,50 @@ def _seconds_between(start_iso: str | None, end_iso: str) -> float:
         return max(0.0, (end - start).total_seconds())
     except Exception:
         return 0.0
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _new_runtime_state(device: str) -> dict:
+    return {
+        "connectionStatus": "disconnected",
+        "connectedPort": None,
+        "connectedAt": None,
+        "executionStatus": "idle" if device == "furnace" else None,
+        "executionId": None,
+        "currentSegmentIndex": None,
+        "startedAt": None,
+        "currentRunStartedAt": None,
+        "accumulatedRunSeconds": 0.0,
+        "stoppedAt": None,
+        "deviceStatus": None,
+        "scannedDevices": [],
+        "lastSuccessfulCommunicationAt": None,
+        "lastError": None,
+        "stateVersion": 0,
+        "updatedAt": _utc_now(),
+    }
+
+
+def _without_connected(status: dict) -> dict:
+    return {key: value for key, value in status.items() if key != "connected"}
+
+
+def _runtime_error(code: str, message: str, timestamp: str | None = None) -> dict:
+    return {
+        "code": code,
+        "message": message,
+        "timestamp": timestamp or _utc_now(),
+    }
+
+
+def _accumulated_seconds(state: dict, now: str) -> float:
+    accumulated = max(0.0, float(state.get("accumulatedRunSeconds") or 0))
+    if state.get("executionStatus") != "running":
+        return accumulated
+    return accumulated + _seconds_between(state.get("currentRunStartedAt"), now)
 
 
 runtime = AppRuntime()

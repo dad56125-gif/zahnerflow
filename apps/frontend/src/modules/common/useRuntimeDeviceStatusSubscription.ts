@@ -6,7 +6,8 @@ type RuntimeDeviceStatusHandler = (status: RuntimeDeviceStatusEnvelope) => void;
 
 export function useRuntimeDeviceStatusSubscription(
   device: RuntimeDeviceKind,
-  onStatus: RuntimeDeviceStatusHandler
+  onStatus: RuntimeDeviceStatusHandler,
+  onReconnect?: () => void | Promise<void>,
 ): () => void {
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -25,11 +26,15 @@ export function useRuntimeDeviceStatusSubscription(
   }, [handleStatus]);
 
   useEffect(() => {
+    const unsubscribeReconnect = runtimeSocket.onConnect(() => {
+      void onReconnect?.();
+    });
     return () => {
       unsubscribeRef.current?.();
       unsubscribeRef.current = null;
+      unsubscribeReconnect();
     };
-  }, []);
+  }, [onReconnect]);
 
   return ensureSubscribed;
 }

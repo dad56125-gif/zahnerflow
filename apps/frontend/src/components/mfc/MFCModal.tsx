@@ -105,10 +105,10 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   }, [isConnected]);
 
   const connectedAt = useMemo(() => {
-    if (!mfcState.connection_started_at) return null;
-    const parsed = new Date(mfcState.connection_started_at);
+    if (!mfcState.runtime_state?.connectedAt) return null;
+    const parsed = new Date(mfcState.runtime_state.connectedAt);
     return Number.isFinite(parsed.getTime()) ? parsed : null;
-  }, [mfcState.connection_started_at]);
+  }, [mfcState.runtime_state?.connectedAt]);
   const connectedSeconds = connectedAt ? Math.max(0, Math.floor((now - connectedAt.getTime()) / 1000)) : 0;
   const formatRuntimeDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -121,8 +121,9 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   const activeDevices = mfcState.devices.filter((device) => Number(device.setFlow) > 0);
   const idleDevices = mfcState.devices.filter((device) => Number(device.setFlow) === 0);
   const clampPercent = (value: number) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-  const linkLabel = runtimeSocket.connected ? 'ONLINE' : 'OFFLINE';
-  const linkTone = runtimeSocket.connected ? 'success' : 'muted';
+  // 设备指示灯只读后端设备连接状态；runtimeSocket.connected 仅代表 UI 到后端的传输连接。
+  const linkLabel = isConnected ? 'CONNECTED' : 'DISCONNECTED';
+  const linkTone = isConnected ? 'success' : 'muted';
 
   return (
       <div

@@ -113,3 +113,11 @@
 变更：共享工作流契约新增 `NodeTiming` 与 `ExecutionSnapshot.nodeTimings`；`AppRuntime` 在每个展开步骤开始/结束时记录节点状态、开始时间、结束时间、预计耗时和实际耗时；RightPanel 按选中节点的 `nodeId/index` 派生未运行、运行中和终态时间内容，并将基本页顺序固定为类型、节点说明、时间，时间字段复用类型属性组样式。
 设计影响：节点级时间展示必须消费后端 `nodeTimings`，不得用工作流总耗时推测节点开始或结束时间；模拟器与真机共用同一执行快照和节点计时路径。
 验证：重新生成共享 TypeScript 契约；后端定向测试 34 项通过；`packages/types` 构建、前端 TypeScript/Vite 构建和 `git diff --check` 通过。
+
+## 2026-07-14 - 收敛设备运行时快照与业务计时
+
+锚点：[运行时-AppRuntime]，[设备-连接路由]，[设备-runtime状态契约]，[执行-状态机]，[数据-SQLite]，[接口-前端契约]
+原因：Furnace/MFC 的前端显示、物理设备对象、Socket/REST 返回值和持久化记录并非同一状态源；Furnace 总时间曾可由历史样本连续运行区间推算，工作流温度节点还存在绕过 `AppRuntime` 直接写设备寄存器的旁路；MFC session 也会保留过期扫描结果。
+变更：新增 `RuntimeDeviceState` 完整快照、单调 `stateVersion`、运行时状态表和生命周期事件表；连接确认、断开、通信错误、轮询和重连使用 connection generation 丢弃旧响应；Furnace 运行/暂停/恢复/停止由后端生命周期累计业务时间，工作流温度节点写入成功后回到 `AppRuntime` 确认；MFC 扫描按当前 session 替换并在空结果时清空；前端只镜像快照，显示时间由后端基线加 `Date.now()` 派生刷新，历史样本仅用于图表。
+设计影响：`AppRuntime` 是设备连接、Furnace 程序状态、MFC 当前扫描集合和持久化状态的唯一可信源；前端不能创建第二套运行起点、累计时间或连接事实，重启也不能虚构物理连接和离线期间运行时间。
+验证：`uv run python -m compileall -q apps/python_backend`；`PYTHONPATH=. uv run pytest -q`（120 项通过）；新增运行时一致性测试 7 项通过；`pnpm --filter @zahnerflow/types build`；`pnpm --filter zahnerflow-flowgram exec tsc --noEmit`；前端 Vitest 37 项、生产构建和运行时计时测试通过；`git diff --check`。

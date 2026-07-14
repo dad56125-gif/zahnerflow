@@ -4,11 +4,11 @@
  * 提供炉温控制器的状态管理，包括连接、控制、预设、历史数据等功能
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import type { DeviceError, LogEntry, DeviceConnectionStatus, HistoryQueryParams } from '@zahnerflow/types';
 import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
-import type { RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
+import type { RuntimeDeviceState, RuntimeDeviceStatusEnvelope } from '@zahnerflow/types';
 import { useRuntimeDeviceStatusSubscription } from '../common/useRuntimeDeviceStatusSubscription';
 import { FURNACE_PROGRAM_SEGMENT_COUNT } from './temperatureLimits';
 import {
@@ -174,6 +174,7 @@ export const getFullHistory = (tiered: TieredHistory): HistorySample[] => {
 export interface FurnaceState {
   device_status: FurnaceStatus | null;
   connection_status: DeviceConnectionStatus;
+  runtime_state: RuntimeDeviceState | null;
   segments: ProgramSegment[];
   presets: FurnacePresetMeta[];
   tiered_history: TieredHistory;  // 分层历史数据
@@ -190,6 +191,7 @@ export interface FurnaceState {
 export interface FurnaceControls {
   connect: (config: FurnaceConnectRequest & { simulatorProfile?: string }) => Promise<void>;
   disconnect: () => Promise<void>;
+  refresh_status: () => Promise<void>;
   set_segment: (segment: number) => Promise<void>;
   run: () => Promise<void>;
   pause: () => Promise<void>;
@@ -217,6 +219,7 @@ export interface FurnaceControls {
 const createInitialState = (): FurnaceState => ({
   device_status: null,
   connection_status: 'disconnected',
+  runtime_state: null,
   segments: [],
   presets: [],
   tiered_history: createEmptyTieredHistory(),
@@ -234,6 +237,7 @@ const createInitialState = (): FurnaceState => ({
 
 export function useFurnace(): [FurnaceState, FurnaceControls] {
   const [state, setState] = useState<FurnaceState>(createInitialState);
+  const lastRuntimeStateVersionRef = useRef(0);
 
   // 状态更新辅助函数
   const updateState = useCallback((updates: Partial<FurnaceState>) => {
@@ -274,23 +278,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
           ? (error as DeviceError)
           : { code: 'UNKNOWN', message: String(error), status: 0 };
 
-      // 检测设备断开错误，自动更新连接状态
-      const isDisconnected =
-        deviceError.status === 503 ||
-        deviceError.message?.toLowerCase().includes('disconnected') ||
-        deviceError.message?.toLowerCase().includes('device disconnected');
-
-      if (isDisconnected) {
-        updateState({
-          error: deviceError,
-          loading: false,
-          segment_progress: null,
-          connection_status: 'disconnected',
-          device_status: null
-        });
-      } else {
-        updateState({ error: deviceError, loading: false, segment_progress: null });
-      }
+      // 只更新错误提示；连接事实仍由后端 runtime 快照回传。
+      updateState({ error: deviceError, loading: false, segment_progress: null });
 
       addLog('error', deviceError.message);
     },
@@ -316,9 +305,14 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   );
 
   const handleRuntimeStatusUpdate = useCallback((envelope: RuntimeDeviceStatusEnvelope) => {
+    const version = Number(envelope.stateVersion ?? envelope.runtimeState?.stateVersion ?? 0);
+    if (version > 0 && version < lastRuntimeStateVersionRef.current) return;
+    if (version > 0) lastRuntimeStateVersionRef.current = version;
     setState((prev) => {
       const deviceStatus = toFurnaceStatus(envelope);
-      const connectionStatus = (envelope.connectionState?.status as DeviceConnectionStatus | undefined)
+      const runtimeConnectionStatus = envelope.runtimeState?.connectionStatus
+        ?? envelope.connectionState?.status;
+      const connectionStatus = (runtimeConnectionStatus === 'communication_error' ? 'error' : runtimeConnectionStatus) as DeviceConnectionStatus
         ?? (envelope.connected ? 'connected' : 'disconnected');
       const pv = envelope.payload?.pv;
       const isValidPv = typeof pv === 'number' && Number.isFinite(pv) && pv > 0;
@@ -333,6 +327,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
           ...prev,
           device_status: deviceStatus,
           connection_status: connectionStatus,
+          runtime_state: envelope.runtimeState ?? prev.runtime_state,
           diagnostics,
         };
       }
@@ -357,6 +352,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
         ...prev,
         device_status: deviceStatus,
         connection_status: connectionStatus,
+        runtime_state: envelope.runtimeState ?? prev.runtime_state,
         diagnostics,
         tiered_history: newTieredHistory,
         history_data: newHistoryData,
@@ -364,7 +360,23 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
     });
   }, []);
 
-  const ensureRuntimeStatusSubscription = useRuntimeDeviceStatusSubscription('furnace', handleRuntimeStatusUpdate);
+  const reloadRuntimeStatus = useCallback(async () => {
+    try {
+      handleRuntimeStatusUpdate(await runtimeClient.devices.furnace.runtimeStatus());
+    } catch {
+      // Socket 重连时以成功返回的完整快照为准；请求失败不凭空覆盖现有设备状态。
+    }
+  }, [handleRuntimeStatusUpdate]);
+
+  const refresh_status = useCallback(async () => {
+    await reloadRuntimeStatus();
+  }, [reloadRuntimeStatus]);
+
+  const ensureRuntimeStatusSubscription = useRuntimeDeviceStatusSubscription(
+    'furnace',
+    handleRuntimeStatusUpdate,
+    reloadRuntimeStatus,
+  );
 
   // ==================== 程序段操作 ====================
 
@@ -390,20 +402,25 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const connect = useCallback(
     async (config: FurnaceConnectRequest) => {
       await execute(async () => {
-        await runtimeClient.devices.furnace.connect(config);
-        updateState({ connection_status: 'connected' });
+        const response = await runtimeClient.devices.furnace.connect<{
+          runtimeStatus?: RuntimeDeviceStatusEnvelope;
+        }>(config);
+        if (response?.runtimeStatus) handleRuntimeStatusUpdate(response.runtimeStatus);
         ensureRuntimeStatusSubscription();
       }, `Connected to ${config.port}`);
+      await reloadRuntimeStatus();
     },
-    [execute, updateState, ensureRuntimeStatusSubscription]
+    [execute, ensureRuntimeStatusSubscription, handleRuntimeStatusUpdate, reloadRuntimeStatus]
   );
 
   const disconnect = useCallback(async () => {
     await execute(async () => {
-      await runtimeClient.devices.furnace.disconnectDevice();
-      updateState({ connection_status: 'disconnected', device_status: null });
+      const response = await runtimeClient.devices.furnace.disconnectDevice<{
+        runtimeStatus?: RuntimeDeviceStatusEnvelope;
+      }>();
+      if (response?.runtimeStatus) handleRuntimeStatusUpdate(response.runtimeStatus);
     }, 'Disconnected');
-  }, [execute, updateState]);
+  }, [execute, handleRuntimeStatusUpdate]);
 
   // ==================== 设备控制 ====================
 
@@ -520,12 +537,9 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
 
   useEffect(() => {
     ensureRuntimeStatusSubscription();
-    runtimeClient.devices.furnace
-      .runtimeStatus()
-      .then(handleRuntimeStatusUpdate)
-      .catch(() => undefined);
+    reloadRuntimeStatus();
     load_command_logs().catch(() => undefined);
-  }, [ensureRuntimeStatusSubscription, handleRuntimeStatusUpdate, load_command_logs]);
+  }, [ensureRuntimeStatusSubscription, reloadRuntimeStatus, load_command_logs]);
 
   useEffect(() => {
     if (state.connection_status === 'connected') {
@@ -538,6 +552,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
   const controls: FurnaceControls = {
     connect,
     disconnect,
+    refresh_status,
     set_segment,
     run,
     pause,

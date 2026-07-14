@@ -201,7 +201,12 @@ async def _mfc_route(path: str, method: str, body_json: dict, query_params: dict
             body_json.get("scanEndAddress", body_json.get("scan_end_address", end_address))
         )
         if body_json.get("address") is not None:
-            start_address = end_address = int(body_json["address"])
+            address = int(body_json["address"])
+            reset = bool(body_json.get("reset")) or address == diagnostic_start_address
+            await runtime.mfc_scan(address, reset=reset)
+            # 前端逐地址扫描消费的是“截至当前地址的当前快照”数组，而不是
+            # 单地址底层命令的 found/device 调试结果。
+            return (await runtime.device_status("mfc")).get("devices", [])
         return await runtime.mfc_scan_range(
             start_address,
             end_address,

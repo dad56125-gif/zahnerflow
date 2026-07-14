@@ -54,6 +54,12 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
 
   useEffect(() => {
+    // AppContent 中的 Furnace hook 常驻，Modal 重开不会重新触发 hook 初始化。
+    // 每次 Modal 挂载都重新读取完整后端快照，避免复用上一次打开时的显示状态。
+    void furnaceControls.refresh_status();
+  }, [furnaceControls.refresh_status]);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<boolean>;
       setDeveloperMode(typeof ce.detail === 'boolean' ? ce.detail : readDeveloperMode());

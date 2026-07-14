@@ -349,6 +349,9 @@ class ExecutionEngine:
             self.devices.furnace_write_param(0x54, int(round(target_temp * 10)))
             self.devices.furnace_write_param(0x00, 28)
             self.devices.furnace_write_param(0x15, 0)
+            confirm_furnace_action = getattr(self.runtime, "confirm_furnace_action_from_worker", None)
+            if callable(confirm_furnace_action):
+                confirm_furnace_action("run", self.execution_id)
 
             base_wait_s = calculated_duration * 60 + stabilization_time
             min_extension_s = float(params.get("temperatureProgressExtensionSeconds", 600) or 600)
@@ -370,6 +373,9 @@ class ExecutionEngine:
             while True:
                 if self._cancel_requested:
                     self.devices.furnace_write_param(0x15, 12)
+                    confirm_furnace_action = getattr(self.runtime, "confirm_furnace_action_from_worker", None)
+                    if callable(confirm_furnace_action):
+                        confirm_furnace_action("stop", self.execution_id)
                     raise WorkflowCancelled("Temperature change cancelled by user")
                 time.sleep(2.0)
                 status = self.devices.furnace_status()

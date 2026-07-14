@@ -34,6 +34,70 @@ def cleanup_old_raw_samples(table: str, timestamp_column: str = "timestamp") -> 
     db.conn.execute(f"DELETE FROM {table} WHERE {timestamp_column} < ?", (cutoff,))
 
 
+def load_runtime_state(device: str) -> dict | None:
+    """读取设备运行时最后一次持久化快照。
+
+    该表只保存后端运行时状态，不保存串口对象、扫描 session 或未完成请求。
+    """
+    row = db.conn.execute(
+        "SELECT state_json FROM device_runtime_state WHERE device = ?",
+        (device,),
+    ).fetchone()
+    if not row:
+        return None
+    try:
+        state = json.loads(row["state_json"])
+    except (TypeError, json.JSONDecodeError):
+        return None
+    return state if isinstance(state, dict) else None
+
+
+def save_runtime_state(device: str, state: dict) -> None:
+    """原子替换设备运行时快照。"""
+    updated_at = str(state.get("updatedAt") or datetime.utcnow().isoformat() + "Z")
+    db.conn.execute(
+        """
+        INSERT INTO device_runtime_state (device, state_json, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(device) DO UPDATE SET
+          state_json = excluded.state_json,
+          updated_at = excluded.updated_at
+        """,
+        (device, json.dumps(state, ensure_ascii=False), updated_at),
+    )
+    db.conn.commit()
+
+
+def record_runtime_event(
+    device: str,
+    event_type: str,
+    *,
+    execution_id: str | None = None,
+    from_status: str | None = None,
+    to_status: str | None = None,
+    payload: dict | None = None,
+    occurred_at: str | None = None,
+) -> None:
+    """记录后端确认过的设备生命周期事件，不由前端写入。"""
+    db.conn.execute(
+        """
+        INSERT INTO device_runtime_events
+          (device, event_type, execution_id, from_status, to_status, payload_json, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            device,
+            event_type,
+            execution_id,
+            from_status,
+            to_status,
+            json.dumps(payload or {}, ensure_ascii=False),
+            occurred_at or datetime.utcnow().isoformat() + "Z",
+        ),
+    )
+    db.conn.commit()
+
+
 # ============================================================
 # Furnace 数据服务
 # ============================================================

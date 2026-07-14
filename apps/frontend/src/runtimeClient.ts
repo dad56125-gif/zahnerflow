@@ -125,6 +125,12 @@ class RuntimeSocket {
     return this.on(deviceStatusUpdateEvent, handler);
   }
 
+  onConnect(handler: () => void): () => void {
+    this.connectSocket();
+    this.socket?.on('connect', handler);
+    return () => this.socket?.off('connect', handler);
+  }
+
   emit(event: string, payload?: unknown): void {
     this.connectSocket();
     this.socket?.emit(event, payload);

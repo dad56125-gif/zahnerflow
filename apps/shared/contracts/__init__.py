@@ -71,6 +71,7 @@ from .events import (
     WORKFLOW_NOTIFICATION,
     WORKFLOW_EXECUTION_FINISHED,
 )
+from .runtime_device import RuntimeDeviceState, RuntimeDeviceStatusEnvelope
 
 __all__ = [
     "FurnaceStatus",
@@ -124,4 +125,6 @@ __all__ = [
     "WORKFLOW_NODES_RESET",
     "WORKFLOW_NOTIFICATION",
     "WORKFLOW_EXECUTION_FINISHED",
+    "RuntimeDeviceState",
+    "RuntimeDeviceStatusEnvelope",
 ]

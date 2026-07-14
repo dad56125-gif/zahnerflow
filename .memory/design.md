@@ -71,23 +71,25 @@
 
 ## [运行时-AppRuntime]
 
-当前规则：`AppRuntime` 是进程内唯一运行时协调器。它持有设备管理器、执行引擎、运行快照、轮询和 Socket.IO 广播。
+当前规则：`AppRuntime` 是进程内唯一运行时协调器。它持有设备管理器、执行引擎、设备运行时快照、轮询和 Socket.IO 广播。连接状态、Furnace 程序状态、MFC 当前扫描集合和最近一次有效设备状态都只能由这里确认并写入；前端只能消费快照。
+
+Furnace 业务时间由后端生命周期事件累计：开始/恢复设置 `currentRunStartedAt`，暂停/停止/完成把本次区间结算到 `accumulatedRunSeconds`。前端可以用这两个后端字段刷新显示，但历史采样、组件挂载、Socket 接收时间和页面刷新都不能创建或推进业务时钟。工作流线程直接下发 Furnace 命令后，必须回到 `AppRuntime` 确认同一份运行快照。
 
 归属文件：`apps/python_backend/runtime/app_runtime.py`。
 
-允许变化：内部方法可以拆分到更小服务模块，但运行时事实必须仍由 `AppRuntime` 组合和广播。
+允许变化：内部方法可以拆分到更小服务模块，但运行时事实必须仍由 `AppRuntime` 组合、持久化和广播；显示层可以增加纯派生刷新器，但不能保存第二份运行起点或累计值。
 
-禁止事项：禁止新增平行运行时协调器来持有另一套设备、执行或快照事实。
+禁止事项：禁止新增平行运行时协调器来持有另一套设备、执行或快照事实；禁止从历史样本推算 Furnace 业务时间；禁止让工作流执行器或前端绕过 `AppRuntime` 写入设备运行状态。
 
 ## [设备-连接路由]
 
-当前规则：设备连接入口由连接参数决定。Furnace 与 MFC 使用串口参数连接，Zahner 使用主机参数连接；模拟入口也通过同一连接参数体系表达。
+当前规则：设备连接入口由连接参数决定。Furnace 与 MFC 使用串口参数连接，Zahner 使用主机参数连接；模拟入口也通过同一连接参数体系表达。物理连接每次建立或断开都会推进 connection generation，轮询和异步响应必须匹配当前代次；后端连接成功必须完成设备状态读取后才发布 `connected`。
 
 归属文件：`apps/python_backend/runtime/device_manager.py`、`apps/python_backend/routers/devices.py`、`apps/frontend/src/components/furnace/FurnaceDeviceModal.tsx`、`apps/frontend/src/components/mfc/MFCModal.tsx`。
 
 允许变化：可以扩展设备连接参数、设备发现和错误提示，但后端必须继续做最终连接判定。
 
-禁止事项：禁止把设备连接事实只保存在 modal 局部状态；禁止让端口占用、连接时间和连接模式脱离后端 runtime status。
+禁止事项：禁止把设备连接事实只保存在 modal 局部状态；禁止让端口占用、连接时间和连接模式脱离后端 runtime status；禁止让旧连接的轮询结果、Promise 或回调覆盖新连接。
 
 ## [设备-驱动调用]
 
@@ -113,17 +115,19 @@
 
 ## [设备-runtime状态契约]
 
-当前规则：设备实时状态统一通过 `RuntimeDeviceStatusEnvelope` 表达，并通过 Socket.IO `deviceStatusUpdate` 与 `/api/devices/{device}/runtime/status` 暴露。Furnace/MFC hooks 在应用挂载时完成一次 runtime status 水合并持续订阅，不依赖打开设备 modal。统一的是 envelope、连接事实、订阅与就绪派生规则；设备业务 payload 保留设备差异。
+当前规则：设备实时状态统一通过 `RuntimeDeviceStatusEnvelope` 表达，并通过 Socket.IO `deviceStatusUpdate` 与 `/api/devices/{device}/runtime/status` 暴露。每个 envelope 同时携带 `RuntimeDeviceState`、`stateVersion` 和 `updatedAt`；其中 `RuntimeDeviceState` 是后端唯一可信源，包含连接、Furnace 执行生命周期、设备快照、MFC 当前扫描快照、最近有效通信和错误。Furnace/MFC hooks 在应用挂载、Socket 重连和 modal 重新打开时水合完整快照并持续订阅，不依赖打开设备 modal。统一的是 envelope、连接事实、订阅、版本和就绪派生规则；设备业务 payload 保留设备差异。
+
+Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSeconds + (Date.now() - currentRunStartedAt) / 1000`，暂停、停止、完成或错误时只显示后端累计值。这个 `Date.now()` interval 只刷新文字，不写回运行状态。MFC 扫描结果是当前 session 的替换快照，空结果也必须清空；历史采样只用于图表和历史查询。
 
 归属文件：`apps/shared/contracts/runtime_device.py`、`packages/types/src/contracts/runtimeDevice.ts`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/routers/devices.py`、`apps/frontend/src/runtimeClient.ts`、`apps/frontend/src/modules/common/useRuntimeDeviceStatusSubscription.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/modules/furnace/useFurnace.ts`、`apps/frontend/src/modules/mfc/useMfc.ts`。
 
 允许变化：可以扩展设备类型、能力字段和 payload 字段。
 
-禁止事项：禁止在业务 hook 中硬编码另一套设备状态事件源；禁止用前端临时状态替代后端 `connectionState`。
+禁止事项：禁止在业务 hook 中硬编码另一套设备状态事件源；禁止用前端临时状态替代后端 `connectionState`、`executionStatus` 或 `scannedDevices`；禁止把物理对象、扫描 session、Promise 或轮询器写入持久化状态。
 
 ## [执行-状态机]
 
-当前规则：执行是本地单用户状态机，同一时间只允许一个活跃执行。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态；后端状态判断统一由 execution semantics 提供，前端展示统一由 execution selector 派生。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照同时携带 `nodeTimings`，记录每个展开节点的状态、开始时间、结束时间、预计时长和实际耗时，节点属性面板按选中节点读取这组事实；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。
+当前规则：工作流执行是本地单用户状态机，同一时间只允许一个活跃执行。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态；后端状态判断统一由 execution semantics 提供，前端展示统一由 execution selector 派生。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行引擎的 Furnace 温度节点可以负责协议写入和等待，但成功写入运行/停止命令后必须通过 `AppRuntime` 确认设备运行快照。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照同时携带 `nodeTimings`，记录每个展开节点的状态、开始时间、结束时间、预计时长和实际耗时，节点属性面板按选中节点读取这组事实；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。
 
 归属文件：`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/routers/executions.py`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/App.tsx`。
 
@@ -171,7 +175,7 @@
 
 ## [数据-SQLite]
 
-当前规则：SQLite 是本地持久化边界，保存工作流定义、执行记录、执行步骤、设备采样、ETA 样本和工作流相似索引。
+当前规则：SQLite 是本地持久化边界，保存工作流定义、执行记录、执行步骤、设备采样、ETA 样本、工作流相似索引，以及 `device_runtime_state` 运行时最后快照和 `device_runtime_events` 后端确认的生命周期事件。运行时恢复只恢复业务记录；进程重启后物理连接、设备对象、扫描 session、Promise 和轮询器一律从空状态开始，重启前仍为活动态的 Furnace 程序标记为错误，不把未知离线时间计入业务时间。
 
 归属文件：`apps/python_backend/database.py`。
 
@@ -181,7 +185,7 @@
 
 ## [接口-前端契约]
 
-当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。
+当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将事件按 `stateVersion` 丢弃旧消息。
 
 归属文件：`apps/frontend/src/runtimeClient.ts`、`apps/shared/contracts/**`、`packages/types/src/contracts/**`。
 

@@ -4,6 +4,41 @@
  * 来源: apps/shared/contracts/runtime_device.py
  */
 
+export interface RuntimeDeviceState {
+  /** 连接状态: disconnected / connecting / connected / communication_error */
+  connectionStatus: string;
+  /** 当前连接端口 */
+  connectedPort?: string | null;
+  /** 本次连接建立时间 (ISO) */
+  connectedAt?: string | null;
+  /** Furnace 执行状态: idle / running / paused / stopped / completed / error */
+  executionStatus?: string | null;
+  /** 当前 Furnace 程序执行 ID */
+  executionId?: string | null;
+  /** 当前 Furnace 程序段 */
+  currentSegmentIndex?: number | null;
+  /** 整次 Furnace 程序首次开始时间 (ISO) */
+  startedAt?: string | null;
+  /** 本次运行或恢复开始时间 (ISO) */
+  currentRunStartedAt?: string | null;
+  /** 已确认的有效运行时间 (秒) */
+  accumulatedRunSeconds?: number;
+  /** 停止或完成时间 (ISO) */
+  stoppedAt?: string | null;
+  /** 当前实时设备快照 */
+  deviceStatus?: Record<string, any> | null;
+  /** 本次扫描的设备快照 */
+  scannedDevices?: Record<string, any>[];
+  /** 最近一次成功通信时间 (ISO) */
+  lastSuccessfulCommunicationAt?: string | null;
+  /** 最近一次设备或运行时错误 */
+  lastError?: Record<string, any> | null;
+  /** 单调递增的状态版本 */
+  stateVersion?: number;
+  /** 状态更新时间 (ISO) */
+  updatedAt: string;
+}
+
 export interface RuntimeDeviceStatusEnvelope {
   /** 设备类型 */
   device: string;
@@ -27,6 +62,12 @@ export interface RuntimeDeviceStatusEnvelope {
   deviceCount?: number | null;
   /** 错误信息 */
   error?: string | null;
+  /** 后端权威运行时状态快照 */
+  runtimeState: RuntimeDeviceState;
+  /** 运行时状态版本 */
+  stateVersion: number;
+  /** 运行时状态更新时间 (ISO) */
+  updatedAt: string;
 }
 
 /** 设备类型 */
