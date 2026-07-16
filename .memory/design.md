@@ -103,7 +103,7 @@ Furnace 业务时间由后端生命周期事件累计：开始/恢复设置 `cur
 
 ## [设备-炉子程序段]
 
-当前规则：AI-518P 真机有 30 个硬件程序段。用户程序、程序编辑器、预设和公开 program API 只能读取、写入或手动跳转到 1-27 段；28-30 段是 `change_temperature` 的内部 scratch 区，用 28 段当前温度、29/30 段目标温度把段程序转换为直接点变温。点变温写入 `0x50`、`0x52`、`0x54` 时必须使用设备的 0.1℃ 原始单位，并从第 28 段启动。状态读取仍可报告 1-30，以便界面显示当前处于点变温保留段。
+当前规则：AI-518P 真机有 30 个硬件程序段。用户程序、程序编辑器、预设和公开 program API 只能读取、写入或手动跳转到 1-27 段；28-30 段是 `change_temperature` 的内部 scratch 区，用 28 段当前温度、29/30 段目标温度把段程序转换为直接点变温。点变温写入 `0x50`、`0x52`、`0x54` 时必须使用设备的 0.1℃ 原始单位，写入 `0x51` 的程序段时间必须只由 `|当前温度-目标温度| / 设定速率` 计算，不得使用 ETA 或实测等待时间反向改变程序速率。点变温从第 28 段启动；状态读取仍可报告 1-30，以便界面显示当前处于点变温保留段。
 
 校验规则：用户程序段号为 1-27，温度为 25-1100℃，时间为 `-121`、`0` 或 `1-9999` 的整数；后端 domain 校验是公开写入和预设持久化的最终边界。
 
@@ -156,6 +156,8 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为三栏步骤浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为不可选择的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
 
 时间线规则：计划中的 `timeline.steps` 与 `eta.estimatedTotalSeconds` 来自同一次 `estimate_workflow` 计算。运行时复制计划时间线并在每个实际步骤开始或结束后更新快照；它可以依据执行事实修正剩余显示，但不得为了显示而再次展开工作流或另算一套步骤总数。
+
+Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事实。程序段时间只服从设定速率；ETA 加热按线性速率估算，降温在 500℃ 以下按保守的分温区可实现速率估算，并以进入目标容差带为结束点，禁止在环境温度端点使用趋于无穷的对数外推。运行时可用最近实测温降斜率修正剩余等待；由于起始温度不在节点参数 hash 中，`change_temperature` 不使用整节点的精确参数历史耗时覆盖这套规则。
 
 归属文件：`apps/python_backend/loop_unroller.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/runtime/execution_eta.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/frontend/src/components/UnrollViewModal.tsx`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/types/executionControl.ts`、`apps/frontend/src/components/ProgressBar.tsx`。
 

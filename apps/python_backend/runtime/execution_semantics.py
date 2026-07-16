@@ -59,7 +59,10 @@ NODE_EXECUTION_SPECS: dict[str, NodeExecutionSpec] = {
     "delay": NodeExecutionSpec("wait", "delay", learn_duration=False),
     "wait_delay": NodeExecutionSpec("wait", "delay", learn_duration=False),
     "scheduled_start": NodeExecutionSpec("scheduled_wait", "scheduled_start", learn_duration=False),
-    "change_temperature": NodeExecutionSpec("change_temperature", "change_temperature"),
+    # Temperature duration depends on the live starting temperature, which is
+    # not part of the node parameter hash.  Exact-parameter duration learning
+    # would therefore reuse unrelated runs and override the physical ETA rule.
+    "change_temperature": NodeExecutionSpec("change_temperature", "change_temperature", learn_duration=False),
     "change_gas_flow": NodeExecutionSpec("change_gas_flow", "change_gas_flow"),
     "measurement": _measurement_spec(None),
     "ocp": _measurement_spec("ocp"),

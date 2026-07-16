@@ -292,6 +292,7 @@ def _rule_estimate_seconds(
         target = params.get("targetTemperature")
         rate = float(params.get("rate", 5) or 5)
         stabilization = float(params.get("stabilizationTime", 30) or 0)
+        tolerance = max(0.0, float(params.get("tolerance", 0.5)))
         if target is None or rate <= 0:
             return stabilization
         current = 25.0
@@ -307,7 +308,7 @@ def _rule_estimate_seconds(
             target_temp=float(target),
             rate=rate,
             stabilization_time=stabilization,
-            ambient_temperature=float(params.get("ambientTemperature", 25) or 25),
+            tolerance=tolerance,
             cooling_linear_floor=float(params.get("coolingLinearFloor", 500) or 500),
         )
 

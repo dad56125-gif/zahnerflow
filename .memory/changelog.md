@@ -145,3 +145,14 @@
 变更：新增 `RuntimeDeviceState` 完整快照、单调 `stateVersion`、运行时状态表和生命周期事件表；连接确认、断开、通信错误、轮询和重连使用 connection generation 丢弃旧响应；Furnace 运行/暂停/恢复/停止由后端生命周期累计业务时间，工作流温度节点写入成功后回到 `AppRuntime` 确认；MFC 扫描按当前 session 替换并在空结果时清空；前端只镜像快照，显示时间由后端基线加 `Date.now()` 派生刷新，历史样本仅用于图表。
 设计影响：`AppRuntime` 是设备连接、Furnace 程序状态、MFC 当前扫描集合和持久化状态的唯一可信源；前端不能创建第二套运行起点、累计时间或连接事实，重启也不能虚构物理连接和离线期间运行时间。
 验证：`uv run python -m compileall -q apps/python_backend`；`PYTHONPATH=. uv run pytest -q`（120 项通过）；新增运行时一致性测试 7 项通过；`pnpm --filter @zahnerflow/types build`；`pnpm --filter zahnerflow-flowgram exec tsc --noEmit`；前端 Vitest 37 项、生产构建和运行时计时测试通过；`git diff --check`。
+## 2026-07-16 - 分离 Furnace 程序速率与降温 ETA
+
+锚点：[设备-炉子程序段]，[执行-展开与ETA]
+
+原因：`change_temperature` 把非线性预计降温时间写入了 AI-518P 程序段时间，使 `1100→25℃、3℃/min` 的设定速率被改成约 0.7℃/min；旧 ETA 又在目标等于环境温度时用 0.1℃ 截断对数模型，产生约 1541 分钟的极端估算。
+
+变更：新增独立线性程序时间计算，`0x51` 只写入由温差和设定速率得到的时间；ETA 改为 500℃ 以下的有界分温区冷却能力模型，计算到目标容差带并保留运行时实测斜率修正。温度节点停用缺少起始温度的精确参数历史耗时覆盖。
+
+设计影响：程序时间只控制设备速率，ETA 只预测实际进入容差带的时间，实测温度趋势只影响等待窗口，不再反向改变炉子程序速率。
+
+验证：合并远端仓库删除测试源码的新规则前，温度算法与执行语义定向测试 15 项、后端完整测试 125 项通过；合并后使用仓库外内联场景再次确认 `1100→25℃、3℃/min` 的程序段写入 359 分钟、含 30 秒稳定时间的初始 ETA 约 590.9 分钟；`compileall`、前端 `tsc && vite build` 与 `git diff --check` 通过。

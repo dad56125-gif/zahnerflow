@@ -23,6 +23,7 @@ from runtime.execution_semantics import (
 )
 from runtime.temperature_control import (
     estimate_remaining_temperature_seconds,
+    estimate_temperature_program_minutes,
     estimate_temperature_ramp_minutes,
 )
 from shared.contracts.events import WORKFLOW_EIS, WORKFLOW_MEASUREMENT
@@ -327,23 +328,27 @@ class ExecutionEngine:
             current_temp = float(status.get("pv", 25.0))
             target_temp = validate_furnace_temperature(params.get("targetTemperature"), "targetTemperature")
             rate = float(params.get("rate", 5))
-            tolerance = max(0.0, float(params.get("tolerance", 5)))
+            tolerance = max(0.0, float(params.get("tolerance", 0.5)))
             stabilization_time = max(0.0, float(params.get("stabilizationTime", 30)))
-            ambient_temperature = float(params.get("ambientTemperature", 25) or 25)
             cooling_linear_floor = float(params.get("coolingLinearFloor", 500) or 500)
 
-            ramp_minutes = estimate_temperature_ramp_minutes(
+            program_minutes = estimate_temperature_program_minutes(
                 current_temp=current_temp,
                 target_temp=target_temp,
                 rate=rate,
-                ambient_temperature=ambient_temperature,
+            )
+            estimated_ramp_minutes = estimate_temperature_ramp_minutes(
+                current_temp=current_temp,
+                target_temp=target_temp,
+                rate=rate,
+                tolerance=tolerance,
                 cooling_linear_floor=cooling_linear_floor,
             )
-            calculated_duration = int(math.ceil(ramp_minutes))
+            program_duration = int(math.ceil(program_minutes))
             # AI-518P program temperatures use raw tenths of a degree, including
             # the reserved 28-30 scratch segments used by this node.
             self.devices.furnace_write_param(0x50, int(round(current_temp * 10)))
-            self.devices.furnace_write_param(0x51, calculated_duration)
+            self.devices.furnace_write_param(0x51, program_duration)
             self.devices.furnace_write_param(0x52, int(round(target_temp * 10)))
             self.devices.furnace_write_param(0x53, 5001)
             self.devices.furnace_write_param(0x54, int(round(target_temp * 10)))
@@ -353,7 +358,7 @@ class ExecutionEngine:
             if callable(confirm_furnace_action):
                 confirm_furnace_action("run", self.execution_id)
 
-            base_wait_s = calculated_duration * 60 + stabilization_time
+            base_wait_s = estimated_ramp_minutes * 60 + stabilization_time
             min_extension_s = float(params.get("temperatureProgressExtensionSeconds", 600) or 600)
             stall_timeout_s = float(params.get("temperatureStallTimeoutSeconds", 1800) or 1800)
             hard_cap_s = float(
