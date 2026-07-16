@@ -5,7 +5,7 @@
  * 高度为 Canvas 高度的 2/3
  */
 
-import React, { useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
 import { MeasurementChart } from './MeasurementChart';
 import { MeasurementTabBar } from './MeasurementTabBar';
@@ -110,7 +110,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         };
     }, [activeNode]);
 
-    const updateSecondaryOverflow = () => {
+    const updateSecondaryOverflow = useCallback(() => {
         const container = secondaryTabsRef.current;
         const content = secondaryTabsContentRef.current;
         if (!container || !content || !activeGroup) {
@@ -125,7 +125,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         const availableWidth = content.clientWidth;
         const overflowing = content.scrollWidth > availableWidth + 1 || collapsedWidth > availableWidth + 1;
         setIsSecondaryOverflowing(overflowing);
-    };
+    }, [activeGroup]);
 
     useLayoutEffect(() => {
         let secondFrame = 0;
@@ -139,7 +139,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
             cancelAnimationFrame(secondFrame);
             window.removeEventListener('resize', updateSecondaryOverflow);
         };
-    }, [activeTypeKey, activeGroup?.nodes.length]);
+    }, [activeGroup?.nodes.length, activeTypeKey, updateSecondaryOverflow]);
 
     // 监听运行步骤的变化，实现自动聚焦
     useEffect(() => {
@@ -174,7 +174,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                 }
             }
         }
-    }, [isOpen, activeNodeIndex, measurementNodes, groupedCategories, nodeIdToIndexMap]);
+    }, [activeNodeIndex, activeTypeKey, groupedCategories, isOpen, measurementNodes, nodeIdToIndexMap]);
 
     const handleTypeClick = (key: string) => {
         resetBulkSelection();

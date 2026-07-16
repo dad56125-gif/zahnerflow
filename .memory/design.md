@@ -51,13 +51,13 @@
 
 ## [桌面-窗口布局]
 
-当前规则：桌面窗口使用无边框壳，窗口控制按钮由前端 `WindowControls` 渲染在主应用根区域。前端通过 `window.zahnerflowDesktop` 判断桌面环境，并在 `documentElement` 上维护 `zf-desktop-window` 和 `zf-desktop-window--expanded`。非展开桌面 chrome 高度为 `28px`，展开状态为 `40px`；这些高度通过 CSS 变量参与应用顶部留白、窗口控制高度、画布顶部和浮层定位。
+当前规则：桌面窗口使用无边框壳，窗口控制按钮由前端 `WindowControls` 渲染在主应用根区域。前端通过 `window.zahnerflowDesktop` 判断桌面环境，并在 `documentElement` 上维护 `zf-desktop-window` 和 `zf-desktop-window--expanded`。非展开桌面 chrome 高度为 `28px`，展开状态为 `40px`；这些高度通过 CSS 变量参与应用顶部留白、窗口控制高度、画布顶部和浮层定位。窗口控制栏覆盖完整窗口宽度并承担桌面拖动，控制按钮显式排除拖动；`TopBar` 不承担拖动。应用内容紧接 chrome 边界，按钮在控制栏内的底部留白就是控制区与 `TopBar` 之间的唯一视觉间距，不再额外叠加全局面板间距。
 
 归属文件：`apps/frontend/src/App.tsx`、`apps/frontend/src/components/WindowControls.tsx`、`apps/frontend/src/styles/_base.scss`、`apps/frontend/src/styles/_layout.scss`。
 
 允许变化：可以调整窗口控制按钮视觉、桌面 chrome 变量或响应式布局，但必须以同一套 CSS 变量驱动普通窗口、展开窗口、主视图和浮层。
 
-禁止事项：禁止在不同模式下维护两套窗口控制结构；禁止用硬编码像素绕开 `--app-chrome-h`、`--window-controls-h` 等桌面布局变量。
+禁止事项：禁止在不同模式下维护两套窗口控制结构；禁止用硬编码像素绕开 `--app-chrome-h`、`--window-controls-h` 等桌面布局变量；禁止把拖动职责重新放入 `TopBar`，或在 chrome 与 `TopBar` 之间再叠加第二层内容间距。
 
 ## [运行时-Python后端]
 
@@ -93,7 +93,7 @@ Furnace 业务时间由后端生命周期事件累计：开始/恢复设置 `cur
 
 ## [设备-驱动调用]
 
-当前规则：设备驱动作为 Python 对象由运行时直接调用。设备业务能力由对应设备模块实现，运行时通过 `DeviceManager` 协调连接、断开、状态读取和执行动作。所有 Zahner 真机与模拟测量先经过 `normalize_measurement_parameters`，由它统一别名、默认值、数值类型和 EIS 扫描约束；规范字段与别名同时出现时规范字段优先。EIS 的起始频率由扫描方向确定：`START_TO_MAX` 固定从低频限制开始，`START_TO_MIN` 固定从高频限制开始。输出目录在运行时保持本机逻辑路径，只有调用 Windows Thales EIS API 的边界才转换为 Windows 路径。
+当前规则：设备驱动作为 Python 对象由运行时直接调用。设备业务能力由对应设备模块实现，运行时通过 `DeviceManager` 协调连接、断开、状态读取和执行动作。所有 Zahner 真机与模拟测量先经过 `normalize_measurement_parameters`，由它统一别名、默认值、数值类型和 EIS 扫描约束；规范字段与别名同时出现时规范字段优先。EIS 产品参数描述唯一一次全频段扫描：`START_TO_MAX` 固定从低频限制扫到高频限制，`START_TO_MIN` 固定从高频限制扫到低频限制。Thales 的 `ScanDirection` 描述“先扫向哪个边界”，设备随后还会扫向另一边界；真机调用边界必须下发相反枚举，使起点到第一边界成为零长度段，避免完整频段往返扫描。输出目录在运行时保持本机逻辑路径，只有调用 Windows Thales EIS API 的边界才转换为 Windows 路径。
 
 归属文件：`apps/python_backend/devices/**/real_device.py`、`apps/python_backend/devices/zahner/logic.py`、`apps/python_backend/devices/zahner/simulator_device.py`、`apps/python_backend/experiment_worker.py`、`apps/python_backend/runtime/device_manager.py`。
 

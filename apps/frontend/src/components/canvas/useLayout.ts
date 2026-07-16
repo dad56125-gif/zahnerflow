@@ -1,6 +1,8 @@
 // --- START OF FILE apps/frontend/src/hooks/useUnifiedLayout.ts ---
 
 import { useMemo } from 'react';
+import type { ReactNode } from 'react';
+import type { WorkflowNode } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore';
 // 注意：请确保路径与你实际文件结构一致
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
@@ -20,7 +22,7 @@ export interface DisplayNode {
   id: string;
   type: string; // 通常为 'custom'
   position: { x: number; y: number };
-  data: Record<string, any>; // 包含 config, label, icon, _nodeType 等
+  data: DisplayNodeData; // 包含 config, label, icon, _nodeType 等
   style: { width: number; height: number };
   draggable: boolean;
   connectable: boolean;
@@ -35,8 +37,24 @@ export interface DisplayNode {
     isInOddRow: boolean;
     width: number;
     columns: number;
-    [key: string]: any;
   };
+}
+
+export interface DisplayNodeData extends Record<string, unknown> {
+  label?: string;
+  icon?: ReactNode;
+  _nodeType: string;
+  isSelected: boolean;
+}
+
+export interface AdjustedLayoutDimensions {
+  nodeWidth: number;
+  nodeHeight: number;
+  segmentLength: number;
+  spacing: number;
+  startOffset: LayoutConfig['startOffset'];
+  contentWidth: number;
+  contentHeight: number;
 }
 
 // =============================================================================
@@ -135,7 +153,7 @@ function generateConnectionLines(
  * 核心计算函数 (保留原本的计算流程，适配 WorkflowNode)
  */
 function calculateLayout(
-  rawNodes: any[], // 来自 Store 的 WorkflowNode[]
+  rawNodes: WorkflowNode[],
   config: LayoutConfig,
   canvasWidth?: number,
   selectedNodeId?: string | null
@@ -143,7 +161,7 @@ function calculateLayout(
   layoutNodes: DisplayNode[];
   layoutEdges: ComputedEdge[];
   actualColumns: number;
-  adjustedDimensions: any;
+  adjustedDimensions: AdjustedLayoutDimensions;
 } {
   const responsiveMetrics = canvasWidth
     ? calculateDynamicColumns({ canvasWidth, nodeCount: rawNodes.length }, config)
@@ -266,7 +284,7 @@ function calculateLayout(
 // =============================================================================
 
 export const useLayout = (
-  nodes?: any[], // 可选参数，如果没传就从 Store 取
+  nodes?: WorkflowNode[], // 可选参数，如果没传就从 Store 取
   config?: Partial<LayoutConfig>,
   canvasWidth?: number
 ) => {

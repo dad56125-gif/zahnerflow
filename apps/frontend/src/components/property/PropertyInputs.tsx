@@ -3,6 +3,7 @@ import { Dropdown } from '../shared/Dropdown';
 import type { DropdownPosition } from '../shared/dropdownPosition';
 import { getParameterEnumLabel, getParameterPlaceholder, enumValues } from './propertyConfig';
 import { MfcDeviceInfo } from '../../modules/mfc/mfcTypes';
+import type { NodeParameterValue } from '../../types/NodeConfiguration';
 import {
   FURNACE_TEMPERATURE_MAX_C,
   FURNACE_TEMPERATURE_MIN_C,
@@ -34,12 +35,18 @@ const parseNumericInput = (input: string, fallback: number): number => {
   return Number.isFinite(value) ? value * (multiplier || 1) : fallback;
 };
 
+const toInputValue = (value: NodeParameterValue | undefined): string | number => {
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (typeof value === 'boolean') return String(value);
+  return '';
+};
+
 // --- 基础 Props ---
 interface BaseInputProps {
   paramKey: string;
-  value: any;
-  defaultValue: any;
-  onChange: (key: string, val: any) => void;
+  value: NodeParameterValue | undefined;
+  defaultValue: NodeParameterValue | undefined;
+  onChange: (key: string, val: NodeParameterValue | undefined) => void;
   // Dropdown 相关 props，由父组件传递
   dropdownState: {
     isOpen: (id: string) => boolean;
@@ -57,7 +64,7 @@ interface BaseInputProps {
 export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number' }> = ({
   paramKey, value, defaultValue, onChange, type = 'text', disabled
 }) => {
-  const externalValue = value ?? defaultValue;
+  const externalValue = toInputValue(value ?? defaultValue);
   const [localValue, setLocalValue] = useState(externalValue);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -113,6 +120,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
 }) => {
   const dropdownId = `enum-${paramKey}`;
   const val = value ?? defaultValue;
+  const labelValue = typeof val === 'boolean' ? val : String(val ?? '');
   const isOpen = dropdownState.isOpen(dropdownId);
   const isHiding = dropdownState.isHiding(dropdownId);
   const position = dropdownState.getPosition(dropdownId);
@@ -138,7 +146,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
         onClick={(e) => !disabled && dropdownState.open(dropdownId, e)}
         disabled={disabled}
       >
-        <span>{getLabel(val)}</span>
+        <span>{getLabel(labelValue)}</span>
         <svg className={`dropdown__arrow ${isOpen && !isHiding ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
           <path d="M -8 -3 L 0 5 L 8 -3" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -175,7 +183,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
 // ✅ 统一使用本地 state，只在 onBlur 时更新 store
 export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
   const { paramKey, value, defaultValue, onChange } = props;
-  const externalValue = value ?? defaultValue;
+  const externalValue = toInputValue(value ?? defaultValue);
   const [localValue, setLocalValue] = useState(externalValue);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -217,7 +225,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
           const val = e.target.value;
           if (!val) {
             onChange(paramKey, defaultValue);
-            setLocalValue(defaultValue);
+            setLocalValue(toInputValue(defaultValue));
             return;
           }
           const numValue = Number(val);
@@ -255,7 +263,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
           const val = e.target.value;
           if (!val) {
             onChange(paramKey, defaultValue);
-            setLocalValue(defaultValue);
+            setLocalValue(toInputValue(defaultValue));
             return;
           }
           const numValue = Number(val);
@@ -280,7 +288,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
 // ✅ 统一使用本地 state，只在 onBlur 时更新 store
 export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDeviceInfo[] }> = (props) => {
   const { paramKey, availableDevices, value, defaultValue, onChange, dropdownState } = props;
-  const externalValue = value ?? defaultValue;
+  const externalValue = toInputValue(value ?? defaultValue);
   const [localValue, setLocalValue] = useState(externalValue);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -293,7 +301,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
 
   if (paramKey === 'deviceSelection') {
     const dropdownId = 'mfc-device-selection';
-    const currentValue = value ?? defaultValue;
+    const currentValue = String(value ?? defaultValue ?? '');
     const isOpen = dropdownState.isOpen(dropdownId);
     const isHiding = dropdownState.isHiding(dropdownId);
     const position = dropdownState.getPosition(dropdownId);
@@ -367,7 +375,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
           const val = e.target.value;
           if (!val) {
             onChange(paramKey, defaultValue);
-            setLocalValue(defaultValue);
+            setLocalValue(toInputValue(defaultValue));
             return;
           }
           const numValue = Number(val);

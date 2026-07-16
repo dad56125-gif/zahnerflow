@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserSelector } from './user/UserSelector';
-import { useUser } from './shared/UserContext';
+import { useUser } from './shared/userContextState';
 import { Dropdown } from './shared/Dropdown';
-import { renderCjkText, SpacedCjkText } from './common/SpacedCjkText';
+import { CjkText, SpacedCjkText } from './common/SpacedCjkText';
 import { useRafWindowEvent } from '../hooks/useRafWindowEvent';
 import {
   DEVELOPER_MODE_EVENT,
@@ -11,12 +11,21 @@ import {
 } from '../modules/simulator/developerMode';
 
 
-interface Workstation {
+export interface Workstation {
   id: string;
   name: string;
   type: string;
   status: 'connected' | 'disconnected';
 }
+
+const WORKSTATIONS: Workstation[] = [
+  {
+    id: 'zahner-zennium',
+    name: 'ZAHNER ZENNIUM',
+    type: '电化学工作站',
+    status: 'connected',
+  },
+];
 
 interface TopBarProps {
   onWorkstationSelect?: (workstation: Workstation) => void;
@@ -156,17 +165,8 @@ export const TopBar: React.FC<TopBarProps> = ({
     };
   }, []);
 
-  const workstations: Workstation[] = [
-    {
-      id: 'zahner-zennium',
-      name: 'ZAHNER ZENNIUM',
-      type: '电化学工作站',
-      status: 'connected',
-    },
-  ];
-
   useEffect(() => {
-    setSelectedWorkstation(workstations.find((workstation) => workstation.id === selectedWorkstationId) || null);
+    setSelectedWorkstation(WORKSTATIONS.find((workstation) => workstation.id === selectedWorkstationId) || null);
   }, [selectedWorkstationId]);
 
   const handleWorkstationSelect = (workstation: Workstation) => {
@@ -245,7 +245,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     title={developerMode ? '开发者模式已启用' : undefined}
                   />
                 </span>
-                {developerHint && <span className="developer-hint">{renderCjkText(developerHint)}</span>}
+                {developerHint && <span className="developer-hint"><CjkText value={developerHint} /></span>}
                 {developerMode && (
                   <button
                     type="button"
@@ -289,7 +289,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             <span className="btn-icon"><WorkstationIcon /></span>
             <span className={`btn-text ${selectedWorkstation ? 'workstation-model-text' : ''}`}>
-              {renderCjkText(selectedWorkstation ? selectedWorkstation.name : '选择工作站')}
+              <CjkText value={selectedWorkstation ? selectedWorkstation.name : '选择工作站'} />
             </span>
             <span className={`workstation-status__indicator is-${selectedWorkstation?.status || 'disconnected'}`} />
             <svg className={`dropdown__arrow ${isWorkstationDropdownOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
@@ -315,7 +315,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="dropdown--workstation"
           triggerRef={workstationButtonRef}
         >
-            {workstations.map((workstation) => (
+            {WORKSTATIONS.map((workstation) => (
               <div
                 key={workstation.id}
                 className={`dropdown__option--workstation dropdown__option--${workstation.status}`}
@@ -325,7 +325,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <div className="dropdown__workstation-icon"><WorkstationIcon /></div>
                   <div className="dropdown__workstation-info">
                     <div className="dropdown__workstation-name workstation-model-text">{workstation.name}</div>
-                    <div className="dropdown__workstation-type">{renderCjkText(workstation.type)}</div>
+                    <div className="dropdown__workstation-type"><CjkText value={workstation.type} /></div>
                   </div>
                   <div className={`dropdown__workstation-status is-${workstation.status}`}>
                     <span className={`status__dot is-${workstation.status}`} />

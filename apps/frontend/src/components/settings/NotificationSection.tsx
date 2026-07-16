@@ -1,6 +1,6 @@
 import React from 'react';
 import { runtimeClient } from '../../runtimeClient';
-import { useUser } from '../shared/UserContext';
+import { useUser } from '../shared/userContextState';
 import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface NotificationSettings {
@@ -18,8 +18,20 @@ interface NotificationSettings {
 
 interface NotificationSectionProps {
     settings: NotificationSettings;
-    onChange: (field: keyof NotificationSettings, value: any) => void;
+    onChange: (
+        field: keyof NotificationSettings,
+        value: NotificationSettings[keyof NotificationSettings],
+    ) => void;
 }
+
+interface TestEmailResponse {
+    success: boolean;
+    message?: string;
+}
+
+const errorMessage = (error: unknown): string => (
+    error instanceof Error && error.message ? error.message : '网络错误'
+);
 
 export const NotificationSection: React.FC<NotificationSectionProps> = ({
     settings,
@@ -42,14 +54,14 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
         }
         try {
             await runtimeClient.users.saveSettingsSection(currentUser, 'notification', settings);
-            const response: any = await runtimeClient.users.testEmail(currentUser);
+            const response = await runtimeClient.users.testEmail<TestEmailResponse>(currentUser);
             if (response?.success) {
                 alert('测试邮件已发送，请检查收件箱');
             } else {
                 alert(`发送失败: ${response?.message || '未知错误'}`);
             }
-        } catch (err: any) {
-            alert(`发送失败: ${err.message || '网络错误'}`);
+        } catch (err: unknown) {
+            alert(`发送失败: ${errorMessage(err)}`);
         }
     };
 

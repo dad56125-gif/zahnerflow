@@ -20,7 +20,6 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = memo(({
   onWrite,
 }) => {
   const [inputs, setInputs] = useState<{ [key: string]: string }>({});
-  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
   // 初始化输入框
   useEffect(() => {
@@ -116,11 +115,10 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = memo(({
                     <div className="input-group">
                       <input
                         type="number"
-                        className={`input segment__input ${validationErrors[`temp_${id}`] ? 'has-error' : ''}`}
+                        className="input segment__input"
                         value={inputs[`temp_${id}`] ?? ''}
                         onChange={(e) => handleInputChange(`temp_${id}`, e.target.value)}
                         disabled={!isConnected}
-                        title={validationErrors[`temp_${id}`] || ''}
                       />
                       <span className="unit">°C</span>
                     </div>
@@ -131,11 +129,10 @@ export const ProgramEditor: React.FC<ProgramEditorProps> = memo(({
                     <div className="input-group">
                       <input
                         type="number"
-                        className={`input segment__input ${validationErrors[`time_${id}`] ? 'has-error' : ''}`}
+                        className="input segment__input"
                         value={inputs[`time_${id}`] ?? ''}
                         onChange={(e) => handleInputChange(`time_${id}`, e.target.value)}
                         disabled={!isConnected}
-                        title={validationErrors[`time_${id}`] || ''}
                       />
                       <span className="unit">min</span>
                     </div>

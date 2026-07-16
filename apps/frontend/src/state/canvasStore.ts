@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware';
 import { temporal } from 'zundo';
 import type { WorkflowNode, NodeType } from '@zahnerflow/types';
 import { createWorkflowNode } from '../utils/nodeUtilities';
+import type { NodeParameters } from '../types/NodeConfiguration';
 
 interface CanvasState {
 // 核心数据：单一真理源
@@ -16,8 +17,8 @@ setCanvasSize: (width: number, height: number) => void;
 addNode: (type: NodeType, index?: number) => void;
 deleteNode: (nodeId: string) => void;
 selectNode: (nodeId: string | null) => void;
-updateNodeConfig: (nodeId: string, config: Record<string, any>) => void;
-replaceNodeConfig: (nodeId: string, config: Record<string, any>) => void;
+updateNodeConfig: (nodeId: string, config: NodeParameters) => void;
+replaceNodeConfig: (nodeId: string, config: NodeParameters) => void;
 setNodes: (nodes: WorkflowNode[]) => void;
 clearCanvas: () => void;
 

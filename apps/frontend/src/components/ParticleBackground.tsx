@@ -31,9 +31,6 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const MOUSE_DISTANCE = 250;
         const PARTICLE_SPEED = 0.4;
 
-        // 2. Aurora Wave Config
-        const WAVE_COUNT = 3;
-
         // === STATE INITIALIZATION ===
 
         // Particle Interface

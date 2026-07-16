@@ -1,33 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { runtimeClient } from '../../runtimeClient';
-
-interface User {
-  id: string;
-  user: string;
-  email: string | null;
-  createdAt: string;
-  avatar?: string;
-}
-
-export interface FilePathConfig {
-  basePath: string;
-  projectName: string;
-  individualName: string;
-}
-
-interface UserContextType {
-  currentUser: string;
-  setCurrentUser: (user: string) => void;
-  users: User[];
-  createUser: (userData: { user: string; email?: string }) => Promise<User>;
-  deleteUser: (user: string) => Promise<boolean>;
-  filePathConfig: FilePathConfig;
-  setFilePathConfig: (config: FilePathConfig, options?: { persist?: boolean }) => void;
-  currentUserAvatar: string;
-  setCurrentUserAvatar: (avatar: string) => void;
-}
-
-const UserContext = createContext<UserContextType | undefined>(undefined);
+import {
+  UserContext,
+  type FilePathConfig,
+  type User,
+  type UserContextValue,
+} from './userContextState';
 
 const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = {
   basePath: 'C:\\data\\archive',
@@ -35,13 +13,13 @@ const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = {
   individualName: ''
 };
 
-export const useUser = () => {
-  const context = useContext(UserContext);
-  if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
-  return context;
-};
+interface UserSettingsResponse {
+  success: boolean;
+  settings?: {
+    filePath?: Partial<FilePathConfig>;
+    cloud?: { avatar?: string };
+  };
+}
 
 interface UserProviderProps {
   children: ReactNode;
@@ -56,9 +34,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>(DEFAULT_FILE_PATH_CONFIG);
 
   // 标记是否正在加载用户配置，防止重复请求
-  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
+  const isLoadingConfigRef = useRef(false);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     const response = await runtimeClient.users.list();
     if (response?.users) {
       const userList = response.users;
@@ -67,7 +45,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const fullUsersPromises = userList.map(async (username) => {
         let avatar = '';
         try {
-          const settingsRes: any = await runtimeClient.users.getSettings(username);
+          const settingsRes = await runtimeClient.users.getSettings<UserSettingsResponse>(username);
           if (settingsRes?.success && settingsRes.settings?.cloud?.avatar) {
             avatar = settingsRes.settings.cloud.avatar;
           }
@@ -87,18 +65,18 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const fullUsers = await Promise.all(fullUsersPromises);
       setUsers(fullUsers);
     }
-  };
+  }, []);
 
   /**
    * 从后端加载用户的配置（使用统一的用户配置 API）
    */
-  const loadUserPathConfig = async (user: string) => {
-    if (!user || isLoadingConfig) return;
+  const loadUserPathConfig = useCallback(async (user: string) => {
+    if (!user || isLoadingConfigRef.current) return;
 
-    setIsLoadingConfig(true);
+    isLoadingConfigRef.current = true;
     try {
       // 使用新的统一用户配置 API
-      const response: any = await runtimeClient.users.getSettings(user);
+      const response = await runtimeClient.users.getSettings<UserSettingsResponse>(user);
       if (response?.success) {
         if (response.settings?.filePath) {
           setFilePathConfigState({
@@ -119,9 +97,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
       setCurrentUserAvatarState('');
     } finally {
-      setIsLoadingConfig(false);
+      isLoadingConfigRef.current = false;
     }
-  };
+  }, []);
 
   /**
    * 设置当前用户（同时加载该用户的路径配置）
@@ -146,7 +124,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   /**
    * 设置文件路径配置（同时保存到后端）
    */
-  const setFilePathConfig = async (config: FilePathConfig, options: { persist?: boolean } = {}) => {
+  const setFilePathConfig = useCallback(async (config: FilePathConfig, options: { persist?: boolean } = {}) => {
     setFilePathConfigState(config);
 
     // 使用新的统一用户配置 API 保存
@@ -157,10 +135,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         console.warn(`[UserContext] 保存用户路径配置失败:`, error);
       }
     }
-  };
+  }, [currentUser]);
 
   // 设置并联动同步当前用户的头像
-  const setCurrentUserAvatar = (avatar: string) => {
+  const setCurrentUserAvatar = useCallback((avatar: string) => {
     setCurrentUserAvatarState(avatar);
     setUsers(prev => prev.map(u => {
       if (u.user === currentUser) {
@@ -168,7 +146,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       }
       return u;
     }));
-  };
+  }, [currentUser]);
 
   const createUser = async (userData: { user: string; email?: string }): Promise<User> => {
     const response = await runtimeClient.users.create<{ success: boolean; message?: string }>(userData);
@@ -217,9 +195,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setCurrentUserState(savedUser);
       loadUserPathConfig(savedUser);
     }
-  }, []);
+  }, [loadUserPathConfig, loadUsers]);
 
-  const value: UserContextType = {
+  const value: UserContextValue = {
     currentUser,
     setCurrentUser,
     users,

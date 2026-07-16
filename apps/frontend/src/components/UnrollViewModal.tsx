@@ -18,12 +18,13 @@ import {
 import { ModalLayer } from './shared/OverlayLayer';
 import { NodeIconSvg } from './NodeIconSvg';
 import { UiIconSvg } from './shared/UiIconSvg';
+import type { NodeParameters } from '../types/NodeConfiguration';
 
 interface UnrollViewModalProps {
     isOpen: boolean;
     onClose: () => void;
     nodes: WorkflowNode[];
-    autoStartupConfig?: Record<string, any>;
+    autoStartupConfig?: NodeParameters;
     canRunFromStep?: boolean;
     runMetadataWarning?: string | null;
     onRunFromStep?: (startFromUnrolledIndex: number) => Promise<RunFlowOutcome>;

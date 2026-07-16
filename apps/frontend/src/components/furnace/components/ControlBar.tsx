@@ -2,7 +2,7 @@ import React, { useRef, useCallback } from 'react';
 import type { FurnacePresetMeta } from '../../../modules/furnace/furnaceTypes';
 import { Dropdown } from '../../shared/Dropdown';
 import { useDropdownPosition } from '../../shared/useDropdownPosition';
-import { renderCjkText, SpacedCjkText } from '../../common/SpacedCjkText';
+import { CjkText, SpacedCjkText } from '../../common/SpacedCjkText';
 
 interface ControlBarProps {
   presets: FurnacePresetMeta[];
@@ -61,7 +61,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         onClick={() => dropdown.toggle()}
         disabled={!isConnected || isLoading}
       >
-        {renderCjkText(selectedLabel)}
+        <CjkText value={selectedLabel} />
       </button>
 
       <Dropdown

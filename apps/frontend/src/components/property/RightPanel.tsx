@@ -1,11 +1,11 @@
 // --- START OF FILE apps/frontend/src/components/property/RightPanel.tsx ---
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { WorkstationType, WorkflowNode, NodeType, WorkflowEtaEstimate } from '@zahnerflow/types';
+import type { WorkflowNode, NodeType, WorkflowEtaEstimate } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
 import { DataViewer } from '../DataViewer';
-import { useUser } from '../shared/UserContext';
+import { useUser } from '../shared/userContextState';
 // 确保 useSystemState 来自正确的执行 Store
 import { deriveExecutionUiState, useSystemState } from '../../state/executionStateBridge';
 
@@ -38,7 +38,13 @@ import {
 } from '../../utils/scheduledStart';
 
 // 静态配置（用于获取节点显示名称）
-import { getNodeChartKind, NODE_CONFIGS, getNodeDescription } from '../../types/NodeConfiguration';
+import {
+  getNodeChartKind,
+  NODE_CONFIGS,
+  getNodeDescription,
+  type NodeParameters,
+  type NodeParameterValue,
+} from '../../types/NodeConfiguration';
 
 interface WorkflowSummaryOption {
   id: string;
@@ -107,11 +113,22 @@ function workflowNodesForCanvas(nodes: WorkflowNode[], group?: WorkflowBlockGrou
 }
 
 function getWorkflowBlockGroup(node: WorkflowNode | undefined): WorkflowBlockGroup | null {
-  const group = (node as any)?.group;
-  if (!group || group.source !== 'workflow_block' || !group.workflowId || !group.id) {
+  const group: unknown = node?.group;
+  if (!group || typeof group !== 'object' || Array.isArray(group)) {
     return null;
   }
-  return group as WorkflowBlockGroup;
+  const value = group as Record<string, unknown>;
+  if (value.source !== 'workflow_block' || typeof value.workflowId !== 'string' || typeof value.id !== 'string') {
+    return null;
+  }
+  return {
+    id: value.id,
+    source: 'workflow_block',
+    workflowId: value.workflowId,
+    workflowName: typeof value.workflowName === 'string' ? value.workflowName : undefined,
+    workflowShortId: typeof value.workflowShortId === 'string' ? value.workflowShortId : undefined,
+    nodeCount: typeof value.nodeCount === 'number' ? value.nodeCount : undefined,
+  };
 }
 
 function formatDateTime(value: string | Date | null | undefined): string {
@@ -130,16 +147,24 @@ function formatDateTime(value: string | Date | null | undefined): string {
 }
 
 interface RightPanelProps {
-  selectedWorkstation: WorkstationType | null;
   mfcState: MfcState;
 }
 
 export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
-  ({ selectedWorkstation, mfcState }, ref) => {
+  ({ mfcState }, ref) => {
     // 1. 从 Store 获取选中节点
     // 使用 selectedNodeId 从 nodes 数组中查找，确保数据是最新的
     const { nodes, selectedNodeId, updateNodeConfig, setNodes, selectNode } = useCanvasStore();
     const node = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
+    const workflowBlockNodeId = node?.type === 'workflow_block' ? node.id : null;
+    const workflowBlockId = node?.type === 'workflow_block'
+      ? String(node.config?.workflowId || '').trim()
+      : '';
+    const selectedNodeIdForEffects = node?.id ?? null;
+    const selectedNodeType = node?.type ?? null;
+    const batteryHealthEnabled = Boolean(node?.config?.check_battery_health);
+    const measurementDuration = node?.config?.measurementDuration;
+    const samplingInterval = node?.config?.samplingInterval;
     const { currentUser } = useUser();
 
     // 2. 获取实时系统状态
@@ -185,14 +210,13 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     }, [node?.type]);
 
     useEffect(() => {
-      if (node?.type !== 'workflow_block') {
+      if (!workflowBlockNodeId) {
         setWorkflowBlockDefinition(null);
         setWorkflowBlockMessage(null);
         return;
       }
 
-      const workflowId = String(node.config?.workflowId || '').trim();
-      if (!workflowId) {
+      if (!workflowBlockId) {
         setWorkflowBlockDefinition(null);
         return;
       }
@@ -200,20 +224,20 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       let cancelled = false;
       setWorkflowBlockLoading(true);
       runtimeClient.workflows
-        .definition<WorkflowDefinitionPayload>(workflowId)
+        .definition<WorkflowDefinitionPayload>(workflowBlockId)
         .then((definition) => {
           if (cancelled) return;
           setWorkflowBlockDefinition(definition);
           const hasNestedWorkflowBlock = (definition.nodes || []).some((child) => child.type === 'workflow_block');
-          if (node.config?.hasNestedWorkflowBlock !== hasNestedWorkflowBlock) {
-            updateNodeConfig(node.id, {
-              ...(node.config || {}),
+          const latestNode = useCanvasStore.getState().nodes.find((candidate) => candidate.id === workflowBlockNodeId);
+          if (!latestNode || latestNode.config?.hasNestedWorkflowBlock === hasNestedWorkflowBlock) return;
+          updateNodeConfig(workflowBlockNodeId, {
+              ...(latestNode.config || {}),
               hasNestedWorkflowBlock,
-              nodeCount: definition.nodeCount ?? definition.nodes?.length ?? node.config?.nodeCount ?? 0,
-              workflowName: definition.name || node.config?.workflowName || workflowId,
-              workflowShortId: definition.shortId || node.config?.workflowShortId || '',
-            });
-          }
+              nodeCount: definition.nodeCount ?? definition.nodes?.length ?? latestNode.config?.nodeCount ?? 0,
+              workflowName: definition.name || latestNode.config?.workflowName || workflowBlockId,
+              workflowShortId: definition.shortId || latestNode.config?.workflowShortId || '',
+          });
         })
         .catch(() => {
           if (!cancelled) {
@@ -228,20 +252,26 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       return () => {
         cancelled = true;
       };
-    }, [node?.id, node?.type, node?.config?.workflowId, updateNodeConfig]);
+    }, [updateNodeConfig, workflowBlockId, workflowBlockNodeId]);
 
     // ✅ [OCV健康检测] 强制同步参数 (防止状态更新延迟或旧数据残留)
     useEffect(() => {
-      if (node && node.type === 'ocp_measurement' && node.config?.check_battery_health) {
-        if (node.config.measurementDuration !== 30 || node.config.samplingInterval !== 1) {
-          updateNodeConfig(node.id, {
-            ...node.config,
+      if (selectedNodeIdForEffects && selectedNodeType === 'ocp_measurement' && batteryHealthEnabled) {
+        if (measurementDuration !== 30 || samplingInterval !== 1) {
+          updateNodeConfig(selectedNodeIdForEffects, {
             measurementDuration: 30,
             samplingInterval: 1
           });
         }
       }
-    }, [node?.id, node?.type, node?.config?.check_battery_health, updateNodeConfig]);
+    }, [
+      batteryHealthEnabled,
+      measurementDuration,
+      samplingInterval,
+      selectedNodeIdForEffects,
+      selectedNodeType,
+      updateNodeConfig,
+    ]);
 
     // Dropdown 状态管理
     const [dropdownState, setDropdownState] = useState<ParameterDropdownState>({
@@ -343,11 +373,12 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     useEffect(() => {
       const currentStep = systemState?.currentStep;
       const eta = systemState?.eta;
-      const nodeIndex = node ? nodes.findIndex(canvasNode => canvasNode.id === node.id) : -1;
+      const timingNodeId = node?.id ?? null;
+      const nodeIndex = timingNodeId ? nodes.findIndex(canvasNode => canvasNode.id === timingNodeId) : -1;
       const isCurrentNode = Boolean(
-        node && currentStep && (
+        timingNodeId && currentStep && (
           currentStep.nodeId
-            ? currentStep.nodeId === node.id
+            ? currentStep.nodeId === timingNodeId
             : (nodeIndex >= 0 && currentStep.index === nodeIndex)
         )
       );
@@ -536,7 +567,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     };
 
     // 参数更新逻辑：直接操作 config 对象
-    const handleParamChange = (key: string, value: any) => {
+    const handleParamChange = (key: string, value: NodeParameterValue | undefined) => {
       const currentConfig = node.config || {};
 
       if (key === 'deviceSelection' && node.type === 'change_gas_flow') {
@@ -562,7 +593,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         (node.type === 'eis_potentiostatic' || node.type === 'eis_galvanostatic') &&
         key === 'eisScanDirection'
       ) {
-        const newConfig: Record<string, any> = { ...currentConfig, eisScanDirection: value };
+        const newConfig: NodeParameters = { ...currentConfig, eisScanDirection: value };
         newConfig.eisStartFrequency = value === 'START_TO_MAX'
           ? Number(newConfig.eisLowerFrequency)
           : Number(newConfig.eisUpperFrequency);
@@ -571,9 +602,9 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         (node.type === 'eis_potentiostatic' || node.type === 'eis_galvanostatic') &&
         ['eisUpperFrequency', 'eisLowerFrequency'].includes(key)
       ) {
-        // 扫描方向决定起始端点：向最高频扫时从低频限制开始，反之从高频限制开始。
+        // 单程扫描方向决定起始端点：向最高频扫时从低频限制开始，反之从高频限制开始。
         const newValue = Number(value);
-        const newConfig: Record<string, any> = { ...currentConfig, [key]: newValue };
+        const newConfig: NodeParameters = { ...currentConfig, [key]: newValue };
 
         if (key === 'eisUpperFrequency') {
           newConfig.eisLowerFrequency = Math.min(Number(newConfig.eisLowerFrequency), newValue);
@@ -612,7 +643,10 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       return JSON.stringify(normalizeComparableValue(left)) === JSON.stringify(normalizeComparableValue(right));
     };
 
-    const currentMatchesSavedDefaults = (visibleParams: [string, any][], savedDefaults: Record<string, any> | null) => {
+    const currentMatchesSavedDefaults = (
+      visibleParams: [string, NodeParameterValue | undefined][],
+      savedDefaults: NodeParameters | null,
+    ) => {
       if (!savedDefaults) return false;
 
       const current = node.config || {};
@@ -623,7 +657,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       });
     };
 
-    const saveVisibleDefaults = (visibleParams: [string, any][]) => {
+    const saveVisibleDefaults = (visibleParams: [string, NodeParameterValue | undefined][]) => {
       const current = node.config || {};
       const nextDefaults = Object.fromEntries(
         visibleParams.map(([key, fallbackDefault]) => [key, current[key] ?? fallbackDefault])
@@ -668,11 +702,6 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       selectNode(blockNode.id);
     };
 
-    const hasBackendSupport = () => {
-      // 简单判断，所有测量节点和设备控制节点通常都有后端支持
-      return true;
-    };
-
     const renderBasicProperties = () => (
       <div className="properties-section">
         <h3 className="section-title">基本属性</h3>
@@ -712,7 +741,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       </div>
     );
 
-    const renderParameterField = (key: string, defaultValue: any) => {
+    const renderParameterField = (key: string, defaultValue: NodeParameterValue | undefined) => {
       const currentValue = (node.config || {})[key];
       const isDisabled = (node.config || {}).check_battery_health && (key === 'measurementDuration' || key === 'samplingInterval');
 
@@ -974,7 +1003,6 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                   data: { results: node.config, updatedAt: new Date().toISOString() },
                   status: systemState?.currentStep?.nodeId === node.id ? 'running' : 'ready'
                 }}
-                showChart={false}
               />
             )}
           </div>

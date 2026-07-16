@@ -10,11 +10,54 @@ import { getNodeChartKind } from '../types/NodeConfiguration';
 
 interface DataViewerProps {
   isVisible?: boolean;
-  selectedNode: any;
-  showChart?: boolean;
+  selectedNode: DataViewerNode | null;
 }
 
-export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, selectedNode, showChart = true }) => {
+interface BatteryHealth {
+  status: string;
+  avgVoltage: number;
+  deviation: number;
+  issues: string[];
+}
+
+interface DataViewerNode {
+  id: string;
+  type: string;
+  name?: string;
+  status?: string;
+  config?: {
+    check_battery_health?: boolean;
+    battery_health?: unknown;
+  };
+  data?: {
+    results?: unknown;
+    battery_health?: unknown;
+    updatedAt?: string;
+  };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const toBatteryHealth = (value: unknown): BatteryHealth | null => {
+  if (!isRecord(value)) return null;
+  const avgVoltage = Number(value.avgVoltage);
+  const deviation = Number(value.deviation);
+  if (typeof value.status !== 'string' || !Number.isFinite(avgVoltage) || !Number.isFinite(deviation)) {
+    return null;
+  }
+  return {
+    status: value.status,
+    avgVoltage,
+    deviation,
+    issues: Array.isArray(value.issues)
+      ? value.issues.filter((issue): issue is string => typeof issue === 'string')
+      : [],
+  };
+};
+
+export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, selectedNode }) => {
   const [tableData, setTableData] = useState<RawStreamData[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'health'>('table');
 
@@ -50,7 +93,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
     } else {
       setTableData([]);
     }
-  }, [nodeIndex, activeExecutionId, isIvtNode]);
+  }, [activeExecutionId, getFullHistory, isIvtNode, nodeIndex]);
 
   // IVT: 实时更新数据
   useEffect(() => {
@@ -126,7 +169,12 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
 
   // 渲染电池健康状态
   const renderHealthStatus = () => {
-    const healthData = selectedNode?.data?.results?.battery_health || selectedNode?.config?.battery_health || selectedNode?.data?.battery_health;
+    const resultHealth = isRecord(selectedNode?.data?.results)
+      ? selectedNode.data.results.battery_health
+      : undefined;
+    const healthData = toBatteryHealth(
+      resultHealth || selectedNode?.config?.battery_health || selectedNode?.data?.battery_health,
+    );
 
     if (!healthData) {
       return (

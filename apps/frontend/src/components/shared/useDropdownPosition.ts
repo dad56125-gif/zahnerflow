@@ -3,7 +3,7 @@
  * 用于需要锚定到触发元素的下拉菜单。
  */
 
-import { useState, useEffect, useRef, useCallback, RefObject } from 'react';
+import { useState, useEffect, useCallback, RefObject } from 'react';
 import { useRafWindowEvent } from '../../hooks/useRafWindowEvent';
 
 interface DropdownPosition {

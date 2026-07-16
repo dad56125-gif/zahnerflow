@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NodeCategory, WorkstationType } from '@zahnerflow/types';
+import type { NodeCategory, NodeType, WorkstationType } from '@zahnerflow/types';
 import { useCanvasStore } from '../state/canvasStore';
 import { getNodeConfigByWorkstation, getNodeCategoryName } from '../utils/nodeUtilities'
 import { NodeIconSvg } from './NodeIconSvg';
@@ -29,7 +29,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
       if (HIDDEN_NODE_LIBRARY_TYPES.has(nodeType)) {
         return;
       }
-      addNode(nodeType as any);
+      addNode(nodeType as NodeType);
     }
   };
 
@@ -88,7 +88,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
                               e.dataTransfer.setData('nodeType', nodeType);
                               e.dataTransfer.effectAllowed = 'copy';
                               e.dataTransfer.dropEffect = 'copy';
-                            } catch { }
+                            } catch {
+                              return;
+                            }
                           }}
                           onClick={() => !disabled && handleCreateNode(nodeType)}
                           title={disabled ? `请先连接${nodeType === 'change_temperature' ? 'Furnace' : 'MFC'}设备` : config.description}

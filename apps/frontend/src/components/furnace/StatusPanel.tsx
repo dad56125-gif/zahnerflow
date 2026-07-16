@@ -37,7 +37,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
       <div className="chart__container chart__container--dashboard">
         <div className="chart__content">
           <TemperatureChart
-            data={furnaceState.history_data as any}
+            data={furnaceState.history_data}
             is_loading={furnaceState.loading}
           />
         </div>

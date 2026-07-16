@@ -4,6 +4,7 @@ import { useWorkflowStore } from '../state/currentWorkflowStore';
 import { deriveExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
 import { UnrollViewModal } from './UnrollViewModal';
 import type { RunFlowHandler } from '../types/executionControl';
+import type { NodeParameters } from '../types/NodeConfiguration';
 
 interface ToolbarProps {
   onRunFlow: RunFlowHandler;
@@ -15,7 +16,7 @@ interface ToolbarProps {
   workflowBlockRunBlocked?: boolean;
   onGenerateReport?: () => void;
   onUnrollViewOpenChange?: (open: boolean) => void;
-  autoStartupConfig?: Record<string, any>;
+  autoStartupConfig?: NodeParameters;
   runMetadataWarning?: string | null;
 }
 
@@ -77,8 +78,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onRunFlow,
   onResetFlow,
   selectedWorkstation,
-  isRunning,
-  isCancelling = false,
   hasError,
   workflowBlockRunBlocked = false,
   onGenerateReport,

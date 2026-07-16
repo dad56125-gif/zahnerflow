@@ -164,8 +164,8 @@ export const enumValues: Record<string, string[]> = {
 export const getParameterEnumLabel = (key: string, value: string): string => {
   const enumLabels: Record<string, Record<string, string>> = {
     eisScanDirection: {
-      'START_TO_MAX': '由低频扫向高频',
-      'START_TO_MIN': '由高频扫向低频'
+      'START_TO_MAX': '由低频扫向高频（单程）',
+      'START_TO_MIN': '由高频扫向低频（单程）'
     },
     eisScanStrategy: {
       'SINGLE_SINE': '单正弦波',

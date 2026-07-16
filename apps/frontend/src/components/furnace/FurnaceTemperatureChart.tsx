@@ -29,12 +29,6 @@ const downsample = <T,>(data: T[], maxPoints: number): T[] => {
   return data.filter((_, i) => i % step === 0);
 };
 
-// 格式化数值
-const formatValue = (value: number | null, fractionDigits = 1): string => {
-  if (value === null || Number.isNaN(value)) return 'N/A';
-  return value.toFixed(fractionDigits);
-};
-
 const parseDomainTime = (value?: string | number): number | null => {
   if (value === undefined || value === null || value === '') return null;
   const ts = typeof value === 'number' ? value : Date.parse(value);
@@ -138,9 +132,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
   const processedData = useMemo(() => {
     return data
       .map((sample) => {
-        const ts = typeof sample.timestamp === 'number'
-          ? sample.timestamp
-          : Date.parse(sample.timestamp as any);
+        const ts = Date.parse(sample.timestamp);
         return {
           ts: Number.isFinite(ts) ? ts : Date.now(),
           pv: typeof sample.temperature === 'number' && Number.isFinite(sample.temperature)
@@ -150,8 +142,8 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
           mv: typeof sample.mv === 'number' && Number.isFinite(sample.mv)
             ? sample.mv : null,
           segment: sample.segment,
-          segmentTime: (sample as any).segmentTime,
-          segmentTimeSet: (sample as any).segmentTimeSet,
+          segmentTime: sample.segmentTime,
+          segmentTimeSet: sample.segmentTimeSet,
         };
       })
       .filter((item) => Number.isFinite(item.ts))

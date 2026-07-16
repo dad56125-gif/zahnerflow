@@ -10,6 +10,7 @@ import { LoopBoundary } from './LoopBoundary';
 import { useLayout, DisplayNode } from './useLayout';
 import { useLoopDetection, SimpleLoopInfo } from './useLoopDetection';
 import type { RunFlowHandler } from '../../types/executionControl';
+import type { NodeParameters } from '../../types/NodeConfiguration';
 
 interface CanvasProps {
   selectedWorkstation: WorkstationType | null;
@@ -22,7 +23,7 @@ interface CanvasProps {
   onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
   onGenerateReport?: () => void;
   onUnrollViewOpenChange?: (open: boolean) => void;
-  autoStartupConfig?: Record<string, any>;
+  autoStartupConfig?: NodeParameters;
   runMetadataWarning?: string | null;
 }
 
@@ -56,7 +57,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
 
   // 2. 生成渲染视图 (View Model)
-  const { layoutNodes, layoutEdges, actualColumns, adjustedDimensions } = useLayout(
+  const { layoutNodes, layoutEdges, adjustedDimensions } = useLayout(
     nodes, // 显式传入，触发更新
     {
       minColumns: 1,

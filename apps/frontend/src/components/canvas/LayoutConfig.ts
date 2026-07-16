@@ -72,7 +72,7 @@ export interface ComputedEdge {
   sourceDir?: 1 | -1;
   targetDir?: 1 | -1;
   animated?: boolean;
-  style?: Record<string, any>;
+  style?: CSSProperties;
 }
 
 // ==================== 4. 逻辑宽度计算函数 (保留你的算法) ====================
@@ -120,3 +120,4 @@ export function getActualColumns(
   }
   return config.minColumns;
 }
+import type { CSSProperties } from 'react';

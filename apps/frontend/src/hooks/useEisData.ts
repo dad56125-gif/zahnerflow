@@ -118,11 +118,11 @@ interface UseEisDataProps {
 }
 
 export const useEisData = ({ nodeIndex, activeExecutionId, nodeIndices }: UseEisDataProps) => {
-  const [tick, setTick] = useState(0);
+  const [revision, setRevision] = useState(0);
   const trackedKey = nodeIndices && nodeIndices.length > 0 ? nodeIndices.join(',') : `${nodeIndex}`;
   const trackedIndices = useMemo(
-    () => nodeIndices && nodeIndices.length > 0 ? nodeIndices : [nodeIndex],
-    [nodeIndex, trackedKey],
+    () => trackedKey.split(',').map(Number),
+    [trackedKey],
   );
   const trackedSet = useMemo(() => new Set(trackedIndices), [trackedIndices]);
 
@@ -131,7 +131,7 @@ export const useEisData = ({ nodeIndex, activeExecutionId, nodeIndices }: UseEis
 
     const handler: EisHandler = (executionId, index) => {
       if (executionId === activeExecutionId && trackedSet.has(index)) {
-        setTick(value => value + 1);
+        setRevision(value => value + 1);
       }
     };
 
@@ -139,18 +139,19 @@ export const useEisData = ({ nodeIndex, activeExecutionId, nodeIndices }: UseEis
     return () => { eisListeners.delete(handler); };
   }, [activeExecutionId, trackedSet]);
 
-  const nodeIterations = useMemo(
-    () => new Map(getNodeIterations(activeExecutionId, nodeIndex)),
-    [activeExecutionId, nodeIndex, tick],
-  );
+  const nodeIterations = useMemo(() => {
+    void revision;
+    return new Map(getNodeIterations(activeExecutionId, nodeIndex));
+  }, [activeExecutionId, nodeIndex, revision]);
 
   const nodesIterations = useMemo(() => {
+    void revision;
     const result = new Map<number, Map<string, EisData>>();
     for (const index of trackedIndices) {
       result.set(index, new Map(getNodeIterations(activeExecutionId, index)));
     }
     return result;
-  }, [activeExecutionId, trackedIndices, tick]);
+  }, [activeExecutionId, revision, trackedIndices]);
 
   const getEisIterationsForNode = useCallback(() => nodeIterations, [nodeIterations]);
   const getEisIterationsForNodes = useCallback(() => nodesIterations, [nodesIterations]);

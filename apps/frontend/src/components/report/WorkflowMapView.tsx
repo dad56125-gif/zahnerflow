@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts/core';
+import type { ECElementEvent } from 'echarts/core';
 import { GraphChart } from 'echarts/charts';
 import { LegendComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -95,6 +96,15 @@ function visualTier(weight: number): string {
   return '卫星';
 }
 
+interface GraphEventParams {
+  data?: {
+    workflow?: WorkflowMapNode;
+    visualWeight?: number;
+    derivedChildCount?: number;
+    edge?: WorkflowMapEdge;
+  };
+}
+
 export const WorkflowMapView: React.FC<WorkflowMapViewProps> = ({
   data,
   selectedWorkflowId,
@@ -105,6 +115,8 @@ export const WorkflowMapView: React.FC<WorkflowMapViewProps> = ({
   const theme = useAppStore((state) => state.theme);
 
   const graphData = useMemo(() => {
+    // 主题切换时重新读取节点边框 CSS token。
+    void theme;
     const nodes = data?.nodes || [];
     const edges = data?.edges || [];
     const now = Date.now();
@@ -165,7 +177,6 @@ export const WorkflowMapView: React.FC<WorkflowMapViewProps> = ({
     const primary = getCssVariable('--color-primary', '#3b82f6');
     const success = getCssVariable('--color-success', '#10b981');
     const warning = getCssVariable('--color-warning', '#f59e0b');
-    const danger = getCssVariable('--color-danger', '#ef4444');
     const accent = getCssVariable('--color-info', '#06b6d4');
 
     chartInstance.current.setOption({
@@ -184,7 +195,7 @@ export const WorkflowMapView: React.FC<WorkflowMapViewProps> = ({
         backgroundColor: panelBg,
         borderColor,
         textStyle: { color: textColor },
-        formatter: (params: any) => {
+        formatter: (params: GraphEventParams) => {
           if (params.data?.workflow) {
             const node = params.data.workflow as WorkflowMapNode;
             const weight = Number(params.data.visualWeight || 0);
@@ -231,7 +242,9 @@ export const WorkflowMapView: React.FC<WorkflowMapViewProps> = ({
           edgeLabel: {
             show: false,
             color: secondaryText,
-            formatter: (params: any) => edgeLabel(params.data.edge),
+            formatter: (params: GraphEventParams) => (
+              params.data?.edge ? edgeLabel(params.data.edge) : ''
+            ),
           },
           lineStyle: {
             color: getCssVariable('--text-tertiary', 'rgba(148, 163, 184, 0.62)'),
@@ -241,8 +254,14 @@ export const WorkflowMapView: React.FC<WorkflowMapViewProps> = ({
       ],
     }, true);
 
-    const clickHandler = (params: any) => {
-      const workflowId = params.data?.workflow?.id;
+    const clickHandler = (params: ECElementEvent) => {
+      const eventData = params.data && typeof params.data === 'object' && !Array.isArray(params.data)
+        ? params.data as Record<string, unknown>
+        : null;
+      const workflow = eventData?.workflow && typeof eventData.workflow === 'object'
+        ? eventData.workflow as Record<string, unknown>
+        : null;
+      const workflowId = typeof workflow?.id === 'string' ? workflow.id : null;
       if (workflowId) onSelectWorkflow(workflowId);
     };
     chartInstance.current.off('click');

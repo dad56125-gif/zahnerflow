@@ -2,6 +2,14 @@ import { NodeType, NodeCategory } from '@zahnerflow/types';
 
 type NodeIconKey = string;
 
+export type NodeParameterValue =
+  | string
+  | number
+  | boolean
+  | null;
+
+export type NodeParameters = Record<string, NodeParameterValue | undefined>;
+
 // 节点配置元数据（静态配置，非运行时数据）
 export interface NodeConfig {
   type: NodeType;
@@ -9,7 +17,7 @@ export interface NodeConfig {
   category: NodeCategory;
   description: string;
   icon: NodeIconKey;
-  defaultParameters?: Record<string, any>;
+  defaultParameters?: NodeParameters;
 }
 
 export type NodeChartKind = 'ivt' | 'eis';

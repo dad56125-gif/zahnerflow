@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
-import { useUser } from '../shared/UserContext';
+import { useUser } from '../shared/userContextState';
 import { runtimeClient } from '../../runtimeClient';
 import { Dropdown } from '../shared/Dropdown';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
@@ -42,6 +42,24 @@ interface UserSettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
+
+interface ApiResponse {
+    success: boolean;
+    message?: string;
+}
+
+interface UserSettingsResponse extends ApiResponse {
+    settings?: UserSettings;
+}
+
+interface ProjectListResponse extends ApiResponse {
+    projects?: string[];
+    data?: string[];
+}
+
+const errorMessage = (error: unknown, fallback: string): string => (
+    error instanceof Error && error.message ? error.message : fallback
+);
 
 type SettingsSection = 'filePath' | 'notification' | 'cloud';
 
@@ -279,39 +297,40 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         }
 
         setFieldErrors(realTimeErrors);
-    }, [settings?.filePath]);
+    }, [settings]);
 
     // 加载用户配置
     useEffect(() => {
-        if (isOpen && currentUser) {
-            loadSettings();
-        }
-    }, [isOpen, currentUser]);
+        if (!isOpen || !currentUser) return;
 
-    const loadSettings = async () => {
-        if (!currentUser) return;
-
-        setLoading(true);
-        setError('');
-        try {
-            const response: any = await runtimeClient.users.getSettings(currentUser);
-            if (response?.success && response?.settings) {
-                skipNextAutoSaveRef.current = true;
-                setSettings(response.settings);
+        let active = true;
+        const loadSettings = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const response = await runtimeClient.users.getSettings<UserSettingsResponse>(currentUser);
+                if (active && response.success && response.settings) {
+                    skipNextAutoSaveRef.current = true;
+                    setSettings(response.settings);
+                }
+            } catch (err) {
+                console.error('Failed to load user settings:', err);
+                if (active) setError('加载配置失败');
+            } finally {
+                if (active) setLoading(false);
             }
-        } catch (err) {
-            console.error('Failed to load user settings:', err);
-            setError('加载配置失败');
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
+        void loadSettings();
+        return () => {
+            active = false;
+        };
+    }, [currentUser, isOpen]);
 
     // 加载项目列表
     const loadProjects = async () => {
         if (!currentUser) return;
         try {
-            const response: any = await runtimeClient.files.projects(currentUser);
+            const response = await runtimeClient.files.projects<ProjectListResponse>(currentUser);
             if (response?.success) {
                 const list = Array.isArray(response.projects)
                     ? response.projects
@@ -333,7 +352,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         }
 
         try {
-            const response: any = await runtimeClient.files.deleteProject(projectName, currentUser);
+            const response = await runtimeClient.files.deleteProject<ApiResponse>(projectName, currentUser);
             if (response?.success) {
                 // 从列表中移除
                 setProjects(prev => prev.filter(p => p !== projectName));
@@ -359,7 +378,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 return;
             }
 
-            const response: any = await runtimeClient.files.browseSystemPath();
+            const response = await runtimeClient.files.browseSystemPath();
             if (response?.success && response?.path) {
                 updateFilePath('basePath', response.path);
             } else if (response?.message === 'USER_CANCELLED') {
@@ -372,29 +391,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         }
     };
 
-    const saveSettings = async () => {
-        if (!currentUser || !settings) return;
-
-        setSaving(true);
-        setError('');
-        try {
-            const response: any = await runtimeClient.users.saveSettings(currentUser, settings);
-            if (response?.success) {
-                // 后端整包保存已经完成；这里只同步应用内缓存，避免再次写 filePath section。
-                setFilePathConfig(settings.filePath, { persist: false });
-                // 同时更新当前用户的头像，使左上角按钮能够同步刷新
-                setCurrentUserAvatar(settings.cloud.avatar || '');
-            } else {
-                setError(response?.message || '保存失败');
-            }
-        } catch (err) {
-            console.error('Failed to save user settings:', err);
-            setError('保存配置失败');
-        } finally {
-            setSaving(false);
-        }
-    };
-
     // 自动保存（防抖）
     useEffect(() => {
         if (!settings || !currentUser) return;
@@ -403,12 +399,29 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             return;
         }
 
-        const timeoutId = setTimeout(() => {
-            saveSettings();
+        const settingsSnapshot = settings;
+        const timeoutId = setTimeout(async () => {
+            setSaving(true);
+            setError('');
+            try {
+                const response = await runtimeClient.users.saveSettings<ApiResponse>(currentUser, settingsSnapshot);
+                if (response.success) {
+                    // 后端整包保存已经完成；这里只同步应用内缓存，避免再次写 filePath section。
+                    setFilePathConfig(settingsSnapshot.filePath, { persist: false });
+                    setCurrentUserAvatar(settingsSnapshot.cloud.avatar || '');
+                } else {
+                    setError(response.message || '保存失败');
+                }
+            } catch (err) {
+                console.error('Failed to save user settings:', err);
+                setError('保存配置失败');
+            } finally {
+                setSaving(false);
+            }
         }, 800);
 
         return () => clearTimeout(timeoutId);
-    }, [settings]);
+    }, [currentUser, setCurrentUserAvatar, setFilePathConfig, settings]);
 
     const updateFilePath = (field: keyof UserSettings['filePath'], value: string) => {
         if (!settings) return;
@@ -418,7 +431,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         });
     };
 
-    const updateNotification = (field: keyof UserSettings['notification'], value: any) => {
+    const updateNotification = <K extends keyof UserSettings['notification']>(
+        field: K,
+        value: UserSettings['notification'][K],
+    ) => {
         if (!settings) return;
         setSettings({
             ...settings,
@@ -426,7 +442,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         });
     };
 
-    const updateCloud = (field: keyof UserSettings['cloud'], value: any) => {
+    const updateCloud = <K extends keyof UserSettings['cloud']>(
+        field: K,
+        value: UserSettings['cloud'][K],
+    ) => {
         if (!settings) return;
         setSettings({
             ...settings,
@@ -795,14 +814,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                                     }
                                                                     try {
                                                                         await runtimeClient.users.saveSettings(currentUser, settings);
-                                                                        const response: any = await runtimeClient.users.testEmail(currentUser);
+                                                                        const response = await runtimeClient.users.testEmail<ApiResponse>(currentUser);
                                                                         if (response?.success) {
                                                                             alert('测试邮件已发送，请检查收件箱');
                                                                         } else {
                                                                             alert(`发送失败: ${response?.message || '未知错误'}`);
                                                                         }
-                                                                    } catch (err: any) {
-                                                                        alert(`发送失败: ${err.message || '网络错误'}`);
+                                                                    } catch (err: unknown) {
+                                                                        alert(`发送失败: ${errorMessage(err, '网络错误')}`);
                                                                     }
                                                                 }}
                                                                 disabled={!settings.notification.email || !settings.notification.smtpUser}

@@ -45,4 +45,6 @@ export interface FurnaceSampleWithTimestamp {
   sv?: number;
   mv?: number;
   segment?: number;
+  segmentTime?: number;
+  segmentTimeSet?: number;
 }

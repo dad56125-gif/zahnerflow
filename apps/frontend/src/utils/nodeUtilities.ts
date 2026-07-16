@@ -2,12 +2,13 @@
 
 import type { NodeType, NodeCategory, WorkflowNode, WorkstationType } from '@zahnerflow/types';
 import type { NodeConfig } from '../types/NodeConfiguration';
+import type { NodeParameters } from '../types/NodeConfiguration';
 import { NODE_CONFIGS, NODE_CATEGORY_NAMES, ZAHNER_NODE_CONFIGS, NODE_GROUPS, ZAHNER_NODE_GROUPS } from '../types/NodeConfiguration';
 import { nextScheduledStart, scheduledStartConfigFromDate } from './scheduledStart';
 
 // --- 1. 存储相关的常量与逻辑 ---
 const STORAGE_KEY_PREFIX = 'zahner_workflow_defaults_';
-const sessionNodeDefaults = new Map<NodeType, Record<string, any>>();
+const sessionNodeDefaults = new Map<NodeType, NodeParameters>();
 
 function getCurrentUserForDefaults(): string {
   if (typeof window === 'undefined') return '';
@@ -22,7 +23,7 @@ function cloneDefaults<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function getSavedDefaultParameters(type: NodeType, user?: string): Record<string, any> | null {
+export function getSavedDefaultParameters(type: NodeType, user?: string): NodeParameters | null {
   const resolvedUser = user ?? getCurrentUserForDefaults();
 
   if (!resolvedUser) {
@@ -33,14 +34,17 @@ export function getSavedDefaultParameters(type: NodeType, user?: string): Record
   try {
     const savedDefaultsJson = window.localStorage.getItem(getDefaultsStorageKey(type, resolvedUser));
     if (!savedDefaultsJson) return null;
-    return JSON.parse(savedDefaultsJson);
+    const parsed: unknown = JSON.parse(savedDefaultsJson);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as NodeParameters
+      : null;
   } catch (e) {
     console.warn(`[NodeUtilities] 读取节点默认参数失败 (${resolvedUser}/${type})`, e);
     return null;
   }
 }
 
-export function saveDefaultParameters(type: NodeType, params: Record<string, any>, user?: string): void {
+export function saveDefaultParameters(type: NodeType, params: NodeParameters, user?: string): void {
   const resolvedUser = user ?? getCurrentUserForDefaults();
   const normalizedParams = cloneDefaults(params);
 
@@ -63,7 +67,7 @@ export function saveDefaultParameters(type: NodeType, params: Record<string, any
  * 获取生效的默认参数
  * 逻辑：静态配置 -> 合并用户默认参数
  */
-export function getEffectiveDefaultParameters(type: NodeType): Record<string, any> {
+export function getEffectiveDefaultParameters(type: NodeType): NodeParameters {
   const config = getNodeConfig(type);
   const staticDefaults = config.defaultParameters || {};
   const savedDefaults = getSavedDefaultParameters(type);

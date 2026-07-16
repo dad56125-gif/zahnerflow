@@ -13,16 +13,19 @@ import type {
   NodesResetEvent,
   NodeStatus,
   NodeStatusUpdate,
+  WorkflowNode,
 } from '@zahnerflow/types';
+import type { FilePathConfig } from '../components/shared/userContextState';
+import type { NodeParameters } from '../types/NodeConfiguration';
 // clearMeasurementCache 已解耦，现在由 useMeasurementStream 自己监听 nodesReset 事件
 
 export interface StartExecutionOptions {
-  nodes: any[];
+  nodes: WorkflowNode[];
   ownerName?: string;
   workflowName?: string;
   workstationType?: string | null;
-  autoStartupConfig?: Record<string, any>;
-  pathConfig?: Record<string, any>;
+  autoStartupConfig?: NodeParameters;
+  pathConfig?: FilePathConfig;
   startFromUnrolledIndex?: number;
   forceStartWithMissingRunMetadata?: boolean;
 }
@@ -37,7 +40,7 @@ export interface ExecutionState {
 
   // 核心状态：基于索引
   nodeStatuses: string[];
-  nodeResults: any[];
+  nodeResults: unknown[];
   currentNodeIndex: number | null;
 
   // ✅ 新增：保存最新的完整快照，供组件读取详细信息
@@ -202,7 +205,10 @@ export const useExecutionStore = create<ExecutionState>()(
             if (update.i >= 0) {
               newNodeStatuses[update.i] = update.s;
 
-              const changes: any = { nodeStatuses: newNodeStatuses };
+              const changes: Partial<Pick<
+                ExecutionState,
+                'nodeStatuses' | 'nodeResults' | 'currentNodeIndex'
+              >> = { nodeStatuses: newNodeStatuses };
 
               if (update.d !== undefined) {
                 const newNodeResults = [...state.nodeResults];
@@ -268,7 +274,7 @@ export const useExecutionStore = create<ExecutionState>()(
           const state = get();
 
           // ✅ 核心改动：直接把快照存入 Store
-          const updates: any = { lastSnapshot: snapshot };
+          const updates: Partial<ExecutionState> = { lastSnapshot: snapshot };
 
           const { status, executionId, error, currentStep, workflowId } = snapshot;
           const etaTotal = snapshot.eta

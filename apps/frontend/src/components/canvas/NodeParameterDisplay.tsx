@@ -10,18 +10,19 @@ interface ParamDisplayConfig {
     label: string;
     key: string;
     unit?: string;
-    format?: (value: any, params?: Record<string, any>) => string;
+    format?: (value: unknown, params?: Record<string, unknown>) => string;
     secondary?: {
         label: string;
         key: string;
         unit?: string;
-        format?: (value: any) => string;
+        format?: (value: unknown) => string;
     };
 }
 
 // 智能电流格式化函数：根据数值大小自动选择单位（A、mA、μA）
-const formatCurrent = (v: any): string => {
-    const value = v || 0; // 原始值为安培
+const formatCurrent = (v: unknown): string => {
+    const parsed = Number(v);
+    const value = Number.isFinite(parsed) ? parsed : 0; // 原始值为安培
     const absValue = Math.abs(value);
 
     if (absValue >= 1) {
@@ -46,14 +47,17 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
         label: '温度',
         key: 'targetTemperature',
         unit: '°C',
-        format: (v) => Math.round(v || 25).toString()
+        format: (v) => {
+            const value = Number(v);
+            return Math.round(Number.isFinite(value) ? value : 25).toString();
+        }
     },
     change_gas_flow: {
         label: '流量',
         key: 'targetFlowRate',
         unit: 'sccm',
         format: (v) => {
-            const num = typeof v === 'number' ? v : parseFloat(v);
+            const num = typeof v === 'number' ? v : Number.parseFloat(String(v));
             return isNaN(num) ? '0.0' : num.toFixed(1);
         },
         secondary: {
@@ -155,10 +159,10 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
         format: (_v, params) => {
             if (!params) return '';
 
-            const startV = params.start_voltage ?? 0;
-            const endV = params.end_voltage ?? 0;
-            const startRef = params.startVoltageReference || 'absolute';
-            const endRef = params.endVoltageReference || 'absolute';
+            const startV = Number(params.start_voltage ?? 0);
+            const endV = Number(params.end_voltage ?? 0);
+            const startRef = String(params.startVoltageReference || 'absolute');
+            const endRef = String(params.endVoltageReference || 'absolute');
 
             // 格式化单个电压值
             const formatVoltage = (voltage: number, reference: string): string => {
@@ -209,7 +213,7 @@ const NODE_PARAM_CONFIG: Record<string, ParamDisplayConfig> = {
 
 interface NodeParameterDisplayProps {
     nodeType: string;
-    params: Record<string, any>;
+    params: Record<string, unknown>;
 }
 
 export const NodeParameterDisplay: React.FC<NodeParameterDisplayProps> = ({
@@ -220,7 +224,7 @@ export const NodeParameterDisplay: React.FC<NodeParameterDisplayProps> = ({
 
     if (!config) return null;
 
-    const formatValue = (value: any, cfg: ParamDisplayConfig | ParamDisplayConfig['secondary']) => {
+    const formatValue = (value: unknown, cfg: ParamDisplayConfig | ParamDisplayConfig['secondary']) => {
         if (!cfg) return '';
         const formatted = cfg.format
             ? cfg.format(value, params)

@@ -17,7 +17,6 @@ import { SpacedCjkText } from '../common/SpacedCjkText';
 
 
 interface DeviceModalProps {
-  device: 'furnace';
   onClose: () => void;
   modalTop: number;
   modalLeft: number;
@@ -31,7 +30,6 @@ interface DeviceModalProps {
 type FurnaceTab = 'monitoring' | 'segments' | 'history';
 
 export const DeviceModal: React.FC<DeviceModalProps> = ({
-  device,
   onClose,
   modalTop,
   modalLeft,
@@ -41,8 +39,6 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   furnaceControls,
   simulatorSettings,
 }) => {
-  if (!device) return null;
-
   // 当前选项卡状态
   const [activeTab, setActiveTab] = useState<FurnaceTab>('monitoring');
   const [mountedTabs, setMountedTabs] = useState({
@@ -52,12 +48,13 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
   });
   const isConnected = furnaceState.connection_status === 'connected';
   const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
+  const refreshFurnaceStatus = furnaceControls.refresh_status;
 
   useEffect(() => {
     // AppContent 中的 Furnace hook 常驻，Modal 重开不会重新触发 hook 初始化。
     // 每次 Modal 挂载都重新读取完整后端快照，避免复用上一次打开时的显示状态。
-    void furnaceControls.refresh_status();
-  }, [furnaceControls.refresh_status]);
+    void refreshFurnaceStatus();
+  }, [refreshFurnaceStatus]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -129,7 +126,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
 
   useEffect(() => {
     const browserWindow = typeof window !== 'undefined' ? window : null;
-    let timeoutIds: number[] = [];
+    const timeoutIds: number[] = [];
 
     const scheduleMount = (tab: Exclude<FurnaceTab, 'monitoring'>, delay: number) => {
       const mountTab = () => {
@@ -790,7 +787,7 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
               <div className="chart__content">
                 {selectedActivityDay ? (
                   <TemperatureChart
-                    data={chartSamples as any}
+                    data={chartSamples}
                     is_loading={chartLoading}
                     xDomainStart={selectedDateStart}
                     xDomainEnd={selectedDateEnd}

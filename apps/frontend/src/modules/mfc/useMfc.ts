@@ -457,7 +457,7 @@ export function useMfc(): [MfcState, MfcControls] {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, handleError, updateState, get_available_ports, addLog, loadCommandLogs, handleRuntimeStatusUpdate]);
+  }, [setLoading, handleError, get_available_ports, addLog, loadCommandLogs, handleRuntimeStatusUpdate]);
 
   // ==================== 扫描与控制 ====================
 

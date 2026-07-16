@@ -98,7 +98,7 @@ class GlassEffect {
     const update3DTilt = (relativeX: number, relativeY: number) => {
       const dims = getElementDimensions();
       const elementSize = Math.min(dims.width, dims.height);
-      let maxTilt = (elementSize < 60) ? 20 : (elementSize < 120) ? 15 : (elementSize < 200) ? 10 : 6;
+      const maxTilt = (elementSize < 60) ? 20 : (elementSize < 120) ? 15 : (elementSize < 200) ? 10 : 6;
       const tiltX = (relativeY - 0.5) * maxTilt;
       const tiltY = (0.5 - relativeX) * maxTilt;
       (element as HTMLElement).style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(0)`;
@@ -132,7 +132,7 @@ class GlassEffect {
         transparent 60%
       )`;
       mainShine.style.filter = 'blur(8px)';
-      (mainShine.style as any).webkitFilter = 'blur(8px)';
+      mainShine.style.webkitFilter = 'blur(8px)';
       mainShine.style.opacity = '1';
       updateEdgeGlow(x / dims.width, y / dims.height);
       update3DTilt(x / dims.width, y / dims.height);

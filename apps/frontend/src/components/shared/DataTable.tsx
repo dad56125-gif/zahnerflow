@@ -10,9 +10,12 @@ import React, { useMemo } from 'react';
 type TableVariant = 'default' | 'compact' | 'striped';
 type TableSize = 'small' | 'medium' | 'large';
 
-export interface TableColumn<T = any> {
+type StringKeyOf<T> = Extract<keyof T, string>;
+
+export type TableColumn<T extends object> = {
+  [K in StringKeyOf<T>]: {
     /** 列标识符，对应数据对象的 key */
-    key: string;
+    key: K;
     /** 列标题 */
     title: string;
     /** 自定义宽度 */
@@ -20,18 +23,19 @@ export interface TableColumn<T = any> {
     /** 对齐方式 */
     align?: 'left' | 'center' | 'right';
     /** 自定义渲染函数 */
-    render?: (value: any, row: T, index: number) => React.ReactNode;
+    render?: (value: T[K], row: T, index: number) => React.ReactNode;
     /** 格式化函数（简单文本格式化） */
-    format?: (value: any) => string;
-}
+    format?: (value: T[K]) => string;
+  }
+}[StringKeyOf<T>];
 
-interface DataTableProps<T = any> {
+interface DataTableProps<T extends object> {
     /** 列定义 */
     columns: TableColumn<T>[];
     /** 数据源，新数据应在数组前面 */
     data: T[];
     /** 行唯一标识符字段 */
-    rowKey?: string | ((row: T, index: number) => string);
+    rowKey?: StringKeyOf<T> | ((row: T, index: number) => string);
     /** 样式变体 */
     variant?: TableVariant;
     /** 尺寸 */
@@ -82,10 +86,10 @@ interface DataTableProps<T = any> {
  *     size="small"
  * />
  */
-export const DataTable = <T extends Record<string, any>>({
+export const DataTable = <T extends object>({
     columns,
     data,
-    rowKey = 'id',
+    rowKey,
     variant = 'default',
     size = 'medium',
     maxRows,
@@ -104,7 +108,8 @@ export const DataTable = <T extends Record<string, any>>({
     // 生成行 key
     const getRowKey = (row: T, index: number): string => {
         if (typeof rowKey === 'function') return rowKey(row, index);
-        return String(row[rowKey] ?? index);
+        if (rowKey) return String(row[rowKey] ?? index);
+        return String(index);
     };
 
     // 渲染单元格内容
@@ -119,7 +124,7 @@ export const DataTable = <T extends Record<string, any>>({
             return col.format(value);
         }
 
-        return value ?? '-';
+        return value === null || value === undefined ? '-' : String(value);
     };
 
     // 组合 CSS 类名

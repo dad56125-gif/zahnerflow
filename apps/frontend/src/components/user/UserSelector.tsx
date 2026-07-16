@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { useUser } from '../shared/UserContext';
+import { useUser } from '../shared/userContextState';
 import { UserSettingsModal } from './UserSettingsModal';
 import { useDropdownPosition } from '../shared/useDropdownPosition';
 import { Dropdown } from '../shared/Dropdown';
 import { ModalLayer } from '../shared/OverlayLayer';
-import { renderCjkText, SpacedCjkText } from '../common/SpacedCjkText';
+import { CjkText, SpacedCjkText } from '../common/SpacedCjkText';
 import { UiIconSvg } from '../shared/UiIconSvg';
 import { resolveAvatarSrc } from '../../utils/avatarAssets';
 
@@ -16,6 +16,10 @@ interface UserSelectorProps {
 }
 
 type UserActionIconName = 'createUser' | 'userSettings';
+
+const errorMessage = (error: unknown, fallback: string): string => (
+  error instanceof Error && error.message ? error.message : fallback
+);
 
 const UserActionIcon: React.FC<{ name: UserActionIconName }> = ({ name }) => {
   const commonProps = {
@@ -96,8 +100,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       await createUser({ user: newUserName.trim() });
       setShowCreateDialog(false);
       setNewUserName('');
-    } catch (err: any) {
-      setError(err.message || '创建用户失败');
+    } catch (err: unknown) {
+      setError(errorMessage(err, '创建用户失败'));
     }
   };
 
@@ -117,8 +121,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       } else {
         alert('删除用户失败');
       }
-    } catch (err: any) {
-      alert(`删除用户失败: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`删除用户失败: ${errorMessage(err, '未知错误')}`);
     }
   };
 
@@ -150,7 +154,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
             <UiIconSvg name="user" />
           </span>
         )}
-        <span className="btn-text">{renderCjkText(currentUser || '选择用户')}</span>
+        <span className="btn-text"><CjkText value={currentUser || '选择用户'} /></span>
         <svg className={`dropdown__arrow ${dropdown.isOpen ? 'is-rotated' : ''}`} viewBox="-10 -6 20 12" width="12" height="12">
           <path
             d="M -8 -3 L 0 5 L 8 -3"
@@ -332,7 +336,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                   disabled={!newUserName.trim() || !!error}
                   title={
                     !newUserName.trim() ? '请输入用户名' :
-                      !!error ? error :
+                      error ? error :
                         '创建新用户'
                   }
                 >

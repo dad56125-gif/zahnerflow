@@ -88,7 +88,7 @@ export interface LoopBoundaryProps {
  * 辅助函数：计算节点中心点
  * 🔥 适配：从 node.position 读取坐标
  */
-function getNodeCenterPoint(node: any): Point {
+function getNodeCenterPoint(node: DisplayNode): Point {
   // 1. 优先读取 position 对象 (新架构)
   const nodeX = node.position.x;
   const nodeY = node.position.y;
@@ -147,30 +147,6 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
   style = {}
 }) => {
 
-  // 优化 1: 提取关键数据指纹，避免无关节点更新导致重算
-  // 我们只关心在这个循环里的节点 ID，以及它们的位置
-  const loopNodeFingerprint = useMemo(() => {
-    // 找到循环范围内的节点索引
-    const startIndex = nodes.findIndex(n => n.id === loop.startNodeId);
-    const endIndex = nodes.findIndex(n => n.id === loop.endNodeId);
-
-    if (startIndex === -1 || endIndex === -1) return '';
-
-    // 确定范围
-    const start = Math.min(startIndex, endIndex);
-    const end = Math.max(startIndex, endIndex);
-
-    // 生成指纹字符串：ID-X-Y-Width
-    // 这样只有循环内的节点移动时，指纹才会变
-    let fingerprint = '';
-    for (let i = start; i <= end; i++) {
-      const n = nodes[i];
-      fingerprint += `${n.id}:${Math.round(n.position.x)}:${Math.round(n.position.y)}|`;
-    }
-    return fingerprint;
-  }, [nodes, loop.startNodeId, loop.endNodeId]); // 依赖 nodes，但计算很快
-
-  // 将 completeLoopNodes 的 useMemo 依赖改为 loopNodeFingerprint
   const completeLoopNodes = useMemo(() => {
     const startIndex = nodes.findIndex(n => n.id === loop.startNodeId);
     const endIndex = nodes.findIndex(n => n.id === loop.endNodeId);
@@ -216,7 +192,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
     };
 
     return [extendedStart, ...pathNodes, extendedEnd];
-  }, [loopNodeFingerprint, nodes]); // 🔥 核心：依赖指纹
+  }, [loop.endNodeId, loop.startNodeId, nodes]);
 
   // 获取循环内节点
   const loopInnerNodes = useMemo(() => {
@@ -238,8 +214,6 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
       const node = completeLoopNodes[i];
       const centerPoint = getNodeCenterPoint(node);
       const nodeWidth = node.layoutMeta?.width ?? node.style?.width ?? 140;
-      const nodeHeight = node.style?.height ?? 60;
-
       // 添加当前节点中心
       finalPoints.push(centerPoint);
 
@@ -286,7 +260,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
 
     // 🔥 调用优化后的 generateBeltPath
     return generateBeltPath(pathPoints, beltWidth);
-  }, [pathPoints, completeLoopNodes]);
+  }, [pathPoints, completeLoopNodes, nodes]);
 
   if (!beltPath) return null;
 

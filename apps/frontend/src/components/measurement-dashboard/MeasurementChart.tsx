@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts/core';
+import type { SeriesOption } from 'echarts';
 import { LineChart, ScatterChart } from 'echarts/charts';
 import {
 GridComponent,
@@ -34,12 +35,32 @@ CanvasRenderer
 
 interface MeasurementChartProps {
 nodeIndex: number;
-nodeConfig: any;
+nodeConfig: MeasurementNodeConfig;
 systemState: ExecutionSnapshot | null;
 nodeType?: string;  // 新增：节点类型
 height?: string | number; // 新增：容器高度
 overlayNodes?: Array<{ nodeIndex: number; label: string }>;
 eisLegendScheme?: EisLegendScheme;
+}
+
+interface MeasurementNodeConfig {
+name?: string;
+parameters?: {
+polarizationVoltage?: number;
+potential?: number;
+polarizationCurrent?: number;
+current?: number;
+};
+}
+
+interface AxisTooltipParam {
+value: [number, number];
+seriesName: string;
+color: string;
+}
+
+interface EisTooltipParam {
+data?: [number, number, number];
 }
 
 // DOM Token 读取 CSS 变量辅助函数
@@ -83,7 +104,7 @@ dataRange = minDataRange;
 }
 
 // 2. 初步计算总坐标轴量程：默认让数据波动仅占据 10%
-let totalAxisRange = dataRange / 0.1;
+const totalAxisRange = dataRange / 0.1;
 let axisMax = midPoint + totalAxisRange * 0.35;
 let axisMin = midPoint - totalAxisRange * 0.65;
 
@@ -125,6 +146,7 @@ current: [number, number][];
 
 // 🔥 新增：跟踪上一次的迭代数量，用于判断是否需要强制更新颜色
 const lastIterationCountRef = useRef<number>(0);
+const updateChartRef = useRef<() => void>(() => undefined);
 
 // 🔥 新增：增量坐标轴范围计算 (O(M) 复杂度优化)
 const rangeRef = useRef({
@@ -193,7 +215,7 @@ const frameId = requestAnimationFrame(() => {
 const option = isEisNode ? getEisChartOption() : getIvtChartOption();
 chartInstance.current?.setOption(option, true);
 if (!isEisNode) {
-updateChartWithIterations();
+updateChartRef.current();
 }
 });
 return () => cancelAnimationFrame(frameId);
@@ -232,7 +254,7 @@ if (p.i > rangeRef.current.iMax) rangeRef.current.iMax = p.i;
 }
 }
 
-updateChartWithIterations();
+updateChartRef.current();
 }
 }, 50);
 
@@ -261,8 +283,8 @@ const totalIterations = iterations.length;
 const needForceUpdate = totalIterations !== lastIterationCountRef.current;
 lastIterationCountRef.current = totalIterations;
 
-const voltageSeries: any[] = [];
-const currentSeries: any[] = [];
+const voltageSeries: SeriesOption[] = [];
+const currentSeries: SeriesOption[] = [];
 
 // 获取设定值用于 markLine
 const vSetpoint = nodeConfig.parameters?.polarizationVoltage ?? nodeConfig.parameters?.potential;
@@ -375,10 +397,10 @@ trigger: 'axis',
 backgroundColor: getCssVariable('--glass-bg-active', 'rgba(20, 20, 26, 0.9)'),
 borderColor: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.15)'),
 textStyle: { color: getCssVariable('--text-primary', '#fff'), fontSize: 12 },
-formatter: (params: any[]) => {
+formatter: (params: AxisTooltipParam[]) => {
 if (!params.length) return '';
 const t = params[0].value[0];
-let html = `T: ${parseFloat(t).toFixed(2)}s<br/>`;
+let html = `T: ${t.toFixed(2)}s<br/>`;
 params.forEach(p => {
 const unit = p.seriesName === 'Voltage' ? 'V' : 'A';
 html += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:8px;height:8px;background-color:${p.color};"></span>`;
@@ -428,7 +450,7 @@ trigger: 'item',
 backgroundColor: getCssVariable('--glass-bg-active', 'rgba(20, 20, 26, 0.9)'),
 borderColor: getCssVariable('--glass-border-hover', 'rgba(255, 255, 255, 0.15)'),
 textStyle: { color: getCssVariable('--text-primary', '#fff'), fontSize: 12 },
-formatter: (params: any) => {
+formatter: (params: EisTooltipParam) => {
 if (!params.data) return '';
 const [zReal, zImag, freq] = params.data;
 return `f: ${freq.toExponential(2)} Hz<br/>Re: ${zReal.toExponential(3)} Ω<br/>-Im: ${(-zImag).toExponential(3)} Ω`;
@@ -502,8 +524,10 @@ if (p.i > rangeRef.current.iMax) rangeRef.current.iMax = p.i;
 }
 
 // 更新图表
-updateChartWithIterations();
+updateChartRef.current();
 }, [consumeIterationBuffer, hasData, isEisNode]);
+
+updateChartRef.current = updateChartWithIterations;
 
 // EIS 数据渲染
 useEffect(() => {
@@ -558,7 +582,7 @@ xAxis: calcEisAxisRange(xMin, xMax),
 yAxis: calcEisAxisRange(yMin, yMax, true),
 series
 }, { replaceMerge: ['series'] });
-}, [getEisIterationsForNodes, isEisNode, overlayKey, nodeConfig.name, nodeIndex, eisLegendScheme]);
+}, [getEisIterationsForNodes, isEisNode, overlayKey, overlayNodes, nodeConfig.name, nodeIndex, eisLegendScheme]);
 
 // 🔥 修改：IVT 清理逻辑（新运行时重置）
 useEffect(() => {

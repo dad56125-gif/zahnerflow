@@ -9,18 +9,7 @@ import { UiIconSvg } from '../shared/UiIconSvg';
 
 export interface NodeRendererProps {
   // 接收统一布局生成的节点对象
-  node: DisplayNode & {
-    layoutMeta?: {
-      index: number;
-      row: number;
-      col: number;
-      isLeftToRight: boolean;
-      isInOddRow: boolean;
-      width: number;
-      columns: number;
-      [key: string]: any;
-    };
-  };
+  node: DisplayNode;
   index?: number;
   isSelected?: boolean;
   isConnecting?: boolean;
@@ -36,8 +25,8 @@ export interface NodeRendererProps {
 }
 
 function hasSameNodeData(
-  prevData: Record<string, any>,
-  nextData: Record<string, any>
+  prevData: Record<string, unknown>,
+  nextData: Record<string, unknown>
 ): boolean {
   if (prevData === nextData) return true;
 
@@ -131,11 +120,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
       position: 'absolute' as const,
       left: node.position.x,
       top: node.position.y,
-      width: (node as any).style?.width || 132,  // 从注入的style取
-      height: (node as any).style?.height || 60,
+      width: node.style.width || 132,
+      height: node.style.height || 60,
       cursor: 'grab',
     };
-  }, [node.position.x, node.position.y, node.style?.width, node.style?.height]);
+  }, [node.position.x, node.position.y, node.style.height, node.style.width]);
 
   // 状态样式 - 使用真实节点状态
   const nodeClassName = useMemo(() => {

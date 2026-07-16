@@ -271,6 +271,21 @@ def normalize_measurement_parameters(measurement_type: str, raw_params: dict | N
     return normalized
 
 
+def _single_pass_thales_scan_direction(direction: str):
+    """Map the requested overall sweep direction to Thales' first-leg enum.
+
+    Thales always scans ``Fstart -> first boundary -> opposite boundary``.  The
+    normalized start frequency is already the requested sweep's starting
+    endpoint, so the first leg must target that same endpoint.  This makes the
+    first leg zero-length and leaves one effective full-range sweep.
+    """
+    if direction == "START_TO_MAX":
+        return ScanDirection.START_TO_MIN
+    if direction == "START_TO_MIN":
+        return ScanDirection.START_TO_MAX
+    raise ValueError(f"Unsupported EIS scan direction: {direction}")
+
+
 def _native_output_directory(params: dict, default: str) -> str:
     """Create and return the host-native logical output directory."""
     output_path = os.path.normpath(
@@ -801,11 +816,9 @@ def measure_eis(device: ThalesRemoteScriptWrapper, params: dict, mode: str) -> d
     direction_str = params.get("eis_scan_direction", "START_TO_MIN")
     strategy_str = params.get("eis_scan_strategy", "SINGLE_SINE")
     
-    # 映射枚举
-    if direction_str == "START_TO_MAX":
-        device.setScanDirection(ScanDirection.START_TO_MAX)
-    else:
-        device.setScanDirection(ScanDirection.START_TO_MIN)
+    # Thales 的方向枚举描述第一段，而产品参数描述完整单程方向。起点已经绑定
+    # 在所需端点，因此让第一段指向同一端点，再由第二段完成唯一一次全频段扫描。
+    device.setScanDirection(_single_pass_thales_scan_direction(direction_str))
         
     if strategy_str == "MULTI_SINE":
         device.setScanStrategy(ScanStrategy.MULTI_SINE)

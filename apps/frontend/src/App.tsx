@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
-import type { WorkstationType, WorkflowNode } from '@zahnerflow/types';
+import type { NodeCategory, WorkstationType, WorkflowNode } from '@zahnerflow/types';
 import { getNodeGroupsByWorkstation } from './utils/nodeUtilities';
 
 import { TopBar } from './components/TopBar';
+import type { Workstation } from './components/TopBar';
 import { LeftPanel } from './components/LeftPanel';
 import { RightPanel } from './components/property/RightPanel';
 import { BottomBar } from './components/BottomBar';
@@ -29,7 +30,8 @@ import { isFurnaceReady, isMfcReady } from './modules/common/runtimeDeviceSelect
 import { DeviceModal } from './components/furnace/FurnaceDeviceModal';
 import { ReportGeneratorModal } from './components/report/ReportGeneratorModal';
 import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
-import { UserProvider, useUser } from './components/shared/UserContext';
+import { UserProvider } from './components/shared/UserContext';
+import { useUser } from './components/shared/userContextState';
 import type { SimpleLoopInfo } from './components/canvas/useLoopDetection';
 import type { RunFlowOptions, RunFlowOutcome } from './types/executionControl';
 import {
@@ -42,6 +44,12 @@ import {
 } from './modules/simulator/simulatorSettings';
 
 const RUN_METADATA_CONFIRM_MS = 5000;
+const EMPTY_NODE_GROUPS: Record<NodeCategory, string[]> = {
+  device: [],
+  basic_measurement: [],
+  advanced_measurement: [],
+  flow_control: [],
+};
 
 type MissingRunMetadataDetails = {
   code?: string;
@@ -100,7 +108,7 @@ const AppContent: React.FC = () => {
   const [mfcState, mfcControls] = useMfc();
   const [activePanel, setActivePanel] = useState<'nodes'>('nodes');
   const [selectedWorkstation, setSelectedWorkstation] = useState<WorkstationType | null>(null);
-  const [workstationNodeGroups, setWorkstationNodeGroups] = useState<any>({} as any);
+  const [workstationNodeGroups, setWorkstationNodeGroups] = useState(EMPTY_NODE_GROUPS);
 
   const setNotificationPanelOpen = useAppStore(state => state.setNotificationPanelOpen);
   const [fixedDevice, setFixedDevice] = useState<'furnace' | 'mfc' | null>(null);
@@ -156,7 +164,7 @@ const AppContent: React.FC = () => {
 
   const applyWorkstation = useCallback((workstationType: WorkstationType | null) => {
     setSelectedWorkstation(workstationType);
-    setWorkstationNodeGroups(workstationType ? getNodeGroupsByWorkstation(workstationType) : {});
+    setWorkstationNodeGroups(workstationType ? getNodeGroupsByWorkstation(workstationType) : EMPTY_NODE_GROUPS);
   }, []);
 
   // 派生状态：是否出错
@@ -237,9 +245,9 @@ const AppContent: React.FC = () => {
     if (hasError) {
       setNotificationPanelOpen(true);
     }
-  }, [hasError]);
+  }, [hasError, setNotificationPanelOpen]);
 
-  const handleWorkstationSelect = (workstation: any) => {
+  const handleWorkstationSelect = (workstation: Workstation) => {
     const workstationType = workstation.id as WorkstationType;
     applyWorkstation(workstationType);
     useCanvasStore.getState().clearCanvas();
@@ -267,10 +275,6 @@ const AppContent: React.FC = () => {
       useWorkflowStore.getState().setDraftWorkflowName(systemState.workflowName);
     }
   }, [systemState, executionUi.isActive, selectedWorkstation, applyWorkstation]);
-
-  const handleFilePathSave = (config: any) => {
-    // filepath config saved
-  };
 
   // 玻璃态效果
   useEffect(() => {
@@ -302,7 +306,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // --- 执行控制逻辑 ---
-  const runFlow = async (options: RunFlowOptions = {}): Promise<RunFlowOutcome> => {
+  const runFlow = useCallback(async (options: RunFlowOptions = {}): Promise<RunFlowOutcome> => {
     if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
       setNotificationPanelOpen(true);
       return 'blocked';
@@ -344,7 +348,18 @@ const AppContent: React.FC = () => {
       setNotificationPanelOpen(true);
       return 'failed';
     }
-  };
+  }, [
+    currentUser,
+    filePathConfig,
+    isRunning,
+    nodes,
+    runMetadataWarning,
+    selectedWorkstation,
+    setNotificationPanelOpen,
+    startExecution,
+    workflowBlockRunBlocked,
+    zahnerAutoStartupConfig,
+  ]);
 
   const resetFlow = async () => {
     try {
@@ -368,7 +383,7 @@ const AppContent: React.FC = () => {
   const handleRunFlow = useCallback(async (options: RunFlowOptions = {}) => {
     setSuppressedEtaNodeFingerprint(null);
     return runFlow(options);
-  }, [nodes, isRunning, selectedWorkstation, startExecution, currentUser, filePathConfig, zahnerAutoStartupConfig, workflowBlockRunBlocked, runMetadataWarning]);
+  }, [runFlow]);
 
   const handleLoopDetected = useCallback((loops: SimpleLoopInfo[]) => {
     setDetectedLoops(loops);
@@ -419,7 +434,7 @@ const AppContent: React.FC = () => {
       </div>
 
       <div className="right-area">
-        <RightPanel selectedWorkstation={selectedWorkstation} mfcState={mfcState} />
+        <RightPanel mfcState={mfcState} />
       </div>
 
       <ModalLayer
@@ -443,7 +458,6 @@ const AppContent: React.FC = () => {
             />
           ) : (
             <DeviceModal
-              device="furnace"
               onClose={close}
               modalTop={0}
               modalLeft={0}
