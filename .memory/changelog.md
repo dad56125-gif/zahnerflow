@@ -167,3 +167,14 @@
 设计影响：Electron 是桌面数据目录唯一决定者，SQLite 是用户事实来源，`localStorage` 只保存上次选择，不再决定用户是否存在；前端不能将接口错误伪装为空用户列表。
 
 验证：桌面 TypeScript 构建、前端 TypeScript 检查、Python `compileall` 和 `git diff --check` 通过。
+## 2026-07-17 - 修正 Windows 发布包后端版本
+
+锚点：[启动-运行入口]，[桌面-Electron壳]，[运行时-Python后端]
+
+原因：Windows 发布脚本跳过 `backend:dist`，会把旧的 PyInstaller 后端复制进新安装包，使 Electron 的新数据目录和健康协议无法真正生效。
+
+变更：`dist:win` 改为在 Windows 发布前强制重新构建 Python 后端，再执行 `electron-builder`。
+
+设计影响：安装包中的桌面主进程与 Python 后端必须来自同一次构建，健康检查字段和数据目录协议不会因旧二进制残留而失配。
+
+验证：Windows 本机执行 `pnpm backend:dist`、`pnpm desktop:dist:win`，覆盖安装后 `/health` 返回固定数据库路径，用户下拉和用户设置均正确恢复。

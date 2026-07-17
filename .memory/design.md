@@ -259,7 +259,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [启动-运行入口]
 
-当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；桌面打包先构建 types、前端、桌面主进程和 Python 后端产物，再交给 `electron-builder`。桌面启动顺序为确定数据目录、启动 Python、等待健康检查成功、再加载前端；前端用户初始化先成功读取 `/api/users`，再校验并恢复 `localStorage` 中的上次用户标识，接口错误必须显式呈现。
+当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；Windows 桌面打包必须先构建当前 Python 后端产物，再交给 `electron-builder`，不能复用未知版本的旧后端二进制。桌面启动顺序为确定数据目录、启动 Python、等待健康检查成功、再加载前端；前端用户初始化先成功读取 `/api/users`，再校验并恢复 `localStorage` 中的上次用户标识，接口错误必须显式呈现。
 
 归属文件：`package.json`、`apps/desktop/package.json`、`apps/python_backend/zahnerflow-backend.spec`。
 

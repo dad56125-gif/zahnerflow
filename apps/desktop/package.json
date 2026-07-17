@@ -12,7 +12,7 @@
     "pack": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --dir",
     "dist": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder",
     "dist:mac": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --mac",
-    "dist:win": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && echo '⚠️  Skipping backend:dist (PyInstaller cannot cross-compile). Place Windows backend binary in apps/python_backend/dist/ before running.' && electron-builder --win --x64"
+    "dist:win": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --win --x64"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
