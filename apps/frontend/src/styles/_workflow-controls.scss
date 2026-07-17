@@ -104,6 +104,7 @@
 .toolbar-stop-button {
   color: var(--color-warning);
   touch-action: none;
+  overflow: visible;
 }
 
 .toolbar-stop-button.is-stop-feedback {
@@ -117,9 +118,9 @@
 
 .toolbar-stop-progress {
   position: absolute;
-  inset: 2px;
-  width: calc(100% - 4px);
-  height: calc(100% - 4px);
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
   pointer-events: none;
   transform: rotate(-90deg);
   overflow: visible;
