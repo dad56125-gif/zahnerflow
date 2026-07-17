@@ -371,16 +371,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             aria-disabled={isRunMetadataBlocked ? true : undefined}
             disabled={buttonStates.primaryButtonDisabled && !isRunMetadataBlocked}
           >
-            {buttonStates.primaryAction === 'stop' && !buttonStates.primaryButtonDisabled && (
+            {buttonStates.primaryAction !== 'reset' && stopPressProgress > 0 && (
               <svg className="toolbar-stop-progress" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle className="toolbar-stop-progress__track" cx="12" cy="12" r="10" pathLength="100" />
+                <circle className="toolbar-stop-progress__track" cx="12" cy="12" r="11.25" pathLength="100" />
                 <circle
                   className="toolbar-stop-progress__value"
                   cx="12"
                   cy="12"
-                  r="10"
+                  r="11.25"
                   pathLength="100"
-                  style={{ strokeDashoffset: `${100 * (1 - stopPressProgress)}` }}
+                  style={{
+                    strokeDasharray: '100 100',
+                    strokeDashoffset: `${100 * (1 - stopPressProgress)}`,
+                  }}
                 />
               </svg>
             )}
