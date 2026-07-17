@@ -56,7 +56,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   developerControls,
   hasRunMetadataWarning
 }) => {
-  const { users, createUser, deleteUser, filePathConfig, currentUserAvatar } = useUser();
+  const { users, usersLoadError, createUser, deleteUser, filePathConfig, currentUserAvatar } = useUser();
 
   // 根据缺失情况确定应该高亮提醒哪一个按钮
   const getHighlightType = () => {
@@ -229,7 +229,11 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                 <span><SpacedCjkText text="清除选择" /></span>
               </div>
             )}
-            {users.length > 0 ? (
+            {usersLoadError ? (
+              <div className="dropdown__option" style={{ color: 'var(--text-secondary)', whiteSpace: 'normal' }}>
+                用户列表加载失败：{usersLoadError}
+              </div>
+            ) : users.length > 0 ? (
               users.map(user => (
                 <div
                   key={user.user}

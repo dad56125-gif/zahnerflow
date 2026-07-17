@@ -18,6 +18,7 @@ export interface UserContextValue {
   currentUser: string;
   setCurrentUser: (user: string) => void;
   users: User[];
+  usersLoadError: string | null;
   createUser: (userData: { user: string; email?: string }) => Promise<User>;
   deleteUser: (user: string) => Promise<boolean>;
   filePathConfig: FilePathConfig;

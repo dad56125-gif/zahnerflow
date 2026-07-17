@@ -28,6 +28,7 @@ interface UserProviderProps {
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUserState] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
+  const [usersLoadError, setUsersLoadError] = useState<string | null>(null);
   const [currentUserAvatar, setCurrentUserAvatarState] = useState<string>('');
 
   // 文件路径配置状态
@@ -37,8 +38,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const isLoadingConfigRef = useRef(false);
 
   const loadUsers = useCallback(async () => {
-    const response = await runtimeClient.users.list();
-    if (response?.users) {
+    setUsersLoadError(null);
+    try {
+      const response = await runtimeClient.users.list();
+      if (!response || !Array.isArray(response.users)) throw new Error('用户列表响应格式无效');
       const userList = response.users;
       
       // 并行请求每个用户的 Settings 配置，填充头像数据
@@ -64,6 +67,19 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       const fullUsers = await Promise.all(fullUsersPromises);
       setUsers(fullUsers);
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser && userList.includes(savedUser)) {
+        setCurrentUserState(savedUser);
+        await loadUserPathConfig(savedUser);
+      } else if (savedUser) {
+        localStorage.removeItem('currentUser');
+        setCurrentUserState('');
+        setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
+        setCurrentUserAvatarState('');
+      }
+    } catch (error) {
+      setUsers([]);
+      setUsersLoadError(error instanceof Error ? error.message : '无法读取用户列表');
     }
   }, []);
 
@@ -187,20 +203,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   // 初始化时加载用户列表
   useEffect(() => {
-    loadUsers();
-
-    // 如果 localStorage 中有保存的用户，加载其配置
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      setCurrentUserState(savedUser);
-      loadUserPathConfig(savedUser);
-    }
+    void loadUsers();
   }, [loadUserPathConfig, loadUsers]);
 
   const value: UserContextValue = {
     currentUser,
     setCurrentUser,
     users,
+    usersLoadError,
     createUser,
     deleteUser,
     filePathConfig,

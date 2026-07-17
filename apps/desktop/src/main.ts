@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, type Rectangle } from 'electron';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { appendFileSync, mkdirSync, statSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,7 +50,7 @@ function isExecutableFile(path: string): boolean {
 function startBackend(): void {
   if (backendProcess) return;
 
-  const backendDataDir = join(app.getPath('userData'), 'backend-data');
+  const backendDataDir = resolveDataDir();
   const backendEnv = { ...process.env, PORT: runtimePort, ZAHNERFLOW_DATA_DIR: backendDataDir };
   mkdirSync(backendDataDir, { recursive: true });
   writeHarnessLog(`startBackend isDev=${isDev} resourcesPath=${process.resourcesPath} dataDir=${backendDataDir}`);
@@ -106,6 +106,26 @@ function startBackend(): void {
   });
 }
 
+function resolveDataDir(): string {
+  // Do not derive persistent data from productName/userData: both have changed
+  // between releases. appData plus this explicit name is the stable boundary.
+  const dataDir = join(app.getPath('appData'), 'ZahnerFlow', 'data');
+  const legacyCandidates = [
+    join(app.getPath('userData'), 'backend-data'),
+    join(app.getPath('appData'), 'ZahnerFlow', 'backend-data'),
+  ];
+  if (!existsSync(dataDir)) {
+    const source = legacyCandidates.find((candidate) => existsSync(join(candidate, 'app.db')));
+    if (source) {
+      mkdirSync(dirname(dataDir), { recursive: true });
+      cpSync(source, dataDir, { recursive: true });
+      writeHarnessLog(`migrated backend data source=${source} target=${dataDir}`);
+    }
+  }
+  mkdirSync(dataDir, { recursive: true });
+  return dataDir;
+}
+
 function stopBackend(): void {
   if (!backendProcess) return;
   const processToStop = backendProcess;
@@ -113,12 +133,28 @@ function stopBackend(): void {
   processToStop.kill();
 }
 
+async function waitForBackendHealth(expectedDataDir: string, timeoutMs: number): Promise<boolean> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(`${runtimeBaseUrl}/health`);
+      if (response.ok) {
+        const payload = await response.json() as { status?: string; data_dir?: string };
+        if (payload.status === 'healthy' && resolve(payload.data_dir || '') === resolve(expectedDataDir)) return true;
+      }
+    } catch {
+      // Keep polling until the development server is ready.
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+  }
+  return false;
+}
+
 async function waitForUrl(url: string, timeoutMs: number): Promise<boolean> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      const response = await fetch(url);
-      if (response.ok) return true;
+      if ((await fetch(url)).ok) return true;
     } catch {
       // Keep polling until the development server is ready.
     }
@@ -262,6 +298,13 @@ app.on('activate', () => {
 void app.whenReady().then(async () => {
   writeHarnessLog('app ready');
   startBackend();
+  const backendDataDir = resolveDataDir();
+  if (!(await waitForBackendHealth(backendDataDir, 30_000))) {
+    writeHarnessLog(`backend health check failed expectedDataDir=${backendDataDir}`);
+    dialog.showErrorBox('ZAHNERFLOW backend unavailable', '后端未能在预期数据目录启动，应用不会继续加载。');
+    app.quit();
+    return;
+  }
   await createWindow();
   writeHarnessLog('window created');
 });

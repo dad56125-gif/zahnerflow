@@ -41,7 +41,7 @@
 
 ## [桌面-Electron壳]
 
-当前规则：Electron 主进程创建无系统边框 `BrowserWindow`，在开发模式加载 Vite 地址，在打包模式加载前端静态文件。主进程负责启动后端进程、停止后端进程、选择目录、返回运行时基础地址和转发窗口控制状态。
+当前规则：Electron 主进程创建无系统边框 `BrowserWindow`，在开发模式加载 Vite 地址，在打包模式加载前端静态文件。主进程负责启动后端进程、停止后端进程、选择目录、返回运行时基础地址和转发窗口控制状态。桌面端持久化目录固定为 `app.getPath('appData')/ZahnerFlow/data`，由 Electron 唯一决定并通过 `ZAHNERFLOW_DATA_DIR` 绝对路径传给 Python；启动时先等待 `/health` 确认后端报告的实际目录一致，再加载前端。
 
 归属文件：`apps/desktop/src/main.ts`、`apps/desktop/src/preload.cts`、`apps/frontend/src/desktopBridge.ts`。
 
@@ -177,7 +177,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [数据-SQLite]
 
-当前规则：SQLite 是本地持久化边界，保存工作流定义、执行记录、执行步骤、设备采样、ETA 样本、工作流相似索引，以及 `device_runtime_state` 运行时最后快照和 `device_runtime_events` 后端确认的生命周期事件。运行时恢复只恢复业务记录；进程重启后物理连接、设备对象、扫描 session、Promise 和轮询器一律从空状态开始，重启前仍为活动态的 Furnace 程序标记为错误，不把未知离线时间计入业务时间。
+当前规则：SQLite 是本地持久化边界，保存工作流定义、执行记录、执行步骤、设备采样、ETA 样本、工作流相似索引，以及 `device_runtime_state` 运行时最后快照和 `device_runtime_events` 后端确认的生命周期事件。桌面端数据库只有一个由 Electron 确定的数据目录；Python 打开数据库后通过 `/health` 报告 `data_dir` 和 `database_path`。运行时恢复只恢复业务记录；进程重启后物理连接、设备对象、扫描 session、Promise 和轮询器一律从空状态开始，重启前仍为活动态的 Furnace 程序标记为错误，不把未知离线时间计入业务时间。
 
 归属文件：`apps/python_backend/database.py`。
 
@@ -259,7 +259,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [启动-运行入口]
 
-当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；桌面打包先构建 types、前端、桌面主进程和 Python 后端产物，再交给 `electron-builder`。
+当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；桌面打包先构建 types、前端、桌面主进程和 Python 后端产物，再交给 `electron-builder`。桌面启动顺序为确定数据目录、启动 Python、等待健康检查成功、再加载前端；前端用户初始化先成功读取 `/api/users`，再校验并恢复 `localStorage` 中的上次用户标识，接口错误必须显式呈现。
 
 归属文件：`package.json`、`apps/desktop/package.json`、`apps/python_backend/zahnerflow-backend.spec`。
 

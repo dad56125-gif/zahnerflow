@@ -13,6 +13,7 @@ import socketio
 import uvicorn
 
 from runtime.app_runtime import runtime
+from database import DB_PATH, DATA_DIR
 from shared.contracts.events import (
     DEVICE_STATUS_UPDATE,
     RUNTIME_CONNECTED,
@@ -106,6 +107,8 @@ def get_health():
         "runtime_running": runtime.is_running,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "uptime": time.time() - start_time,
+        "data_dir": str(DATA_DIR),
+        "database_path": str(DB_PATH),
     }
 
 
