@@ -249,6 +249,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     stopPressTriggeredRef.current = false;
     stopPressStartedAtRef.current = performance.now();
     setStopPressProgress(0);
+    event.currentTarget.setPointerCapture(event.pointerId);
 
     const updateStopPress = (now: number) => {
       const startedAt = stopPressStartedAtRef.current;
@@ -364,7 +365,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             onPointerDownCapture={handleStopPointerDown}
             onPointerUp={handlePrimaryPointerEnd}
             onPointerCancel={handlePrimaryPointerEnd}
-            onPointerLeave={handlePrimaryPointerEnd}
+            onPointerLeave={handleRunPointerEnd}
             title={buttonStates.primaryAction === 'stop' ? '长按 1 秒停止流程' : workflowBlockRunBlocked ? '工作流块未选择子工作流，或子工作流包含嵌套工作流块' : buttonStates.primaryButtonText === '运行' ? '运行流程 (F5)' : buttonStates.primaryButtonText}
             aria-label={buttonStates.primaryButtonText}
             aria-disabled={isRunMetadataBlocked ? true : undefined}
@@ -372,13 +373,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             {buttonStates.primaryAction === 'stop' && !buttonStates.primaryButtonDisabled && (
               <svg className="toolbar-stop-progress" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle className="toolbar-stop-progress__track" cx="12" cy="12" r="10" />
+                <circle className="toolbar-stop-progress__track" cx="12" cy="12" r="10" pathLength="100" />
                 <circle
                   className="toolbar-stop-progress__value"
                   cx="12"
                   cy="12"
                   r="10"
-                  style={{ strokeDashoffset: `${62.83 * (1 - stopPressProgress)}` }}
+                  pathLength="100"
+                  style={{ strokeDashoffset: `${100 * (1 - stopPressProgress)}` }}
                 />
               </svg>
             )}

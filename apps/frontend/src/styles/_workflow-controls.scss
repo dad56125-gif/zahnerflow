@@ -21,6 +21,21 @@
     padding: 0;
   }
 
+  .btn.disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    filter: grayscale(0.85);
+    transform: none;
+    box-shadow: none;
+    pointer-events: auto;
+  }
+
+  .btn.disabled:hover {
+    opacity: 0.42;
+    transform: none;
+    box-shadow: none;
+  }
+
   .btn-svg-icon__primary,
   .btn-svg-icon__secondary {
     stroke-width: 1.5;
@@ -108,6 +123,7 @@
   pointer-events: none;
   transform: rotate(-90deg);
   overflow: visible;
+  z-index: 1;
 }
 
 .toolbar-stop-progress__track,
@@ -123,7 +139,7 @@
 
 .toolbar-stop-progress__value {
   stroke: var(--color-warning);
-  stroke-dasharray: 62.83;
+  stroke-dasharray: 100;
   transition: stroke-dashoffset 40ms linear;
 }
 
