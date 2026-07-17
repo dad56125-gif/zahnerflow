@@ -224,6 +224,51 @@ def finish_execution(exec_id: str, status: str, duration_ms: int, error: str | N
     db.conn.commit()
 
 
+def fail_execution(exec_id: str, error: str) -> None:
+    """将因运行时关闭而无法继续的执行及其活动步骤收口为失败。"""
+    now = datetime.utcnow().isoformat() + "Z"
+    row = db.conn.execute(
+        "SELECT start_time FROM executions WHERE id = ?",
+        (exec_id,),
+    ).fetchone()
+    duration_ms = 0
+    if row and row["start_time"]:
+        try:
+            started = datetime.fromisoformat(row["start_time"].replace("Z", "+00:00"))
+            ended = datetime.fromisoformat(now.replace("Z", "+00:00"))
+            duration_ms = max(0, int((ended - started).total_seconds() * 1000))
+        except (TypeError, ValueError):
+            duration_ms = 0
+
+    db.conn.execute(
+        """
+        UPDATE executions
+        SET status = 'failed', end_time = ?, duration = ?, error = ?
+        WHERE id = ? AND status IN ('running', 'paused', 'cancelling')
+        """,
+        (now, duration_ms, error, exec_id),
+    )
+    db.conn.execute(
+        """
+        UPDATE execution_steps
+        SET status = 'failed', ended_at = ?, error = ?
+        WHERE execution_id = ? AND status = 'running'
+        """,
+        (now, error, exec_id),
+    )
+    db.conn.commit()
+
+
+def fail_orphaned_executions(error: str) -> int:
+    """启动时收口上一个 Python 进程遗留的活动执行记录。"""
+    rows = db.conn.execute(
+        "SELECT id FROM executions WHERE status IN ('running', 'paused', 'cancelling')"
+    ).fetchall()
+    for row in rows:
+        fail_execution(row["id"], error)
+    return len(rows)
+
+
 def _json_loads(value: str | None):
     if not value:
         return None

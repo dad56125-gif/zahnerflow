@@ -17,7 +17,7 @@ from device_data_service import (
 )
 from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
-from runtime.execution_recorder import finish_execution, finish_step, start_step
+from runtime.execution_recorder import fail_execution, fail_orphaned_executions, finish_execution, finish_step, start_step
 from runtime.execution_planner import ExecutionPlan, ExecutionPlanner
 from runtime.execution_semantics import is_active_execution_status, is_terminal_execution_status
 from shared.contracts.events import (
@@ -78,6 +78,7 @@ class AppRuntime:
             "zahner": _new_runtime_state("zahner"),
         }
         self._restore_runtime_states()
+        fail_orphaned_executions("RUNTIME_RESTARTED: 后端重启，上一进程中的执行无法继续")
 
     def set_sio(self, sio) -> None:
         self.sio = sio
@@ -247,6 +248,9 @@ class AppRuntime:
 
     async def stop(self) -> None:
         self._running = False
+        execution_id = self.execution.execution_id
+        if execution_id and self.execution.is_running:
+            fail_execution(execution_id, "RUNTIME_SHUTDOWN: 后端关闭，执行无法继续")
         for device in DEVICE_CAPABILITIES:
             self._connect_attempt_tokens[device] += 1
         if self._poll_task:

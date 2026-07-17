@@ -127,7 +127,7 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-状态机]
 
-当前规则：工作流执行是本地单用户状态机，同一时间只允许一个活跃执行。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态；后端状态判断统一由 execution semantics 提供，前端展示统一由 execution selector 派生。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行引擎的 Furnace 温度节点可以负责协议写入和等待，但成功写入运行/停止命令后必须通过 `AppRuntime` 确认设备运行快照。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照同时携带 `nodeTimings`，记录每个展开节点的状态、开始时间、结束时间、预计时长和实际耗时，节点属性面板按选中节点读取这组事实；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。
+当前规则：工作流执行是本地单用户状态机，同一时间只允许一个活跃执行。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态；后端状态判断统一由 execution semantics 提供，前端展示统一由 execution selector 派生。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行引擎的 Furnace 温度节点可以负责协议写入和等待，但成功写入运行/停止命令后必须通过 `AppRuntime` 确认设备运行快照。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照同时携带 `nodeTimings`，记录每个展开节点的状态、开始时间、结束时间、预计时长和实际耗时，节点属性面板按选中节点读取这组事实；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。后端关闭时当前执行必须收口为 `failed`；后端启动时必须将上一进程遗留的 `running`、`paused`、`cancelling` 执行及其活动步骤收口为 `failed`，不提供跨进程续跑。
 
 归属文件：`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/routers/executions.py`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/App.tsx`。
 
