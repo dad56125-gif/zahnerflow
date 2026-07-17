@@ -219,7 +219,7 @@ export const UnrollViewModal: React.FC<UnrollViewModalProps> = ({
                 return;
             }
             if (outcome === 'confirmation-required') {
-                setRunNotice('运行信息尚不完整，请核对下方提示后再次确认；所选起点已保留。');
+                setRunNotice('运行信息尚不完整，请核对下方提示；所选起点已保留。');
             } else if (outcome === 'blocked') {
                 setRunNotice('当前状态不允许启动，请检查设备、工作站和工作流状态。');
             } else {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
 import { deriveExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
@@ -22,6 +22,7 @@ interface ToolbarProps {
 
 type PrimaryAction = 'run' | 'reset';
 type ToolbarIconName = 'clear' | 'expand' | 'records' | 'reset' | 'start';
+const RUN_METADATA_LONG_PRESS_MS = 1000;
 
 const ToolbarIcon: React.FC<{ name: ToolbarIconName }> = ({ name }) => {
   const commonProps = {
@@ -100,6 +101,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     [executionError, executionSnapshot, executionStoreIsPaused, executionStoreIsRunning],
   );
   const [showUnrollView, setShowUnrollView] = useState(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const getButtonStates = () => {
     if (!selectedWorkstation) {
@@ -174,6 +177,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const buttonStates = getButtonStates();
+  const isRunMetadataBlocked = Boolean(runMetadataWarning && buttonStates.primaryAction === 'run');
 
   const setUnrollViewOpen = (open: boolean) => {
     setShowUnrollView(open);
@@ -186,6 +190,39 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       return;
     }
     void onRunFlow();
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleRunPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isRunMetadataBlocked) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    longPressTriggeredRef.current = false;
+    clearLongPressTimer();
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTimerRef.current = null;
+      longPressTriggeredRef.current = true;
+      void onRunFlow();
+    }, RUN_METADATA_LONG_PRESS_MS);
+  };
+
+  const handleRunPointerEnd = () => {
+    clearLongPressTimer();
+  };
+
+  const handleRunButtonClick = () => {
+    if (isRunMetadataBlocked) return;
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    handlePrimaryAction();
   };
 
   const handleClearCanvas = () => {
@@ -227,11 +264,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </div>
           )}
           <button
-            className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled ? 'disabled' : ''}`}
-            onClick={handlePrimaryAction}
+            className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled || isRunMetadataBlocked ? 'disabled' : ''}`}
+            onClick={handleRunButtonClick}
+            onPointerDown={handleRunPointerDown}
+            onPointerUp={handleRunPointerEnd}
+            onPointerCancel={handleRunPointerEnd}
+            onPointerLeave={handleRunPointerEnd}
             title={workflowBlockRunBlocked ? '工作流块未选择子工作流，或子工作流包含嵌套工作流块' : buttonStates.primaryButtonText === '运行' ? '运行流程 (F5)' : buttonStates.primaryButtonText}
             aria-label={buttonStates.primaryButtonText}
-            disabled={buttonStates.primaryButtonDisabled}
+            aria-disabled={isRunMetadataBlocked ? true : undefined}
+            disabled={buttonStates.primaryButtonDisabled && !isRunMetadataBlocked}
           >
             <span className="btn-icon"><ToolbarIcon name={buttonStates.primaryButtonIcon} /></span>
           </button>

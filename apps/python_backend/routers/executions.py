@@ -119,7 +119,7 @@ def _run_metadata_message(missing_fields: list[str]) -> str:
         "individualName": "样品名称",
     }
     missing_text = "、".join(labels[field] for field in missing_fields)
-    return f"缺少{missing_text}，请填写后再运行；5 秒内再次点击运行将强制开始。"
+    return f"缺少{missing_text}，请填写后再运行。"
 
 
 def set_sio(sio_instance):

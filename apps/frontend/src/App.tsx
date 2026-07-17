@@ -82,8 +82,8 @@ function runMetadataWarningMessage(details: MissingRunMetadataDetails): string {
     .filter(Boolean)
     .join('、');
   return missingText
-    ? `缺少${missingText}，请填写后再运行。再次点击将强制开始。`
-    : details.message || '运行信息不完整，请填写后再运行。再次点击将强制开始。';
+    ? `缺少${missingText}，请填写后再运行。`
+    : details.message || '运行信息不完整，请填写后再运行。';
 }
 
 // 内部应用内容组件（在 UserProvider 内部，可以使用 useUser）
