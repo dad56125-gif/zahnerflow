@@ -327,9 +327,10 @@
 .workspace-device-modal {
   position: fixed;
   left: calc(var(--left-panel-l));
-  top: calc(var(--canvas-t));
+  // 对齐 leftbar/rightbar/canvas 所在的主区域边界，而不是其内部 padding 后的内容边界。
+  top: calc(var(--canvas-t) - var(--space));
   width: calc(100vw - 2 * var(--space));
-  height: calc(100vh - var(--canvas-t) - var(--canvas-b));
+  height: calc(100vh - var(--canvas-t) - var(--canvas-b) + var(--space));
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--effect-xl);
