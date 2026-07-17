@@ -14,6 +14,7 @@ import uvicorn
 
 from runtime.app_runtime import runtime
 from database import DB_PATH, DATA_DIR
+from version import APP_VERSION
 from shared.contracts.events import (
     DEVICE_STATUS_UPDATE,
     RUNTIME_CONNECTED,
@@ -104,6 +105,7 @@ async def handle_leave_workflow(sid, data):
 def get_health():
     return {
         "status": "healthy",
+        "app_version": APP_VERSION,
         "runtime_running": runtime.is_running,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "uptime": time.time() - start_time,
