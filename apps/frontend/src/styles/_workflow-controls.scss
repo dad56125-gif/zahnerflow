@@ -86,6 +86,55 @@
   text-shadow: var(--text-shadow-body);
 }
 
+.toolbar-stop-button {
+  color: var(--color-warning);
+  touch-action: none;
+}
+
+.toolbar-stop-button.is-stop-feedback {
+  animation: toolbar-stop-shake 360ms ease-in-out;
+}
+
+.toolbar-stop-icon__square {
+  fill: currentColor;
+  stroke: none;
+}
+
+.toolbar-stop-progress {
+  position: absolute;
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  pointer-events: none;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.toolbar-stop-progress__track,
+.toolbar-stop-progress__value {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 1.35;
+}
+
+.toolbar-stop-progress__track {
+  stroke: rgba(245, 158, 11, 0.2);
+}
+
+.toolbar-stop-progress__value {
+  stroke: var(--color-warning);
+  stroke-dasharray: 62.83;
+  transition: stroke-dashoffset 40ms linear;
+}
+
+@keyframes toolbar-stop-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-2px) rotate(-5deg); }
+  40% { transform: translateX(2px) rotate(5deg); }
+  60% { transform: translateX(-1px) rotate(-3deg); }
+  80% { transform: translateX(1px) rotate(3deg); }
+}
+
 .toolbar__group--bottom-right {
   right: var(--toolbar-edge-offset);
   bottom: var(--size-md);

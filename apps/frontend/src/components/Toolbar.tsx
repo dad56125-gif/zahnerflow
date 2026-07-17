@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
 import { deriveExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
@@ -20,9 +20,10 @@ interface ToolbarProps {
   runMetadataWarning?: string | null;
 }
 
-type PrimaryAction = 'run' | 'reset';
-type ToolbarIconName = 'clear' | 'expand' | 'records' | 'reset' | 'start';
+type PrimaryAction = 'run' | 'reset' | 'stop';
+type ToolbarIconName = 'clear' | 'expand' | 'records' | 'reset' | 'start' | 'stop';
 const RUN_METADATA_LONG_PRESS_MS = 1000;
+const STOP_LONG_PRESS_MS = 1000;
 
 const ToolbarIcon: React.FC<{ name: ToolbarIconName }> = ({ name }) => {
   const commonProps = {
@@ -72,6 +73,13 @@ const ToolbarIcon: React.FC<{ name: ToolbarIconName }> = ({ name }) => {
           <circle className="btn-svg-icon__primary" cx="12" cy="12" r="9" />
         </svg>
       );
+    case 'stop':
+      return (
+        <svg {...commonProps}>
+          <circle className="btn-svg-icon__primary" cx="12" cy="12" r="9" />
+          <rect className="toolbar-stop-icon__square" x="8" y="8" width="8" height="8" rx="1" />
+        </svg>
+      );
   }
 };
 
@@ -88,6 +96,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const { clearCanvas, nodes } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
+  const stopExecution = useExecutionStore(state => state.stopExecution);
   const executionSnapshot = useExecutionStore(state => state.lastSnapshot);
   const executionStoreIsRunning = useExecutionStore(state => state.isRunning);
   const executionStoreIsPaused = useExecutionStore(state => state.isPaused);
@@ -103,6 +112,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [showUnrollView, setShowUnrollView] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const [stopPressProgress, setStopPressProgress] = useState(0);
+  const [stopFeedback, setStopFeedback] = useState(false);
+  const stopPressStartedAtRef = useRef<number | null>(null);
+  const stopPressFrameRef = useRef<number | null>(null);
+  const stopPressTriggeredRef = useRef(false);
+  const stopFeedbackTimerRef = useRef<number | null>(null);
 
   const getButtonStates = () => {
     if (!selectedWorkstation) {
@@ -124,8 +139,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         primaryButtonDisabled: true,
         primaryButtonText: executionUi.label,
         primaryButtonVariant: 'btn--warning' as const,
-        primaryButtonIcon: 'start' as const,
-        primaryAction: 'run' as PrimaryAction
+        primaryButtonIcon: 'stop' as const,
+        primaryAction: 'stop' as PrimaryAction
       };
     }
 
@@ -133,11 +148,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
-        primaryButtonDisabled: true,
-        primaryButtonText: executionUi.label,
-        primaryButtonVariant: 'btn--primary' as const,
-        primaryButtonIcon: 'start' as const,
-        primaryAction: 'run' as PrimaryAction
+        primaryButtonDisabled: false,
+        primaryButtonText: '停止',
+        primaryButtonVariant: 'btn--warning' as const,
+        primaryButtonIcon: 'stop' as const,
+        primaryAction: 'stop' as PrimaryAction
       };
     }
 
@@ -185,11 +200,82 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handlePrimaryAction = () => {
+    if (buttonStates.primaryAction === 'stop') {
+      void stopExecution();
+      return;
+    }
     if (buttonStates.primaryAction === 'reset') {
       onResetFlow?.();
       return;
     }
     void onRunFlow();
+  };
+
+  const clearStopPressFrame = () => {
+    if (stopPressFrameRef.current !== null) {
+      window.cancelAnimationFrame(stopPressFrameRef.current);
+      stopPressFrameRef.current = null;
+    }
+  };
+
+  const resetStopPress = () => {
+    clearStopPressFrame();
+    stopPressStartedAtRef.current = null;
+    setStopPressProgress(0);
+  };
+
+  const triggerStopFeedback = () => {
+    setStopFeedback(true);
+    if (stopFeedbackTimerRef.current !== null) {
+      window.clearTimeout(stopFeedbackTimerRef.current);
+    }
+    stopFeedbackTimerRef.current = window.setTimeout(() => {
+      stopFeedbackTimerRef.current = null;
+      setStopFeedback(false);
+    }, 360);
+  };
+
+  useEffect(() => () => {
+    clearStopPressFrame();
+    if (stopFeedbackTimerRef.current !== null) {
+      window.clearTimeout(stopFeedbackTimerRef.current);
+    }
+  }, []);
+
+  const handleStopPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (buttonStates.primaryAction !== 'stop' || buttonStates.primaryButtonDisabled) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    stopPressTriggeredRef.current = false;
+    stopPressStartedAtRef.current = performance.now();
+    setStopPressProgress(0);
+
+    const updateStopPress = (now: number) => {
+      const startedAt = stopPressStartedAtRef.current;
+      if (startedAt === null) return;
+      const progress = Math.min(1, (now - startedAt) / STOP_LONG_PRESS_MS);
+      setStopPressProgress(progress);
+      if (progress >= 1) {
+        stopPressFrameRef.current = null;
+        stopPressTriggeredRef.current = true;
+        stopPressStartedAtRef.current = null;
+        void stopExecution();
+        return;
+      }
+      stopPressFrameRef.current = window.requestAnimationFrame(updateStopPress);
+    };
+
+    stopPressFrameRef.current = window.requestAnimationFrame(updateStopPress);
+  };
+
+  const handleStopPointerEnd = () => {
+    if (!stopPressTriggeredRef.current) resetStopPress();
+    else clearStopPressFrame();
+  };
+
+  const handlePrimaryPointerEnd = () => {
+    handleRunPointerEnd();
+    handleStopPointerEnd();
   };
 
   const clearLongPressTimer = () => {
@@ -217,6 +303,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handleRunButtonClick = () => {
+    if (buttonStates.primaryAction === 'stop') {
+      if (stopPressTriggeredRef.current) {
+        stopPressTriggeredRef.current = false;
+      } else {
+        triggerStopFeedback();
+      }
+      return;
+    }
     if (isRunMetadataBlocked) return;
     if (longPressTriggeredRef.current) {
       longPressTriggeredRef.current = false;
@@ -264,17 +358,30 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             </div>
           )}
           <button
-            className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled || isRunMetadataBlocked ? 'disabled' : ''}`}
+            className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled || isRunMetadataBlocked ? 'disabled' : ''} ${buttonStates.primaryAction === 'stop' ? 'toolbar-stop-button' : ''} ${stopFeedback ? 'is-stop-feedback' : ''}`}
             onClick={handleRunButtonClick}
             onPointerDown={handleRunPointerDown}
-            onPointerUp={handleRunPointerEnd}
-            onPointerCancel={handleRunPointerEnd}
-            onPointerLeave={handleRunPointerEnd}
-            title={workflowBlockRunBlocked ? '工作流块未选择子工作流，或子工作流包含嵌套工作流块' : buttonStates.primaryButtonText === '运行' ? '运行流程 (F5)' : buttonStates.primaryButtonText}
+            onPointerDownCapture={handleStopPointerDown}
+            onPointerUp={handlePrimaryPointerEnd}
+            onPointerCancel={handlePrimaryPointerEnd}
+            onPointerLeave={handlePrimaryPointerEnd}
+            title={buttonStates.primaryAction === 'stop' ? '长按 1 秒停止流程' : workflowBlockRunBlocked ? '工作流块未选择子工作流，或子工作流包含嵌套工作流块' : buttonStates.primaryButtonText === '运行' ? '运行流程 (F5)' : buttonStates.primaryButtonText}
             aria-label={buttonStates.primaryButtonText}
             aria-disabled={isRunMetadataBlocked ? true : undefined}
             disabled={buttonStates.primaryButtonDisabled && !isRunMetadataBlocked}
           >
+            {buttonStates.primaryAction === 'stop' && !buttonStates.primaryButtonDisabled && (
+              <svg className="toolbar-stop-progress" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle className="toolbar-stop-progress__track" cx="12" cy="12" r="10" />
+                <circle
+                  className="toolbar-stop-progress__value"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  style={{ strokeDashoffset: `${62.83 * (1 - stopPressProgress)}` }}
+                />
+              </svg>
+            )}
             <span className="btn-icon"><ToolbarIcon name={buttonStates.primaryButtonIcon} /></span>
           </button>
         </div>
