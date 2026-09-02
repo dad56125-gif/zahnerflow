@@ -31,6 +31,8 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
 }) => {
     const secondaryTabsRef = useRef<HTMLDivElement>(null);
     const secondaryTabsContentRef = useRef<HTMLDivElement>(null);
+    const manualSelectionRef = useRef(false);
+    const wasOpenRef = useRef(false);
     const { bulkMode, handleBulkToggleClick: bulkToggleHandler, resetBulkSelection } = useBulkSelection();
     const executionUi = deriveExecutionUiState(systemState);
 
@@ -141,16 +143,25 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         };
     }, [activeGroup?.nodes.length, activeTypeKey, updateSecondaryOverflow]);
 
-    // 监听运行步骤的变化，实现自动聚焦
+    // 面板打开时默认跟随当前测量步骤；用户手动选择后，本次打开期间不再抢占视图。
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            wasOpenRef.current = false;
+            manualSelectionRef.current = false;
+            return;
+        }
 
-        const runningNode = measurementNodes.find(node => {
-            const globalIdx = nodeIdToIndexMap.get(node.id);
-            return globalIdx === activeNodeIndex;
-        });
+        const justOpened = !wasOpenRef.current;
+        wasOpenRef.current = true;
 
-        if (runningNode) {
+        const runningNode = executionUi.isActive
+            ? measurementNodes.find(node => {
+                const globalIdx = nodeIdToIndexMap.get(node.id);
+                return globalIdx === activeNodeIndex;
+            })
+            : undefined;
+
+        if (runningNode && (justOpened || !manualSelectionRef.current)) {
             const mapping = getNodePresentation(runningNode.type)?.chartGroup || { key: 'other', label: '其他' };
             setActiveTypeKey(mapping.key);
             setSelectedNodeIds(prev => {
@@ -174,9 +185,10 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                 }
             }
         }
-    }, [activeNodeIndex, activeTypeKey, groupedCategories, isOpen, measurementNodes, nodeIdToIndexMap]);
+    }, [activeNodeIndex, activeTypeKey, executionUi.isActive, groupedCategories, isOpen, measurementNodes, nodeIdToIndexMap]);
 
     const handleTypeClick = (key: string) => {
+        manualSelectionRef.current = true;
         resetBulkSelection();
         setActiveTypeKey(key);
         const group = groupedCategories.find(g => g.key === key);
@@ -191,6 +203,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
     };
 
     const handleNodeClick = (nodeId: string) => {
+        manualSelectionRef.current = true;
         resetBulkSelection();
         setSelectedNodeIds(prev => {
             const next = new Set(prev);
@@ -206,6 +219,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
     const handleBulkToggleClick = () => {
         if (!activeGroup) return;
 
+        manualSelectionRef.current = true;
         const { nodesToShow } = bulkToggleHandler(activeGroup.nodes);
         const activeGroupIds = new Set(activeGroup.nodes.map(node => node.id));
         setSelectedNodeIds(prev => {
@@ -354,6 +368,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                                     }}
                                 >
                                     <MeasurementChart
+                                        key={`${systemState?.executionId ?? 'no-execution'}:${activeNode.id}`}
                                         nodeIndex={nodeIdToIndexMap.get(activeNode.id) ?? -1}
                                         nodeConfig={activeNodeConfig}
                                         systemState={systemState}

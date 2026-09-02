@@ -229,9 +229,9 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-派生与展示规则]
 
-当前规则：执行 phase 的标签、颜色、可重置性和 active/terminal 判断由 `deriveExecutionUiState` 统一派生；React 组件订阅稳定的 store 原始字段后缓存派生结果，Toolbar、ProgressBar 和 BottomBar 不各自解释状态，也不直接订阅每次新建对象的 selector。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费；参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
+当前规则：执行 phase 的标签、颜色、可重置性和 active/terminal 判断由 `deriveExecutionUiState` 统一派生；React 组件订阅稳定的 store 原始字段后缓存派生结果，Toolbar、ProgressBar 和 BottomBar 不各自解释状态，也不直接订阅每次新建对象的 selector。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费。测量图表面板每次打开时只对真正处于 active 执行中的当前测量节点自动聚焦；用户手动选择类型、节点或批量范围后，本次打开期间保留用户视图。IVT/EIS 曲线缓存均按 execution、原节点索引和迭代路径隔离，图表实例按 execution 和节点身份重建；节点或执行切换时必须恢复对应缓存或显示空图，不得沿用前一节点的 series。参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
 
-归属文件：`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
+归属文件：`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/components/measurement-dashboard/MeasurementDashboard.tsx`、`apps/frontend/src/components/measurement-dashboard/MeasurementChart.tsx`、`apps/frontend/src/hooks/useMeasurementStream.ts`、`apps/frontend/src/hooks/useEisData.ts`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
 
 允许变化：可以扩展节点展示配置、状态文案和选择器，但同一业务判断必须继续由一个 selector、helper 或配置表输出。
 
