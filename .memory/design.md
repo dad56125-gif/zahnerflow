@@ -151,7 +151,7 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-展开与ETA]
 
-当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`；流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
+当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`，循环展开路径和 `loopiteration_start` 事件中的 `iteration` 均是从 1 开始的业务序号，前端必须直接显示，不得再次加一。流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
 
 展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为三栏步骤浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为不可选择的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
 
@@ -197,7 +197,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-事件契约]
 
-当前规则：Socket.IO 自定义事件名称由 `apps/shared/contracts/events.py` 唯一维护，并生成到 `packages/types/src/contracts/events.ts`。Python 后端和前端运行时代码必须引用这些常量，不得重复硬编码跨端事件字符串。节点状态、重置、循环迭代、IVT 流数据和 EIS 结果 payload 由 `apps/shared/contracts/workflow.py` 定义并生成 TypeScript 类型，运行时载荷必须与这些真实 compact/结构化字段一致。
+当前规则：Socket.IO 自定义事件名称由 `apps/shared/contracts/events.py` 唯一维护，并生成到 `packages/types/src/contracts/events.ts`。Python 后端和前端运行时代码必须引用这些常量，不得重复硬编码跨端事件字符串。节点状态、重置、循环迭代、IVT 流数据和 EIS 结果 payload 由 `apps/shared/contracts/workflow.py` 定义并生成 TypeScript 类型，运行时载荷必须与这些真实 compact/结构化字段一致；`LoopIterationEvent.iteration` 是从 1 开始的序号。
 
 归属文件：`apps/shared/contracts/events.py`、`apps/shared/contracts/__init__.py`、`apps/shared/contracts/generate.py`、`packages/types/src/contracts/events.ts`、后端 `main.py`/runtime/路由、前端 `src/eventContracts.ts` 和 runtime client/hooks/state。
 

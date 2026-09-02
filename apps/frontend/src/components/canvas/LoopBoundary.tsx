@@ -119,7 +119,7 @@ const LoopLabel: React.FC<LoopLabelProps> = ({ loop, position, textColor, nodeHe
 
   // 构建显示文本
   const progressText = loopProgress
-    ? ` (${loopProgress.current + 1}/${loopProgress.total})`
+    ? ` (${loopProgress.current}/${loopProgress.total})`
     : '';
   const nodeScale = Math.max(0.92, Math.min(1.3, nodeHeight / BASE_NODE_HEIGHT));
   const labelFontSize = Math.round(10 * nodeScale * 10) / 10;

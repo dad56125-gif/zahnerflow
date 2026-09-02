@@ -273,7 +273,7 @@ export interface NodesResetEvent {
 export interface LoopIterationEvent {
   /** 循环起始节点索引 */
   loopStartIndex: number;
-  /** 当前第几次迭代 */
+  /** 当前迭代序号，从 1 开始 */
   iteration: number;
   /** 总共要迭代几次 */
   totalIterations: number;

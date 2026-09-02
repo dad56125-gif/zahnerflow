@@ -221,7 +221,7 @@ class LoopIterationEvent(ContractModel):
     工作流里有循环时，每次迭代推送一次。
     """
     loopStartIndex: int = Field(description="循环起始节点索引")
-    iteration: int = Field(description="当前第几次迭代")
+    iteration: int = Field(description="当前迭代序号，从 1 开始")
     totalIterations: int = Field(description="总共要迭代几次")
     nodeIndices: List[int] = Field(description="循环体包含的节点索引")
 
