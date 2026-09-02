@@ -6,10 +6,9 @@ import { NODE_CONFIGS } from '../types/NodeConfiguration';
 import type { ExecutionSnapshot } from '@zahnerflow/types';
 import type { SimpleLoopInfo } from './canvas/useLoopDetection';
 import { useAppStore } from '../state/appStore';
-import { deriveExecutionUiState } from '../state/executionStateBridge';
+import { describeExecution } from '../state/executionStateModel';
 
 interface BottomBarProps {
-  isRunning: boolean;
   detectedLoops?: SimpleLoopInfo[];
   systemState?: ExecutionSnapshot | null;
   onProgressBarClick?: () => void;
@@ -17,7 +16,6 @@ interface BottomBarProps {
 }
 
 export const BottomBar: React.FC<BottomBarProps> = ({
-  isRunning,
   detectedLoops = [],
   systemState = null,
   onProgressBarClick,
@@ -27,7 +25,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   const notificationPanelOpen = useAppStore(state => state.notificationPanelOpen);
   const toggleNotificationPanel = useAppStore(state => state.toggleNotificationPanel);
   const setNotificationPanelOpen = useAppStore(state => state.setNotificationPanelOpen);
-  const executionUi = deriveExecutionUiState(systemState, { isRunning });
+  const execution = describeExecution(systemState);
 
   // ✅ 实时时钟状态
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
@@ -49,8 +47,8 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   const loopCount = detectedLoops.length;
 
   const getStatusMessage = (): string => {
-    if (executionUi.phase !== 'idle') {
-      return executionUi.message;
+    if (execution.phase !== 'idle') {
+      return execution.view.message;
     }
 
     if (selectedNode) {
@@ -70,7 +68,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
           onClick={toggleNotificationPanel}
           title="点击打开通知面板"
         >
-          <span className={`bottom-bar__run-dot ${executionUi.isActive ? 'is-running' : 'is-ready'}`} />
+          <span className={`bottom-bar__run-dot ${execution.is.active ? 'is-running' : 'is-ready'}`} />
           <span className="bottom-bar__message">{getStatusMessage()}</span>
         </div>
       </div>

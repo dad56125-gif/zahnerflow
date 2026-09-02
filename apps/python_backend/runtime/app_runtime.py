@@ -60,6 +60,8 @@ class AppRuntime:
             "duration": 0,
             "eta": None,
             "nodeTimings": [],
+            "loopProgress": [],
+            "results": [],
             "error": None,
         }
         self._execution_started_at: str | None = None
@@ -249,7 +251,7 @@ class AppRuntime:
     async def stop(self) -> None:
         self._running = False
         execution_id = self.execution.execution_id
-        if execution_id and self.execution.is_running:
+        if execution_id and self.execution.is_active:
             fail_execution(execution_id, "RUNTIME_SHUTDOWN: 后端关闭，执行无法继续")
         for device in DEVICE_CAPABILITIES:
             self._connect_attempt_tokens[device] += 1
@@ -494,6 +496,8 @@ class AppRuntime:
                 "duration": payload.get("duration", self._elapsed_seconds(now)),
                 "eta": payload.get("eta", self._eta_snapshot(now)),
                 "nodeTimings": payload.get("nodeTimings", self.experiment_state.get("nodeTimings", [])),
+                "loopProgress": payload.get("loopProgress", self.experiment_state.get("loopProgress", [])),
+                "results": payload.get("results", self.experiment_state.get("results", [])),
                 "error": payload.get("error", self.experiment_state.get("error")),
                 "timestamp": now,
             }
@@ -520,6 +524,8 @@ class AppRuntime:
         self._current_step_started_at = None
         self._current_unrolled_index = None
         self.experiment_state["nodeTimings"] = []
+        self.experiment_state["loopProgress"] = []
+        self.experiment_state["results"] = []
         await self.on_experiment_state(
             {
                 "executionId": payload.get("executionId"),
@@ -559,6 +565,7 @@ class AppRuntime:
             "nodeType": step_info.get("nodeType"),
             "index": step_info.get("index", 0),
             "unrolledIndex": unrolled_index,
+            "iterationPath": step_info.get("iterationPath") or [],
             "status": "running",
             "estimatedSeconds": step_info.get("estimatedSeconds"),
             "startedAt": now,
@@ -601,6 +608,9 @@ class AppRuntime:
             {
                 "executionId": payload.get("executionId"),
                 "nodeIndex": step_info.get("index"),
+                "nodeId": step_info.get("nodeId"),
+                "unrolledIndex": step_info.get("unrolledIndex"),
+                "iterationPath": step_info.get("iterationPath") or [],
                 "status": "running",
                 "data": None,
             }
@@ -608,9 +618,25 @@ class AppRuntime:
         return step_info
 
     async def on_loop_iteration_started(self, payload: dict) -> None:
+        loop_start_index = payload.get("loopStartIndex")
+        loop_progress = [
+            progress
+            for progress in self.experiment_state.get("loopProgress", [])
+            if progress.get("loopStartIndex") != loop_start_index
+        ]
+        loop_progress.append(
+            {
+                "loopStartIndex": loop_start_index,
+                "current": payload.get("iteration"),
+                "total": payload.get("totalIterations"),
+                "nodeIndices": payload.get("nodeIndices") or [],
+            }
+        )
+        self.experiment_state["loopProgress"] = loop_progress
         await self.emit(
             WORKFLOW_LOOP_START,
             {
+                "executionId": payload.get("executionId"),
                 "loopStartIndex": payload.get("loopStartIndex"),
                 "iteration": payload.get("iteration"),
                 "totalIterations": payload.get("totalIterations"),
@@ -621,7 +647,15 @@ class AppRuntime:
     async def on_node_status(self, payload: dict) -> None:
         await self.emit(
             WORKFLOW_NODE_STATUS,
-            {"i": payload.get("nodeIndex"), "s": payload.get("status"), "d": payload.get("data")},
+            {
+                "executionId": payload.get("executionId"),
+                "nodeId": payload.get("nodeId"),
+                "originalIndex": payload.get("nodeIndex"),
+                "unrolledIndex": payload.get("unrolledIndex"),
+                "iterationPath": payload.get("iterationPath") or [],
+                "status": payload.get("status"),
+                "result": payload.get("data"),
+            },
         )
 
     async def on_execution_step_finished(self, payload: dict) -> None:
@@ -648,6 +682,7 @@ class AppRuntime:
 
         now = datetime.utcnow().isoformat() + "Z"
         node_timings = list(self.experiment_state.get("nodeTimings", []))
+        matched_timing = None
         for timing in reversed(node_timings):
             if timing.get("unrolledIndex") != unrolled_index:
                 continue
@@ -657,12 +692,23 @@ class AppRuntime:
                 recorded.get("actualSeconds") if recorded and recorded.get("actualSeconds") is not None
                 else _seconds_between(timing.get("startedAt"), now)
             )
+            matched_timing = timing
             break
+
+        results = list(self.experiment_state.get("results", []))
+        original_index = payload.get("nodeIndex")
+        if isinstance(original_index, int) and original_index >= 0:
+            if len(results) <= original_index:
+                results.extend([None] * (original_index + 1 - len(results)))
+            results[original_index] = data
 
         await self.on_node_status(
             {
                 "executionId": exec_id,
-                "nodeIndex": payload.get("nodeIndex"),
+                "nodeIndex": original_index,
+                "nodeId": payload.get("nodeId") or (matched_timing or {}).get("nodeId"),
+                "unrolledIndex": unrolled_index,
+                "iterationPath": payload.get("iterationPath") or [],
                 "status": status,
                 "data": data,
             }
@@ -711,6 +757,7 @@ class AppRuntime:
                 "duration": self._elapsed_seconds(now),
                 "eta": self._eta_snapshot(now),
                 "nodeTimings": node_timings,
+                "results": results,
                 "error": (data.get("error") or data.get("reason")) if data and status == "failed" else None,
             }
         )
@@ -733,6 +780,8 @@ class AppRuntime:
                 "endTime": now,
                 "eta": self._eta_snapshot(now, finished=True),
                 "nodeTimings": self.experiment_state.get("nodeTimings", []),
+                "loopProgress": self.experiment_state.get("loopProgress", []),
+                "results": self.experiment_state.get("results", []),
                 "error": error,
                 "timestamp": now,
             }
@@ -1254,6 +1303,7 @@ class AppRuntime:
         return await self.execution.cancel(execution_id)
 
     def reset_execution_state(self) -> None:
+        self.execution.reset()
         self.experiment_state.update(
             {
                 "status": "idle",
@@ -1268,6 +1318,9 @@ class AppRuntime:
                 "endTime": None,
                 "duration": 0,
                 "eta": None,
+                "nodeTimings": [],
+                "loopProgress": [],
+                "results": [],
                 "error": None,
             }
         )

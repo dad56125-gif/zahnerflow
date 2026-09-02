@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
-import { useSystemState } from '../state/executionStateBridge';
+import { useExecutionSnapshot } from '../state/executionStateBridge';
 import { useMeasurementStream } from '../hooks/useMeasurementStream';
 import { useEisData, EisDataPoint } from '../hooks/useEisData';
 import type { RawStreamData } from '@zahnerflow/types';
@@ -62,7 +62,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
   const [viewMode, setViewMode] = useState<'table' | 'health'>('table');
 
   const { nodes } = useCanvasStore();
-  const systemState = useSystemState();
+  const systemState = useExecutionSnapshot();
 
   // 获取节点索引和执行ID
   const nodeIndex = selectedNode ? nodes.findIndex(n => n.id === selectedNode.id) : -1;

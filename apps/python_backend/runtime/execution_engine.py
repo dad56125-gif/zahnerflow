@@ -16,7 +16,7 @@ from runtime.execution_semantics import (
     InvalidExecutionTransitionError,
     MeasurementOutcome,
     NoActiveExecutionError,
-    is_active_execution_status,
+    execution_phase,
     normalize_measurement_outcome,
     parse_scheduled_at,
     require_node_execution_spec,
@@ -52,15 +52,32 @@ class ExecutionEngine:
         self._path_config: dict = {}
 
     @property
-    def is_running(self) -> bool:
-        return is_active_execution_status(self.status)
+    def phase(self):
+        return execution_phase(self.status)
+
+    @property
+    def is_active(self) -> bool:
+        return self.phase.is_active
 
     @property
     def is_cancelling(self) -> bool:
         return self._cancel_requested or self.status == "cancelling"
 
+    def reset(self) -> None:
+        if self.phase.is_active:
+            raise InvalidExecutionTransitionError(f"Cannot reset execution while status is {self.status}")
+        self.status = "idle"
+        self.execution_id = None
+        self.workflow_id = None
+        self.nodes = []
+        self.current_step_index = 0
+        self._cancel_requested = False
+        self._pause_requested = False
+        self._task = None
+        self._plan = None
+
     async def start(self, payload: dict) -> dict:
-        if self.is_running:
+        if not self.phase.can_start:
             raise RuntimeError("An execution is already active")
 
         plan = payload.get("executionPlan")
@@ -85,7 +102,7 @@ class ExecutionEngine:
 
     async def pause(self, expected_execution_id: str) -> dict:
         self._require_execution_target(expected_execution_id)
-        if self.status != "running":
+        if not self.phase.can_pause:
             raise InvalidExecutionTransitionError(f"Cannot pause execution while status is {self.status}")
         self._pause_requested = True
         self.status = "paused"
@@ -94,7 +111,7 @@ class ExecutionEngine:
 
     async def resume(self, expected_execution_id: str) -> dict:
         self._require_execution_target(expected_execution_id)
-        if self.status != "paused":
+        if not self.phase.can_resume:
             raise InvalidExecutionTransitionError(f"Cannot resume execution while status is {self.status}")
         self._pause_requested = False
         self.status = "running"
@@ -103,6 +120,8 @@ class ExecutionEngine:
 
     async def cancel(self, expected_execution_id: str) -> dict:
         self._require_execution_target(expected_execution_id)
+        if not self.phase.can_cancel:
+            raise InvalidExecutionTransitionError(f"Cannot cancel execution while status is {self.status}")
         self._cancel_requested = True
         self._pause_requested = False
         self.status = "cancelling"
@@ -117,7 +136,7 @@ class ExecutionEngine:
         return {"message": "Execution cancellation requested"}
 
     def _require_execution_target(self, expected_execution_id: str) -> None:
-        if not self.execution_id or not self.is_running:
+        if not self.execution_id or not self.is_active:
             raise NoActiveExecutionError("No active execution")
         if self.execution_id != expected_execution_id:
             raise ExecutionIdMismatchError("Execution id does not match active execution")
@@ -205,6 +224,8 @@ class ExecutionEngine:
                             "executionId": execution_id,
                             "nodeIndex": step["originalIndex"],
                             "unrolledIndex": unrolled_idx,
+                            "nodeId": node.get("id"),
+                            "iterationPath": step.get("iterationPath", []),
                             "status": status,
                             "data": result,
                             "warnings": list(outcome.warnings) if outcome else [],
@@ -225,6 +246,8 @@ class ExecutionEngine:
                                 "executionId": execution_id,
                                 "nodeIndex": step["originalIndex"],
                                 "unrolledIndex": unrolled_idx,
+                                "nodeId": node.get("id"),
+                                "iterationPath": step.get("iterationPath", []),
                                 "status": "cancelled",
                                 "data": {"reason": str(e)},
                             }
@@ -237,6 +260,8 @@ class ExecutionEngine:
                                 "executionId": execution_id,
                                 "nodeIndex": step["originalIndex"],
                                 "unrolledIndex": unrolled_idx,
+                                "nodeId": node.get("id"),
+                                "iterationPath": step.get("iterationPath", []),
                                 "status": "failed",
                                 "data": {"error": str(e)},
                             }
@@ -244,6 +269,7 @@ class ExecutionEngine:
                     raise
 
             duration_ms = int((time.time() - start_time) * 1000)
+            self.status = "completed"
             await self.runtime.on_execution_finished(
                 {
                     "executionId": execution_id,
@@ -260,6 +286,7 @@ class ExecutionEngine:
                 if isinstance(e, WorkflowCancelled) or self._cancel_requested or self.status in ("cancelled", "cancelling")
                 else "failed"
             )
+            self.status = final_status
             await self.runtime.on_execution_finished(
                 {
                     "executionId": execution_id,
@@ -270,8 +297,7 @@ class ExecutionEngine:
                 }
             )
         finally:
-            self.status = "idle"
-            self.execution_id = None
+            self._task = None
             self._plan = None
 
     async def _dispatch_node(self, node: dict, step: dict, params: dict):

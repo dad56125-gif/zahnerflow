@@ -20,8 +20,8 @@ import { ModalLayer } from './components/shared/OverlayLayer';
 import { useCanvasStore } from './state/canvasStore';
 import { useAppStore } from './state/appStore';
 import { useWorkflowStore } from './state/currentWorkflowStore';
-import { deriveExecutionUiState, useExecutionStore, useSystemState } from './state/executionStateBridge';
-// clearMeasurementCache 现在由 executionStore 的 nodesReset 监听统一处理
+import { useExecutionSnapshot, useExecutionStore } from './state/executionStateBridge';
+import { describeExecution } from './state/executionStateModel';
 
 import { MFCModal } from './components/mfc/MFCModal';
 import { useMfc } from './modules/mfc/useMfc';
@@ -94,14 +94,9 @@ const AppContent: React.FC = () => {
   // Canvas Store
   const { nodes } = useCanvasStore();
 
-  // Workflow Store
-  // Execution Store
-  const {
-    isRunning,
-    error: executionError,
-    startExecution
-    // resetExecutionState 现在由 executionStore 的 nodesReset 监听统一处理
-  } = useExecutionStore();
+  const startExecution = useExecutionStore(state => state.startExecution);
+  const resetExecution = useExecutionStore(state => state.resetExecution);
+  const executionCommand = useExecutionStore(state => state.command);
 
   // 本地 UI 状态
   const [furnaceState, furnaceControls] = useFurnace();
@@ -150,13 +145,12 @@ const AppContent: React.FC = () => {
     };
   }, [desktopBridgeAvailable, desktopWindowExpanded]);
 
-  // 获取实时系统状态
-  const systemState = useSystemState();
-  const executionUi = deriveExecutionUiState(
-    systemState,
-    { isRunning, error: executionError },
+  const systemState = useExecutionSnapshot();
+  const execution = useMemo(
+    () => describeExecution(systemState, executionCommand),
+    [executionCommand, systemState],
   );
-  const isCancelling = executionUi.isCancelling;
+  const executionActive = execution.is.active || execution.command.pending === 'start';
   const furnaceReady = isFurnaceReady(furnaceState);
   const mfcReady = isMfcReady(mfcState);
   const simulatorActive = hasActiveSimulator(simulatorSettings);
@@ -167,8 +161,7 @@ const AppContent: React.FC = () => {
     setWorkstationNodeGroups(workstationType ? getNodeGroupsByWorkstation(workstationType) : EMPTY_NODE_GROUPS);
   }, []);
 
-  // 派生状态：是否出错
-  const hasError = !!executionError;
+  const hasError = Boolean(execution.result.error);
   const nodeFingerprint = useMemo(
     () => JSON.stringify(nodes.map((node) => ({ id: node.id, type: node.type, config: node.config }))),
     [nodes]
@@ -255,7 +248,7 @@ const AppContent: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!systemState || !executionUi.isActive) return;
+    if (!systemState || !execution.is.active) return;
     const snapshotNodes = systemState.nodes || [];
     if (snapshotNodes.length === 0) return;
 
@@ -274,7 +267,7 @@ const AppContent: React.FC = () => {
     if (systemState.workflowName) {
       useWorkflowStore.getState().setDraftWorkflowName(systemState.workflowName);
     }
-  }, [systemState, executionUi.isActive, selectedWorkstation, applyWorkstation]);
+  }, [systemState, execution.is.active, selectedWorkstation, applyWorkstation]);
 
   // 玻璃态效果
   useEffect(() => {
@@ -307,7 +300,7 @@ const AppContent: React.FC = () => {
 
   // --- 执行控制逻辑 ---
   const runFlow = useCallback(async (options: RunFlowOptions = {}): Promise<RunFlowOutcome> => {
-    if (nodes.length === 0 || isRunning || !selectedWorkstation || workflowBlockRunBlocked) {
+    if (nodes.length === 0 || executionActive || !selectedWorkstation || workflowBlockRunBlocked) {
       setNotificationPanelOpen(true);
       return 'blocked';
     }
@@ -351,7 +344,7 @@ const AppContent: React.FC = () => {
   }, [
     currentUser,
     filePathConfig,
-    isRunning,
+    executionActive,
     nodes,
     runMetadataWarning,
     selectedWorkstation,
@@ -362,21 +355,8 @@ const AppContent: React.FC = () => {
   ]);
 
   const resetFlow = async () => {
-    try {
-      setRunMetadataWarning(null);
-      // 🔥 SSOT: 不再主动清空，完全依赖后端 WebSocket 广播 nodesReset 事件
-      // clearMeasurementCache() 和 resetExecutionState() 现在由 executionStore 的事件监听统一处理
-
-      const result = await runtimeClient.executions.reset();
-      if (result?.success) {
-        setSuppressedEtaNodeFingerprint(nodeFingerprint);
-        // ✅ 不再在此处主动调用 resetExecutionState()，依赖 WebSocket 事件
-      } else {
-        console.error('[App] 重置失败:', result?.message || '未知错误');
-      }
-    } catch (error) {
-      console.error('Reset flow failed:', error);
-    }
+    setRunMetadataWarning(null);
+    if (await resetExecution()) setSuppressedEtaNodeFingerprint(nodeFingerprint);
   };
 
   // 包装回调
@@ -419,8 +399,7 @@ const AppContent: React.FC = () => {
       <div className="canvas-area">
         <Canvas
           selectedWorkstation={selectedWorkstation}
-          isRunning={isRunning}
-          isCancelling={isCancelling}
+          executionActive={executionActive}
           hasError={hasError}
           onRunFlow={handleRunFlow}
           onResetFlow={resetFlow}
@@ -484,7 +463,6 @@ const AppContent: React.FC = () => {
       </ModalLayer>
 
       <BottomBar
-        isRunning={isRunning}
         detectedLoops={detectedLoops}
         systemState={systemState}
         onProgressBarClick={() => setShowMeasurementDashboard(true)}

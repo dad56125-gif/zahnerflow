@@ -14,7 +14,7 @@ Pydantic Model → TypeScript 类型生成器
 import os
 import sys
 import types
-from typing import Union, get_args
+from typing import Literal, Union, get_args
 
 try:
     from ._base import to_camel
@@ -68,6 +68,9 @@ def resolve_type(annotation, local_ns: dict = None) -> str:
             return f"{inner} | null"
         # 纯 Union
         return " | ".join(resolve_type(a, local_ns) for a in args)
+
+    if origin is Literal:
+        return " | ".join(repr(value) for value in get_args(annotation))
 
     # List[X] → X[]
     if origin is list or (name == "list"):
@@ -164,9 +167,9 @@ def generate():
         MfcDeviceInfo, MfcStatus, MfcSetpointRequest, MfcScanRequest,
     )
     from contracts.workflow import (
-        WorkstationType, NodeType, NodeCategory, NodeStatus,
+        WorkstationType, NodeType, NodeCategory, EXECUTION_PHASE_VALUES, ExecutionPhase, NodeStatus,
         WorkflowNode, Workflow, IterationPathEntry, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
-        ExecutionEtaStep, NodeTiming, WorkflowEtaEstimate,
+        ExecutionEtaStep, NodeTiming, LoopProgress, WorkflowEtaEstimate,
         ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
         NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
         RawStreamData, EnrichedStreamData, EisResultData, EnrichedEisData,
@@ -232,7 +235,7 @@ def generate():
         " */",
         "",
     ]
-    for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming,
+    for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming, LoopProgress,
                   WorkflowEtaEstimate, ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
                   ExecutionSnapshot,
                   NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
@@ -260,8 +263,11 @@ def generate():
         "/** 节点分类 */",
         "export type NodeCategory = 'device' | 'basic_measurement' | 'advanced_measurement' | 'flow_control';",
         "",
+        "/** 执行阶段 */",
+        f"export type ExecutionPhase = {' | '.join(repr(phase) for phase in EXECUTION_PHASE_VALUES)};",
+        "",
         "/** 节点状态 */",
-        "export type NodeStatus = 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';",
+        "export type NodeStatus = ExecutionPhase;",
         "",
     ])
 

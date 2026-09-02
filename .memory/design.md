@@ -127,9 +127,9 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-状态机]
 
-当前规则：工作流执行是本地单用户状态机，同一时间只允许一个活跃执行。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态；后端状态判断统一由 execution semantics 提供，前端展示统一由 execution selector 派生。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行引擎的 Furnace 温度节点可以负责协议写入和等待，但成功写入运行/停止命令后必须通过 `AppRuntime` 确认设备运行快照。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照同时携带 `nodeTimings`，记录每个展开节点的状态、开始时间、结束时间、预计时长和实际耗时，节点属性面板按选中节点读取这组事实；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。后端关闭时当前执行必须收口为 `failed`；后端启动时必须将上一进程遗留的 `running`、`paused`、`cancelling` 执行及其活动步骤收口为 `failed`，不提供跨进程续跑。
+当前规则：工作流执行是本地单用户状态机，同一时间只允许一个活跃执行。共享契约定义 `idle`、`running`、`paused`、`cancelling`、`completed`、`failed`、`cancelled` 七个 phase；后端 `EXECUTION_PHASES` 按 `is_*`、`can_*` 的自然语言字段编组状态含义和允许命令，前端 `executionPhases` 使用相同编组派生展示。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。终态保留 execution id、当前步骤、节点计时、循环进度、结果和测量曲线，只有显式重置才回到 `idle` 并清空这些数据；终态未重置前不得创建下一条 execution 记录。命令请求中的 pending/error 与后端业务 phase 分开保存，不得用乐观前端状态伪造后端 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行引擎的 Furnace 温度节点可以负责协议写入和等待，但成功写入运行/停止命令后必须通过 `AppRuntime` 确认设备运行快照。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照携带 `nodeTimings`、`loopProgress` 和 `results`，用于恢复每个展开节点的生命周期、当前循环和结果；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。后端关闭时当前执行必须收口为 `failed`；后端启动时必须将上一进程遗留的 `running`、`paused`、`cancelling` 执行及其活动步骤收口为 `failed`，不提供跨进程续跑。
 
-归属文件：`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/routers/executions.py`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/App.tsx`。
+归属文件：`apps/shared/contracts/workflow.py`、`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/routers/executions.py`、`apps/frontend/src/state/executionStateModel.ts`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/App.tsx`。
 
 允许变化：可以增强节点执行、取消、暂停、恢复和错误呈现。
 
@@ -151,7 +151,7 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-展开与ETA]
 
-当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`，循环展开路径和 `loopiteration_start` 事件中的 `iteration` 均是从 1 开始的业务序号，前端必须直接显示，不得再次加一。流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
+当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`，循环展开路径和 `loopiteration_start` 事件中的 `iteration` 均是从 1 开始的业务序号，前端必须直接显示，不得再次加一。执行快照持久携带当前 `loopProgress`，节点计时携带对应 `iterationPath`，因此刷新或错过增量事件后仍能恢复当前循环的节点状态。流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
 
 展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为三栏步骤浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为不可选择的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
 
@@ -187,7 +187,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-前端契约]
 
-当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将事件按 `stateVersion` 丢弃旧消息。
+当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将设备事件按 `stateVersion` 丢弃旧消息。执行事件与快照都携带 execution id，前端只接收当前执行或显式 `idle` 重置快照，避免相邻执行的数据串写。
 
 归属文件：`apps/frontend/src/runtimeClient.ts`、`apps/shared/contracts/**`、`packages/types/src/contracts/**`。
 
@@ -197,7 +197,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-事件契约]
 
-当前规则：Socket.IO 自定义事件名称由 `apps/shared/contracts/events.py` 唯一维护，并生成到 `packages/types/src/contracts/events.ts`。Python 后端和前端运行时代码必须引用这些常量，不得重复硬编码跨端事件字符串。节点状态、重置、循环迭代、IVT 流数据和 EIS 结果 payload 由 `apps/shared/contracts/workflow.py` 定义并生成 TypeScript 类型，运行时载荷必须与这些真实 compact/结构化字段一致；`LoopIterationEvent.iteration` 是从 1 开始的序号。
+当前规则：Socket.IO 自定义事件名称由 `apps/shared/contracts/events.py` 唯一维护，并生成到 `packages/types/src/contracts/events.ts`。Python 后端和前端运行时代码必须引用这些常量，不得重复硬编码跨端事件字符串。节点状态、重置、循环迭代、IVT 流数据和 EIS 结果 payload 由 `apps/shared/contracts/workflow.py` 定义并生成 TypeScript 类型。节点状态事件使用 `executionId`、`nodeId`、`originalIndex`、`unrolledIndex`、`iterationPath`、`status`、`result` 的描述性字段；循环事件携带 `executionId`，`iteration` 是从 1 开始的序号。增量事件用于实时更新，完整执行快照中的 `nodeTimings`、`loopProgress` 和 `results` 用于水合恢复。
 
 归属文件：`apps/shared/contracts/events.py`、`apps/shared/contracts/__init__.py`、`apps/shared/contracts/generate.py`、`packages/types/src/contracts/events.ts`、后端 `main.py`/runtime/路由、前端 `src/eventContracts.ts` 和 runtime client/hooks/state。
 
@@ -229,9 +229,9 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-派生与展示规则]
 
-当前规则：执行 phase 的标签、颜色、可重置性和 active/terminal 判断由 `deriveExecutionUiState` 统一派生；React 组件订阅稳定的 store 原始字段后缓存派生结果，Toolbar、ProgressBar 和 BottomBar 不各自解释状态，也不直接订阅每次新建对象的 selector。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费。测量图表面板每次打开时只对真正处于 active 执行中的当前测量节点自动聚焦；用户手动选择类型、节点或批量范围后，本次打开期间保留用户视图。IVT/EIS 曲线缓存均按 execution、原节点索引和迭代路径隔离，图表实例按 execution 和节点身份重建；节点或执行切换时必须恢复对应缓存或显示空图，不得沿用前一节点的 series。参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
+当前规则：执行 phase 的含义由 `executionPhases` 表定义，`describeExecution` 将其组织为 `is`、`can`、`keeps`、`view`、`identity`、`progress`、`result`、`command` 等可读分组；React 组件只消费这些自然语言字段，不各自解释原始状态字符串。Zustand 执行 store 只保存 `identity`、`nodes`、`progress`、完整 `snapshot` 和独立 `command` 请求状态，不维护可互相矛盾的布尔副本。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费。测量图表面板每次打开时只对真正处于 active 执行中的当前测量节点自动聚焦；用户手动选择类型、节点或批量范围后，本次打开期间保留用户视图，不提供额外的“跟随当前测试”按钮。IVT/EIS 曲线缓存均按 execution、原节点索引和迭代路径隔离，图表实例按 execution 和节点身份重建；节点或执行切换时必须恢复对应缓存或显示空图，不得沿用前一节点的 series。终态继续保留当前 execution id，使各类曲线具有一致生命周期，显式重置时统一清空。参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
 
-归属文件：`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/components/measurement-dashboard/MeasurementDashboard.tsx`、`apps/frontend/src/components/measurement-dashboard/MeasurementChart.tsx`、`apps/frontend/src/hooks/useMeasurementStream.ts`、`apps/frontend/src/hooks/useEisData.ts`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
+归属文件：`apps/frontend/src/state/executionStateModel.ts`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/components/measurement-dashboard/MeasurementDashboard.tsx`、`apps/frontend/src/components/measurement-dashboard/MeasurementChart.tsx`、`apps/frontend/src/hooks/useMeasurementStream.ts`、`apps/frontend/src/hooks/useEisData.ts`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
 
 允许变化：可以扩展节点展示配置、状态文案和选择器，但同一业务判断必须继续由一个 selector、helper 或配置表输出。
 

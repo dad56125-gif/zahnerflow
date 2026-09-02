@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCanvasStore } from '../state/canvasStore';
 import { useWorkflowStore } from '../state/currentWorkflowStore';
-import { deriveExecutionUiState, useExecutionStore } from '../state/executionStateBridge';
+import { useExecutionStore } from '../state/executionStateBridge';
+import { describeExecution } from '../state/executionStateModel';
 import { UnrollViewModal } from './UnrollViewModal';
 import type { RunFlowHandler } from '../types/executionControl';
 import type { NodeParameters } from '../types/NodeConfiguration';
@@ -10,8 +11,6 @@ interface ToolbarProps {
   onRunFlow: RunFlowHandler;
   onResetFlow?: () => void;
   selectedWorkstation: string | null;
-  isRunning: boolean;
-  isCancelling?: boolean;
   hasError: boolean;
   workflowBlockRunBlocked?: boolean;
   onGenerateReport?: () => void;
@@ -96,18 +95,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const { clearCanvas, nodes } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
-  const stopExecution = useExecutionStore(state => state.stopExecution);
-  const executionSnapshot = useExecutionStore(state => state.lastSnapshot);
-  const executionStoreIsRunning = useExecutionStore(state => state.isRunning);
-  const executionStoreIsPaused = useExecutionStore(state => state.isPaused);
-  const executionError = useExecutionStore(state => state.error);
-  const executionUi = useMemo(
-    () => deriveExecutionUiState(executionSnapshot, {
-      isRunning: executionStoreIsRunning,
-      isPaused: executionStoreIsPaused,
-      error: executionError,
-    }),
-    [executionError, executionSnapshot, executionStoreIsPaused, executionStoreIsRunning],
+  const cancelExecution = useExecutionStore(state => state.cancelExecution);
+  const executionSnapshot = useExecutionStore(state => state.snapshot);
+  const executionCommand = useExecutionStore(state => state.command);
+  const execution = useMemo(
+    () => describeExecution(executionSnapshot, executionCommand),
+    [executionCommand, executionSnapshot],
   );
   const [showUnrollView, setShowUnrollView] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
@@ -132,19 +125,43 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       };
     }
 
-    if (executionUi.isCancelling) {
+    if (execution.command.pending === 'start') {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
         primaryButtonDisabled: true,
-        primaryButtonText: executionUi.label,
+        primaryButtonText: '启动中',
+        primaryButtonVariant: 'btn--primary' as const,
+        primaryButtonIcon: 'start' as const,
+        primaryAction: 'run' as PrimaryAction
+      };
+    }
+
+    if (execution.command.pending === 'cancel' || execution.is.cancelling) {
+      return {
+        fileOperationsDisabled: true,
+        workflowDisabled: true,
+        primaryButtonDisabled: true,
+        primaryButtonText: execution.is.cancelling ? execution.view.label : '停止请求中',
         primaryButtonVariant: 'btn--warning' as const,
         primaryButtonIcon: 'stop' as const,
         primaryAction: 'stop' as PrimaryAction
       };
     }
 
-    if (executionUi.isActive) {
+    if (execution.command.pending === 'reset') {
+      return {
+        fileOperationsDisabled: true,
+        workflowDisabled: true,
+        primaryButtonDisabled: true,
+        primaryButtonText: '重置中',
+        primaryButtonVariant: 'btn--secondary' as const,
+        primaryButtonIcon: 'reset' as const,
+        primaryAction: 'reset' as PrimaryAction
+      };
+    }
+
+    if (execution.is.active) {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
@@ -156,7 +173,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       };
     }
 
-    if (hasError || executionUi.canReset) {
+    if (execution.can.reset) {
       return {
         fileOperationsDisabled: true,
         workflowDisabled: true,
@@ -201,7 +218,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   const handlePrimaryAction = () => {
     if (buttonStates.primaryAction === 'stop') {
-      void stopExecution();
+      void cancelExecution();
       return;
     }
     if (buttonStates.primaryAction === 'reset') {
@@ -260,7 +277,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         stopPressFrameRef.current = null;
         stopPressTriggeredRef.current = true;
         stopPressStartedAtRef.current = null;
-        void stopExecution();
+        void cancelExecution();
         return;
       }
       stopPressFrameRef.current = window.requestAnimationFrame(updateStopPress);

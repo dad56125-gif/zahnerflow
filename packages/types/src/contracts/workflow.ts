@@ -123,8 +123,10 @@ export interface NodeTiming {
   index: number;
   /** 循环展开后的步骤索引 */
   unrolledIndex?: number | null;
+  /** 循环迭代路径 */
+  iterationPath?: IterationPathEntry[];
   /** 节点执行状态 */
-  status: string;
+  status: 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
   /** 节点预计时长 (秒) */
   estimatedSeconds?: number | null;
   /** 节点开始时间 (ISO) */
@@ -133,6 +135,17 @@ export interface NodeTiming {
   endedAt?: string | null;
   /** 节点实际耗时 (秒) */
   actualSeconds?: number | null;
+}
+
+export interface LoopProgress {
+  /** 循环起始节点索引 */
+  loopStartIndex: number;
+  /** 当前迭代序号，从 1 开始 */
+  current: number;
+  /** 循环总迭代次数 */
+  total: number;
+  /** 循环体节点索引 */
+  nodeIndices?: number[];
 }
 
 export interface WorkflowEtaEstimate {
@@ -219,7 +232,7 @@ export interface WorkflowUnrollPreview {
 
 export interface ExecutionSnapshot {
   /** 整体状态 */
-  status: string;
+  status: 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
   /** 工作流 ID */
   workflowId?: string | null;
   /** 执行 ID */
@@ -244,6 +257,8 @@ export interface ExecutionSnapshot {
   eta?: ExecutionEtaSnapshot | null;
   /** 本次执行的节点级计时记录 */
   nodeTimings?: NodeTiming[];
+  /** 本次执行的循环进度 */
+  loopProgress?: LoopProgress[];
   /** 错误信息 */
   error?: string | null;
   /** 快照时间 */
@@ -253,12 +268,20 @@ export interface ExecutionSnapshot {
 }
 
 export interface NodeStatusUpdate {
+  /** 执行 ID */
+  executionId: string;
+  /** 节点 ID */
+  nodeId?: string | null;
   /** 原工作流节点索引 */
-  i: number;
+  originalIndex: number;
+  /** 展开后的步骤索引 */
+  unrolledIndex?: number | null;
+  /** 循环迭代路径 */
+  iterationPath?: IterationPathEntry[];
   /** 新状态 */
-  s: string;
-  /** 附加数据 */
-  d?: any | null;
+  status: 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
+  /** 节点结果 */
+  result?: any | null;
 }
 
 export interface NodesResetEvent {
@@ -271,6 +294,8 @@ export interface NodesResetEvent {
 }
 
 export interface LoopIterationEvent {
+  /** 执行 ID */
+  executionId: string;
   /** 循环起始节点索引 */
   loopStartIndex: number;
   /** 当前迭代序号，从 1 开始 */
@@ -347,5 +372,8 @@ export type NodeType =
 /** 节点分类 */
 export type NodeCategory = 'device' | 'basic_measurement' | 'advanced_measurement' | 'flow_control';
 
+/** 执行阶段 */
+export type ExecutionPhase = 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
+
 /** 节点状态 */
-export type NodeStatus = 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
+export type NodeStatus = ExecutionPhase;

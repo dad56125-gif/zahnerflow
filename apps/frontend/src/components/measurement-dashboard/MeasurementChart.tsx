@@ -19,10 +19,8 @@ compareIterationKeys,
 formatIterationKey,
 } from '../../utils/iterationPath';
 import { getNodeChartKind, NODE_CONFIGS } from '../../types/NodeConfiguration';
-import {
-deriveNodeExecutionUiPhase,
-useExecutionStore,
-} from '../../state/executionStateBridge';
+import { useExecutionStore } from '../../state/executionStateBridge';
+import { nodePhaseForDisplay } from '../../state/executionStateModel';
 
 echarts.use([
 LineChart,
@@ -132,7 +130,7 @@ eisLegendScheme = 'palette'
 const chartRef = useRef<HTMLDivElement>(null);
 const chartInstance = useRef<echarts.ECharts | null>(null);
 const theme = useAppStore(state => state.theme);
-const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
+const nodeStatuses = useExecutionStore(state => state.nodes.statuses);
 
 // 判断是否为 EIS 节点
 const isEisNode = nodeType ? getNodeChartKind(nodeType) === 'eis' : false;
@@ -158,7 +156,7 @@ initialized: false
 const [hasData, setHasData] = useState(false);
 const activeExecutionId = systemState?.executionId || null;
 
-const nodePhase = deriveNodeExecutionUiPhase(nodeStatuses[nodeIndex], nodeIndex, systemState);
+const nodePhase = nodePhaseForDisplay(nodeStatuses[nodeIndex], nodeIndex, systemState);
 const isPending = nodePhase === 'pending';
 const isRunning = nodePhase === 'running';
 

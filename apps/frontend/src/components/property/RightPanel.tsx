@@ -6,8 +6,8 @@ import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
 import { DataViewer } from '../DataViewer';
 import { useUser } from '../shared/userContextState';
-// 确保 useSystemState 来自正确的执行 Store
-import { deriveExecutionUiState, useSystemState } from '../../state/executionStateBridge';
+import { useExecutionSnapshot } from '../../state/executionStateBridge';
+import { describeExecution } from '../../state/executionStateModel';
 
 // 导入工具函数
 import {
@@ -168,8 +168,8 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     const { currentUser } = useUser();
 
     // 2. 获取实时系统状态
-    const systemState = useSystemState();
-    const executionUi = useMemo(() => deriveExecutionUiState(systemState), [systemState]);
+    const systemState = useExecutionSnapshot();
+    const execution = useMemo(() => describeExecution(systemState), [systemState]);
     const [nodeRemainingSeconds, setNodeRemainingSeconds] = useState<number | null>(null);
     const [nodeElapsedSeconds, setNodeElapsedSeconds] = useState(0);
     const [plannedEstimate, setPlannedEstimate] = useState<WorkflowEtaEstimate | null>(null);
@@ -341,7 +341,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     useEffect(() => clearDropdownCloseTimer, [clearDropdownCloseTimer]);
 
     useEffect(() => {
-      if (executionUi.phase !== 'idle' || nodes.length === 0) {
+      if (execution.phase !== 'idle' || nodes.length === 0) {
         setPlannedEstimate(null);
         setPlannedStartTime(null);
         return;
@@ -368,7 +368,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         cancelled = true;
         window.clearTimeout(timer);
       };
-    }, [executionUi.phase, nodes]);
+    }, [execution.phase, nodes]);
 
     useEffect(() => {
       const currentStep = systemState?.currentStep;
@@ -400,7 +400,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         timingStartedAt || eta?.updatedAt || systemState?.timestamp || new Date().toISOString()
       ).getTime();
       const updateDisplay = () => {
-        const shouldTick = executionUi.isRunning || executionUi.isCancelling;
+        const shouldTick = execution.is.running || execution.is.cancelling;
         const elapsedSeconds = shouldTick
           ? Math.max(0, (Date.now() - updatedAtMs) / 1000)
           : (eta?.currentStepElapsedSeconds ?? 0);
@@ -409,12 +409,12 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       };
 
       updateDisplay();
-      if (!executionUi.isRunning && !executionUi.isCancelling) return;
+      if (!execution.is.running && !execution.is.cancelling) return;
       const timer = window.setInterval(updateDisplay, 1000);
       return () => window.clearInterval(timer);
     }, [
-      executionUi.isCancelling,
-      executionUi.isRunning,
+      execution.is.cancelling,
+      execution.is.running,
       nodes,
       node?.id,
       systemState?.currentStep,
@@ -472,7 +472,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       ? systemState?.nodeTimings?.find(timing => timing.unrolledIndex === currentStep.unrolledIndex)
       : undefined;
     const activeNodeTiming = runningNodeTiming || (selectedNodeTiming?.status === 'running' ? selectedNodeTiming : undefined);
-    const isNodeRunning = Boolean(activeNodeTiming && activeNodeTiming.status === 'running') || (isCurrentNode && executionUi.isActive);
+    const isNodeRunning = Boolean(activeNodeTiming && activeNodeTiming.status === 'running') || (isCurrentNode && execution.is.active);
     const isNodeTerminal = Boolean(selectedNodeTiming && selectedNodeTiming.status !== 'running');
     const plannedNodeStep = (plannedEstimate?.steps || []).find(step => step.nodeId === node.id)
       || (plannedEstimate?.steps || []).find(step => step.index === nodeIndex);
@@ -493,9 +493,9 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
           <div className="property-value-static">
             {nodeRemainingSeconds === null
               ? '预计时长不可用'
-              : executionUi.isPaused
+              : execution.is.paused
                 ? `已暂停 · ${formatCountdown(nodeRemainingSeconds)}`
-                : executionUi.isCancelling
+                : execution.is.cancelling
                   ? `停止中 · ${formatCountdown(nodeRemainingSeconds)}`
                   : formatCountdown(nodeRemainingSeconds)}
           </div>

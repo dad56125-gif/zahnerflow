@@ -14,8 +14,7 @@ import type { NodeParameters } from '../../types/NodeConfiguration';
 
 interface CanvasProps {
   selectedWorkstation: WorkstationType | null;
-  isRunning: boolean;
-  isCancelling?: boolean;
+  executionActive: boolean;
   hasError: boolean;
   workflowBlockRunBlocked?: boolean;
   onRunFlow?: RunFlowHandler;
@@ -29,8 +28,7 @@ interface CanvasProps {
 
 export const Canvas: React.FC<CanvasProps> = ({
   selectedWorkstation,
-  isRunning,
-  isCancelling = false,
+  executionActive,
   hasError,
   workflowBlockRunBlocked = false,
   onRunFlow,
@@ -53,8 +51,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     reorderNode // 假设你在 Store 中实现了这个 Action
   } = useCanvasStore();
 
-  // 🔥 新增：从执行状态桥读取节点状态
-  const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
+  const nodeStatuses = useExecutionStore(state => state.nodes.statuses);
 
   // 2. 生成渲染视图 (View Model)
   const { layoutNodes, layoutEdges, adjustedDimensions } = useLayout(
@@ -218,8 +215,6 @@ export const Canvas: React.FC<CanvasProps> = ({
           onRunFlow={onRunFlow}
           onResetFlow={onResetFlow}
           selectedWorkstation={selectedWorkstation}
-          isRunning={isRunning}
-          isCancelling={isCancelling}
           hasError={hasError}
           workflowBlockRunBlocked={workflowBlockRunBlocked}
           onGenerateReport={onGenerateReport}
@@ -254,7 +249,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           ))}
 
           {layoutNodes.map((node, index) => {
-            const dragEnabled = !isRunning;
+            const dragEnabled = !executionActive;
 
             return (
               <NodeRenderer
@@ -263,7 +258,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 index={index}
                 isSelected={selectedNodeId === node.id}
                 isConnecting={false}
-                nodeStatus={nodeStatuses[index] || 'idle'} // 🔥 传递真实节点状态
+                nodeStatus={nodeStatuses[index] || 'idle'}
                 onNodeClick={handleNodeClick}
                 onNodeDoubleClick={handleNodeDoubleClick}
                 onNodeContextMenu={handleNodeContextMenu}

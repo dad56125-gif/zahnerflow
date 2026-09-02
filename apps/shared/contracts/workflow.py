@@ -6,7 +6,7 @@
 """
 
 from pydantic import Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Literal
 from ._base import ContractModel
 
 
@@ -18,7 +18,19 @@ NodeType = str  # 节点类型联合
 
 NodeCategory = str  # 'device' | 'basic_measurement' | 'advanced_measurement' | 'flow_control'
 
-NodeStatus = str  # 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled'
+EXECUTION_PHASE_VALUES = (
+    "idle",
+    "running",
+    "paused",
+    "cancelling",
+    "completed",
+    "failed",
+    "cancelled",
+)
+
+ExecutionPhase = Literal[*EXECUTION_PHASE_VALUES]
+
+NodeStatus = ExecutionPhase
 
 
 # ==================== 核心业务实体 ====================
@@ -108,11 +120,19 @@ class NodeTiming(ContractModel):
     nodeType: Optional[str] = Field(default=None, description="节点类型")
     index: int = Field(description="原工作流节点索引")
     unrolledIndex: Optional[int] = Field(default=None, description="循环展开后的步骤索引")
+    iterationPath: List[IterationPathEntry] = Field(default_factory=list, description="循环迭代路径")
     status: NodeStatus = Field(description="节点执行状态")
     estimatedSeconds: Optional[float] = Field(default=None, description="节点预计时长 (秒)")
     startedAt: Optional[str] = Field(default=None, description="节点开始时间 (ISO)")
     endedAt: Optional[str] = Field(default=None, description="节点结束时间 (ISO)")
     actualSeconds: Optional[float] = Field(default=None, description="节点实际耗时 (秒)")
+
+
+class LoopProgress(ContractModel):
+    loopStartIndex: int = Field(description="循环起始节点索引")
+    current: int = Field(description="当前迭代序号，从 1 开始")
+    total: int = Field(description="循环总迭代次数")
+    nodeIndices: List[int] = Field(default_factory=list, description="循环体节点索引")
 
 
 class WorkflowEtaEstimate(ContractModel):
@@ -172,7 +192,7 @@ class ExecutionSnapshot(ContractModel):
 
     后端每隔一段时间推送一次，告诉你跑到哪了。
     """
-    status: NodeStatus = Field(description="整体状态")
+    status: ExecutionPhase = Field(description="整体状态")
     workflowId: Optional[str] = Field(default=None, description="工作流 ID")
     executionId: Optional[str] = Field(default=None, description="执行 ID")
     workflowName: Optional[str] = Field(default=None, description="工作流名称")
@@ -185,6 +205,7 @@ class ExecutionSnapshot(ContractModel):
     duration: float = Field(default=0, description="已运行时长 (秒)")
     eta: Optional[ExecutionEtaSnapshot] = Field(default=None, description="运行时间估算")
     nodeTimings: List[NodeTiming] = Field(default_factory=list, description="本次执行的节点级计时记录")
+    loopProgress: List[LoopProgress] = Field(default_factory=list, description="本次执行的循环进度")
     error: Optional[str] = Field(default=None, description="错误信息")
     timestamp: str = Field(description="快照时间")
     results: Optional[List[Any]] = Field(default=None, description="节点执行结果")
@@ -198,9 +219,13 @@ class NodeStatusUpdate(ContractModel):
 
     某个节点的状态变化时推送。
     """
-    i: int = Field(description="原工作流节点索引")
-    s: str = Field(description="新状态")
-    d: Optional[Any] = Field(default=None, description="附加数据")
+    executionId: str = Field(description="执行 ID")
+    nodeId: Optional[str] = Field(default=None, description="节点 ID")
+    originalIndex: int = Field(description="原工作流节点索引")
+    unrolledIndex: Optional[int] = Field(default=None, description="展开后的步骤索引")
+    iterationPath: List[IterationPathEntry] = Field(default_factory=list, description="循环迭代路径")
+    status: NodeStatus = Field(description="新状态")
+    result: Optional[Any] = Field(default=None, description="节点结果")
 
 
 class NodesResetEvent(ContractModel):
@@ -220,6 +245,7 @@ class LoopIterationEvent(ContractModel):
 
     工作流里有循环时，每次迭代推送一次。
     """
+    executionId: str = Field(description="执行 ID")
     loopStartIndex: int = Field(description="循环起始节点索引")
     iteration: int = Field(description="当前迭代序号，从 1 开始")
     totalIterations: int = Field(description="总共要迭代几次")

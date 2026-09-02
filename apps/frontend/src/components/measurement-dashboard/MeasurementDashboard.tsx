@@ -14,7 +14,7 @@ import type { ExecutionSnapshot, WorkflowNode } from '@zahnerflow/types';
 import { getNodePresentation, NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme } from '../../utils/colorUtils';
 import { UiIconSvg } from '../shared/UiIconSvg';
-import { deriveExecutionUiState } from '../../state/executionStateBridge';
+import { describeExecution } from '../../state/executionStateModel';
 
 interface MeasurementDashboardProps {
     isOpen: boolean;
@@ -34,7 +34,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
     const manualSelectionRef = useRef(false);
     const wasOpenRef = useRef(false);
     const { bulkMode, handleBulkToggleClick: bulkToggleHandler, resetBulkSelection } = useBulkSelection();
-    const executionUi = deriveExecutionUiState(systemState);
+    const execution = describeExecution(systemState);
 
     // 筛选出支持图表的测量节点
     const measurementNodes = useMemo(() => {
@@ -154,7 +154,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
         const justOpened = !wasOpenRef.current;
         wasOpenRef.current = true;
 
-        const runningNode = executionUi.isActive
+        const runningNode = execution.is.active
             ? measurementNodes.find(node => {
                 const globalIdx = nodeIdToIndexMap.get(node.id);
                 return globalIdx === activeNodeIndex;
@@ -185,7 +185,7 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                 }
             }
         }
-    }, [activeNodeIndex, activeTypeKey, executionUi.isActive, groupedCategories, isOpen, measurementNodes, nodeIdToIndexMap]);
+    }, [activeNodeIndex, activeTypeKey, execution.is.active, groupedCategories, isOpen, measurementNodes, nodeIdToIndexMap]);
 
     const handleTypeClick = (key: string) => {
         manualSelectionRef.current = true;
@@ -413,9 +413,9 @@ export const MeasurementDashboard: React.FC<MeasurementDashboardProps> = ({
                             共 {measurementNodes.length} 个测量节点
                         </span>
                         <span>
-                            {executionUi.isRunning
+                            {execution.is.running
                                 ? `正在执行步骤 ${(activeNodeIndex + 1)}/${nodes.length}`
-                                : executionUi.label
+                                : execution.view.label
                             }
                         </span>
                     </div>

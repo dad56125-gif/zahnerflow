@@ -23,6 +23,7 @@ from runtime.execution_semantics import (
     ExecutionIdMismatchError,
     InvalidExecutionTransitionError,
     NoActiveExecutionError,
+    execution_phase,
     is_active_execution_status,
 )
 from runtime.execution_recorder import finish_execution
@@ -71,7 +72,14 @@ def _build_execution_plan(nodes: list[dict], auto_startup_config: dict | None = 
 
 def _runtime_has_active_execution() -> bool:
     engine = getattr(runtime, "execution", None)
-    return bool(engine and engine.is_running) or is_active_execution_status(runtime.experiment_state.get("status"))
+    return bool(engine and engine.is_active) or is_active_execution_status(runtime.experiment_state.get("status"))
+
+
+def _runtime_can_start_execution() -> bool:
+    engine = getattr(runtime, "execution", None)
+    engine_can_start = bool(engine and engine.phase.can_start)
+    public_state_can_start = execution_phase(runtime.experiment_state.get("status")).can_start
+    return engine_can_start and public_state_can_start
 
 
 def _string_value(value) -> str:
@@ -189,6 +197,9 @@ async def create_execution(body: dict):
 
     if _runtime_has_active_execution():
         raise HTTPException(status_code=400, detail="An execution is already active")
+
+    if not _runtime_can_start_execution():
+        raise HTTPException(status_code=409, detail="Reset the completed execution before starting another one")
 
     if missing_metadata and not force_missing_metadata:
         raise HTTPException(

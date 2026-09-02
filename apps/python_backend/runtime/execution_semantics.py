@@ -6,17 +6,65 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Iterable
 
+from shared.contracts.workflow import EXECUTION_PHASE_VALUES
 
-ACTIVE_EXECUTION_STATUSES = frozenset({"running", "paused", "cancelling"})
-TERMINAL_EXECUTION_STATUSES = frozenset({"completed", "failed", "cancelled"})
+
+@dataclass(frozen=True)
+class ExecutionPhase:
+    name: str
+    is_active: bool
+    is_terminal: bool
+    can_start: bool
+    can_pause: bool
+    can_resume: bool
+    can_cancel: bool
+    can_reset: bool
+
+
+def define_execution_phase(name: str, group: str, allowed_commands: frozenset[str]) -> ExecutionPhase:
+    return ExecutionPhase(
+        name=name,
+        is_active=group == "active",
+        is_terminal=group == "terminal",
+        can_start="start" in allowed_commands,
+        can_pause="pause" in allowed_commands,
+        can_resume="resume" in allowed_commands,
+        can_cancel="cancel" in allowed_commands,
+        can_reset="reset" in allowed_commands,
+    )
+
+
+EXECUTION_PHASES = {
+    "idle": define_execution_phase("idle", "idle", frozenset({"start"})),
+    "running": define_execution_phase("running", "active", frozenset({"pause", "cancel"})),
+    "paused": define_execution_phase("paused", "active", frozenset({"resume", "cancel"})),
+    "cancelling": define_execution_phase("cancelling", "active", frozenset()),
+    "completed": define_execution_phase("completed", "terminal", frozenset({"reset"})),
+    "failed": define_execution_phase("failed", "terminal", frozenset({"reset"})),
+    "cancelled": define_execution_phase("cancelled", "terminal", frozenset({"reset"})),
+}
+
+if set(EXECUTION_PHASES) != set(EXECUTION_PHASE_VALUES):
+    raise RuntimeError("Execution phase definitions do not match the shared contract")
+
+ACTIVE_EXECUTION_STATUSES = frozenset(
+    name for name, phase in EXECUTION_PHASES.items() if phase.is_active
+)
+TERMINAL_EXECUTION_STATUSES = frozenset(
+    name for name, phase in EXECUTION_PHASES.items() if phase.is_terminal
+)
+
+
+def execution_phase(status: str | None) -> ExecutionPhase:
+    return EXECUTION_PHASES.get(status or "", EXECUTION_PHASES["idle"])
 
 
 def is_active_execution_status(status: str | None) -> bool:
-    return status in ACTIVE_EXECUTION_STATUSES
+    return execution_phase(status).is_active
 
 
 def is_terminal_execution_status(status: str | None) -> bool:
-    return status in TERMINAL_EXECUTION_STATUSES
+    return execution_phase(status).is_terminal
 
 
 class NoActiveExecutionError(RuntimeError):

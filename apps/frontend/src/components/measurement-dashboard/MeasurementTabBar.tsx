@@ -13,10 +13,8 @@ import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import { EisLegendScheme, IterationSymbol, getEisLegendVisual } from '../../utils/colorUtils';
 import { getBulkIconCells, BulkDisplayMode } from './useBulkSelection';
 import { UiIconSvg } from '../shared/UiIconSvg';
-import {
-  deriveNodeExecutionUiPhase,
-  useExecutionStore,
-} from '../../state/executionStateBridge';
+import { useExecutionStore } from '../../state/executionStateBridge';
+import { nodePhaseForDisplay } from '../../state/executionStateModel';
 
 // ─── Props ───────────────────────────────────────────────
 
@@ -98,7 +96,7 @@ const getLegendMarkerStyle = (color: string, symbol: IterationSymbol): React.CSS
 // ─── 组件 ────────────────────────────────────────────────
 
 export const MeasurementTabBar: React.FC<MeasurementTabBarProps> = (props) => {
-  const nodeStatuses = useExecutionStore(state => state.nodeStatuses);
+  const nodeStatuses = useExecutionStore(state => state.nodes.statuses);
   if (props.measurementNodes.length === 0) return null;
 
   return props.variant === 'primary'
@@ -232,7 +230,7 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
                 const globalIndex = nodeIdToIndexMap.get(node.id) ?? -1;
                 const isActive = selectedNodeIds.has(node.id);
 
-                const nodePhase = deriveNodeExecutionUiPhase(
+                const nodePhase = nodePhaseForDisplay(
                   nodeStatuses[globalIndex],
                   globalIndex,
                   systemState,
@@ -329,7 +327,7 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
       {/* 右侧：测量状态药丸 */}
       {(() => {
         const globalIndex = nodeIdToIndexMap.get(activeNode.id) ?? -1;
-        const nodePhase = deriveNodeExecutionUiPhase(
+        const nodePhase = nodePhaseForDisplay(
           nodeStatuses[globalIndex],
           globalIndex,
           systemState,
