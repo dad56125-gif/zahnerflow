@@ -15,6 +15,9 @@ for (const relativePath of ['package.json', 'apps/frontend/package.json', 'apps/
 const pyproject = readFileSync(resolve(root, 'pyproject.toml'), 'utf8');
 const pyprojectVersion = pyproject.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 if (pyprojectVersion !== version) errors.push(`pyproject.toml: ${pyprojectVersion} !== ${version}`);
+const lockedVersion = readFileSync(resolve(root, 'uv.lock'), 'utf8')
+  .match(/name = "zahnerflow-runtime"\r?\nversion = "([^"]+)"/)?.[1];
+if (lockedVersion !== version) errors.push(`uv.lock 根项目: ${lockedVersion} !== ${version}`);
 const generated = [
   ['apps/python_backend/version.py', `APP_VERSION = ${JSON.stringify(version)}`],
   ['apps/frontend/src/generated/appVersion.ts', `APP_VERSION = ${JSON.stringify(version)}`],

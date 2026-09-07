@@ -43,8 +43,11 @@ export default defineConfig({
     assetsDir: 'assets',
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'clsx'],
+        manualChunks(id) {
+          const moduleId = id.replace(/\\/g, '/');
+          if (moduleId.includes('/zrender/')) return 'graphics';
+          if (moduleId.includes('/echarts/')) return 'charts';
+          if (/\/(react|react-dom|scheduler)\//.test(moduleId)) return 'react-vendor';
         }
       }
     }

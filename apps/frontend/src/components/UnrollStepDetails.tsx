@@ -16,4 +16,3 @@ export function UnrollStepDetails({ row }: { row: UnrollExplorerRow | null }) {
     <details><summary>完整步骤参数</summary><pre>{JSON.stringify(row.step.node?.config ?? {}, null, 2)}</pre></details>
   </>;
 }
-

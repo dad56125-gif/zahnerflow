@@ -2,8 +2,8 @@
 node_modules/
 **/node_modules/
 
-# 锁文件
-pnpm-lock.yaml
+# 保留 pnpm-lock.yaml 与 uv.lock，固定安装结果
+# 不使用的包管理器锁文件
 yarn.lock
 package-lock.json
 

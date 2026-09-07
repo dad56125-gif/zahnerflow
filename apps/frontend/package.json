@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-flowgram",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "电化学测量流程编辑器 - 具有高级玻璃态设计界面",
   "type": "module",
   "scripts": {
@@ -21,21 +21,13 @@
     "@fontsource/oxanium": "^5.2.8",
     "@types/node": "^24.5.2",
     "@zahnerflow/types": "workspace:*",
-    "autoprefixer": "^10.4.0",
-    "axios": "^1.12.2",
     "clipper-lib": "^6.4.2",
-    "clsx": "^2.0.0",
     "echarts": "^5.5.0",
-    "echarts-for-react": "^3.0.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
-    "postcss": "^8.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "socket.io-client": "^4.8.1",
-    "tailwindcss": "^3.3.0",
-    "tinykeys": "^4.0.0",
-    "zundo": "^2.3.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

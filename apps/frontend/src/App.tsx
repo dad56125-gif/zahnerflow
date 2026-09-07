@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import type { NodeCategory, WorkstationType, WorkflowNode } from '@zahnerflow/types';
 import { getNodeGroupsByWorkstation } from './utils/nodeUtilities';
 
@@ -27,7 +27,7 @@ import { useMfc } from './modules/mfc/useMfc';
 import { useFurnace } from './modules/furnace/useFurnace';
 import { isFurnaceReady, isMfcReady } from './modules/common/runtimeDeviceSelectors';
 import { DeviceModal } from './components/furnace/FurnaceDeviceModal';
-import { ReportGeneratorModal } from './components/report/ReportGeneratorModal';
+const ReportGeneratorModal = lazy(() => import('./components/report/ReportGeneratorModal'));
 import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
 import { UserProvider } from './components/shared/UserContext';
 import { useWorkflowExecution } from './hooks/useWorkflowExecution';
@@ -74,6 +74,7 @@ const AppContent: React.FC = () => {
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
+  const [reportRequested, setReportRequested] = useState(false);
 
   useEffect(() => {
     if (fixedDevice) {
@@ -145,7 +146,7 @@ const AppContent: React.FC = () => {
     const currentFingerprint = JSON.stringify(currentNodes.map((node: WorkflowNode) => ({ id: node.id, type: node.type, config: node.config })));
     const snapshotFingerprint = JSON.stringify(snapshotNodes.map((node: WorkflowNode) => ({ id: node.id, type: node.type, config: node.config })));
     if (currentFingerprint !== snapshotFingerprint) {
-      useCanvasStore.getState().setNodes(snapshotNodes);
+      useCanvasStore.getState().hydrateExecutionNodes(snapshotNodes);
     }
 
     const workstationType = (systemState.workstationType || 'zahner-zennium') as WorkstationType;
@@ -222,7 +223,7 @@ const AppContent: React.FC = () => {
           onResetFlow={resetFlow}
           workflowBlockRunBlocked={workflowBlockRunBlocked}
           onLoopDetected={handleLoopDetected}
-          onGenerateReport={() => setShowReportModal(true)}
+          onGenerateReport={() => { setReportRequested(true); setShowReportModal(true); }}
           onUnrollViewOpenChange={setShowUnrollView}
           autoStartupConfig={zahnerAutoStartupConfig}
           runMetadataWarning={runMetadataWarning?.message || null}
@@ -287,10 +288,9 @@ const AppContent: React.FC = () => {
       />
 
       {/* 实验记录 Modal */}
-      <ReportGeneratorModal
-        isOpen={showReportModal}
-        onClose={() => setShowReportModal(false)}
-      />
+      {reportRequested && <Suspense fallback={showReportModal ? <ModalLayer onClose={() => setShowReportModal(false)} centered><div className="glass-panel" role="status">正在加载实验记录…</div></ModalLayer> : null}>
+        <ReportGeneratorModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} />
+      </Suspense>}
     </div>
   );
 };

@@ -27,6 +27,13 @@ const nextPyproject = pyproject.replace(/(^version\s*=\s*)"[^"]+"/m, `$1"${versi
 if (!/^version\s*=\s*"[^"]+"/m.test(pyproject)) throw new Error('pyproject.toml 未找到项目 version');
 writeFileSync(pyprojectPath, nextPyproject);
 
+// uv.lock 的根项目版本是 VERSION 的派生值，第三方依赖条目保持不变。
+const lockPath = resolve(root, 'uv.lock');
+const lock = readFileSync(lockPath, 'utf8');
+const rootPackagePattern = /(name = "zahnerflow-runtime"\r?\nversion = )"[^"]+"/;
+if (!rootPackagePattern.test(lock)) throw new Error('uv.lock 未找到根项目版本');
+writeFileSync(lockPath, lock.replace(rootPackagePattern, `$1"${version}"`));
+
 const generatedFiles = [
   ['apps/python_backend/version.py', `APP_VERSION = ${JSON.stringify(version)}\n`],
   ['apps/frontend/src/generated/appVersion.ts', `export const APP_VERSION = ${JSON.stringify(version)} as const;\n`],

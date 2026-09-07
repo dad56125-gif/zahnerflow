@@ -1,5 +1,4 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { getReportStatusText, nodeOutputText } from './reportPresentation';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
 import { STATUS_ICON_NAMES, type ReportData } from './types';
 import { UI_ICON_PATHS } from '../shared/uiIcons';
@@ -38,21 +37,6 @@ function cleanFilePart(value: string): string {
   return value.trim().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_') || '未命名工作流';
 }
 
-function getStatusText(status: string): string {
-  switch (status) {
-    case 'completed':
-      return '成功';
-    case 'failed':
-      return '失败';
-    case 'cancelled':
-      return '已取消';
-    case 'running':
-      return '执行中';
-    default:
-      return '待处理';
-  }
-}
-
 function statusIconMarkup(status: string): string {
   const iconName = STATUS_ICON_NAMES[status];
   if (!iconName) return '';
@@ -69,10 +53,11 @@ function statusIconMarkup(status: string): string {
 }
 
 function statusLabelMarkup(status: string): string {
-  return `${statusIconMarkup(status)} ${getStatusText(status)}`;
+  return `${statusIconMarkup(status)} ${getReportStatusText(status)}`;
 }
 
 export async function exportToPdf(reportData: ReportData, containerElement: HTMLElement): Promise<void> {
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
   const canvas = await html2canvas(containerElement, {
     scale: 2,
     useCORS: true,
@@ -171,8 +156,8 @@ export function generateReportHtml(reportData: ReportData): string {
                     <td>${escapeHtml(node.label)}</td>
                     <td>${escapeHtml(node.keyParams)}</td>
                     <td>${statusLabelMarkup(node.status)}</td>
-                    <td>${node.durationSeconds ? formatDuration(node.durationSeconds) : '-'}</td>
-                    <td>${escapeHtml(node.error || node.csvPath || node.outputFile || node.resultSummary || '-')}</td>
+                    <td>${node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</td>
+                    <td>${escapeHtml(nodeOutputText(node))}</td>
                   </tr>
                 `
               )

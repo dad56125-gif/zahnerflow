@@ -5,7 +5,7 @@
 | 数据 | 定义来源 | 边界 |
 | --- | --- | --- |
 | 应用版本 | `VERSION` | `pnpm version:sync` 同步各包 |
-| API 与报告协议 | `apps/shared/contracts/protocol.py` | API 4.0.0、报告 3.0，独立于应用版本 |
+| API 与报告协议 | `apps/shared/contracts/protocol.py` | API 4.1.0、报告 3.0，独立于应用版本 |
 | 数据库列和索引 | `apps/python_backend/database_schema.py` | 列定义只维护一次，新建与补列共用 |
 | 数据库迁移 | `PRAGMA user_version` | 当前为 1，禁止与 SQLite 自身的内部 `schema_version` pragma 混用 |
 | 用户档案、设置与默认值 | `apps/shared/contracts/settings.py` | Python 校验并生成 TypeScript 文档类型及初始路径值 |
@@ -37,7 +37,9 @@
 
 后续结构变更必须增加迁移阶段与数据保留验证。不得把更新应用版本作为迁移，也不能修改已经执行过的迁移行为来偷偷改变旧库。
 
-历史结果兼容仅保留在 `report_service.normalize_stored_result`。这是读取已存在实验数据的明确边界，不是提供第二套公开协议。前端不再接受旧报告字段；外部消费者需根据 API 4.0.0 和报告 3.0 更新。
+报告结果别名集中在 `report_service.normalize_stored_result`。这是读取已存在实验数据的明确边界，不是提供第二套公开协议。前端不再接受旧报告字段；外部消费者需根据 API 4.1.0 和报告 3.0 更新。历史工作流节点参数与设备协议仍有各自的兼容读取，不能把报告规范化理解为所有设备参数都已强类型化。
+
+产物来源与文件展示分开：后端补齐时按执行、节点、路径避免重复补入，并保留各节点的来源关联；前端展示按物理路径去重。同一个目录被多个步骤引用，不代表多份物理文件。
 
 ## 验证约定
 

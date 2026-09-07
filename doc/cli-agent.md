@@ -101,6 +101,8 @@ uv run zahnerflow request POST /api/devices/mfc/setpoint --file setpoint.json
 
 `--file -` 从 stdin 接收 JSON，适合 Agent 管道调用。CLI 没有另写设备执行逻辑；可用路径和语义仍以运行中接口及 `routers/devices.py` 为准。
 
+MFC 连接后须扫描目标地址，再设置流量。例如内置模拟器的 N2 地址为 32，可把 `{"address":32}` 写入 `scan.json`，调用 `request POST /api/devices/mfc/scan --file scan.json`；流量节点的 `deviceSelection` 应使用扫描得到的地址与气体，例如 `32:N2`。连接成功不代表任意地址已可控制。
+
 ## App 显示与重连
 
 外部实验经相同 Socket.IO 事件进入 App，画布恢复对应节点，状态栏显示 `CLI` 或 `Agent` 来源、进度和状态。来源持久化在执行的 `workflow_snapshot.commandSource`，复用工作流时每次执行分别记录，不覆盖工作流创建者。

@@ -6,7 +6,7 @@ import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
 import { DataViewer } from '../DataViewer';
 import { useUser } from '../shared/userContextState';
-import { useExecutionSnapshot } from '../../state/executionStateBridge';
+import { selectCanvasEditable, useExecutionStore, useExecutionSnapshot } from '../../state/executionStateBridge';
 import { describeExecution } from '../../state/executionStateModel';
 
 // 导入工具函数
@@ -169,6 +169,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 2. 获取实时系统状态
     const systemState = useExecutionSnapshot();
+    const canvasEditable = useExecutionStore(selectCanvasEditable);
     const execution = useMemo(() => describeExecution(systemState), [systemState]);
     const [nodeRemainingSeconds, setNodeRemainingSeconds] = useState<number | null>(null);
     const [nodeElapsedSeconds, setNodeElapsedSeconds] = useState(0);
@@ -731,6 +732,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
               type="button"
               className="btn btn--xs btn--secondary"
               onClick={collapseCurrentWorkflowGroup}
+              disabled={!canvasEditable}
               title="把当前连续分组收缩回工作流块"
             >
               <span className="btn-icon">↔</span>
@@ -743,7 +745,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     const renderParameterField = (key: string, defaultValue: NodeParameterValue | undefined) => {
       const currentValue = (node.config || {})[key];
-      const isDisabled = (node.config || {}).check_battery_health && (key === 'measurementDuration' || key === 'samplingInterval');
+      const isDisabled = !canvasEditable || ((node.config || {}).check_battery_health && (key === 'measurementDuration' || key === 'samplingInterval'));
 
       const props = {
         paramKey: key,
@@ -849,6 +851,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                 <select
                   className="select"
                   value={currentWorkflowId}
+                  disabled={!canvasEditable}
                   onChange={(event) => {
                     const selected = workflowOptions.find((workflow) => workflow.id === event.target.value);
                     updateNodeConfig(node.id, {
@@ -900,7 +903,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                   type="button"
                   className="btn btn--xs btn--secondary"
                   onClick={expandWorkflowBlockInPlace}
-                  disabled={nestedBlocked}
+                  disabled={nestedBlocked || !canvasEditable}
                   title={nestedBlocked ? '子工作流包含工作流块，v1 暂不支持展开' : '用子工作流节点替换当前工作流块'}
                 >
                   <span className="btn-icon">↔</span>
@@ -934,7 +937,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
             <div className="flex items-center justify-end gap-sm">
               <button
                 onClick={() => saveVisibleDefaults(visibleParams)}
-                disabled={matchesSavedDefaults}
+                disabled={matchesSavedDefaults || !canvasEditable}
                 className={`btn btn--xs ${matchesSavedDefaults ? 'btn--success' : 'btn--secondary'} property-defaults-btn`}
                 title={matchesSavedDefaults ? "当前可见参数已是节点默认值" : "将当前可见参数设定为后续新增节点的默认值"}
               >
@@ -991,7 +994,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
             </div>
 
             {activeTab === 'basic' && renderBasicProperties()}
-            {activeTab === 'parameters' && renderParameters()}
+            {activeTab === 'parameters' && <>{!canvasEditable && <p className="property-warning">运行中参数只读</p>}{renderParameters()}</>}
 
             {activeTab === 'chart' && supportsChart && node && (
               <DataViewer

@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-monorepo",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "ZahnerFlow 电化学工作流管理系统",
   "private": true,
   "scripts": {
@@ -45,7 +45,7 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "pnpm": ">=9.0.0"
   },
   "keywords": [
     "electrochemistry",

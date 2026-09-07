@@ -30,12 +30,27 @@ def find_matching_loop_end(nodes: list[dict], loop_start_idx: int, end_idx: int 
 
 
 def unroll_loops(nodes: list[dict], workflow_loader=None, auto_startup_config: dict | None = None) -> dict:
+    _validate_loop_structure(nodes)
     steps = _unroll_recursive(nodes, 0, len(nodes), [], [], [], workflow_loader or _load_workflow_nodes)
     steps = _with_measurement_boundaries(steps, auto_startup_config or {})
     for unrolled_index, step in enumerate(steps):
         step["unrolledIndex"] = unrolled_index
         step["unrolledTotal"] = len(steps)
     return {"steps": steps, "summary": _build_summary(nodes, steps)}
+
+
+def _validate_loop_structure(nodes: list[dict]) -> None:
+    starts: list[str] = []
+    for node in nodes:
+        if node.get("type") == LOOP_START:
+            _loop_count(node)
+            starts.append(str(node.get("id", "")))
+        elif node.get("type") == LOOP_END:
+            if not starts:
+                raise ValueError(f"循环结束节点 {node.get('id', '')} 缺少对应的开始节点")
+            starts.pop()
+    if starts:
+        raise ValueError(f"循环开始节点 {starts[-1]} 缺少对应的结束节点")
 
 
 def _unroll_recursive(
@@ -58,8 +73,7 @@ def _unroll_recursive(
         if node_type == LOOP_START:
             loop_end_idx = find_matching_loop_end(nodes, index, end_idx)
             if loop_end_idx == -1:
-                index += 1
-                continue
+                raise ValueError(f"循环开始节点 {node.get('id', '')} 缺少对应的结束节点")
 
             total_iterations = _loop_count(node)
             body_node_indices = _body_node_indices(nodes, index + 1, loop_end_idx)
@@ -334,6 +348,7 @@ def _expand_workflow_block(
         for child in child_nodes
         if child.get("type") not in IGNORED_BLOCK_NODE_TYPES
     ]
+    _validate_loop_structure(executable_nodes)
     child_block_path = [
         *block_path,
         {
@@ -425,9 +440,12 @@ def _loop_count(node: dict) -> int:
     config = node.get("config") or {}
     raw_count = config.get("loopCount", 1)
     try:
-        return max(0, int(raw_count))
-    except (TypeError, ValueError):
-        return 1
+        count = int(raw_count)
+        if isinstance(raw_count, bool) or count < 0 or float(raw_count) != count:
+            raise ValueError
+        return count
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(f"循环节点 {node.get('id', '')} 的 loopCount 必须是非负整数") from None
 
 
 def _float_config(config: dict, keys: list[str], default: float) -> float:

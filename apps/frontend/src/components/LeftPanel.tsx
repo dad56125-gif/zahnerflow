@@ -1,3 +1,4 @@
+import { selectCanvasEditable, useExecutionStore } from '../state/executionStateBridge';
 import React from 'react';
 import type { NodeCategory, NodeType, WorkstationType } from '@zahnerflow/types';
 import { useCanvasStore } from '../state/canvasStore';
@@ -13,10 +14,12 @@ interface LeftPanelProps {
 }
 
 export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkstation, furnaceConnected = false, mfcConnected = false }) => {
+  const editable = useExecutionStore(selectCanvasEditable);
   const addNode = useCanvasStore((state) => state.addNode);
 
   // 判断节点是否禁用
   const isNodeDisabled = (nodeType: string): boolean => {
+    if (!editable) return true;
     if (nodeType === 'change_temperature' && !furnaceConnected) return true;
     if (nodeType === 'change_gas_flow' && !mfcConnected) return true;
     return false;
@@ -79,6 +82,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
                         <div
                           key={nodeType}
                           className={`node-item glass ${disabled ? 'disabled' : ''}`}
+                          role="button"
+                          aria-disabled={disabled}
+                          tabIndex={disabled ? -1 : 0}
+                          onKeyDown={event => { if (!disabled && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); handleCreateNode(nodeType); } }}
                           draggable={!disabled}
                           onDragStart={(e) => {
                             if (disabled) { e.preventDefault(); return; }
@@ -91,7 +98,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
                             }
                           }}
                           onClick={() => !disabled && handleCreateNode(nodeType)}
-                          title={disabled ? `请先连接${nodeType === 'change_temperature' ? 'Furnace' : 'MFC'}设备` : config.description}
+                          title={!editable ? '运行中不能修改执行计划' : disabled ? `请先连接${nodeType === 'change_temperature' ? 'Furnace' : 'MFC'}设备` : config.description}
                         >
                           <div className="node-icon">
                             <NodeIconSvg nodeType={nodeType} fallback={config.icon} />

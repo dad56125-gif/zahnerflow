@@ -86,7 +86,7 @@
 
 ### 8.1 单一版本源
 
-项目根目录的 `VERSION` 是应用版本号的唯一真实来源，格式为语义化版本 `MAJOR.MINOR.PATCH`，例如 `1.0.1`。根 `package.json`、`apps/frontend/package.json`、`apps/desktop/package.json`、`packages/types/package.json`、`pyproject.toml`、后端 `version.py` 和前端/桌面生成版本文件不得分别手动维护，必须由 `pnpm version:sync` 同步。
+项目根目录的 `VERSION` 是应用版本号的唯一真实来源，格式为语义化版本 `MAJOR.MINOR.PATCH`，例如 `1.0.1`。根 `package.json`、`apps/frontend/package.json`、`apps/desktop/package.json`、`packages/types/package.json`、`pyproject.toml`、`uv.lock` 中的根项目版本、后端 `version.py` 和前端/桌面生成版本文件不得分别手动维护，必须由 `pnpm version:sync` 同步。
 
 数据库 `schema_version`、API 主版本和应用版本必须分开管理，不能用提高应用版本代替数据库迁移或 API 版本变更。
 

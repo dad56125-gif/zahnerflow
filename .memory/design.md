@@ -139,6 +139,8 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-计划]
 
+输入规则：循环起止必须完整配对，包括工作流块内部；`loopCount` 只接受非负整数，缺省为 1，0 表示不执行循环体。非法次数和未配对循环在归档前拒绝，不再静默跳过、截断或回退为一次。
+
 当前规则：`ExecutionPlanner` 是执行规划的唯一入口。`runtime/execution_semantics.py` 的节点注册表统一描述可执行节点的 dispatch、ETA、测量边界、可中断性和时长学习资格；Planner 必须拒绝未注册的源节点或展开步骤。Planner 解析请求中的节点或已保存工作流，调用 `loop_unroller` 完成循环、工作流块和高级节点展开，插入自动测量边界，计算 ETA 和时间线，并校验 `startFromUnrolledIndex`，最终返回 `ExecutionPlan`。工作流预览、ETA 估算、执行启动和 `ExecutionEngine` 必须使用同一份计划。
 
 计划内容：`ExecutionPlan` 持有深拷贝后的节点快照、展开步骤、展开摘要、ETA、时间线、合法起点和为中途开始测量补回的自动 `startup` 步骤索引。`scheduled_start` 在计划阶段只解析一次绝对 `scheduledAt`，ETA 与执行等待消费同一时间；已过期时间在规划阶段拒绝。`/unroll-preview` 只读取步骤和摘要，`/estimate` 只读取 ETA 和时间线，执行创建把同一节点快照写入 execution 记录后将计划对象交给 `ExecutionEngine`；执行引擎不得重新解析、展开或估算。
@@ -221,6 +223,8 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-应用骨架]
 
+编辑边界：`selectCanvasEditable` 从执行阶段与待决命令派生可编辑性，画布 store 的所有用户结构/参数修改入口统一检查。左侧节点库、属性栏与历史加载同步禁用；选择与查看仍然可用。后端完整快照经专用 `hydrateExecutionNodes` 恢复，不走用户编辑入口。无消费者的撤销快照中间件已删除，不维护没有界面入口的历史副本。
+
 当前规则：React 应用骨架由顶栏、左侧节点栏、画布、右侧属性栏、底部状态栏和浮层组成。`App.tsx` 负责组合全局 UI 状态、运行状态接管、设备 modal、模拟控制、实验记录和图表面板。启动校验、运行信息提示和请求反馈归属 `hooks/useWorkflowExecution.ts`；窗口环境归属 `hooks/useDesktopWindow.ts`；开发者模式与模拟设置订阅由设备和应用共用的 hooks 提供。工作站节点分组从所选工作站派生，不保存第二份状态；设备 modal 只接收实际业务 props，不保留未使用的尺寸参数。
 
 归属文件：`apps/frontend/src/App.tsx`、`apps/frontend/src/components/TopBar.tsx`、`apps/frontend/src/components/LeftPanel.tsx`、`apps/frontend/src/components/canvas/Canvas.tsx`、`apps/frontend/src/components/property/RightPanel.tsx`、`apps/frontend/src/components/BottomBar.tsx`。
@@ -251,6 +255,8 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [报告-实验记录]
 
+组件边界：报告窗口首次打开才加载，预览由 `ReportPreview` 渲染；界面和 HTML 导出共用 `reportPresentation` 状态与输出展示。PDF 渲染库只在执行 PDF 导出时加载。列表请求使用代次，过期响应不能改变当前选择。Vite 按 React、图表和图形引擎拆包，不改变这些库的职责。物理路径去重发生在前端展示；后端补齐步骤产物时按执行、节点和路径判断是否已有记录，保留不同节点关联同一目录的来源。
+
 当前规则：实验记录以工作流为主轴组织定义、执行、报告和相似地图。报告预览只展示后端执行事实、workflow snapshot 和可追溯的派生展示。报告 3.0 由共享 `ExecutionReport` 定义，`report_service.py` 是数据库读边界的唯一映射：对历史结果别名归一化，出口仅输出驼峰字段，使用 `executionId` 与 `ownerName`；前端直接消费生成类型。每次 execution 的操作者写入自身 snapshot，不从复用工作流的创建者继承。新测量结果使用 `dataPoints`，旧记录保持原样，在读边界转换。测量结果先规范为 `MeasurementOutcome`；普通失败/取消、安全停止分别形成明确状态，其中 `stopped_safety` 是“步骤完成但带安全警告”，必须持久化原因、统计、warning 和实际 artifact，且不进入成功时长学习。报告按物理路径去重输出。实验记录 modal 每次打开都失效并重新加载本地 runs、definition、report 和 map 缓存，避免展示上次打开时的旧事实。
 
 归属文件：`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/routers/workflows.py`、`apps/frontend/src/components/report/ReportGeneratorModal.tsx`、`apps/frontend/src/components/report/reportDataBuilder.ts`、`apps/frontend/src/components/report/WorkflowMapView.tsx`。
@@ -260,6 +266,8 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 禁止事项：禁止把内部身份字段作为普通用户流程的一部分；禁止把未执行步骤伪造成执行结果。
 
 ## [启动-运行入口]
+
+依赖与版本：`pnpm-lock.yaml` 和 `uv.lock` 一同纳入版本管理；pnpm 声明下限为 9。`VERSION` 同步器同时更新 uv 锁中的根项目版本，不修改第三方版本；构建前检查该派生版本。前端开启未使用局部变量与参数检查，已移除没有源码消费者的依赖。
 
 当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；根与子包的构建、打包和分发入口均先执行版本检查；`setup` 直接运行 `pnpm install` 和 `uv sync`，不依赖缺失脚本；Windows 桌面打包必须先构建当前 Python 后端产物，再交给 `electron-builder`，不能复用未知版本的旧后端二进制。桌面启动顺序为确定数据目录、启动 Python、等待健康检查成功、再加载前端；前端用户初始化先成功读取 `/api/users`，再校验并恢复 `localStorage` 中的上次用户标识，接口错误必须显式呈现。
 

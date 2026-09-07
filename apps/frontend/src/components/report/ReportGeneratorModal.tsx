@@ -1,3 +1,7 @@
+import { selectCanvasEditable, useExecutionStore } from '../../state/executionStateBridge';
+import { ReportPreview } from './ReportPreview';
+import { StatusLabel } from './ReportStatus';
+import { statusClass } from './reportPresentation';
 import type { ExecutionReport } from '@zahnerflow/types';
 /**
  * 实验记录 modal — 左侧 workflow 树 + 右侧定义/报告切换
@@ -10,13 +14,10 @@ import { useCanvasStore } from '../../state/canvasStore';
 import { useWorkflowStore } from '../../state/currentWorkflowStore';
 import { buildReportData, formatDateTime, formatDuration } from './reportDataBuilder';
 import { WorkflowMapView } from './WorkflowMapView';
-import { UiIconSvg } from '../shared/UiIconSvg';
 import { summarizeNodeParameters } from '../../types/NodeConfiguration';
 import {
-  STATUS_ICON_NAMES,
   NODE_TYPE_LABELS,
   type ReportData,
-  type ReportNodeInfo,
   type WorkflowSummary,
   type RunSummary,
   type WorkflowDefinition,
@@ -33,41 +34,6 @@ type RightPanelMode = 'definition' | 'report' | 'map';
 const RECENT_RUNS_DEFAULT_LIMIT = 3;
 
 /* ── helpers ─────────────────────────────────────────── */
-
-function getStatusText(status: string): string {
-  switch (status) {
-    case 'completed':
-    case 'success':
-      return '成功';
-    case 'failed':
-      return '失败';
-    case 'cancelled':
-      return '已取消';
-    case 'running':
-      return '执行中';
-    case 'skipped':
-      return '已跳过';
-    case 'pending':
-      return '未执行';
-    default:
-      return '未执行';
-  }
-}
-
-function StatusLabel({ status }: { status: string }) {
-  const iconName = STATUS_ICON_NAMES[status];
-
-  return (
-    <>
-      {iconName && <UiIconSvg name={iconName} />}
-      {getStatusText(status)}
-    </>
-  );
-}
-
-function statusClass(status: string): string {
-  return `is-status-${status || 'pending'}`;
-}
 
 function isGeneratedWorkflowName(name: string | null | undefined): boolean {
   const value = (name || '').trim();
@@ -86,14 +52,6 @@ function WorkflowExpandArrow({ expanded }: { expanded: boolean }) {
       <path d="M -8 -3 L 0 5 L 8 -3" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
-
-function nodeOutputText(node: ReportNodeInfo): string {
-  if (node.error) return node.error;
-  if (node.csvPath) return node.csvPath;
-  if (node.outputFile) return node.outputFile;
-  if (node.resultSummary) return node.resultSummary;
-  return '-';
 }
 
 type WorkflowNodeRecord = Record<string, unknown>;
@@ -121,6 +79,8 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
   onClose,
 }) => {
   // ── state ──
+  const canvasEditable = useExecutionStore(selectCanvasEditable);
+  const summaryRequestId = useRef(0);
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { setNodes, selectNode } = useCanvasStore();
@@ -191,6 +151,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
 
   // ── 加载 workflow 列表 ──
   const loadWorkflowSummaries = useCallback(async () => {
+    const requestId = ++summaryRequestId.current;
     setWfLoading(true);
     setWfError(null);
     try {
@@ -198,19 +159,13 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
         items: WorkflowSummary[];
         total: number;
       }>();
+      if (requestId !== summaryRequestId.current) return;
       setWorkflowSummaries(resp.items || []);
 
-      // 默认选中最近执行的 workflow
-      if (resp.items && resp.items.length > 0) {
-        const latest = resp.items[0];
-        setSelectedWorkflowId(latest.id);
-        setSelectedRunId(null);
-        setRightMode('definition');
-      }
     } catch (err) {
-      setWfError(err instanceof Error ? err.message : '加载工作流列表失败');
+      if (requestId === summaryRequestId.current) setWfError(err instanceof Error ? err.message : '加载工作流列表失败');
     } finally {
-      setWfLoading(false);
+      if (requestId === summaryRequestId.current) setWfLoading(false);
     }
   }, []);
 
@@ -218,6 +173,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
     if (!isOpen) return;
     invalidateRecordCaches();
     void loadWorkflowSummaries();
+    return () => { summaryRequestId.current += 1; };
   }, [isOpen, loadWorkflowSummaries, invalidateRecordCaches]);
 
   useEffect(() => {
@@ -493,10 +449,12 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
   }, [favoriteUpdatingIds, updateWorkflowFavoriteState]);
 
   const handleLoadWorkflowToCanvas = useCallback(async (wfId: string) => {
+    if (!selectCanvasEditable(useExecutionStore.getState())) { setWorkflowActionMessage('运行中不能替换画布'); return; }
     setLoadingWorkflowId(wfId);
     setWorkflowActionMessage(null);
     try {
       const workflowData = await runtimeClient.workflows.get<WorkflowDefinition>(wfId);
+      if (!selectCanvasEditable(useExecutionStore.getState())) throw new Error('实验已启动，不能替换画布');
       const sourceNodes = workflowData.nodes || [];
       const canvasNodes = workflowNodesForCanvas(sourceNodes);
       setNodes(canvasNodes);
@@ -668,7 +626,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                 type="button"
                 className="btn btn--sm btn--primary is-prominent"
                 onClick={() => void handleLoadWorkflowToCanvas(wf.id)}
-                disabled={isLoadingWorkflow}
+                disabled={isLoadingWorkflow || !canvasEditable}
               >
                 {isLoadingWorkflow ? '加载中...' : '加载到画布'}
               </button>
@@ -740,137 +698,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
       return <div className="report-modal__feedback">选择左侧执行记录后预览报告</div>;
     }
 
-    return (
-      <div className="report__preview" ref={reportRef}>
-        <div className="report__cover">
-          <h1 className="report__title">实验报告</h1>
-          <div className="report__cover-info">
-            <p><strong>项目名称</strong>{reportData.projectName || '-'}</p>
-            <p><strong>样品名称</strong>{reportData.individualName || '-'}</p>
-            <p><strong>工作流</strong>{reportData.workflowName || '-'}</p>
-            <p><strong>执行时间</strong>{formatDateTime(reportData.startTime)}</p>
-            <p><strong>操作人员</strong>{reportData.user || '-'}</p>
-          </div>
-        </div>
-
-        <section className="report__section">
-          <h2 className="report__section-title">执行摘要</h2>
-          <div className="report__summary-grid">
-            <div className="report__summary-item report__summary-item--full">
-              <span>状态</span>
-              <strong>
-                <span className={`report__status ${statusClass(reportData.status)}`}>
-                  <StatusLabel status={reportData.status} />
-                </span>
-              </strong>
-            </div>
-            {reportData.error && (
-              <div className="report__summary-item report__summary-item--full report__summary-item--error">
-                <span>错误信息</span>
-                <strong>{reportData.error}</strong>
-              </div>
-            )}
-            <div className="report__summary-item">
-              <span>开始时间</span>
-              <strong>{formatDateTime(reportData.startTime)}</strong>
-            </div>
-            <div className="report__summary-item">
-              <span>结束时间</span>
-              <strong>{formatDateTime(reportData.endTime)}</strong>
-            </div>
-            <div className="report__summary-item">
-              <span>总耗时</span>
-              <strong>{formatDuration(reportData.durationSeconds)}</strong>
-            </div>
-            <div className="report__summary-item">
-              <span>警告数</span>
-              <strong>{reportData.warnings}</strong>
-            </div>
-            <div className="report__summary-item">
-              <span>产物数</span>
-              <strong>{reportData.artifacts}</strong>
-            </div>
-            <div className="report__summary-item">
-              <span>展开步骤数</span>
-              <strong>{reportData.nodes.length}</strong>
-            </div>
-          </div>
-        </section>
-
-        <section className="report__section">
-          <h2 className="report__section-title">展开步骤明细</h2>
-          <div className="report__table-scroll">
-            <table className="report__nodes-table report__nodes-table--steps">
-              <thead>
-                <tr>
-                  <th>步骤</th>
-                  <th>节点</th>
-                  <th>关键参数</th>
-                  <th>状态</th>
-                  <th>耗时</th>
-                  <th>输出或错误</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.nodes.map((node) => (
-                  <tr key={`${node.index}-${node.type}-${node.iterationLabel}`} className={`indent-level-${node.indentLevel}`}>
-                    <td>
-                      <span className="report__step-index">{node.index}</span>
-                      <span className="report__step-meta">原节点 {node.originalIndex}</span>
-                      {node.blockLabel && <span className="report__step-meta">来自 {node.blockLabel}</span>}
-                      {node.iterationLabel !== '-' && <span className="report__step-meta">{node.iterationLabel}</span>}
-                    </td>
-                    <td>{node.label}</td>
-                    <td>{node.keyParams}</td>
-                    <td><span className={`report__status ${statusClass(node.status)}`}><StatusLabel status={node.status} /></span></td>
-                    <td>
-                      <span>{node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</span>
-                      {node.estimatedSeconds != null && <span className="report__step-meta">估算 {formatDuration(node.estimatedSeconds)}</span>}
-                    </td>
-                    <td className={node.error ? 'report__node-output report__node-output--error' : 'report__node-output'}>
-                      {nodeOutputText(node)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {reportData.artifactDetails.length > 0 && (
-          <section className="report__section">
-            <h2 className="report__section-title">测量输出</h2>
-            <div className="report__artifact-list">
-              {reportData.artifactDetails.map((artifact) => (
-                <div className="report__artifact" key={artifact.filePath}>
-                  <span className="report__artifact-type">{artifact.fileType || 'output'}</span>
-                  <span className="report__artifact-path">{artifact.filePath}</span>
-                  {artifact.dataPoints != null && <span className="report__artifact-meta">{artifact.dataPoints} 点</span>}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {reportData.warningDetails.length > 0 && (
-          <section className="report__section">
-            <h2 className="report__section-title">警告记录</h2>
-            <div className="report__warning-list">
-              {reportData.warningDetails.map((warning, index) => (
-                <div className="report__warning" key={`${warning.createdAt || index}-${warning.message}`}>
-                  <span className="report__warning-type">{warning.type || 'warning'}</span>
-                  <span>{warning.message}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <div className="report__footer">
-          <p>生成时间: {formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
-        </div>
-      </div>
-    );
+    return <ReportPreview ref={reportRef} reportData={reportData} />;
   };
 
   // ── 左侧 sidebar ──

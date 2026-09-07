@@ -381,3 +381,8 @@ export const useExecutionSnapshot = () => useExecutionStore(state => state.snaps
 
 export const useLoopProgress = (loopStartIndex: number) =>
   useExecutionStore(state => state.progress.loops[loopStartIndex]);
+
+/** 运行中的画布展示后端计划，只有空闲或终态才能编辑草稿。 */
+export function selectCanvasEditable(state: ExecutionState): boolean {
+  return !describeExecution(state.snapshot, state.command).is.active && state.command.pending === null;
+}
