@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useDeveloperMode } from '../modules/simulator/useDeveloperMode';
 import { UserSelector } from './user/UserSelector';
 import { useUser } from './shared/userContextState';
 import { Dropdown } from './shared/Dropdown';
 import { CjkText, SpacedCjkText } from './common/SpacedCjkText';
 import { useRafWindowEvent } from '../hooks/useRafWindowEvent';
 import {
-  DEVELOPER_MODE_EVENT,
-  readDeveloperMode,
   writeDeveloperMode,
 } from '../modules/simulator/developerMode';
 
@@ -101,9 +100,9 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
-  const [selectedWorkstation, setSelectedWorkstation] = useState<Workstation | null>(null);
+  const selectedWorkstation = WORKSTATIONS.find(workstation => workstation.id === selectedWorkstationId) || null;
   const [workstationPosition, setWorkstationPosition] = useState({ top: 0, left: 0, width: 0 });
-  const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
+  const developerMode = useDeveloperMode();
   const [developerHint, setDeveloperHint] = useState<string | null>(null);
   const workstationButtonRef = useRef<HTMLButtonElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
@@ -150,27 +149,9 @@ export const TopBar: React.FC<TopBarProps> = ({
     }
   }, []);
 
-  useEffect(() => {
-    const handleDeveloperModeChange = (event: Event) => {
-      const customEvent = event as CustomEvent<boolean>;
-      setDeveloperMode(typeof customEvent.detail === 'boolean' ? customEvent.detail : readDeveloperMode());
-    };
-    const handleStorage = () => setDeveloperMode(readDeveloperMode());
 
-    window.addEventListener(DEVELOPER_MODE_EVENT, handleDeveloperModeChange);
-    window.addEventListener('storage', handleStorage);
-    return () => {
-      window.removeEventListener(DEVELOPER_MODE_EVENT, handleDeveloperModeChange);
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, []);
-
-  useEffect(() => {
-    setSelectedWorkstation(WORKSTATIONS.find((workstation) => workstation.id === selectedWorkstationId) || null);
-  }, [selectedWorkstationId]);
 
   const handleWorkstationSelect = (workstation: Workstation) => {
-    setSelectedWorkstation(workstation);
     setIsWorkstationDropdownOpen(false);
     onWorkstationSelect?.(workstation);
   };

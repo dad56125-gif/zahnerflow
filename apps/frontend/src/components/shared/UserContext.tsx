@@ -34,10 +34,47 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   // 文件路径配置状态
   const [filePathConfig, setFilePathConfigState] = useState<FilePathConfig>(DEFAULT_FILE_PATH_CONFIG);
 
-  // 标记是否正在加载用户配置，防止重复请求
-  const isLoadingConfigRef = useRef(false);
+  // 每次用户切换使旧请求失效，避免慢响应覆盖新用户的配置。
+  const configRequestRef = useRef(0);
+
+  /**
+   * 从后端加载用户的配置（使用统一的用户配置 API）
+   */
+  const loadUserPathConfig = useCallback(async (user: string) => {
+    if (!user) return;
+
+    const requestId = ++configRequestRef.current;
+    try {
+      // 使用新的统一用户配置 API
+      const response = await runtimeClient.users.getSettings<UserSettingsResponse>(user);
+      if (requestId !== configRequestRef.current) return;
+      if (response?.success) {
+        if (response.settings?.filePath) {
+          setFilePathConfigState({
+            basePath: response.settings.filePath.basePath || 'C:\\data\\archive',
+            projectName: response.settings.filePath.projectName || '',
+            individualName: response.settings.filePath.individualName || ''
+          });
+        }
+        if (response.settings?.cloud?.avatar) {
+          setCurrentUserAvatarState(response.settings.cloud.avatar);
+        } else {
+          setCurrentUserAvatarState('');
+        }
+      }
+    } catch (error) {
+      if (requestId !== configRequestRef.current) return;
+      console.warn(`[UserContext] 加载用户 "${user}" 的路径配置失败:`, error);
+      // 失败时使用默认配置
+      setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
+      setCurrentUserAvatarState('');
+    }
+  }, []);
+
+
 
   const loadUsers = useCallback(async () => {
+    const selectionVersion = configRequestRef.current;
     setUsersLoadError(null);
     try {
       const response = await runtimeClient.users.list();
@@ -67,6 +104,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       const fullUsers = await Promise.all(fullUsersPromises);
       setUsers(fullUsers);
+      if (selectionVersion !== configRequestRef.current) return;
       const savedUser = localStorage.getItem('currentUser');
       if (savedUser && userList.includes(savedUser)) {
         setCurrentUserState(savedUser);
@@ -81,41 +119,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setUsers([]);
       setUsersLoadError(error instanceof Error ? error.message : '无法读取用户列表');
     }
-  }, []);
-
-  /**
-   * 从后端加载用户的配置（使用统一的用户配置 API）
-   */
-  const loadUserPathConfig = useCallback(async (user: string) => {
-    if (!user || isLoadingConfigRef.current) return;
-
-    isLoadingConfigRef.current = true;
-    try {
-      // 使用新的统一用户配置 API
-      const response = await runtimeClient.users.getSettings<UserSettingsResponse>(user);
-      if (response?.success) {
-        if (response.settings?.filePath) {
-          setFilePathConfigState({
-            basePath: response.settings.filePath.basePath || 'C:\\data\\archive',
-            projectName: response.settings.filePath.projectName || '',
-            individualName: response.settings.filePath.individualName || ''
-          });
-        }
-        if (response.settings?.cloud?.avatar) {
-          setCurrentUserAvatarState(response.settings.cloud.avatar);
-        } else {
-          setCurrentUserAvatarState('');
-        }
-      }
-    } catch (error) {
-      console.warn(`[UserContext] 加载用户 "${user}" 的路径配置失败:`, error);
-      // 失败时使用默认配置
-      setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
-      setCurrentUserAvatarState('');
-    } finally {
-      isLoadingConfigRef.current = false;
-    }
-  }, []);
+  }, [loadUserPathConfig]);
 
   /**
    * 设置当前用户（同时加载该用户的路径配置）
@@ -124,7 +128,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     // 如果用户没变，不重复操作
     if (user === currentUser) return;
 
+    ++configRequestRef.current;
     setCurrentUserState(user);
+    setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
+    setCurrentUserAvatarState('');
     localStorage.setItem('currentUser', user);
 
     // 加载该用户的路径配置
@@ -190,7 +197,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     if (response.success) {
       setUsers(prev => prev.filter(u => u.user !== user));
       if (currentUser === user) {
-        // 删除当前用户后清空选择，让用户手动选择
+        ++configRequestRef.current;
+        setCurrentUserAvatarState('');
         setCurrentUserState('');
         localStorage.removeItem('currentUser');
         // 重置路径配置
@@ -204,7 +212,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   // 初始化时加载用户列表
   useEffect(() => {
     void loadUsers();
-  }, [loadUserPathConfig, loadUsers]);
+  }, [loadUsers]);
 
   const value: UserContextValue = {
     currentUser,

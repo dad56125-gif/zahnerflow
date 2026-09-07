@@ -12,16 +12,12 @@ import {
   isSimulatorDeviceEnabled,
   simulatorProfileFor,
 } from '../../modules/simulator/simulatorSettings';
-import { readDeveloperMode, DEVELOPER_MODE_EVENT } from '../../modules/simulator/developerMode';
+import { useDeveloperMode } from '../../modules/simulator/useDeveloperMode';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 
 
 interface DeviceModalProps {
   onClose: () => void;
-  modalTop: number;
-  modalLeft: number;
-  modalWidth: number;
-  modalHeight: number;
   furnaceState: FurnaceState;
   furnaceControls: FurnaceControls;
   simulatorSettings: SimulatorSettings;
@@ -31,10 +27,6 @@ type FurnaceTab = 'monitoring' | 'segments' | 'history';
 
 export const DeviceModal: React.FC<DeviceModalProps> = ({
   onClose,
-  modalTop,
-  modalLeft,
-  modalWidth,
-  modalHeight,
   furnaceState,
   furnaceControls,
   simulatorSettings,
@@ -47,7 +39,7 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     history: false,
   });
   const isConnected = furnaceState.connection_status === 'connected';
-  const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
+  const developerMode = useDeveloperMode();
   const refreshFurnaceStatus = furnaceControls.refresh_status;
 
   useEffect(() => {
@@ -56,18 +48,6 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     void refreshFurnaceStatus();
   }, [refreshFurnaceStatus]);
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<boolean>;
-      setDeveloperMode(typeof ce.detail === 'boolean' ? ce.detail : readDeveloperMode());
-    };
-    window.addEventListener(DEVELOPER_MODE_EVENT, handler);
-    window.addEventListener('storage', handler);
-    return () => {
-      window.removeEventListener(DEVELOPER_MODE_EVENT, handler);
-      window.removeEventListener('storage', handler);
-    };
-  }, []);
 
   // 端口管理
   const [ports, setPorts] = useState<string[]>([]);
@@ -104,7 +84,6 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     : ports;
 
   // 保持对 props 的读取以避免 TS 未使用报错
-  void modalTop; void modalLeft; void modalWidth; void modalHeight;
   const activeTabIndex = {
     monitoring: 0,
     segments: 1,

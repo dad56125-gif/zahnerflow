@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-desktop",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "ZAHNERFLOW Electron desktop shell",
   "author": "ZAHNERFLOW Team",
   "private": true,
@@ -8,11 +8,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsc -p tsconfig.json && electron dist/main.js",
-    "build": "tsc -p tsconfig.json",
-    "pack": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --dir",
-    "dist": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder",
-    "dist:mac": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --mac",
-    "dist:win": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --win --x64"
+    "build": "node ../../scripts/check-version.mjs && tsc -p tsconfig.json",
+    "pack": "node ../../scripts/check-version.mjs && pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --dir",
+    "dist": "node ../../scripts/check-version.mjs && pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder",
+    "dist:mac": "node ../../scripts/check-version.mjs && pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --mac",
+    "dist:win": "node ../../scripts/check-version.mjs && pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram build && pnpm --filter zahnerflow-desktop build && pnpm -w backend:dist && electron-builder --win --x64",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

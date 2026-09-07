@@ -1,13 +1,13 @@
 {
   "name": "@zahnerflow/types",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Shared TypeScript types for ZahnerFlow",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "node ../../scripts/check-version.mjs && tsc",
     "dev": "tsc --watch",
-    "prepare": "tsc"
+    "prepare": "node ../../scripts/check-version.mjs && tsc"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

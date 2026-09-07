@@ -20,46 +20,26 @@ import {
   isSimulatorDeviceEnabled,
   simulatorProfileFor,
 } from '../../modules/simulator/simulatorSettings';
-import { readDeveloperMode, DEVELOPER_MODE_EVENT } from '../../modules/simulator/developerMode';
+import { useDeveloperMode } from '../../modules/simulator/useDeveloperMode';
 import { SpacedCjkText } from '../common/SpacedCjkText';
 import { UiIconSvg } from '../shared/UiIconSvg';
 
 interface MFCModalProps {
-  on_close: () => void;
-  modal_top: number;
-  modal_left: number;
-  modal_width: number;
-  modal_height: number;
+  onClose: () => void;
   mfcState: MfcState;
   mfcControls: MfcControls;
   simulatorSettings: SimulatorSettings;
 }
 
 export const MFCModal: React.FC<MFCModalProps> = ({
-  on_close,
-  modal_top,
-  modal_left,
-  modal_width,
-  modal_height,
+  onClose,
   mfcState,
   mfcControls,
   simulatorSettings
 }) => {
   const [now, setNow] = useState(() => Date.now());
-  const [developerMode, setDeveloperMode] = useState(() => readDeveloperMode());
+  const developerMode = useDeveloperMode();
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<boolean>;
-      setDeveloperMode(typeof ce.detail === 'boolean' ? ce.detail : readDeveloperMode());
-    };
-    window.addEventListener(DEVELOPER_MODE_EVENT, handler);
-    window.addEventListener('storage', handler);
-    return () => {
-      window.removeEventListener(DEVELOPER_MODE_EVENT, handler);
-      window.removeEventListener('storage', handler);
-    };
-  }, []);
 
   // 在MFC模态框打开时才确保WebSocket连接（仅执行一次）
   useEffect(() => {
@@ -68,7 +48,6 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   }, []);
 
   // 保持对 props 的读取以避免 TS 未使用报错
-  void modal_top; void modal_left; void modal_width; void modal_height;
   const isMfcSimulator = developerMode && isSimulatorDeviceEnabled('mfc', simulatorSettings);
   const effectiveSelectedPort = isMfcSimulator ? 'COM_SIMULATOR' : mfcState.selected_port;
   const effectivePorts = isMfcSimulator
@@ -173,7 +152,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                 </>
               )}
             </div>
-            <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={on_close}>✕</button>
+            <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" onClick={onClose}>✕</button>
           </div>
         </div>
 

@@ -6,8 +6,6 @@ import { NodeIconSvg } from './NodeIconSvg';
 const HIDDEN_NODE_LIBRARY_TYPES = new Set(['startup', 'shutdown']);
 
 interface LeftPanelProps {
-  activePanel: 'nodes';
-  onPanelChange: (panel: 'nodes') => void;
   nodeGroups: Record<NodeCategory, string[]>;
   selectedWorkstation: WorkstationType | null;
   furnaceConnected?: boolean;

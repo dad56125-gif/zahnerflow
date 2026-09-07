@@ -24,7 +24,7 @@ for (const relativePath of packageFiles) {
 const pyprojectPath = resolve(root, 'pyproject.toml');
 const pyproject = readFileSync(pyprojectPath, 'utf8');
 const nextPyproject = pyproject.replace(/(^version\s*=\s*)"[^"]+"/m, `$1"${version}"`);
-if (nextPyproject === pyproject) throw new Error('pyproject.toml 未找到项目 version');
+if (!/^version\s*=\s*"[^"]+"/m.test(pyproject)) throw new Error('pyproject.toml 未找到项目 version');
 writeFileSync(pyprojectPath, nextPyproject);
 
 const generatedFiles = [

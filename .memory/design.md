@@ -209,7 +209,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-用户设置]
 
-当前规则：用户设置由后端 `DEFAULT_USER_SETTINGS` 和 `normalize_user_settings` 形成完整文档；读取、整包保存和 section 保存都经过同一默认值/深合并规则，显式 `false` 不得被前端兼容逻辑改回默认值。section API 只接受已知 section。整包保存成功后返回规范设置，前端只同步本地 `UserContext` 缓存，不再紧接着重复写入 `filePath` section。
+当前规则：用户设置由后端 `DEFAULT_USER_SETTINGS` 和 `normalize_user_settings` 形成完整文档；读取、整包保存和 section 保存都经过同一默认值/深合并规则，显式 `false` 不得被前端兼容逻辑改回默认值。section API 只接受已知 section。整包保存成功后返回规范设置，前端只同步本地 `UserContext` 缓存，不再紧接着重复写入 `filePath` section。用户选择变化使旧配置请求失效，并清空上一用户的路径和头像；初始化列表的慢响应也不得覆盖之后的显式选择。
 
 归属文件：`apps/python_backend/routers/users.py`、`apps/frontend/src/components/shared/UserContext.tsx`、`apps/frontend/src/components/user/UserSettingsModal.tsx`。
 
@@ -219,7 +219,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-应用骨架]
 
-当前规则：React 应用骨架由顶栏、左侧节点栏、画布、右侧属性栏、底部状态栏和浮层组成。`App.tsx` 负责组合全局 UI 状态、运行状态接管、设备 modal、模拟控制、实验记录和图表面板。
+当前规则：React 应用骨架由顶栏、左侧节点栏、画布、右侧属性栏、底部状态栏和浮层组成。`App.tsx` 负责组合全局 UI 状态、运行状态接管、设备 modal、模拟控制、实验记录和图表面板。启动校验、运行信息提示和请求反馈归属 `hooks/useWorkflowExecution.ts`；窗口环境归属 `hooks/useDesktopWindow.ts`；开发者模式与模拟设置订阅由设备和应用共用的 hooks 提供。工作站节点分组从所选工作站派生，不保存第二份状态；设备 modal 只接收实际业务 props，不保留未使用的尺寸参数。
 
 归属文件：`apps/frontend/src/App.tsx`、`apps/frontend/src/components/TopBar.tsx`、`apps/frontend/src/components/LeftPanel.tsx`、`apps/frontend/src/components/canvas/Canvas.tsx`、`apps/frontend/src/components/property/RightPanel.tsx`、`apps/frontend/src/components/BottomBar.tsx`。
 
@@ -259,7 +259,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [启动-运行入口]
 
-当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；Windows 桌面打包必须先构建当前 Python 后端产物，再交给 `electron-builder`，不能复用未知版本的旧后端二进制。桌面启动顺序为确定数据目录、启动 Python、等待健康检查成功、再加载前端；前端用户初始化先成功读取 `/api/users`，再校验并恢复 `localStorage` 中的上次用户标识，接口错误必须显式呈现。
+当前规则：开发入口、桌面开发入口和发布构建入口由根 `package.json` 与桌面包脚本定义。普通开发运行 Vite 前端和 Python 后端；桌面开发运行 Vite 前端和 Electron；根与子包的构建、打包和分发入口均先执行版本检查；`setup` 直接运行 `pnpm install` 和 `uv sync`，不依赖缺失脚本；Windows 桌面打包必须先构建当前 Python 后端产物，再交给 `electron-builder`，不能复用未知版本的旧后端二进制。桌面启动顺序为确定数据目录、启动 Python、等待健康检查成功、再加载前端；前端用户初始化先成功读取 `/api/users`，再校验并恢复 `localStorage` 中的上次用户标识，接口错误必须显式呈现。
 
 归属文件：`package.json`、`apps/desktop/package.json`、`apps/python_backend/zahnerflow-backend.spec`。
 
