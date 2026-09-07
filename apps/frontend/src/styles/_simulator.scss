@@ -13,7 +13,7 @@
 
 .app-version--hidden-trigger.is-developer,
 .app-version--hidden-trigger.is-simulator {
-  color: #fbbf24;
+  color: var(--color-favorite);
 }
 
 .developer-hint,
@@ -30,7 +30,7 @@
 
 .developer-hint {
   padding: 0 var(--space-2);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--glass-border-hover);
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.78);
   position: relative;
@@ -114,7 +114,7 @@
 
 .sim-device {
   padding: var(--space-4);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
 }
@@ -168,7 +168,7 @@
 
 .sim-choice input {
   margin: 0;
-  accent-color: #818cf8;
+  accent-color: var(--color-sv);
 }
 
 .sim-choice.is-selected {

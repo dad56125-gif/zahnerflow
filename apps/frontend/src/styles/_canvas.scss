@@ -1,3 +1,4 @@
+@use './placeholders' as *;
 /* === _canvas.scss - Canvas & Node System BEM === */
 
 /* === Canvas Block === */
@@ -9,7 +10,7 @@
   border-radius: var(--radius);
   @include top-blur-veil(calc(var(--toolbar-h) + var(--size-2xl)), var(--z-toolbar), 6px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 1px 0 var(--text-disabled),
     inset 0 -1px 0 var(--glass-hover);
 
   &.connecting-mode {
@@ -82,7 +83,7 @@
   color: var(--text-primary);
   display: flex; align-items: center; justify-content: flex-start;
   cursor: pointer;
-  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 var(--glass-hover);
+  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 var(--text-disabled), inset 0 -1px 0 var(--glass-hover);
   font-size: var(--size-sm); font-weight: 600;
   transition: var(--transition); user-select: none;
   text-shadow: var(--text-shadow-body);
@@ -93,7 +94,7 @@
   &:hover {
     transform: translateY(-2px);
     border-color: var(--glass-border-hover);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+    box-shadow: 0 16px 48px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.15);
     z-index: 20;
   }
 }
@@ -114,7 +115,7 @@
 
 .node.is-selected {
   border-color: var(--glass-border-hover);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2), 0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2), 0 16px 48px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(255, 255, 255, 0.15);
   z-index: 30;
 }
 
@@ -140,13 +141,13 @@
 .node__icon {
   font-size: var(--size-xl); opacity: 0.85;
   text-shadow: var(--text-shadow-body), 0 0 10px var(--glass-hover);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 4px var(--glass-hover));
+  filter: drop-shadow(0 1px 2px var(--glass-shadow-hover)) drop-shadow(0 0 4px var(--glass-hover));
   backdrop-filter: blur(1px); transition: var(--transition); flex-shrink: 0;
 
   .node:hover & {
     opacity: 1; transform: scale(1.05);
     text-shadow: var(--text-shadow-body), 0 0 15px rgba(255, 255, 255, 0.2);
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+    filter: drop-shadow(0 1px 2px var(--glass-shadow-hover)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
   }
 }
 
@@ -157,96 +158,7 @@
   flex-shrink: 0;
   margin-right: var(--size-2xs);
   opacity: 0.9;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-.node__icon .node-library-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: visible;
-}
-
-.node__icon .node-library-svg__primary,
-.node__icon .node-library-svg__secondary {
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.node__icon .node-library-svg__primary {
-  stroke: var(--text-primary);
-}
-
-.node__icon .node-library-svg__label {
-  fill: var(--text-primary);
-  font-size: 0.56rem;
-  font-weight: 800;
-  line-height: 1;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-.node__icon .node-library-svg--eis_potentiostatic .node-library-svg__secondary {
-  stroke: var(--node-library-icon-eis-voltage);
-}
-
-.node__icon .node-library-svg--eis_galvanostatic .node-library-svg__secondary {
-  stroke: var(--node-library-icon-eis-current);
-}
-
-.node__icon .node-library-svg--voltage_ramp .node-library-svg__secondary,
-.node__icon .node-library-svg--potentiostatic_step_ramp .node-library-svg__secondary {
-  stroke: var(--node-library-icon-ramp-voltage);
-}
-
-.node__icon .node-library-svg--current_ramp .node-library-svg__secondary,
-.node__icon .node-library-svg--galvanostatic_step_ramp .node-library-svg__secondary {
-  stroke: var(--node-library-icon-ramp-current);
-}
-
-.node__icon .node-library-svg--chronopotentiometry .node-library-svg__secondary {
-  stroke: var(--node-library-icon-chrono-voltage);
-}
-
-.node__icon .node-library-svg--chronoamperometry .node-library-svg__secondary {
-  stroke: var(--node-library-icon-chrono-current);
-}
-
-.node__icon .node-library-svg--potentiostatic_switching .node-library-svg__secondary {
-  stroke: var(--node-library-icon-switching-voltage);
-}
-
-.node__icon .node-library-svg--galvanostatic_switching .node-library-svg__secondary {
-  stroke: var(--node-library-icon-switching-current);
-}
-
-.node__icon .node-library-svg--ocp_measurement .node-library-svg__secondary {
-  stroke: var(--node-library-icon-ocp);
-}
-
-.node__icon .node-library-svg--change_temperature .node-library-svg__secondary {
-  stroke: var(--device-icon-furnace);
-}
-
-.node__icon .node-library-svg--change_gas_flow .node-library-svg__secondary {
-  stroke: var(--device-icon-mfc);
-}
-
-.node__icon .node-library-svg--wait_delay .node-library-svg__secondary,
-.node__icon .node-library-svg--scheduled_start .node-library-svg__secondary {
-  stroke: var(--node-library-icon-blue-gray);
-}
-
-.node__icon .node-library-svg--loop_start .node-library-svg__secondary,
-.node__icon .node-library-svg--loop_end .node-library-svg__secondary {
-  stroke: var(--node-library-icon-loop);
-}
-
-.node__icon .node-library-svg--workflow_block .node-library-svg__secondary {
-  stroke: var(--node-library-icon-workflow);
+  filter: drop-shadow(0 1px 2px var(--glass-shadow-hover));
 }
 
 .node__content    { @include flex-col(0); flex: 1; min-width: 0; }
@@ -397,8 +309,8 @@
   padding: var(--size-sm);
   font-size: var(--size-xs);
 }
-.history__load-more { color: rgba(255, 255, 255, 0.5); }
-.history__end { color: rgba(255, 255, 255, 0.3); }
+.history__load-more { color: var(--text-muted); }
+.history__end { color: var(--text-disabled); }
 
 /* === Delete Confirm === */
 .delete-confirm {
@@ -414,7 +326,7 @@
   &__warning-text  { margin: 16px 0; font-size: 16px; color: var(--text-primary); text-align: center;
     strong { color: #f44336; font-weight: 600; }
   }
-  &__warning-subtext { margin: var(--space-2) 0 var(--space-6) 0; font-size: 14px; color: rgba(255, 255, 255, 0.7); text-align: center; line-height: 1.4; }
+  &__warning-subtext { margin: var(--space-2) 0 var(--space-6) 0; font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.4; }
 }
 
 /* === Empty State === */

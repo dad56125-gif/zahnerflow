@@ -1,0 +1,90 @@
+/* 节点图标共享几何与语义颜色，画布、节点库、执行计划共用。 */
+.node-library-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.node-library-svg__primary,
+.node-library-svg__secondary {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.node-library-svg__primary {
+  stroke: var(--text-primary);
+}
+
+.node-library-svg__label {
+  fill: var(--text-primary);
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.node-library-svg--eis_potentiostatic .node-library-svg__secondary {
+  stroke: var(--node-library-icon-eis-voltage);
+}
+
+.node-library-svg--eis_galvanostatic .node-library-svg__secondary {
+  stroke: var(--node-library-icon-eis-current);
+}
+
+.node-library-svg--voltage_ramp .node-library-svg__secondary,
+.node-library-svg--potentiostatic_step_ramp .node-library-svg__secondary {
+  stroke: var(--node-library-icon-ramp-voltage);
+}
+
+.node-library-svg--current_ramp .node-library-svg__secondary,
+.node-library-svg--galvanostatic_step_ramp .node-library-svg__secondary {
+  stroke: var(--node-library-icon-ramp-current);
+}
+
+.node-library-svg--chronopotentiometry .node-library-svg__secondary {
+  stroke: var(--node-library-icon-chrono-voltage);
+}
+
+.node-library-svg--chronoamperometry .node-library-svg__secondary {
+  stroke: var(--node-library-icon-chrono-current);
+}
+
+.node-library-svg--potentiostatic_switching .node-library-svg__secondary {
+  stroke: var(--node-library-icon-switching-voltage);
+}
+
+.node-library-svg--galvanostatic_switching .node-library-svg__secondary {
+  stroke: var(--node-library-icon-switching-current);
+}
+
+.node-library-svg--ocp_measurement .node-library-svg__secondary {
+  stroke: var(--node-library-icon-ocp);
+}
+
+.node-library-svg--change_temperature .node-library-svg__secondary {
+  stroke: var(--device-icon-furnace);
+}
+
+.node-library-svg--change_gas_flow .node-library-svg__secondary {
+  stroke: var(--device-icon-mfc);
+}
+
+.node-library-svg--wait_delay .node-library-svg__secondary,
+.node-library-svg--scheduled_start .node-library-svg__secondary {
+  stroke: var(--node-library-icon-blue-gray);
+}
+
+.node-library-svg--loop_start .node-library-svg__secondary,
+.node-library-svg--loop_end .node-library-svg__secondary {
+  stroke: var(--node-library-icon-loop);
+}
+
+.node-library-svg--workflow_block .node-library-svg__secondary {
+  stroke: var(--node-library-icon-workflow);
+}
+

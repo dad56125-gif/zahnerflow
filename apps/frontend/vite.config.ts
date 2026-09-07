@@ -6,6 +6,7 @@ export default defineConfig({
   base: './',
   plugins: [react()],
   root: '.',
+  css: { preprocessorOptions: { scss: { api: 'modern' } } },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

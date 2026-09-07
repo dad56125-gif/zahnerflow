@@ -1,3 +1,4 @@
+@use './placeholders' as *;
 /* === _mfc.scss - MFC 质量流量控制器 BEM === */
 
 /* ==========================================================================
@@ -56,8 +57,8 @@
       border-radius: inherit;
       background:
         radial-gradient(circle at 0 0, rgba(151, 255, 223, 0.6) 0%, rgba(16, 185, 129, 0.22) 20%, rgba(16, 185, 129, 0.05) 34%, rgba(16, 185, 129, 0) 48%),
-        linear-gradient(90deg, rgba(129, 255, 217, 0.32) 0%, rgba(16, 185, 129, 0.1) 16%, rgba(16, 185, 129, 0) 34%),
-        linear-gradient(180deg, rgba(129, 255, 217, 0.3) 0%, rgba(16, 185, 129, 0.1) 16%, rgba(16, 185, 129, 0) 34%);
+        linear-gradient(90deg, rgba(129, 255, 217, 0.32) 0%, var(--color-success-bg) 16%, rgba(16, 185, 129, 0) 34%),
+        linear-gradient(180deg, rgba(129, 255, 217, 0.3) 0%, var(--color-success-bg) 16%, rgba(16, 185, 129, 0) 34%);
       -webkit-mask:
         linear-gradient(#000 0 0) content-box,
         linear-gradient(#000 0 0);
@@ -223,7 +224,7 @@
 .mfc__section-title {
   font-size: var(--size-lg); font-weight: 600; color: var(--color-success);
   padding: var(--size-sm) var(--size-md);
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--color-success-bg);
   border-radius: var(--radius-sm);
   display: inline-flex; align-items: center; gap: var(--size-2xs);
   width: fit-content;
@@ -432,7 +433,7 @@
   @extend %flex-center;
   gap: var(--size-sm);
   padding: var(--size-xs) var(--size-md);
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--color-primary-bg);
   border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 
   &-bar  { flex: 1; height: var(--size-3xs); background: rgba(255, 255, 255, 0.15); border-radius: var(--radius-xs); overflow: hidden; }

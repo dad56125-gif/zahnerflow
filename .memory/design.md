@@ -25,6 +25,7 @@
 - `[接口-用户设置]`：用户设置由后端默认值和归一化规则形成完整文档。
 - `[前端-应用骨架]`：前端应用由顶栏、左右栏、画布、状态栏和浮层组成。
 - `[前端-派生与展示规则]`：执行展示、设备就绪、节点图表能力和参数摘要使用统一选择器或配置表。
+- `[前端-设计规范]`：核心令牌、Sass 模块与复用边界。
 - `[前端-浮层系统]`：modal、dropdown、notification 和 chart modal 使用统一浮层边界。
 - `[报告-实验记录]`：实验记录以工作流为主轴展示定义、执行、报告和地图。
 - `[启动-运行入口]`：开发、桌面开发和发布构建的当前入口。
@@ -153,7 +154,7 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`，循环展开路径和 `loopiteration_start` 事件中的 `iteration` 均是从 1 开始的业务序号，前端必须直接显示，不得再次加一。执行快照持久携带当前 `loopProgress`，节点计时携带对应 `iterationPath`，因此刷新或错过增量事件后仍能恢复当前循环的节点状态。流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
 
-展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为三栏步骤浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为不可选择的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
+展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为执行列表与所选步骤详情两栏浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为可以检查但不能手动启动的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。搜索和结构收起后每页最多渲染 100 项；支持编号跳转、方向键和完整参数检查，隐藏的选择可一键定位。`useUnrollPreview` 丢弃过期响应。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
 
 时间线规则：计划中的 `timeline.steps` 与 `eta.estimatedTotalSeconds` 来自同一次 `estimate_workflow` 计算。运行时复制计划时间线并在每个实际步骤开始或结束后更新快照；它可以依据执行事实修正剩余显示，但不得为了显示而再次展开工作流或另算一套步骤总数。
 
@@ -239,7 +240,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-浮层系统]
 
-当前规则：modal、dropdown、notification、chart modal 等浮层使用统一层级、遮罩、动画和定位边界。桌面 chrome 高度会影响浮层可用区域和顶部定位。
+当前规则：modal、dropdown、notification、chart modal 等浮层使用统一层级、遮罩、动画和定位边界。只有最顶层浮层响应 Escape 和外部点击；模态窗口限制 Tab 焦点并在关闭后恢复。头像裁剪也使用 `ModalLayer`，预览和 60 像素导出共用同一尺寸与偏移计算。桌面 chrome 高度会影响浮层可用区域和顶部定位。
 
 归属文件：`apps/frontend/src/components/shared/OverlayLayer.tsx`、`apps/frontend/src/styles/_advanced-components.scss`、`apps/frontend/src/styles/_chart-modal.scss`、`apps/frontend/src/styles/_report.scss`、`apps/frontend/src/styles/_user-settings.scss`。
 
@@ -266,3 +267,15 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 允许变化：可以调整脚本命名、构建缓存目录和平台目标。
 
 禁止事项：禁止让发布包缺少前端静态资源、桌面主进程产物或 Python 后端产物。
+
+## [前端-设计规范]
+
+当前规则：`styles/_tokens.scss` 是颜色、字体、间距、圆角、动效和层级的核心令牌入口；`_base.scss` 只保留基础规则和响应式布局覆盖。`main.scss` 通过 Sass `meta.load-css` 在既有基础、布局、组件三层中加载模块；每个模块显式引入所用占位符。节点库、画布和展开步骤共用 `_node-icons.scss`；无变体按钮也必须具备核心玻璃外观。滚动行不叠加独立模糊层。
+
+归属文件：`apps/frontend/src/styles/`、`scripts/check-design.mjs`、`doc/design-system.md`。
+
+允许变化：图表数据系列、设备物理量和装饰渐变可以拥有明确业务语义色；新增 UI 先复用语义令牌，新增令牌必须在核心入口解释用途。
+
+禁止事项：禁止业务 SCSS 重定义核心令牌、重新引入 Sass `@import`、给已统一模块添加原始颜色或建立第二套节点图标颜色表。
+
+验证：`pnpm design:check` 固定核心令牌边界和已统一模块颜色；该检查不替代浏览器视觉检查。

@@ -1,0 +1,265 @@
+/* 核心设计令牌：业务组件引用，禁止重复定义。 */
+:root {
+  /* === Font System === */
+  --font-latin: "Oxanium", sans-serif;
+  --font-number: "Oxanium", sans-serif;
+  --font-cjk: "Noto Sans SC Variable", "Microsoft YaHei UI", sans-serif;
+  --font-ui: "Oxanium", "Noto Sans SC Variable", "Microsoft YaHei UI", sans-serif;
+  --font-mono: var(--font-number);
+  --font-ui-tracking: 0.018em;
+  --font-cjk-wrapper-gap: 0.12em;
+  --font-cjk-tracking: 0.075em;
+
+  /* ==========================================================================
+     1. 原语系统 (Primitives) - 基础标准化变量
+     ========================================================================== */
+
+  /* === 间距系统 (Space Scale) === */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* === 标准化尺寸系统 (Fluid Size System) === */
+  --size-3xs: clamp(0.25rem, 0.5vw, 0.375rem);
+  --size-2xs: clamp(0.5rem, 1vw, 0.75rem);
+  --size-xs: clamp(0.625rem, 1.5vw, 0.6875rem);
+  --size-sm: clamp(0.75rem, 1.5vw, 0.8125rem);
+  --size-md: clamp(0.8125rem, 1.8vw, 0.875rem);
+  --size-lg: clamp(1rem, 2vw, 1.125rem);
+  --size-xl: clamp(1.5rem, 3vw, 1.75rem);
+  --size-2xl: clamp(1.875rem, 3vw, 2.25rem);
+  --size-3xl: clamp(2.25rem, 4vw, 2.75rem);
+  --size-4xl: clamp(2.5rem, 4vw, 3rem);
+  --size-5xl: clamp(3rem, 5vw, 4.5rem);
+
+  /* === 视觉效果系统 (Effects) === */
+  --effect-xs: 0.5rem;
+  --effect-sm: 0.75rem;
+  --effect-md: 1rem;
+  --effect-lg: 1.25rem;
+  --effect-xl: 1.5rem;
+  --effect-2xl: 2rem;
+
+  /* === 圆角系统 (Radius Scale) === */
+  --radius-xs: 0.25rem;
+  --radius-md: 0.75rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 50rem;
+
+  /* === 模糊系统 (Blur Scale) === */
+  --blur-1: 4px;
+  --blur-2: 8px;
+  --blur-3: 12px;
+  --blur-4: 16px;
+  --blur-5: 20px;
+  --blur-6: 24px;
+  --blur-7: 32px;
+
+  /* ==========================================================================
+     2. 功能色系统 (Functional Color System)
+     ========================================================================== */
+
+  --color-primary: #3b82f6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #06b6d4;
+  --color-neutral: #6b7280;
+
+  --color-primary-bg: rgba(59, 130, 246, 0.1);
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-info-bg: rgba(6, 182, 212, 0.1);
+  --color-neutral-bg: rgba(107, 114, 128, 0.1);
+
+  /* 扩展功能色 */
+  --color-favorite: #fbbf24;
+  --color-favorite-bg: rgba(251, 191, 36, 0.2);
+  --color-indigo: #6366f1;
+  --color-indigo-light: #a5b4fc;
+  --color-indigo-bg: rgba(99, 102, 241, 0.2);
+
+  /* 循环层级颜色 (CSS 与 JS 统一) */
+  --loop-level-0: #00E6B4;
+  --loop-level-1: #00B4FF;
+  --loop-level-2: #8A64FF;
+  --loop-level-3: #FF50B4;
+  --loop-level-0-fill: rgba(0, 230, 180, 0.2);
+  --loop-level-1-fill: rgba(0, 180, 255, 0.2);
+  --loop-level-2-fill: rgba(138, 100, 255, 0.2);
+  --loop-level-3-fill: rgba(255, 80, 180, 0.2);
+
+  /* Furnace 状态显示专用色 */
+  --color-pv: #38bdf8;
+  --color-sv: #818cf8;
+  --color-mv: #f472b6;
+  --color-segment: #a78bfa;
+  --device-icon-furnace: #f07a5f;
+  --device-icon-furnace-fill-start: #f7c7a8;
+  --device-icon-furnace-fill-end: #df8e74;
+  --device-icon-mfc: #7dd3fc;
+  --device-icon-mfc-fill-start: #d8f2ff;
+  --device-icon-mfc-fill-end: #8ccff0;
+  --node-library-icon-blue-gray: #9fb3c8;
+  --node-library-icon-eis-voltage: #a9dff6;
+  --node-library-icon-eis-current: #f3b6ca;
+  --node-library-icon-chrono-voltage: #36F1D5;
+  --node-library-icon-chrono-current: #FFE0EF;
+  --node-library-icon-ramp-voltage: #1FA2FF;
+  --node-library-icon-ramp-current: #FF8FBF;
+  --node-library-icon-switching-voltage: #7B61FF;
+  --node-library-icon-switching-current: #FF9A5C;
+  --node-library-icon-ocp: #c9b8ff;
+  --node-library-icon-loop: #b8f4cf;
+  --node-library-icon-workflow: #ffe6a6;
+
+  /* 控制台日志色 */
+  --color-log-success: #22c55e;
+  --color-log-error: #ef4444;
+  --color-log-warning: #f59e0b;
+
+  /* === 文本颜色系统 === */
+  --text-primary: white;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-disabled: rgba(255, 255, 255, 0.3);
+
+  /* 文本阴影 */
+  --text-shadow-body: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  /* ==========================================================================
+     3. 语义映射 (Semantics)
+     ========================================================================== */
+
+  --space: var(--size-xl);
+  --gap: var(--space-4);
+  --padding: var(--space-4);
+  --radius: var(--effect-lg);
+  --radius-sm: var(--effect-sm);
+  --radius-lg: var(--effect-xl);
+
+  --blur-sm: var(--blur-2);
+  --blur-md: var(--effect-md);
+  --blur-lg: var(--effect-lg);
+  --blur-xl: var(--effect-xl);
+
+  /* === 组件语义令牌 === */
+  --radius-panel: var(--radius-lg);
+  --radius-button: var(--radius-md);
+  --radius-input: var(--radius-sm);
+  --radius-badge: var(--radius-xs);
+
+  --blur-panel: var(--blur-5);
+  --blur-button: var(--blur-4);
+  --blur-overlay: var(--blur-6);
+
+  /* === 组合阴影 === */
+  --shadow-panel: 0 8px 32px var(--glass-shadow), inset 0 1px 0 var(--glass-hover);
+  --shadow-panel-hover: 0 16px 48px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --shadow-button: 0 4px 16px var(--glass-shadow), inset 0 1px 0 var(--glass-hover);
+  --shadow-button-hover: 0 8px 24px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+  /* === 布局与组件尺寸 === */
+  --app-chrome-h: 0px;
+  --window-controls-h: 28px;
+  --navbar-h: clamp(3rem, 2.5rem + 1vw, 4rem);
+  --status-h: 2.5rem;
+  --left-panel-w: clamp(16rem, 18.5vw, 20rem);
+  --property-w: clamp(18rem, 22vw, 24rem);
+  --btn-h: var(--size-3xl);
+  --toolbar-h: var(--size-3xl);
+  --toolbar-icon-button-size: var(--size-2xl);
+  --form-padding: var(--size-2xs);
+
+  /* === 字体语义 === */
+  --text-body: var(--size-md);
+  --text-title: var(--size-2xl);
+
+  /* === 按钮配置 === */
+  --btn-gap: var(--space-3);
+  --btn-radius: var(--radius-lg);
+
+  /* === 面板 === */
+  --panel-padding: var(--space-6);
+  --panel-radius: var(--radius-lg);
+  --panel-blur: var(--blur-5);
+
+  /* === 层级系统 (Z-Index) === */
+  --z-base: 1;
+  --z-left-panel: 10;
+  --z-toolbar: 20;
+  --z-navbar: 40;
+  --z-overlay: 50;
+  --z-dropdown: 200;
+  --z-modal: 200;
+  --z-overlay-root: 3000;
+  --z-notification: 1000;
+  --z-tooltip: 2000;
+
+  /* === 玻璃态系统 === */
+  --glass-bg: rgba(0, 0, 0, 0.15);
+  --glass-bg-hover: rgba(0, 0, 0, 0.25);
+  --glass-bg-active: rgba(0, 0, 0, 0.35);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-hover: rgba(255, 255, 255, 0.18);
+  --glass-shadow: rgba(0, 0, 0, 0.25);
+  --glass-shadow-hover: rgba(0, 0, 0, 0.3);
+  --glass-hover: rgba(255, 255, 255, 0.08);
+
+  /* === 布局边界位置变量 === */
+  --left-panel-l: var(--space);
+  --left-panel-content-l: 0;
+  --left-panel-r: calc(var(--space) + var(--left-panel-w));
+  --property-l: calc(100vw - var(--space) - var(--property-w));
+  --property-r: var(--space);
+  --canvas-t: calc(var(--app-chrome-h) + var(--space) + var(--navbar-h) + var(--space));
+  --canvas-b: calc(var(--status-h) + (2 * var(--space)));
+
+  /* === 动画系统 === */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-slower: 800ms;
+
+  --transition: all var(--duration-normal) var(--ease-in-out);
+  --transition-fast: all var(--duration-fast) var(--ease-in-out);
+  --transition-slow: all var(--duration-slow) var(--ease-in-out);
+  --transition-colors: color var(--duration-normal) var(--ease-in-out),
+    background-color var(--duration-normal) var(--ease-in-out),
+    border-color var(--duration-normal) var(--ease-in-out);
+  --transition-transform: transform var(--duration-normal) var(--ease-in-out);
+  --transition-opacity: opacity var(--duration-normal) var(--ease-in-out);
+
+  /* === 状态映射 (State Mapping) === */
+  --device-online: var(--color-success);
+  --device-offline: var(--color-neutral);
+  --device-connecting: var(--color-warning);
+  --device-error: var(--color-danger);
+  --workflow-running: var(--color-primary);
+  --workflow-completed: var(--color-success);
+  --workflow-paused: var(--color-warning);
+  --workflow-stopped: var(--color-neutral);
+  --workflow-error: var(--color-danger);
+
+  /* === 通知面板 === */
+  --notification-panel-width: clamp(320px, 40vw, 500px);
+  --notification-panel-max-height: clamp(400px, 60vh, 600px);
+  --notification-panel-min-height: clamp(200px, 60vh, 300px);
+  --notification-panel-z-index: var(--z-notification);
+}

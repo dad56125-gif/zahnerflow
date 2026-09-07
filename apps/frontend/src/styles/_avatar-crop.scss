@@ -1,0 +1,30 @@
+.avatar-crop-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  width: min(24rem, calc(100vw - var(--space-8)));
+  padding: var(--space-6);
+  color: var(--text-primary);
+  background: var(--glass-bg-active);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  backdrop-filter: blur(var(--blur-overlay));
+  box-shadow: var(--shadow-panel);
+  h3, p { margin: 0; }
+  p { color: var(--text-secondary); }
+  &__viewport {
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--color-primary);
+    cursor: grab;
+    touch-action: none;
+    img { position: absolute; top: 50%; left: 50%; max-width: none; max-height: none; user-select: none; pointer-events: none; }
+  }
+  label, input { width: 100%; }
+  input { accent-color: var(--color-primary); }
+  footer { display: flex; gap: var(--space-3); width: 100%; button { flex: 1; } }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+}

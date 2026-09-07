@@ -1,47 +1,52 @@
+@use 'sass:meta';
 /* === main.scss - SCSS + CSS @layer 整合入口 === */
 
 @layer base, layout, components;
 
 /* 1. 基础层 (Base Layer) */
 @layer base {
-  @import './_base.scss';
-  @import './_animations.scss';
+  @include meta.load-css('./_tokens.scss');
+  @include meta.load-css('./_base.scss');
+  @include meta.load-css('./_animations.scss');
 }
 
 /* 2. 布局层 (Layout Layer) */
 @layer layout {
-  @import './_layout.scss';
+  @include meta.load-css('./_layout.scss');
 }
 
 /* 3. 组件层 (Components Layer) */
 @layer components {
   // 必须最先导入占位符和公共工具，方便后续组件继承
-  @import './_placeholders.scss';
-  @import './_ui-kit.scss';
+  @include meta.load-css('./_placeholders.scss');
+  @include meta.load-css('./_ui-kit.scss');
+  @include meta.load-css('./_node-icons.scss');
   
   // UI 基础组件
-	  @import './_buttons.scss';
-	  @import './_overlay-layer.scss';
-	  @import './_dropdown.scss';
-  @import './_datatable.scss';
-  @import './_schedule-runner.scss';
-  @import './_user-settings.scss';
-  @import './_chart-modal.scss';
-  @import './_chart.scss';
-  @import './_workflow-controls.scss';
+	  @include meta.load-css('./_buttons.scss');
+	  @include meta.load-css('./_overlay-layer.scss');
+	  @include meta.load-css('./_dropdown.scss');
+  @include meta.load-css('./_datatable.scss');
+  @include meta.load-css('./_schedule-runner.scss');
+  @include meta.load-css('./_user-settings.scss');
+  @include meta.load-css('./_avatar-crop.scss');
+  @include meta.load-css('./_chart-modal.scss');
+  @include meta.load-css('./_unroll.scss');
+  @include meta.load-css('./_chart.scss');
+  @include meta.load-css('./_workflow-controls.scss');
   
   // 高级布局与业务组件
-  @import './_advanced-components.scss';
-  @import './_canvas.scss';
-  @import './_device-dashboard.scss';
-  @import './_furnace.scss';
-  @import './_mfc.scss';
-  @import './_simulator.scss';
+  @include meta.load-css('./_advanced-components.scss');
+  @include meta.load-css('./_canvas.scss');
+  @include meta.load-css('./_device-dashboard.scss');
+  @include meta.load-css('./_furnace.scss');
+  @include meta.load-css('./_mfc.scss');
+  @include meta.load-css('./_simulator.scss');
   
   // 模块样式（在此引入作为备用兜底，防止局部引入失效）
-  @import './_report.scss';
-  @import '../components/_execution-history.scss';
+  @include meta.load-css('./_report.scss');
+  @include meta.load-css('../components/_execution-history.scss');
 
   // 滚动区必须最后覆盖高开销的玻璃合成效果。
-  @import './_scroll-rendering.scss';
+  @include meta.load-css('./_scroll-rendering.scss');
 }

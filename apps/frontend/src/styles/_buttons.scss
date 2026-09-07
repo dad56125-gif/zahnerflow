@@ -1,3 +1,4 @@
+@use './placeholders' as *;
 /* === _buttons.scss - 按钮组件样式 === */
 
 @mixin btn-variant($border-var, $bg-var, $r, $g, $b) {
@@ -26,7 +27,9 @@
   align-items: center;
   justify-content: center;
   align-self: center;
-  border: none;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-primary);
   font-weight: 500;
   font-family: inherit;
   line-height: 1;
@@ -173,7 +176,7 @@
     left: 0;
     width: var(--size-5xl);
     height: var(--size-5xl);
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 40%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, var(--glass-hover) 40%, transparent 70%);
     filter: blur(var(--blur-6));
     border-radius: 50%;
     pointer-events: none;
@@ -191,7 +194,7 @@
 .btn--secondary.is-prominent {
   &:hover:not(:disabled) {
     box-shadow:
-      0 8px var(--effect-xl) rgba(0, 0, 0, 0.3),
+      0 8px var(--effect-xl) var(--glass-shadow-hover),
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 }

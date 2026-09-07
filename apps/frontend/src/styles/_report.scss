@@ -1,3 +1,5 @@
+@use './ui-kit';
+@use './placeholders' as *;
 /* === 实验报告模块：复用全局浮层、按钮、输入和列表契约 === */
 
 .report-modal {

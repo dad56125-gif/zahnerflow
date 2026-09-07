@@ -1,3 +1,4 @@
+@use './placeholders' as *;
 /* === _ui-kit.scss - 原子UI组件 === */
 
 /* === .input / .select — 统一输入组件（胶囊型） === */
@@ -58,7 +59,7 @@
 .select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -6 20 12'%3e%3cpath d='M -8 -3 L 0 5 L 8 -3' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -6 20 12'%3e%3cpath d='M -8 -3 L 0 5 L 8 -3' fill='none' stroke='var(--text-secondary)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right var(--size-sm) center;
   background-size: var(--size-lg);
@@ -95,7 +96,7 @@
   &:hover {
     border-color: var(--glass-border-hover);
     box-shadow:
-      0 8px var(--effect-xl) rgba(0, 0, 0, 0.25),
+      0 8px var(--effect-xl) var(--glass-bg-hover),
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);
   }
@@ -284,7 +285,7 @@
 
 .switch input:checked + .switch__track .switch__thumb {
   left: 20px;
-  background: #a5b4fc;
+  background: var(--color-indigo-light);
   box-shadow: 0 0 10px rgba(165, 180, 252, 0.5);
 }
 
@@ -365,10 +366,10 @@
   width: calc(100vw - 2 * var(--space));
   height: calc(100vh - var(--canvas-t) - var(--canvas-b));
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--text-disabled);
   border-radius: var(--effect-xl);
   backdrop-filter: blur(var(--effect-xl));
-  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 64px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;

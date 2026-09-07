@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-monorepo",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "ZahnerFlow 电化学工作流管理系统",
   "private": true,
   "scripts": {
@@ -26,12 +26,13 @@
     "test:changed": "vitest run --changed",
     "test:fail-fast": "vitest run --fail-fast",
     "test:update-snapshots": "vitest run --update-snapshots",
-    "lint": "pnpm --filter zahnerflow-flowgram lint",
+    "lint": "pnpm design:check && pnpm --filter zahnerflow-flowgram lint",
     "type-check": "pnpm --filter @zahnerflow/types build && pnpm --filter zahnerflow-flowgram type-check && pnpm --filter zahnerflow-desktop type-check",
     "clean": "pnpm --recursive clean",
     "setup": "pnpm install && uv sync",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "design:check": "node scripts/check-design.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^0.34.0",

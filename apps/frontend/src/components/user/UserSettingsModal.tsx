@@ -1,3 +1,4 @@
+import { AvatarCropDialog } from './AvatarCropDialog';
 import React, { useState, useEffect, useRef } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
 import { useUser } from '../shared/userContextState';
@@ -124,15 +125,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // 头像裁剪与预设相关状态
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const skipNextAutoSaveRef = useRef(false);
-    const [isCropping, setIsCropping] = useState(false);
     const [cropImage, setCropImage] = useState<string | null>(null);
-    const [cropScale, setCropScale] = useState(1);
-    const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     
     // 裁剪框常数
-    const cropBoxSize = 200;
 
     // 上传头像文件处理
     const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,84 +138,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         reader.onload = () => {
             if (typeof reader.result === 'string') {
                 setCropImage(reader.result);
-                setCropScale(1);
-                setCropOffset({ x: 0, y: 0 });
-                setIsCropping(true);
             }
         };
         reader.readAsDataURL(file);
         
         // 重置 input 的 value，允许连续选择同一张图
         e.target.value = '';
-    };
-
-    // 确认裁剪，执行平滑缩放 60x60 Base64 转换并保存
-    const handleConfirmCrop = () => {
-        if (!cropImage) return;
-        
-        const img = new Image();
-        img.src = cropImage;
-        img.onload = () => {
-            const targetSize = 60; // 柔滑输出 60x60 像素
-            const canvas = document.createElement('canvas');
-            canvas.width = targetSize;
-            canvas.height = targetSize;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-
-                // 1. 计算缩放比率
-                const minSide = Math.min(img.width, img.height);
-                const baseScale = cropBoxSize / minSide;
-                const activeScale = baseScale * cropScale;
-
-                // 2. 图像绘制大小
-                const dw = img.width * activeScale;
-                const dh = img.height * activeScale;
-
-                // 3. 相对裁剪框居中偏移量
-                const cx = (cropBoxSize - dw) / 2;
-                const cy = (cropBoxSize - dh) / 2;
-
-                // 4. 将裁剪框坐标换算到 canvas (60x60) 物理坐标
-                const ratio = cropBoxSize / targetSize; // 3.3333
-                
-                const finalX = (cx + cropOffset.x) / ratio;
-                const finalY = (cy + cropOffset.y) / ratio;
-                const finalW = dw / ratio;
-                const finalH = dh / ratio;
-
-                // 5. 绘制平滑图像
-                ctx.clearRect(0, 0, targetSize, targetSize);
-                ctx.drawImage(img, finalX, finalY, finalW, finalH);
-
-                // 6. 导出 Base64
-                const base64 = canvas.toDataURL('image/png');
-                updateCloud('avatar', base64);
-            }
-            setIsCropping(false);
-            setCropImage(null);
-        };
-    };
-
-    // 拖拽手势
-    const handleMouseDown = (e: React.MouseEvent) => {
-        if (!isCropping) return;
-        setIsDragging(true);
-        setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y });
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        setCropOffset({
-            x: e.clientX - dragStart.x,
-            y: e.clientY - dragStart.y
-        });
-    };
-
-    const handleMouseUp = () => {
-        setIsDragging(false);
     };
 
     const projectDropdown = useDropdownPosition({
@@ -971,130 +894,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     </div>
 
                     {/* 头像裁剪悬浮层 */}
-                    {isCropping && cropImage && (
-                        <div 
-                            className="avatar-crop-overlay" 
-                            style={{
-                                position: 'fixed',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: 'rgba(0, 0, 0, 0.75)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                zIndex: 9999,
-                                backdropFilter: 'blur(8px)'
-                            }}
-                        >
-                            <div 
-                                className="avatar-crop-modal glass" 
-                                style={{
-                                    padding: 'var(--size-md)',
-                                    borderRadius: 'var(--radius-panel)',
-                                    border: '1px solid var(--glass-border)',
-                                    background: 'var(--glass-bg)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: 'var(--size-md)',
-                                    boxShadow: 'var(--shadow-lg)',
-                                    width: '320px'
-                                }}
-                            >
-                                <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>
-                                    <SpacedCjkText text="裁剪头像" />
-                                </h4>
-                                
-                                <div 
-                                    className="avatar-crop-viewport"
-                                    onMouseMove={handleMouseMove}
-                                    onMouseUp={handleMouseUp}
-                                    onMouseLeave={handleMouseUp}
-                                    style={{
-                                        width: `${cropBoxSize}px`,
-                                        height: `${cropBoxSize}px`,
-                                        position: 'relative',
-                                        overflow: 'hidden',
-                                        borderRadius: '50%',
-                                        border: '2px solid var(--color-warning)',
-                                        background: '#000',
-                                        cursor: isDragging ? 'grabbing' : 'grab',
-                                        userSelect: 'none',
-                                        touchAction: 'none'
-                                    }}
-                                >
-                                    <img
-                                        src={cropImage}
-                                        alt="To Crop"
-                                        onMouseDown={handleMouseDown}
-                                        style={{
-                                            position: 'absolute',
-                                            transformOrigin: 'center',
-                                            transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`,
-                                            pointerEvents: 'auto',
-                                            maxWidth: 'none',
-                                            maxHeight: 'none',
-                                            display: 'block',
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            bottom: 0,
-                                            margin: 'auto'
-                                        }}
-                                    />
-                                </div>
-
-                                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--size-3xs)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--size-2xs)', color: 'var(--text-secondary)' }}>
-                                        <span>缩放</span>
-                                        <span>{Math.round(cropScale * 100)}%</span>
-                                    </div>
-                                    <input 
-                                        type="range"
-                                        min="1"
-                                        max="5"
-                                        step="0.05"
-                                        value={cropScale}
-                                        onChange={(e) => setCropScale(parseFloat(e.target.value))}
-                                        style={{
-                                            width: '100%',
-                                            accentColor: 'var(--color-primary)',
-                                            cursor: 'pointer'
-                                        }}
-                                    />
-                                </div>
-
-                                <p className="settings__hint-text" style={{ margin: 0, textAlign: 'center', fontSize: 'var(--size-2xs)' }}>
-                                    拖拽图片调整位置，拖动滑块调整大小
-                                </p>
-
-                                <div style={{ display: 'flex', gap: 'var(--size-sm)', width: '100%' }}>
-                                    <button
-                                        type="button"
-                                        className="btn btn--md btn--secondary"
-                                        onClick={() => {
-                                            setIsCropping(false);
-                                            setCropImage(null);
-                                        }}
-                                        style={{ flex: 1 }}
-                                    >
-                                        <SpacedCjkText text="取消" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn--md btn--primary"
-                                        onClick={handleConfirmCrop}
-                                        style={{ flex: 1 }}
-                                    >
-                                        <SpacedCjkText text="确认" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {cropImage && <AvatarCropDialog src={cropImage} onClose={() => setCropImage(null)} onConfirm={avatar => {
+                        updateCloud('avatar', avatar); setCropImage(null);
+                    }} />}
                 </>
             )}
         </ModalLayer>

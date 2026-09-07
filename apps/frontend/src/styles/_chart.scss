@@ -85,7 +85,7 @@
   position: absolute; inset: 0;
   @include flex-col(var(--size-xs));
   align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--glass-shadow-hover);
 }
 
 .chart__tooltip {
@@ -94,14 +94,14 @@
   background: var(--glass-bg-active);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--glass-shadow-hover);
   font-size: var(--size-xs); white-space: nowrap;
 }
 
 /* === Temperature Chart === */
 .temperature-chart { @include flex-col; width: 100%; height: 100%; }
 
-.tooltip__time    { color: rgba(255, 255, 255, 0.7); margin-bottom: var(--size-3xs); font-weight: 500; }
+.tooltip__time    { color: var(--text-secondary); margin-bottom: var(--size-3xs); font-weight: 500; }
 .tooltip__row     { line-height: 1.4; }
 .tooltip__segment { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--glass-hover); color: rgba(255, 255, 255, 0.6); font-size: var(--size-xs); }
 

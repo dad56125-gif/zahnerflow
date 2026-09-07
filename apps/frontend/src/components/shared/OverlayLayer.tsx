@@ -30,9 +30,12 @@ interface OverlayLayerProps {
   rootPointerEvents?: 'auto' | 'none';
   zIndex?: number;
   exitDurationMs?: number;
+  trapFocus?: boolean;
 }
 
 const DEFAULT_EXIT_DURATION_MS = 260;
+const activeLayers: HTMLElement[] = [];
+const focusableSelector = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary, [tabindex]:not([tabindex="-1"])';
 
 const resolveChildren = (
   children: OverlayLayerProps['children'],
@@ -63,6 +66,7 @@ export const OverlayLayer: React.FC<OverlayLayerProps> = ({
   rootPointerEvents = 'auto',
   zIndex,
   exitDurationMs = DEFAULT_EXIT_DURATION_MS,
+  trapFocus = false,
 }) => {
   const [mountNode, setMountNode] = useState<HTMLDivElement | null>(null);
   const [isRendered, setIsRendered] = useState(open);
@@ -109,20 +113,50 @@ export const OverlayLayer: React.FC<OverlayLayerProps> = ({
   }, [onClose, onOpenChange, state]);
 
   useEffect(() => {
-    if (!isRendered || !closeOnEscape) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') requestClose();
+    if (!isRendered || !mountNode) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    activeLayers.push(mountNode);
+    const frame = window.requestAnimationFrame(() => {
+      if (trapFocus && !mountNode.contains(document.activeElement)) {
+        (contentRef.current?.querySelector<HTMLElement>(focusableSelector) ?? contentRef.current)?.focus();
+      }
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      const index = activeLayers.indexOf(mountNode);
+      if (index >= 0) activeLayers.splice(index, 1);
+      if (trapFocus && previousFocus?.isConnected && (mountNode.contains(document.activeElement) || document.activeElement === document.body)) previousFocus.focus();
     };
+  }, [isRendered, mountNode, trapFocus]);
 
+  useEffect(() => {
+    if (!isRendered || !mountNode) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (activeLayers.at(-1) !== mountNode) return;
+      if (event.key === 'Escape') {
+        if (closeOnEscape) { event.preventDefault(); requestClose(); }
+        return;
+      }
+      if (event.key !== 'Tab' || !trapFocus) return;
+      const controls = Array.from(contentRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
+        .filter(element => element.getClientRects().length > 0);
+      const first = controls[0]; const last = controls.at(-1);
+      if (!first) { event.preventDefault(); contentRef.current?.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || !mountNode.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !mountNode.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [closeOnEscape, isRendered, requestClose]);
+  }, [closeOnEscape, isRendered, mountNode, requestClose, trapFocus]);
 
   useEffect(() => {
     if (!isRendered || !closeOnOutsidePointer) return;
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (activeLayers.at(-1) !== mountNode) return;
       const target = event.target as Node;
       if (contentRef.current?.contains(target)) return;
       if (outsidePointerIgnoreRefs.some((ref) => ref.current?.contains(target))) return;
@@ -135,7 +169,7 @@ export const OverlayLayer: React.FC<OverlayLayerProps> = ({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('touchstart', handlePointerDown);
     };
-  }, [closeOnOutsidePointer, isRendered, outsidePointerIgnoreRefs, requestClose]);
+  }, [closeOnOutsidePointer, isRendered, mountNode, outsidePointerIgnoreRefs, requestClose]);
 
   if (!mountNode || !isRendered) return null;
 
@@ -162,6 +196,7 @@ export const OverlayLayer: React.FC<OverlayLayerProps> = ({
       )}
       <div
         ref={contentRef}
+        tabIndex={-1}
         className={`overlay-layer__content ${contentClassName}`.trim()}
         style={contentStyle}
         onMouseDown={(event) => event.stopPropagation()}
@@ -195,6 +230,7 @@ export const ModalLayer: React.FC<ModalLayerProps> = ({
     blur={blur}
     closeOnBackdrop={closeOnBackdrop}
     closeOnEscape={closeOnEscape}
+    trapFocus
     rootPointerEvents="auto"
     exitDurationMs={exitDurationMs}
   />
