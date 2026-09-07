@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime
+from pathlib import Path
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 
 import fastapi
 import socketio
@@ -26,8 +28,17 @@ from shared.contracts.events import (
     WORKFLOW_SNAPSHOT,
 )
 
+@asynccontextmanager
+async def lifespan(app):
+    await runtime.start()
+    try:
+        yield
+    finally:
+        await runtime.stop()
+
+
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-app = fastapi.FastAPI(title="ZahnerFlow Python Backend")
+app = fastapi.FastAPI(title="ZahnerFlow Python Backend", version=API_VERSION, lifespan=lifespan)
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 runtime.set_sio(sio)
@@ -55,13 +66,13 @@ async def connect(sid, environ):
         {
             "message": "Welcome to ZahnerFlow WebSocket Gateway",
             "clientId": sid,
+            "runtimeId": runtime.runtime_id,
             "serverTime": int(time.time() * 1000),
             "connectedClients": len(connected_clients),
         },
         room=sid,
     )
-    snapshot = dict(runtime.experiment_state)
-    snapshot["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    snapshot = runtime.execution_snapshot()
     await sio.emit(WORKFLOW_SNAPSHOT, snapshot, room=sid)
     for device in ("furnace", "mfc", "zahner"):
         await sio.emit(
@@ -81,10 +92,10 @@ async def handle_join_workflow(sid, data):
     wfid = data.get("workflowId") if isinstance(data, dict) else data
     if sid in connected_clients:
         connected_clients[sid]["workflowIds"].add(wfid)
-    sio.enter_room(sid, f"workflow:{wfid}")
+    await sio.enter_room(sid, f"workflow:{wfid}")
     await sio.emit(
         RUNTIME_JOINED_WORKFLOW,
-        {"workflowId": wfid, "message": f"Successfully joined workflow {wfid}", "timestamp": datetime.utcnow().isoformat() + "Z"},
+        {"workflowId": wfid, "message": f"Successfully joined workflow {wfid}", "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
         room=sid,
     )
 
@@ -94,10 +105,10 @@ async def handle_leave_workflow(sid, data):
     wfid = data.get("workflowId") if isinstance(data, dict) else data
     if sid in connected_clients:
         connected_clients[sid]["workflowIds"].discard(wfid)
-    sio.leave_room(sid, f"workflow:{wfid}")
+    await sio.leave_room(sid, f"workflow:{wfid}")
     await sio.emit(
         RUNTIME_LEFT_WORKFLOW,
-        {"workflowId": wfid, "message": f"Successfully left workflow {wfid}", "timestamp": datetime.utcnow().isoformat() + "Z"},
+        {"workflowId": wfid, "message": f"Successfully left workflow {wfid}", "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")},
         room=sid,
     )
 
@@ -109,7 +120,7 @@ def get_health():
         "app_version": APP_VERSION,
         "schema_version": db.schema_version,
         "runtime_running": runtime.is_running,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "uptime": time.time() - start_time,
         "data_dir": str(DATA_DIR),
         "database_path": str(DB_PATH),
@@ -122,7 +133,7 @@ def get_api_info():
         "message": "ZahnerFlow Backend API",
         "version": API_VERSION,
         "status": "running",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
 
 
@@ -131,35 +142,29 @@ from routers.executions import router as executions_router
 from routers.devices import router as devices_router
 from routers.users import router as users_router
 from routers.files import router as files_router
+from routers.runtime_api import router as runtime_router
 
 app.include_router(workflows_router)
 app.include_router(executions_router)
 app.include_router(devices_router)
 app.include_router(users_router)
 app.include_router(files_router)
+app.include_router(runtime_router)
 
 
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str):
     if full_path.startswith("api/") or full_path == "api" or full_path.startswith("socket.io"):
         raise fastapi.HTTPException(status_code=404, detail="Not Found")
-    static_file_path = os.path.join(STATIC_DIR, full_path)
-    if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+    static_file_path = (Path(STATIC_DIR) / full_path).resolve()
+    if not static_file_path.is_relative_to(Path(STATIC_DIR).resolve()):
+        raise fastapi.HTTPException(status_code=404, detail="Not Found")
+    if static_file_path.is_file():
         return fastapi.responses.FileResponse(static_file_path)
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return fastapi.responses.FileResponse(index_path)
     return fastapi.responses.HTMLResponse("Frontend build not found. Please build frontend first.", status_code=404)
-
-
-@app.on_event("startup")
-async def startup_event():
-    await runtime.start()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await runtime.stop()
 
 
 if __name__ == "__main__":

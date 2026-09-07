@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-monorepo",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "ZahnerFlow 电化学工作流管理系统",
   "private": true,
   "scripts": {
@@ -32,7 +32,8 @@
     "setup": "pnpm install && uv sync",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "design:check": "node scripts/check-design.mjs"
+    "design:check": "node scripts/check-design.mjs",
+    "cli": "uv run zahnerflow"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^0.34.0",

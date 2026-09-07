@@ -45,7 +45,12 @@ async def device_api(device: str, path: str, request: Request):
     device_type = device_map.get(device, device)
     method = request.method
     body = await request.body() if method in ("POST", "PUT", "PATCH") else None
-    body_json = json.loads(body) if body else {}
+    try:
+        body_json = json.loads(body) if body else {}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+    if not isinstance(body_json, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object")
     query_params = dict(request.query_params) if request.query_params else {}
 
     try:

@@ -9,7 +9,7 @@ import random
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from database import db
 from runtime.app_runtime import runtime
@@ -31,6 +31,7 @@ from shared.contracts.events import WORKFLOW_NODES_RESET, WORKFLOW_SNAPSHOT
 from workflow_identity import workflow_fingerprint
 from report_service import load_execution_report
 from shared.contracts.report import ExecutionReport
+from shared.contracts.workflow import ExecutionStartRequest, ExecutionPreviewRequest
 
 router = APIRouter(prefix="/api/executions", tags=["executions"])
 sio = None
@@ -68,7 +69,7 @@ def _build_execution_plan(nodes: list[dict], auto_startup_config: dict | None = 
             auto_startup_config=auto_startup_config or {},
             start_from_unrolled_index=start_from_unrolled_index,
         )
-    except ExecutionPlanningError as exc:
+    except (ExecutionPlanningError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -138,7 +139,8 @@ def set_sio(sio_instance):
 
 
 @router.post("", status_code=201)
-async def create_execution(body: dict):
+async def create_execution(request: ExecutionStartRequest):
+    body = request.model_dump(by_alias=True)
     requested_workflow_id = body.get("workflowId")
     workflow_id = requested_workflow_id
     nodes = body.get("nodes")
@@ -167,37 +169,29 @@ async def create_execution(body: dict):
             },
         )
 
+    nodes = _resolve_execution_nodes(nodes, workflow_id)
+    plan = _build_execution_plan(nodes, auto_startup_config, body.get("startFromUnrolledIndex", 0))
+    if not plan.steps:
+        raise HTTPException(status_code=400, detail="Workflow has no executable steps")
+    nodes = plan.nodes
+    start_from_unrolled_index = plan.start_from_unrolled_index
     resolved_workflow = None
-    if nodes:
+    if body.get("nodes"):
         wf_name = workflow_name or f"工作流 {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"
         from routers.workflows import resolve_or_create_workflow
-
         resolved_workflow = resolve_or_create_workflow(
             {"name": wf_name, "nodes": nodes, "ownerName": owner_name},
             based_on_workflow_id=requested_workflow_id,
         )
         workflow_id = resolved_workflow["id"]
         workflow_name = resolved_workflow.get("name") or wf_name
-    elif not workflow_id:
-        if not nodes:
-            raise HTTPException(status_code=400, detail="Nodes array is required when workflowId is null")
-
-    if not nodes:
-        wf = _load_execution_workflow(workflow_id)
-        nodes = wf["nodes"]
-        workflow_name = wf["name"]
-        resolved_workflow = wf
+    else:
+        resolved_workflow = _load_execution_workflow(workflow_id)
+        workflow_name = resolved_workflow["name"]
 
     exec_id = f"exec_{int(time.time() * 1000)}_{random.randint(100, 999)}"
     now = datetime.utcnow().isoformat() + "Z"
 
-    plan = _build_execution_plan(
-        nodes,
-        auto_startup_config,
-        body.get("startFromUnrolledIndex", 0),
-    )
-    nodes = plan.nodes
-    start_from_unrolled_index = plan.start_from_unrolled_index
     wf_snapshot_payload = {
         **(resolved_workflow or {}),
         "id": workflow_id,
@@ -205,6 +199,7 @@ async def create_execution(body: dict):
         "nodes": nodes,
         "fingerprint": workflow_fingerprint(nodes),
         "ownerName": owner_name or "",
+        "commandSource": request.commandSource,
     }
     wf_snapshot = json.dumps(wf_snapshot_payload)
 
@@ -214,6 +209,7 @@ async def create_execution(body: dict):
     )
     db.conn.commit()
 
+    runtime.experiment_state["commandSource"] = request.commandSource
     runtime.experiment_state["workflowName"] = workflow_name or ""
     runtime.experiment_state["ownerName"] = owner_name or ""
     runtime.experiment_state["workstationType"] = workstation_type
@@ -248,7 +244,8 @@ async def create_execution(body: dict):
 
 
 @router.post("/unroll-preview")
-def preview_unrolled_execution(body: dict):
+def preview_unrolled_execution(request: ExecutionPreviewRequest):
+    body = request.model_dump(by_alias=True)
     workflow_id = body.get("workflowId")
     nodes = _resolve_execution_nodes(body.get("nodes"), workflow_id)
     auto_startup_config = body.get("autoStartupConfig") or {}
@@ -261,7 +258,8 @@ def preview_unrolled_execution(body: dict):
 
 
 @router.post("/estimate")
-def estimate_execution(body: dict):
+def estimate_execution(request: ExecutionPreviewRequest):
+    body = request.model_dump(by_alias=True)
     workflow_id = body.get("workflowId")
     nodes = _resolve_execution_nodes(body.get("nodes"), workflow_id)
     auto_startup_config = body.get("autoStartupConfig") or {}
@@ -276,7 +274,7 @@ def estimate_execution(body: dict):
 
 
 @router.get("")
-def get_executions_list(page: int = 1, limit: int = 20, status: str = None, started_after: str = None, started_before: str = None, scope: str = None):
+def get_executions_list(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=200), status: str = None, started_after: str = None, started_before: str = None, scope: str = None):
     offset = (page - 1) * limit
     conditions, params = [], []
     if status:
@@ -331,6 +329,7 @@ def get_executions_list(page: int = 1, limit: int = 20, status: str = None, star
                 "projectName": p_config.get("projectName") or "",
                 "individualName": p_config.get("individualName") or wf_snapshot.get("individualName") or "",
                 "ownerName": wf_snapshot.get("ownerName") or "",
+                "commandSource": wf_snapshot.get("commandSource") or "app",
                 "status": r["status"],
                 "startedAt": r["started_at"],
                 "endedAt": r["ended_at"],
@@ -344,9 +343,9 @@ def get_executions_list(page: int = 1, limit: int = 20, status: str = None, star
 
 
 @router.get("/{id}")
-def get_execution(id: str):
+async def get_execution(id: str):
     if runtime.experiment_state.get("executionId") == id:
-        return runtime.experiment_state
+        return runtime.execution_snapshot()
     row = db.conn.execute("SELECT * FROM executions WHERE id = ?", (id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Execution not found")
@@ -401,8 +400,7 @@ async def reset_execution():
     if sio:
         timestamp = datetime.utcnow().isoformat() + "Z"
         await sio.emit(WORKFLOW_NODES_RESET, {"targetStatus": "ready", "timestamp": timestamp})
-        snapshot = dict(runtime.experiment_state)
-        snapshot["timestamp"] = timestamp
+        snapshot = runtime.execution_snapshot()
         await sio.emit(WORKFLOW_SNAPSHOT, snapshot)
     return {"success": True, "message": "Execution reset successfully", "timestamp": datetime.utcnow().isoformat() + "Z"}
 

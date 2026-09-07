@@ -39,6 +39,8 @@ DEVICE_CAPABILITIES = {
 
 class AppRuntime:
     def __init__(self):
+        self.runtime_id = uuid.uuid4().hex
+        self._snapshot_sequence = 0
         self.sio = None
         self.loop: asyncio.AbstractEventLoop | None = None
         self.devices = DeviceManager()
@@ -52,6 +54,7 @@ class AppRuntime:
             "workflowId": None,
             "workflowName": "",
             "ownerName": "",
+            "commandSource": "app",
             "workstationType": None,
             "nodes": [],
             "currentStep": None,
@@ -303,6 +306,16 @@ class AppRuntime:
             async with self._connection_locks[device]:
                 await asyncio.to_thread(disconnect_method)
 
+    def execution_snapshot(self) -> dict:
+        """在事件循环内生成完整快照，HTTP 与 Socket.IO 共用交付顺序。"""
+        self._snapshot_sequence += 1
+        return {
+            **copy.deepcopy(self.experiment_state),
+            "runtimeId": self.runtime_id,
+            "snapshotSequence": self._snapshot_sequence,
+            "timestamp": _utc_now(),
+        }
+
     async def emit(self, event: str, payload: dict) -> None:
         if self.sio:
             await self.sio.emit(event, payload)
@@ -502,7 +515,7 @@ class AppRuntime:
                 "timestamp": now,
             }
         )
-        await self.emit(WORKFLOW_SNAPSHOT, self.experiment_state)
+        await self.emit(WORKFLOW_SNAPSHOT, self.execution_snapshot())
 
     async def on_execution_timeline_started(self, payload: dict) -> None:
         now = datetime.utcnow().isoformat() + "Z"
@@ -786,7 +799,7 @@ class AppRuntime:
                 "timestamp": now,
             }
         )
-        await self.emit(WORKFLOW_SNAPSHOT, self.experiment_state)
+        await self.emit(WORKFLOW_SNAPSHOT, self.execution_snapshot())
         await self.emit(
             WORKFLOW_EXECUTION_FINISHED,
             {
@@ -1311,6 +1324,7 @@ class AppRuntime:
                 "executionId": None,
                 "workflowName": "",
                 "ownerName": "",
+                "commandSource": "app",
                 "workstationType": None,
                 "nodes": [],
                 "currentStep": None,

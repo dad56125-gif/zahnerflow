@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import type { NodeCategory, WorkstationType, WorkflowNode } from '@zahnerflow/types';
 import { getNodeGroupsByWorkstation } from './utils/nodeUtilities';
 
@@ -133,11 +133,14 @@ const AppContent: React.FC = () => {
     useWorkflowStore.getState().setDraftWorkflowName(null);  // 清空草稿名称
   };
 
+  const hydratedExecutionId = useRef<string | null>(null);
   useEffect(() => {
-    if (!systemState || !execution.is.active) return;
+    if (!systemState?.executionId || systemState.status === 'idle') { hydratedExecutionId.current = null; return; }
+    if (hydratedExecutionId.current === systemState.executionId) return;
     const snapshotNodes = systemState.nodes || [];
     if (snapshotNodes.length === 0) return;
 
+    hydratedExecutionId.current = systemState.executionId;
     const currentNodes = useCanvasStore.getState().nodes;
     const currentFingerprint = JSON.stringify(currentNodes.map((node: WorkflowNode) => ({ id: node.id, type: node.type, config: node.config })));
     const snapshotFingerprint = JSON.stringify(snapshotNodes.map((node: WorkflowNode) => ({ id: node.id, type: node.type, config: node.config })));
@@ -153,7 +156,7 @@ const AppContent: React.FC = () => {
     if (systemState.workflowName) {
       useWorkflowStore.getState().setDraftWorkflowName(systemState.workflowName);
     }
-  }, [systemState, execution.is.active, selectedWorkstation, applyWorkstation]);
+  }, [systemState, selectedWorkstation, applyWorkstation]);
 
   // 玻璃态效果
   useEffect(() => {

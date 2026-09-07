@@ -5,7 +5,7 @@
 基于前端 Interfaces.ts 中实际使用的类型。
 """
 
-from pydantic import Field
+from pydantic import Field, ConfigDict, StrictInt
 from typing import Optional, List, Any, Literal
 from ._base import ContractModel
 
@@ -41,7 +41,8 @@ class WorkflowNode(ContractModel):
 
     代表实验流程中的一个操作步骤。
     """
-    id: str = Field(description="唯一标识 (如 node-1)")
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1, description="唯一标识 (如 node-1)")
     type: NodeType = Field(description="节点类型 (如 eis_potentiostatic)")
     config: dict = Field(default_factory=dict, description="节点参数 (扁平化)")
     group: Optional[dict] = Field(default=None, description="可选分组元数据，不参与节点参数")
@@ -146,6 +147,8 @@ class WorkflowEtaEstimate(ContractModel):
 
 class ExecutionStartRequest(ContractModel):
     """创建执行请求"""
+    model_config = ConfigDict(extra="forbid")
+    commandSource: Literal["app", "cli", "agent"] = Field(default="app", description="命令来源，用于执行归属展示")
     nodes: List[WorkflowNode] = Field(default_factory=list, description="本次执行的画布节点")
     workflowId: Optional[str] = Field(default=None, description="可选工作流 ID，仅在不传节点时读取归档定义")
     ownerName: Optional[str] = Field(default=None, description="执行用户")
@@ -154,7 +157,14 @@ class ExecutionStartRequest(ContractModel):
     autoStartupConfig: dict = Field(default_factory=dict, description="自动启动程序配置")
     pathConfig: dict = Field(default_factory=dict, description="本次执行的文件路径配置")
     forceStartWithMissingRunMetadata: bool = Field(default=False, description="缺少用户/项目/样品名时是否强制启动")
-    startFromUnrolledIndex: int = Field(default=0, description="从第几个展开步骤开始执行，0 为从头开始")
+    startFromUnrolledIndex: StrictInt = Field(default=0, ge=0, description="从第几个展开步骤开始执行，0 为从头开始")
+
+
+class ExecutionPreviewRequest(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+    nodes: Optional[List[WorkflowNode]] = Field(default=None, description="待预览节点；缺省时读取 workflowId")
+    workflowId: Optional[str] = Field(default=None, description="已归档工作流")
+    autoStartupConfig: dict = Field(default_factory=dict, description="自动启动配置")
 
 
 class UnrolledWorkflowStep(ContractModel):
@@ -187,6 +197,9 @@ class WorkflowUnrollPreview(ContractModel):
 
 
 class ExecutionSnapshot(ContractModel):
+    runtimeId: str = Field(description="当前后端进程身份")
+    snapshotSequence: int = Field(description="进程内快照交付序号，严格递增")
+    commandSource: Literal["app", "cli", "agent"] = Field(default="app", description="执行发起入口")
     """
     执行快照 — 工作流正在跑时的进度状态
 

@@ -69,6 +69,9 @@ export const BottomBar: React.FC<BottomBarProps> = ({
           title="点击打开通知面板"
         >
           <span className={`bottom-bar__run-dot ${execution.is.active ? 'is-running' : 'is-ready'}`} />
+          {systemState?.executionId && <span className="badge" title={`${systemState.workflowName || ''} · ${systemState.ownerName || ''} · ${systemState.executionId}`}>
+            {{ app: 'App', cli: 'CLI', agent: 'Agent' }[systemState.commandSource || 'app']}
+          </span>}
           <span className="bottom-bar__message">{getStatusMessage()}</span>
         </div>
       </div>

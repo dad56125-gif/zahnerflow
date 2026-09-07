@@ -20,6 +20,7 @@
 - `[执行-展开与ETA]`：展开、进度、ETA 和报告明细以后端展开事实为准。
 - `[工作流-身份]`：工作流定义由节点结构和参数指纹确定。
 - `[数据-SQLite]`：SQLite 是本地持久化边界。
+- `[接口-命令行接入]`：CLI 与 Agent 通过同一运行时接入。
 - `[接口-前端契约]`：前端通过统一 runtime client 访问后端契约。
 - `[接口-事件契约]`：Socket.IO 自定义事件名称由共享契约统一维护并供两端运行时引用。
 - `[接口-用户设置]`：用户设置由后端默认值和归一化规则形成完整文档。
@@ -62,7 +63,7 @@
 
 ## [运行时-Python后端]
 
-当前规则：Python 后端进程承载 REST、Socket.IO、设备协调、执行协调和本地持久化访问，默认监听 `127.0.0.1:3001`。
+当前规则：Python 后端进程承载 REST、Socket.IO、设备协调、执行协调和本地持久化访问，默认监听 `127.0.0.1:3001`。启动和停止由 FastAPI lifespan 统一管理；静态文件只允许访问前端 dist 目录内的路径。
 
 归属文件：`apps/python_backend/main.py`。
 
@@ -279,3 +280,15 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 禁止事项：禁止业务 SCSS 重定义核心令牌、重新引入 Sass `@import`、给已统一模块添加原始颜色或建立第二套节点图标颜色表。
 
 验证：`pnpm design:check` 固定核心令牌边界和已统一模块颜色；该检查不替代浏览器视觉检查。
+
+## [接口-命令行接入]
+
+当前规则：`uv run zahnerflow` 是标准库 HTTP 客户端，通过同一后端进行能力发现、工作流查询、计划预览、执行、控制、报告与设备命令。CLI 不导入数据库、运行时或驱动，不自动启动服务。`/api/runtime/capabilities` 从现有语义表和共享请求模型生成发现信息，`/api/runtime/snapshot` 与 Socket.IO 由 `AppRuntime.execution_snapshot()` 生成完整状态。共享执行和预览模型在 HTTP 边界验证；无效计划不能先生成工作流归档。
+
+快照规则：每次交付包含进程 `runtimeId` 与递增的 `snapshotSequence`；连接事件先宣布当前进程。前端只接受该进程的新序号，不再以旧执行 ID 阻止外部新执行。App 按新执行身份恢复画布，包含未 reset 的终态，状态栏显示命令来源。`commandSource` 每次执行分别保存在 `workflow_snapshot`，不创建重复 SQL 列。暂停仍阻止进入下一步骤，不冻结正在进行的测量或等待；取消仍遵守现有节点中断语义。
+
+归属文件：`apps/zahnerflow_cli/`、`apps/python_backend/routers/runtime_api.py`、`apps/shared/contracts/workflow.py`、`apps/frontend/src/state/executionStateBridge.ts`、`doc/cli-agent.md`。
+
+允许变化：增加已实现能力的 CLI 命令或更精确的节点参数模型；必须先同步后端契约和发现输出。
+
+禁止事项：禁止 CLI 打开另一份 SQLite、另起设备服务或自行展开计划；禁止把通用 config 对象 Schema 宣称为完整设备参数规范。

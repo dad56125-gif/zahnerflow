@@ -162,6 +162,8 @@ export interface WorkflowEtaEstimate {
 }
 
 export interface ExecutionStartRequest {
+  /** 命令来源，用于执行归属展示 */
+  commandSource?: 'app' | 'cli' | 'agent';
   /** 本次执行的画布节点 */
   nodes?: WorkflowNode[];
   /** 可选工作流 ID，仅在不传节点时读取归档定义 */
@@ -180,6 +182,15 @@ export interface ExecutionStartRequest {
   forceStartWithMissingRunMetadata?: boolean;
   /** 从第几个展开步骤开始执行，0 为从头开始 */
   startFromUnrolledIndex?: number;
+}
+
+export interface ExecutionPreviewRequest {
+  /** 待预览节点；缺省时读取 workflowId */
+  nodes?: WorkflowNode[] | null;
+  /** 已归档工作流 */
+  workflowId?: string | null;
+  /** 自动启动配置 */
+  autoStartupConfig?: Record<string, any>;
 }
 
 export interface UnrolledWorkflowStep {
@@ -231,6 +242,12 @@ export interface WorkflowUnrollPreview {
 }
 
 export interface ExecutionSnapshot {
+  /** 当前后端进程身份 */
+  runtimeId: string;
+  /** 进程内快照交付序号，严格递增 */
+  snapshotSequence: number;
+  /** 执行发起入口 */
+  commandSource?: 'app' | 'cli' | 'agent';
   /** 整体状态 */
   status: 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
   /** 工作流 ID */

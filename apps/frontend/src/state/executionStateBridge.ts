@@ -12,6 +12,7 @@ import type {
 } from '@zahnerflow/types';
 import { runtimeClient, runtimeSocket } from '../runtimeClient';
 import {
+  RUNTIME_CONNECTED,
   WORKFLOW_LOOP_START,
   WORKFLOW_NODE_STATUS,
   WORKFLOW_NODES_RESET,
@@ -106,21 +107,16 @@ const snapshotPercentage = (snapshot: ExecutionSnapshot): number => {
   return totalSeconds > 0 ? Math.round((elapsedSeconds / totalSeconds) * 100) : 0;
 };
 
-const acceptsSnapshot = (state: ExecutionState, snapshot: ExecutionSnapshot): boolean => {
-  const incomingPhase = readExecutionPhase(snapshot.status);
-  const currentExecutionId = state.identity.executionId ?? state.snapshot?.executionId;
-  const incomingExecutionId = snapshot.executionId;
-
-  if (incomingPhase === 'idle') return true;
-  if (!currentExecutionId || !incomingExecutionId) return true;
-  if (currentExecutionId === incomingExecutionId) return true;
-  return false;
-};
-
 export const useExecutionStore = create<ExecutionState>()(
   devtools(
     (set, get) => {
       if (typeof window !== 'undefined') {
+        let connectedRuntimeId: string | null = null;
+        let lastSnapshotSequence = -1;
+        runtimeSocket.on<{ runtimeId: string }>(RUNTIME_CONNECTED, ({ runtimeId }) => {
+          connectedRuntimeId = runtimeId;
+          lastSnapshotSequence = -1;
+        });
         runtimeSocket.connectSocket();
 
         runtimeSocket.on<NodeStatusUpdate>(WORKFLOW_NODE_STATUS, (update) => {
@@ -182,7 +178,8 @@ export const useExecutionStore = create<ExecutionState>()(
 
         runtimeSocket.on<ExecutionSnapshot>(WORKFLOW_SNAPSHOT, (snapshot) => {
           const state = get();
-          if (!acceptsSnapshot(state, snapshot)) return;
+          if (snapshot.runtimeId !== connectedRuntimeId || snapshot.snapshotSequence <= lastSnapshotSequence) return;
+          lastSnapshotSequence = snapshot.snapshotSequence;
 
           const phase = readExecutionPhase(snapshot.status);
           const sameExecution = Boolean(

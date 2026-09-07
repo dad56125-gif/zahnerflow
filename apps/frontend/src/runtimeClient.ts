@@ -5,6 +5,7 @@ import { DEVICE_STATUS_UPDATE } from './eventContracts';
 import type {
   RuntimeDeviceStatusEnvelope,
   UserListResponse, UserSettingsResponse, CreateUserResponse, ExecutionReport,
+  ExecutionSnapshot,
   WorkflowNode,
   WorkflowUnrollPreview,
 } from '@zahnerflow/types';
@@ -71,26 +72,22 @@ export async function runtimeRequest<T>(
       const payload: { detail?: unknown; error?: string; message?: string } =
         await parseResponse<{ detail?: unknown; error?: string; message?: string }>(response).catch(() => ({}));
       const detail = payload.detail;
-      throw {
-        code: `HTTP_${response.status}`,
-        message:
-          typeof detail === 'string'
-            ? detail
-            : payload.error || payload.message || response.statusText || `HTTP ${response.status}`,
-        status: response.status,
-        details: detail,
-      } satisfies RuntimeError;
+      const message = typeof detail === 'string' ? detail
+        : detail && typeof detail === 'object' && 'message' in detail ? String(detail.message)
+        : payload.error || payload.message || response.statusText || `HTTP ${response.status}`;
+      throw Object.assign(new Error(message), {
+        code: `HTTP_${response.status}`, message, status: response.status, details: detail,
+      } satisfies RuntimeError);
     }
     return await parseResponse<T>(response);
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error) {
       throw error;
     }
-    throw {
-      code: 'NETWORK_ERROR',
-      message: error instanceof Error ? error.message : String(error),
-      status: 0,
-    } satisfies RuntimeError;
+    const message = error instanceof Error ? error.message : String(error);
+    throw Object.assign(new Error(message), {
+      code: 'NETWORK_ERROR', message, status: 0,
+    } satisfies RuntimeError);
   }
 }
 
@@ -145,6 +142,7 @@ class RuntimeSocket {
 export const runtimeSocket = new RuntimeSocket();
 
 export const runtimeClient = {
+  runtime: { snapshot: () => get<ExecutionSnapshot>('/api/runtime/snapshot') },
   workflows: {
     get: <T>(id: string) => get<T>(`/api/workflows/${encodeURIComponent(id)}`),
     toggleFavorite: <T = { id: string; isFavorite: boolean }>(id: string) =>

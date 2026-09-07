@@ -1343,8 +1343,8 @@ wheels = [
 
 [[package]]
 name = "zahnerflow-runtime"
-version = "1.0.11"
-source = { virtual = "." }
+version = "2.2.0"
+source = { editable = "." }
 dependencies = [
     { name = "aiosmtplib" },
     { name = "fastapi" },

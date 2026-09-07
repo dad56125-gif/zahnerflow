@@ -170,7 +170,7 @@ def generate():
         WorkstationType, NodeType, NodeCategory, EXECUTION_PHASE_VALUES, ExecutionPhase, NodeStatus,
         WorkflowNode, Workflow, IterationPathEntry, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
         ExecutionEtaStep, NodeTiming, LoopProgress, WorkflowEtaEstimate,
-        ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
+        ExecutionStartRequest, ExecutionPreviewRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
         NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
         RawStreamData, EnrichedStreamData, EisResultData, EnrichedEisData,
     )
@@ -236,7 +236,7 @@ def generate():
         "",
     ]
     for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming, LoopProgress,
-                  WorkflowEtaEstimate, ExecutionStartRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
+                  WorkflowEtaEstimate, ExecutionStartRequest, ExecutionPreviewRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
                   ExecutionSnapshot,
                   NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
                   RawStreamData, EnrichedStreamData, EisResultData, EnrichedEisData]:

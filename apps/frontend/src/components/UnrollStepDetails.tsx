@@ -13,7 +13,7 @@ export function UnrollStepDetails({ row }: { row: UnrollExplorerRow | null }) {
       <dt>参数</dt><dd>{row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary}</dd>
     </dl>
     {row.isAutomaticBoundary && <p>系统自动边界不能作为手动起点。</p>}
-    <details><summary>完整步骤参数</summary><pre>{JSON.stringify(row.step.node?.parameters ?? {}, null, 2)}</pre></details>
+    <details><summary>完整步骤参数</summary><pre>{JSON.stringify(row.step.node?.config ?? {}, null, 2)}</pre></details>
   </>;
 }
 
