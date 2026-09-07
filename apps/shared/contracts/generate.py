@@ -117,7 +117,7 @@ def model_to_interface(cls) -> str:
             lines.append(f"  /** {description} */")
 
         # 添加字段
-        optional = field_info.is_required() is False
+        optional = field_info.is_required() is False and not (cls.model_config.get("json_schema_extra") or {}).get("required_output")
         if optional:
             # 可选字段加 ?
             lines.append(f"  {json_name}?: {ts_type};")
@@ -335,6 +335,23 @@ def generate():
         f.write(events_content)
     print(f"  Generated: contracts/events.ts")
 
+    # 完整设置响应和报告文档共用与运行时相同的模型。
+    from contracts.settings import (FilePathConfig, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse)
+    settings_models = [FilePathConfig, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse]
+    import json
+    content = ["/** 自动生成，来源 apps/shared/contracts/settings.py；勿手动修改。 */"]
+    content.extend(model_to_interface(model) for model in settings_models)
+    content.append("export const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = " + json.dumps(FilePathConfig().model_dump(by_alias=True), ensure_ascii=False) + ";")
+    with open(os.path.join(output_dir, "settings.ts"), "w", encoding="utf-8") as handle:
+        handle.write("\n\n".join(content) + "\n")
+
+    from contracts.report import (ReportStep, ReportArtifact, ReportWarning, ReportExecutionMetadata, ReportEnvironment, ExecutionReport)
+    report_models = [ReportStep, ReportArtifact, ReportWarning, ReportExecutionMetadata, ReportEnvironment, ExecutionReport]
+    content = ["/** 自动生成，来源 apps/shared/contracts/report.py；勿手动修改。 */", "import type { FilePathConfig } from './settings.js';"]
+    content.extend(model_to_interface(model) for model in report_models)
+    with open(os.path.join(output_dir, "report.ts"), "w", encoding="utf-8") as handle:
+        handle.write("\n\n".join(content) + "\n")
+
     # ==================== 生成 index.ts ====================
     index_content = [
         "/**",
@@ -346,12 +363,14 @@ def generate():
         " *   uv run python -m apps.shared.contracts.generate",
         " */",
         "",
-        "export * from './furnace';",
-        "export * from './mfc';",
-        "export * from './workflow';",
-        "export * from './common';",
-        "export * from './runtimeDevice';",
-        "export * from './events';",
+        "export * from './furnace.js';",
+        "export * from './mfc.js';",
+        "export * from './workflow.js';",
+        "export * from './common.js';",
+        "export * from './runtimeDevice.js';",
+        "export * from './events.js';",
+        "export * from './settings.js';",
+        "export * from './report.js';",
         "",
     ]
 
@@ -359,9 +378,8 @@ def generate():
         f.write("\n".join(index_content))
     print(f"  Generated: contracts/index.ts")
 
-    model_count = 29
     print(f"\n✅ All types generated to: {output_dir}")
-    print(f"   5 files generated, {model_count} interfaces generated")
+
 
 
 if __name__ == "__main__":

@@ -4,8 +4,9 @@ Users — /api/users 路由
 import sqlite3
 import time
 import random
-import json
-from copy import deepcopy
+from pydantic import ValidationError
+from shared.contracts.settings import UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse
+from user_settings import load_user_settings, save_user_settings as persist_user_settings
 from datetime import datetime
 from typing import Any
 
@@ -16,42 +17,7 @@ from database import db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-DEFAULT_USER_SETTINGS = {
-    "filePath": {"basePath": "C:\\data\\archive", "projectName": "", "individualName": ""},
-    "notification": {
-        "email": "",
-        "enabled": False,
-        "onComplete": True,
-        "onError": True,
-        "onWarning": True,
-        "smtpServer": "smtp.qq.com",
-        "smtpPort": 465,
-        "smtpUser": "",
-        "smtpPassword": "",
-        "smtpSecure": True,
-    },
-    "cloud": {"provider": "none", "syncEnabled": False},
-}
-
-
-def _merge_settings(target: dict, source: dict) -> None:
-    for key, value in source.items():
-        if isinstance(value, dict) and isinstance(target.get(key), dict):
-            _merge_settings(target[key], value)
-        else:
-            target[key] = value
-
-
-def normalize_user_settings(settings: dict | None) -> dict:
-    """Return one complete settings document with backend-owned defaults."""
-
-    normalized = deepcopy(DEFAULT_USER_SETTINGS)
-    if isinstance(settings, dict):
-        _merge_settings(normalized, settings)
-    return normalized
-
-
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=CreateUserResponse)
 def create_user(body: dict):
     username = body.get("user")
     if not username:
@@ -67,13 +33,13 @@ def create_user(body: dict):
         db.conn.commit()
     except sqlite3.IntegrityError:
         return {"success": False, "message": f"User '{username}' already exists"}
-    return {"success": True, "message": f"User {username} created successfully"}
+    return {"success": True, "message": f"User {username} created successfully", "user": UserProfile(id=u_id, user=username, email=body.get("email"), created_at=now).model_dump(by_alias=True)}
 
 
-@router.get("")
+@router.get("", response_model=UserListResponse)
 def get_users():
-    rows = db.conn.execute("SELECT username FROM users ORDER BY created_at DESC").fetchall()
-    return {"users": [r["username"] for r in rows]}
+    rows = db.conn.execute("SELECT id, username, email, created_at FROM users ORDER BY created_at DESC").fetchall()
+    return {"users": [UserProfile(id=row["id"], user=row["username"], email=row["email"], created_at=row["created_at"], avatar=load_user_settings(row["username"])["cloud"]["avatar"]).model_dump(by_alias=True) for row in rows]}
 
 
 @router.delete("/{user}")
@@ -84,39 +50,26 @@ def delete_user(user: str):
     return {"success": cursor.rowcount > 0, "message": f"User {user} deleted" if cursor.rowcount > 0 else f"User {user} not found"}
 
 
-@router.get("/{user}/settings")
+@router.get("/{user}/settings", response_model=UserSettingsResponse)
 def get_user_settings(user: str):
-    row = db.conn.execute("SELECT settings_json FROM user_settings WHERE user = ?", (user,)).fetchone()
-    if row:
-        try:
-            settings = json.loads(row["settings_json"])
-        except (TypeError, json.JSONDecodeError):
-            settings = None
-    else:
-        settings = None
-    return {"success": True, "settings": normalize_user_settings(settings)}
+    return {"success": True, "settings": load_user_settings(user)}
 
 
-@router.put("/{user}/settings")
+@router.put("/{user}/settings", response_model=UserSettingsResponse)
 def save_user_settings(user: str, settings: dict):
-    if not isinstance(settings, dict):
-        raise HTTPException(status_code=400, detail="Settings must be an object")
-    current = get_user_settings(user)["settings"]
-    _merge_settings(current, settings)
-    current = normalize_user_settings(current)
-    now = datetime.utcnow().isoformat() + 'Z'
-    db.conn.execute("INSERT OR REPLACE INTO user_settings (user, settings_json, updated_at) VALUES (?, ?, ?)",
-                    (user, json.dumps(current), now))
-    db.conn.commit()
-    return {"success": True, "message": "Settings saved successfully", "settings": current}
+    try:
+        return {"success": True, "settings": persist_user_settings(user, settings)}
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors(include_input=False, include_context=False)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@router.put("/{user}/settings/{section}")
+@router.put("/{user}/settings/{section}", response_model=UserSettingsResponse)
 def update_settings_section(user: str, section: str, value: Any = Body(...)):
-    if section not in DEFAULT_USER_SETTINGS:
+    if section not in {"filePath", "notification", "cloud"}:
         raise HTTPException(status_code=404, detail=f"Unknown settings section: {section}")
-    result = save_user_settings(user, {section: value})
-    return {**result, "message": f"{section} settings saved"}
+    return save_user_settings(user, {section: value})
 
 
 @router.post("/{user}/settings/test-email")

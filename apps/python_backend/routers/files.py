@@ -49,13 +49,9 @@ def delete_project(projectName: str, user: str):
 
 @router.get("/user-config")
 def get_user_config(user: str):
-    # 导入 users 路由中的 get_user_settings
-    from routers.users import get_user_settings
-    settings = get_user_settings(user)["settings"]
-    fp = settings.get("filePath", {})
-    return {"success": True, "config": {"basePath": fp.get("basePath", "C:\\data\\archive"),
-                                         "projectName": fp.get("projectName", ""),
-                                         "individualName": fp.get("individualName", "")}}
+    from user_settings import load_user_settings
+    return {"success": True, "config": load_user_settings(user)["filePath"]}
+
 
 
 @router.post("/path-config")

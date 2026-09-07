@@ -13,8 +13,9 @@ import socketio
 import uvicorn
 
 from runtime.app_runtime import runtime
-from database import DB_PATH, DATA_DIR
+from database import DB_PATH, DATA_DIR, db
 from version import APP_VERSION
+from shared.contracts.protocol import API_VERSION
 from shared.contracts.events import (
     DEVICE_STATUS_UPDATE,
     RUNTIME_CONNECTED,
@@ -106,6 +107,7 @@ def get_health():
     return {
         "status": "healthy",
         "app_version": APP_VERSION,
+        "schema_version": db.schema_version,
         "runtime_running": runtime.is_running,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "uptime": time.time() - start_time,
@@ -118,7 +120,7 @@ def get_health():
 def get_api_info():
     return {
         "message": "ZahnerFlow Backend API",
-        "version": "3.0.0",
+        "version": API_VERSION,
         "status": "running",
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }

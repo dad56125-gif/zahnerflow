@@ -7,38 +7,7 @@ import {
 import { getNodeDisplayName, summarizeNodeParameters } from '../../types/NodeConfiguration';
 import { formatIterationPath, toIterationPath } from '../../utils/iterationPath';
 
-interface ExecutionMetadata {
-  id?: string;
-  executionId?: string;
-  workflowId?: string;
-  workflowName?: string;
-  projectName?: string;
-  individualName?: string;
-  status?: string;
-  startedAt?: string;
-  endedAt?: string | null;
-  durationMs?: number | null;
-  error?: string | null;
-  operator?: {
-    name?: string;
-  };
-}
-
-interface ReportApiPayload {
-  executionMetadata?: ExecutionMetadata;
-  workflowSnapshot?: {
-    nodes?: Array<Record<string, unknown>>;
-  };
-  pathConfig?: {
-    projectName?: string;
-    individualName?: string;
-  };
-  unrolledSteps?: Array<Record<string, unknown>>;
-  executionSteps?: Array<Record<string, unknown>>;
-  warningFlags?: Array<unknown>;
-  artifacts?: Array<unknown>;
-  generatedAt?: string;
-}
+import type { ExecutionReport, ReportStep, ReportArtifact, ReportWarning } from '@zahnerflow/types';
 
 const REPORT_FALLBACK_TIME = '1970-01-01T00:00:00.000Z';
 
@@ -53,18 +22,6 @@ function toIsoString(value?: string | null): string {
   }
 
   return date.toISOString();
-}
-
-function pickExecutionMetadata(payload: ReportApiPayload): ExecutionMetadata {
-  return payload.executionMetadata ?? {};
-}
-
-function pickWorkflowNodes(payload: ReportApiPayload): Array<Record<string, unknown>> {
-  return payload.workflowSnapshot?.nodes ?? [];
-}
-
-function pickUnrolledSteps(payload: ReportApiPayload): Array<Record<string, unknown>> {
-  return payload.unrolledSteps ?? payload.executionSteps ?? [];
 }
 
 function getNodeLabel(type: string): string {
@@ -88,6 +45,7 @@ function formatValue(value: unknown): string {
 }
 
 function toNumber(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : undefined;
 }
@@ -100,27 +58,18 @@ function normalizeStatus(status: string): ReportNodeInfo['status'] {
   return 'pending';
 }
 
-function getRecordValue(record: Record<string, unknown>, keys: string[]): unknown {
-  for (const key of keys) {
-    if (record[key] != null && record[key] !== '') {
-      return record[key];
-    }
-  }
-  return undefined;
-}
-
 function getNodeParams(node: Record<string, unknown> | undefined): unknown {
-  return node?.config ?? node?.data ?? node?.parameters ?? {};
+  return node?.config ?? {};
 }
 
-function getResultRecord(step: Record<string, unknown>): Record<string, unknown> {
+function getResultRecord(step: ReportStep): Record<string, unknown> {
   const result = step.result;
   return result && typeof result === 'object' && !Array.isArray(result) ? result as Record<string, unknown> : {};
 }
 
 function summarizeResult(result: Record<string, unknown>): string {
   const parts: string[] = [];
-  const dataPoints = getRecordValue(result, ['data_points', 'dataPoints', 'points', 'point_count']);
+  const dataPoints = result.dataPoints;
   if (dataPoints != null) {
     parts.push(`数据点: ${formatValue(dataPoints)}`);
   }
@@ -147,8 +96,8 @@ function formatBlockLabel(raw: unknown): string | undefined {
   return labels.length > 0 ? labels.join(' / ') : undefined;
 }
 
-function getDurationSeconds(step: Record<string, unknown>): number | undefined {
-  const actualSeconds = toNumber(getRecordValue(step, ['actualSeconds', 'actual_seconds']));
+function getDurationSeconds(step: ReportStep): number | undefined {
+  const actualSeconds = toNumber(step.actualSeconds);
   if (actualSeconds !== undefined) {
     return Math.round(actualSeconds);
   }
@@ -166,19 +115,19 @@ function getDurationSeconds(step: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function toReportNodeFromStep(step: Record<string, unknown>, node: Record<string, unknown> | undefined): ReportNodeInfo {
+function toReportNodeFromStep(step: ReportStep, node: Record<string, unknown> | undefined): ReportNodeInfo {
   const result = getResultRecord(step);
   const type = String(step.nodeType ?? node?.type ?? 'unknown');
   const originalIndex = Number(step.originalIndex ?? node?.index ?? 0);
   const unrolledIndex = Number(step.unrolledIndex ?? originalIndex);
   const rawParams = step.params ?? getNodeParams(node);
   const status = normalizeStatus(String(step.status ?? 'pending'));
-  const outputFile = getRecordValue(result, ['outputFile', 'output_file', 'full_path']) as string | undefined;
-  const csvPath = getRecordValue(result, ['csvPath', 'csv_path']) as string | undefined;
-  const outputDir = getRecordValue(result, ['outputDir', 'output_path', 'outputPath']) as string | undefined;
-  const dataPoints = toNumber(getRecordValue(result, ['data_points', 'dataPoints', 'points', 'point_count']));
-  const stepError = getRecordValue(step, ['error']);
-  const resultError = getRecordValue(result, ['error']);
+  const outputFile = result.outputFile as string | undefined;
+  const csvPath = result.csvPath as string | undefined;
+  const outputDir = result.outputDir as string | undefined;
+  const dataPoints = toNumber(result.dataPoints);
+  const stepError = step.error;
+  const resultError = result.error;
   const indentLevel = Number(node?.indentLevel ?? node?.depth ?? 0);
 
   return {
@@ -191,8 +140,8 @@ function toReportNodeFromStep(step: Record<string, unknown>, node: Record<string
     keyParams: summarizeNodeParameters(type, rawParams),
     status,
     durationSeconds: getDurationSeconds(step),
-    estimatedSeconds: toNumber(getRecordValue(step, ['estimatedSeconds', 'estimated_seconds'])),
-    etaSource: getRecordValue(step, ['etaSource', 'eta_source']) as string | undefined,
+    estimatedSeconds: toNumber(step.estimatedSeconds),
+    etaSource: step.etaSource as string | undefined,
     outputFile,
     csvPath,
     outputDir,
@@ -218,25 +167,25 @@ function toReportNodeFromWorkflowNode(node: Record<string, unknown>, index: numb
   };
 }
 
-function getOriginalStepIndex(step: Record<string, unknown>): number | undefined {
-  const value = toNumber(getRecordValue(step, ['originalIndex', 'original_index', 'nodeIndex', 'node_index']));
+function getOriginalStepIndex(step: ReportStep): number | undefined {
+  const value = toNumber(step.originalIndex);
   return value !== undefined && value >= 0 ? value : undefined;
 }
 
-function getStepSortIndex(step: Record<string, unknown>): number {
-  return toNumber(getRecordValue(step, ['unrolledIndex', 'unrolled_index', 'stepIndex', 'step_index'])) ?? 0;
+function getStepSortIndex(step: ReportStep): number {
+  return toNumber(step.unrolledIndex) ?? 0;
 }
 
 function buildReportNodes(
   workflowNodes: Array<Record<string, unknown>>,
-  steps: Array<Record<string, unknown>>,
+  steps: ReportStep[],
 ): ReportNodeInfo[] {
   if (steps.length === 0) {
     return workflowNodes.map(toReportNodeFromWorkflowNode);
   }
 
-  const stepsByOriginalIndex = new Map<number, Array<Record<string, unknown>>>();
-  const orphanSteps: Array<Record<string, unknown>> = [];
+  const stepsByOriginalIndex = new Map<number, ReportStep[]>();
+  const orphanSteps: ReportStep[] = [];
 
   for (const step of steps) {
     const originalIndex = getOriginalStepIndex(step);
@@ -275,23 +224,23 @@ function buildReportNodes(
   return nodes.map((node, index) => ({ ...node, index: index + 1 }));
 }
 
-function normalizeArtifact(raw: unknown): ReportArtifactInfo | null {
+function normalizeArtifact(raw: ReportArtifact): ReportArtifactInfo | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return null;
   }
 
-  const record = raw as Record<string, unknown>;
-  const filePath = getRecordValue(record, ['filePath', 'file_path', 'outputFile', 'csvPath']);
+  const record = raw;
+  const filePath = record.filePath;
   if (!filePath) {
     return null;
   }
 
   return {
-    nodeId: getRecordValue(record, ['nodeId', 'node_id']) as string | undefined,
-    fileType: getRecordValue(record, ['fileType', 'file_type']) as string | undefined,
+    nodeId: record.nodeId as string | undefined,
+    fileType: record.fileType as string | undefined,
     filePath: String(filePath),
-    createdAt: getRecordValue(record, ['createdAt', 'created_at']) as string | undefined,
-    dataPoints: toNumber(getRecordValue(record, ['dataPoints', 'data_points'])),
+    createdAt: record.createdAt as string | undefined,
+    dataPoints: toNumber(record.dataPoints),
   };
 }
 
@@ -308,7 +257,7 @@ function artifactFromNode(node: ReportNodeInfo): ReportArtifactInfo | null {
   };
 }
 
-function buildArtifacts(payloadArtifacts: unknown[] | undefined, nodes: ReportNodeInfo[]): ReportArtifactInfo[] {
+function buildArtifacts(payloadArtifacts: ReportArtifact[] | undefined, nodes: ReportNodeInfo[]): ReportArtifactInfo[] {
   const seen = new Set<string>();
   const artifacts: ReportArtifactInfo[] = [];
   const candidates = [
@@ -327,25 +276,25 @@ function buildArtifacts(payloadArtifacts: unknown[] | undefined, nodes: ReportNo
   return artifacts;
 }
 
-function buildWarnings(rawWarnings: unknown[] | undefined): ReportWarningInfo[] {
+function buildWarnings(rawWarnings: ReportWarning[] | undefined): ReportWarningInfo[] {
   return (rawWarnings ?? []).map((raw) => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       return { message: String(raw ?? '') };
     }
-    const record = raw as Record<string, unknown>;
+    const record = raw;
     return {
-      type: getRecordValue(record, ['warningType', 'warning_type', 'type']) as string | undefined,
-      message: String(getRecordValue(record, ['message', 'detail']) ?? ''),
-      createdAt: getRecordValue(record, ['createdAt', 'created_at']) as string | undefined,
+      type: record.warningType as string | undefined,
+      message: String(record.message ?? ''),
+      createdAt: record.createdAt as string | undefined,
     };
   }).filter((warning) => warning.message);
 }
 
-export function buildReportData(payload: ReportApiPayload): ReportData {
-  const meta = pickExecutionMetadata(payload);
-  const workflowNodes = pickWorkflowNodes(payload);
-  const steps = pickUnrolledSteps(payload);
-  const pathConfig = payload.pathConfig ?? {};
+export function buildReportData(payload: ExecutionReport): ReportData {
+  const meta = payload.executionMetadata;
+  const workflowNodes: Array<Record<string, unknown>> = payload.workflowSnapshot.nodes ?? [];
+  const steps = payload.unrolledSteps;
+  const pathConfig = payload.pathConfig;
   const generatedAt = toIsoString(payload.generatedAt ?? new Date().toISOString());
   const startTime = toIsoString(meta.startedAt);
   const endTime = toIsoString(meta.endedAt ?? meta.startedAt ?? generatedAt);
@@ -367,8 +316,8 @@ export function buildReportData(payload: ReportApiPayload): ReportData {
       ''
     ),
     workflowName: String(meta.workflowName ?? meta.workflowId ?? ''),
-    user: String(meta.operator?.name ?? ''),
-    executionId: String(meta.id ?? meta.executionId ?? ''),
+    user: String(meta.ownerName ?? ''),
+    executionId: String(meta.executionId),
     status: (meta.status as ReportData['status']) ?? 'pending',
     error: meta.error ? String(meta.error) : undefined,
     startTime,

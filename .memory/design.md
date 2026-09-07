@@ -2,7 +2,7 @@
 
 本文只描述 ZahnerFlow 当前正在使用的设计逻辑。它是后续修改架构、运行拓扑、数据流、接口契约、设备行为、启动行为和持久化方式时的设计入口。
 
-最近核实：2026-07-10，核对桌面壳、前端应用骨架与 runtime client、Python 运行时、执行语义/计划/引擎/记录器、Zahner 参数与路径适配、Furnace 程序段、用户设置、共享事件与 workflow payload 契约、前端派生选择器和实验记录逻辑。
+最近核实：2026-09-08，核对桌面壳、前端应用骨架与 runtime client、Python 运行时、执行语义/计划/引擎/记录器、Zahner 参数与路径适配、Furnace 程序段、用户设置、共享事件与 workflow payload 契约、前端派生选择器和实验记录逻辑。
 
 ## 锚点索引
 
@@ -177,9 +177,9 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [数据-SQLite]
 
-当前规则：SQLite 是本地持久化边界，保存工作流定义、执行记录、执行步骤、设备采样、ETA 样本、工作流相似索引，以及 `device_runtime_state` 运行时最后快照和 `device_runtime_events` 后端确认的生命周期事件。桌面端数据库只有一个由 Electron 确定的数据目录；Python 打开数据库后通过 `/health` 报告 `data_dir` 和 `database_path`。运行时恢复只恢复业务记录；进程重启后物理连接、设备对象、扫描 session、Promise 和轮询器一律从空状态开始，重启前仍为活动态的 Furnace 程序标记为错误，不把未知离线时间计入业务时间。
+当前规则：SQLite 结构只在 `database_schema.py` 的列定义中维护，新建与旧库补列引用同一定义。`PRAGMA user_version` 保存独立迁移版本，当前为 1；首次迁移在事务中补列后创建索引，失败回滚，拒绝未来版本。现有表、数据和物理列名保持不变；`/health` 报告 `schema_version`。SQLite 是本地持久化边界，保存工作流定义、执行记录、执行步骤、设备采样、ETA 样本、工作流相似索引，以及 `device_runtime_state` 运行时最后快照和 `device_runtime_events` 后端确认的生命周期事件。桌面端数据库只有一个由 Electron 确定的数据目录；Python 打开数据库后通过 `/health` 报告 `data_dir` 和 `database_path`。运行时恢复只恢复业务记录；进程重启后物理连接、设备对象、扫描 session、Promise 和轮询器一律从空状态开始，重启前仍为活动态的 Furnace 程序标记为错误，不把未知离线时间计入业务时间。
 
-归属文件：`apps/python_backend/database.py`。
+归属文件：`apps/python_backend/database.py`、`apps/python_backend/database_schema.py`。
 
 允许变化：可以增加表、索引和轻量迁移。
 
@@ -187,7 +187,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-前端契约]
 
-当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将设备事件按 `stateVersion` 丢弃旧消息。执行事件与快照都携带 execution id，前端只接收当前执行或显式 `idle` 重置快照，避免相邻执行的数据串写。
+当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。共享包以 ESM 输出类型及运行时常量；API 版本由 `shared/contracts/protocol.py` 独立维护，当前为 4.0.0。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将设备事件按 `stateVersion` 丢弃旧消息。执行事件与快照都携带 execution id，前端只接收当前执行或显式 `idle` 重置快照，避免相邻执行的数据串写。
 
 归属文件：`apps/frontend/src/runtimeClient.ts`、`apps/shared/contracts/**`、`packages/types/src/contracts/**`。
 
@@ -209,7 +209,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-用户设置]
 
-当前规则：用户设置由后端 `DEFAULT_USER_SETTINGS` 和 `normalize_user_settings` 形成完整文档；读取、整包保存和 section 保存都经过同一默认值/深合并规则，显式 `false` 不得被前端兼容逻辑改回默认值。section API 只接受已知 section。整包保存成功后返回规范设置，前端只同步本地 `UserContext` 缓存，不再紧接着重复写入 `filePath` section。用户选择变化使旧配置请求失效，并清空上一用户的路径和头像；初始化列表的慢响应也不得覆盖之后的显式选择。
+当前规则：用户设置由 `apps/shared/contracts/settings.py` 模型默认值和 `user_settings.py` 形成完整文档；读取、整包保存和 section 保存都经过同一默认值/深合并规则，显式 `false` 不得被前端兼容逻辑改回默认值。section API 只接受已知 section 和字段。`/api/users` 返回数据库真实 `UserProfile[]`，前端不生成临时用户 ID/创建时间，也不为头像额外请求每个用户的完整设置。设置、执行路径读取和邮件通知共用 `user_settings.py`。整包保存成功后返回规范设置，前端只同步本地 `UserContext` 缓存，不再紧接着重复写入 `filePath` section。用户选择变化使旧配置请求失效，并清空上一用户的路径和头像；初始化列表的慢响应也不得覆盖之后的显式选择。
 
 归属文件：`apps/python_backend/routers/users.py`、`apps/frontend/src/components/shared/UserContext.tsx`、`apps/frontend/src/components/user/UserSettingsModal.tsx`。
 
@@ -249,7 +249,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [报告-实验记录]
 
-当前规则：实验记录以工作流为主轴组织定义、执行、报告和相似地图。报告预览只展示后端执行事实、workflow snapshot 和可追溯的派生展示。测量结果先规范为 `MeasurementOutcome`；普通失败/取消、安全停止分别形成明确状态，其中 `stopped_safety` 是“步骤完成但带安全警告”，必须持久化原因、统计、warning 和实际 artifact，且不进入成功时长学习。报告按物理路径去重输出。实验记录 modal 每次打开都失效并重新加载本地 runs、definition、report 和 map 缓存，避免展示上次打开时的旧事实。
+当前规则：实验记录以工作流为主轴组织定义、执行、报告和相似地图。报告预览只展示后端执行事实、workflow snapshot 和可追溯的派生展示。报告 3.0 由共享 `ExecutionReport` 定义，`report_service.py` 是数据库读边界的唯一映射：对历史结果别名归一化，出口仅输出驼峰字段，使用 `executionId` 与 `ownerName`；前端直接消费生成类型。每次 execution 的操作者写入自身 snapshot，不从复用工作流的创建者继承。新测量结果使用 `dataPoints`，旧记录保持原样，在读边界转换。测量结果先规范为 `MeasurementOutcome`；普通失败/取消、安全停止分别形成明确状态，其中 `stopped_safety` 是“步骤完成但带安全警告”，必须持久化原因、统计、warning 和实际 artifact，且不进入成功时长学习。报告按物理路径去重输出。实验记录 modal 每次打开都失效并重新加载本地 runs、definition、report 和 map 缓存，避免展示上次打开时的旧事实。
 
 归属文件：`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/routers/workflows.py`、`apps/frontend/src/components/report/ReportGeneratorModal.tsx`、`apps/frontend/src/components/report/reportDataBuilder.ts`、`apps/frontend/src/components/report/WorkflowMapView.tsx`。
 

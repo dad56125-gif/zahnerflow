@@ -7,9 +7,11 @@
  *   uv run python -m apps.shared.contracts.generate
  */
 
-export * from './furnace';
-export * from './mfc';
-export * from './workflow';
-export * from './common';
-export * from './runtimeDevice';
-export * from './events';
+export * from './furnace.js';
+export * from './mfc.js';
+export * from './workflow.js';
+export * from './common.js';
+export * from './runtimeDevice.js';
+export * from './events.js';
+export * from './settings.js';
+export * from './report.js';

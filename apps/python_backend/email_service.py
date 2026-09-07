@@ -3,12 +3,10 @@
 从 user_settings 读取 SMTP 配置，发送工作流完成/失败/警告邮件。
 包含速率限制（4小时内最多3封警告邮件，相同内容最多2封）。
 """
-import json
 import time
 import asyncio
 import logging
 from datetime import datetime
-from database import db
 
 logger = logging.getLogger("EmailService")
 
@@ -207,16 +205,9 @@ class EmailService:
     def _get_user_notification_config(self, user: str) -> dict | None:
         if not user:
             return None
-        row = db.conn.execute(
-            "SELECT settings_json FROM user_settings WHERE user = ?", (user,)
-        ).fetchone()
-        if row:
-            try:
-                settings = json.loads(row["settings_json"])
-                return settings.get("notification")
-            except Exception:
-                pass
-        return None
+        from user_settings import load_user_settings
+        return load_user_settings(user)["notification"]
+
 
 
 # 单例

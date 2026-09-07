@@ -9,34 +9,7 @@ import { SpacedCjkText } from '../common/SpacedCjkText';
 import { UiIconSvg } from '../shared/UiIconSvg';
 import { presetAvatarUrl, resolveAvatarSrc } from '../../utils/avatarAssets';
 
-interface UserSettings {
-    filePath: {
-        basePath: string;
-        projectName: string;
-        individualName: string;
-    };
-    notification: {
-        email: string;
-        enabled: boolean;
-        onComplete: boolean;
-        onError: boolean;
-        onWarning: boolean;
-        smtpServer: string;
-        smtpPort: number;
-        smtpUser: string;
-        smtpPassword: string;
-        smtpSecure: boolean;
-        smtpSecureType?: 'ssl' | 'starttls' | 'none';
-        onWarningEnabled?: boolean;
-    };
-    cloud: {
-        provider: string;
-        syncEnabled: boolean;
-        endpoint?: string;
-        bucket?: string;
-        avatar?: string;
-    };
-}
+import type { UserSettings, UserSettingsResponse } from '@zahnerflow/types';
 
 interface UserSettingsModalProps {
     isOpen: boolean;
@@ -46,10 +19,6 @@ interface UserSettingsModalProps {
 interface ApiResponse {
     success: boolean;
     message?: string;
-}
-
-interface UserSettingsResponse extends ApiResponse {
-    settings?: UserSettings;
 }
 
 interface ProjectListResponse extends ApiResponse {

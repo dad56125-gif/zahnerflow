@@ -217,7 +217,7 @@ def normalize_measurement_outcome(raw_result: dict | None, *, output_dir: str | 
         "outputDir": resolved_output_dir,
         "outputFile": output_file,
         "csvPath": csv_path,
-        "data_points": data_points or 0,
+        "dataPoints": data_points or 0,
         "reason": reason,
         "statistics": statistics,
     }
@@ -225,7 +225,7 @@ def normalize_measurement_outcome(raw_result: dict | None, *, output_dir: str | 
 
     metadata = {
         "measurementStatus": measurement_status,
-        "data_points": data_points or 0,
+        "dataPoints": data_points or 0,
     }
     if reason:
         metadata["reason"] = reason

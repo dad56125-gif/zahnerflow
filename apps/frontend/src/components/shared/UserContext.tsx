@@ -7,19 +7,8 @@ import {
   type UserContextValue,
 } from './userContextState';
 
-const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = {
-  basePath: 'C:\\data\\archive',
-  projectName: '',
-  individualName: ''
-};
-
-interface UserSettingsResponse {
-  success: boolean;
-  settings?: {
-    filePath?: Partial<FilePathConfig>;
-    cloud?: { avatar?: string };
-  };
-}
+import { DEFAULT_FILE_PATH_CONFIG } from '@zahnerflow/types';
+import type { UserSettingsResponse } from '@zahnerflow/types';
 
 interface UserProviderProps {
   children: ReactNode;
@@ -50,11 +39,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       if (requestId !== configRequestRef.current) return;
       if (response?.success) {
         if (response.settings?.filePath) {
-          setFilePathConfigState({
-            basePath: response.settings.filePath.basePath || 'C:\\data\\archive',
-            projectName: response.settings.filePath.projectName || '',
-            individualName: response.settings.filePath.individualName || ''
-          });
+          setFilePathConfigState(response.settings.filePath);
         }
         if (response.settings?.cloud?.avatar) {
           setCurrentUserAvatarState(response.settings.cloud.avatar);
@@ -79,31 +64,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     try {
       const response = await runtimeClient.users.list();
       if (!response || !Array.isArray(response.users)) throw new Error('用户列表响应格式无效');
-      const userList = response.users;
-      
-      // 并行请求每个用户的 Settings 配置，填充头像数据
-      const fullUsersPromises = userList.map(async (username) => {
-        let avatar = '';
-        try {
-          const settingsRes = await runtimeClient.users.getSettings<UserSettingsResponse>(username);
-          if (settingsRes?.success && settingsRes.settings?.cloud?.avatar) {
-            avatar = settingsRes.settings.cloud.avatar;
-          }
-        } catch (err) {
-          console.warn(`[UserContext] 预加载用户 "${username}" 的头像配置失败:`, err);
-        }
-        
-        return {
-          id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-          user: username,
-          email: null,
-          createdAt: new Date().toISOString(),
-          avatar
-        };
-      });
-
-      const fullUsers = await Promise.all(fullUsersPromises);
-      setUsers(fullUsers);
+      const userList = response.users.map(profile => profile.user);
+      setUsers(response.users);
       if (selectionVersion !== configRequestRef.current) return;
       const savedUser = localStorage.getItem('currentUser');
       if (savedUser && userList.includes(savedUser)) {
@@ -172,16 +134,11 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   }, [currentUser]);
 
   const createUser = async (userData: { user: string; email?: string }): Promise<User> => {
-    const response = await runtimeClient.users.create<{ success: boolean; message?: string }>(userData);
+    const response = await runtimeClient.users.create(userData);
 
     if (response && response.success) {
-      const newUser: User = {
-        id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        user: userData.user,
-        email: userData.email || null,
-        createdAt: new Date().toISOString(),
-        avatar: ''
-      };
+      const newUser = response.user;
+      if (!newUser) throw new Error('用户创建响应缺少档案');
 
       setUsers(prev => [...prev, newUser]);
 

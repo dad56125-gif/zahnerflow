@@ -16,3 +16,9 @@ class ContractModel(BaseModel):
     """Base model for shared contracts with camelCase aliases."""
 
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+
+class DocumentContract(ContractModel):
+    """完整响应文档：默认值也必须输出，生成类型不再把它们标为可选。"""
+
+    model_config = ConfigDict(json_schema_extra={"required_output": True})

@@ -4,6 +4,7 @@ import { getDesktopRuntimeBaseUrl } from './desktopBridge';
 import { DEVICE_STATUS_UPDATE } from './eventContracts';
 import type {
   RuntimeDeviceStatusEnvelope,
+  UserListResponse, UserSettingsResponse, CreateUserResponse, ExecutionReport,
   WorkflowNode,
   WorkflowUnrollPreview,
 } from '@zahnerflow/types';
@@ -164,7 +165,7 @@ export const runtimeClient = {
     estimate: <T>(body: RequestBody) => post<T>('/api/executions/estimate', body),
     list: <T>(params?: QueryParams) => get<T>('/api/executions', params),
     get: <T>(id: string) => get<T>(`/api/executions/${encodeURIComponent(id)}`),
-    getReport: <T>(id: string) => get<T>(`/api/executions/${encodeURIComponent(id)}/report`),
+    getReport: <T = ExecutionReport>(id: string) => get<T>(`/api/executions/${encodeURIComponent(id)}/report`),
     pause: <T = { message: string }>(id: string) => put<T>(`/api/executions/${encodeURIComponent(id)}/pause`),
     resume: <T = { message: string }>(id: string) => put<T>(`/api/executions/${encodeURIComponent(id)}/resume`),
     cancel: <T = { message: string }>(id: string) => del<T>(`/api/executions/${encodeURIComponent(id)}`),
@@ -229,10 +230,10 @@ export const runtimeClient = {
   },
 
   users: {
-    create: <T>(body: RequestBody) => post<T>('/api/users', body),
-    list: <T = { users: string[] }>() => get<T>('/api/users'),
+    create: <T = CreateUserResponse>(body: RequestBody) => post<T>('/api/users', body),
+    list: <T = UserListResponse>() => get<T>('/api/users'),
     delete: <T = { success: boolean; message: string }>(user: string) => del<T>(`/api/users/${encodeURIComponent(user)}`),
-    getSettings: <T>(user: string) => get<T>(`/api/users/${encodeURIComponent(user)}/settings`),
+    getSettings: <T = UserSettingsResponse>(user: string) => get<T>(`/api/users/${encodeURIComponent(user)}/settings`),
     saveSettings: <T>(user: string, settings: RequestBody) => put<T>(`/api/users/${encodeURIComponent(user)}/settings`, settings),
     saveSettingsSection: <T>(user: string, section: string, value: RequestBody) =>
       put<T>(`/api/users/${encodeURIComponent(user)}/settings/${encodeURIComponent(section)}`, value),

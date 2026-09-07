@@ -29,6 +29,8 @@ from runtime.execution_semantics import (
 from runtime.execution_recorder import finish_execution
 from shared.contracts.events import WORKFLOW_NODES_RESET, WORKFLOW_SNAPSHOT
 from workflow_identity import workflow_fingerprint
+from report_service import load_execution_report
+from shared.contracts.report import ExecutionReport
 
 router = APIRouter(prefix="/api/executions", tags=["executions"])
 sio = None
@@ -89,9 +91,9 @@ def _string_value(value) -> str:
 def _user_path_config(owner_name: str | None) -> dict:
     if not _string_value(owner_name):
         return {}
-    from routers.files import get_user_config
+    from user_settings import load_user_settings
 
-    config = get_user_config(owner_name or "").get("config") or {}
+    config = load_user_settings(owner_name or "")["filePath"]
     return config if isinstance(config, dict) else {}
 
 
@@ -133,52 +135,6 @@ def _run_metadata_message(missing_fields: list[str]) -> str:
 def set_sio(sio_instance):
     global sio
     sio = sio_instance
-
-
-def _json_loads(value):
-    if not value:
-        return None
-    try:
-        return json.loads(value)
-    except Exception:
-        return None
-
-
-def _artifact_key(artifact: dict) -> tuple:
-    return (
-        artifact.get("executionId") or artifact.get("execution_id"),
-        artifact.get("nodeId") or artifact.get("node_id"),
-        artifact.get("filePath") or artifact.get("file_path"),
-    )
-
-
-def _derive_artifacts_from_step_result(step: dict) -> list[dict]:
-    result = step.get("result")
-    if not isinstance(result, dict):
-        return []
-
-    data_points = result.get("data_points")
-    base = {
-        "execution_id": step.get("execution_id"),
-        "executionId": step.get("execution_id"),
-        "node_id": step.get("node_id"),
-        "nodeId": step.get("node_id"),
-        "created_at": step.get("ended_at") or step.get("started_at"),
-        "createdAt": step.get("ended_at") or step.get("started_at"),
-        "source": "stepResult",
-        "dataPoints": data_points,
-        "metadata": {"data_points": data_points} if data_points is not None else {},
-    }
-    artifacts = []
-    for file_type, file_path in (
-        ("output_file", result.get("outputFile") or result.get("output_file") or result.get("full_path")),
-        ("csv", result.get("csvPath") or result.get("csv_path")),
-        ("output_dir", result.get("outputDir") or result.get("output_dir")),
-    ):
-        if not file_path:
-            continue
-        artifacts.append({**base, "file_type": file_type, "fileType": file_type, "file_path": file_path, "filePath": file_path})
-    return artifacts
 
 
 @router.post("", status_code=201)
@@ -248,6 +204,7 @@ async def create_execution(body: dict):
         "name": workflow_name or workflow_id,
         "nodes": nodes,
         "fingerprint": workflow_fingerprint(nodes),
+        "ownerName": owner_name or "",
     }
     wf_snapshot = json.dumps(wf_snapshot_payload)
 
@@ -371,9 +328,9 @@ def get_executions_list(page: int = 1, limit: int = 20, status: str = None, star
                 "executionId": r["execution_id"],
                 "workflowId": r["workflow_id"],
                 "workflowName": wf_snapshot.get("name") or r["workflow_id"],
-                "projectName": p_config.get("projectName") or wf_snapshot.get("ownerName") or "",
+                "projectName": p_config.get("projectName") or "",
                 "individualName": p_config.get("individualName") or wf_snapshot.get("individualName") or "",
-                "operatorName": wf_snapshot.get("ownerName") or "",
+                "ownerName": wf_snapshot.get("ownerName") or "",
                 "status": r["status"],
                 "startedAt": r["started_at"],
                 "endedAt": r["ended_at"],
@@ -404,106 +361,12 @@ def get_execution(id: str):
     }
 
 
-@router.get("/{id}/report")
+@router.get("/{id}/report", response_model=ExecutionReport)
 def get_execution_report(id: str):
-    exec_row = db.conn.execute("SELECT * FROM executions WHERE id = ?", (id,)).fetchone()
-    if not exec_row:
-        return {"error": "Execution not found", "executionId": id}
-    steps = [dict(r) for r in db.conn.execute("SELECT * FROM execution_steps WHERE execution_id = ? ORDER BY unrolled_index", (id,)).fetchall()]
-    for s in steps:
-        if s.get("params"):
-            s["params"] = _json_loads(s["params"]) or s["params"]
-        if s.get("iteration_path"):
-            s["iteration_path"] = _json_loads(s["iteration_path"]) or s["iteration_path"]
-        if s.get("block_path"):
-            s["block_path"] = _json_loads(s["block_path"]) or s["block_path"]
-        if s.get("result"):
-            s["result"] = _json_loads(s["result"]) or s["result"]
-    artifacts = [dict(r) for r in db.conn.execute("SELECT * FROM execution_artifacts WHERE execution_id = ? ORDER BY created_at", (id,)).fetchall()]
-    warnings = [dict(r) for r in db.conn.execute("SELECT * FROM execution_warnings WHERE execution_id = ? ORDER BY created_at", (id,)).fetchall()]
-    for artifact in artifacts:
-        artifact["metadata"] = _json_loads(artifact.get("metadata")) or {}
-    for w in warnings:
-        if w.get("metadata"):
-            try:
-                w["metadata"] = json.loads(w["metadata"])
-            except Exception:
-                pass
-    wf_snapshot = json.loads(exec_row["workflow_snapshot"]) if exec_row["workflow_snapshot"] else {}
-    path_config = json.loads(exec_row["path_config"]) if exec_row["path_config"] else {}
-    env_snapshot = json.loads(exec_row["environment_snapshot"]) if exec_row["environment_snapshot"] else {"furnace_samples": [], "mfc_samples": []}
-    summary_metrics = json.loads(exec_row["summary_metrics"]) if exec_row["summary_metrics"] else {}
-    steps_payload = [
-        {
-            "id": s.get("id"),
-            "executionId": s.get("execution_id"),
-            "originalIndex": s.get("original_index"),
-            "unrolledIndex": s.get("unrolled_index"),
-            "nodeId": s.get("node_id"),
-            "nodeType": s.get("node_type"),
-            "status": s.get("status"),
-            "params": s.get("params"),
-            "actualSeconds": s.get("actual_seconds"),
-            "estimatedSeconds": s.get("estimated_seconds"),
-            "etaSource": s.get("eta_source"),
-            "iterationPath": s.get("iteration_path"),
-            "blockPath": s.get("block_path"),
-            "result": s.get("result"),
-            "error": s.get("error"),
-            "startedAt": s.get("started_at"),
-            "endedAt": s.get("ended_at"),
-        }
-        for s in steps
-    ]
-    artifacts_payload = [
-        {
-            **a,
-            "executionId": a.get("execution_id"),
-            "nodeId": a.get("node_id"),
-            "fileType": a.get("file_type"),
-            "filePath": a.get("file_path"),
-            "createdAt": a.get("created_at"),
-            "source": "persisted",
-            "dataPoints": (a.get("metadata") or {}).get("data_points"),
-        }
-        for a in artifacts
-    ]
-    artifact_keys = {_artifact_key(a) for a in artifacts_payload}
-    for step in steps:
-        for artifact in _derive_artifacts_from_step_result(step):
-            key = _artifact_key(artifact)
-            if key not in artifact_keys:
-                artifacts_payload.append(artifact)
-                artifact_keys.add(key)
-    warnings_payload = [{**w, "executionId": w.get("execution_id"), "createdAt": w.get("created_at")} for w in warnings]
-    environment_snapshot_payload = {
-        "furnaceSamples": env_snapshot.get("furnaceSamples") or env_snapshot.get("furnace_samples") or [],
-        "mfcSamples": env_snapshot.get("mfcSamples") or env_snapshot.get("mfc_samples") or [],
-    }
-    return {
-        "reportVersion": "2.0",
-        "executionMetadata": {
-            "id": exec_row["id"],
-            "workflowId": exec_row["workflow_id"],
-            "workflowName": wf_snapshot.get("name") or exec_row["workflow_id"] or "",
-            "projectName": path_config.get("projectName") or "",
-            "individualName": path_config.get("individualName") or "",
-            "operator": {"name": wf_snapshot.get("ownerName", ""), "email": ""},
-            "status": exec_row["status"],
-            "startedAt": exec_row["start_time"],
-            "endedAt": exec_row["end_time"],
-            "durationMs": exec_row["duration"],
-            "error": exec_row["error"],
-        },
-        "workflowSnapshot": wf_snapshot,
-        "pathConfig": path_config,
-        "unrolledSteps": steps_payload,
-        "artifacts": artifacts_payload,
-        "environmentSnapshot": environment_snapshot_payload,
-        "warningFlags": warnings_payload,
-        "summaryMetrics": summary_metrics,
-        "generatedAt": datetime.utcnow().isoformat() + "Z",
-    }
+    report = load_execution_report(id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    return report
 
 
 @router.put("/{id}/pause")

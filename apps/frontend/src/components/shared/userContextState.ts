@@ -1,18 +1,8 @@
 import { createContext, useContext } from 'react';
 
-export interface User {
-  id: string;
-  user: string;
-  email: string | null;
-  createdAt: string;
-  avatar?: string;
-}
-
-export interface FilePathConfig {
-  basePath: string;
-  projectName: string;
-  individualName: string;
-}
+import type { UserProfile, FilePathConfig } from '@zahnerflow/types';
+export type { FilePathConfig } from '@zahnerflow/types';
+export type User = UserProfile;
 
 export interface UserContextValue {
   currentUser: string;

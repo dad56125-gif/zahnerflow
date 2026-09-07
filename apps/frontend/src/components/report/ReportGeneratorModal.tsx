@@ -1,3 +1,4 @@
+import type { ExecutionReport } from '@zahnerflow/types';
 /**
  * 实验记录 modal — 左侧 workflow 树 + 右侧定义/报告切换
  */
@@ -159,7 +160,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
   const [renameSaving, setRenameSaving] = useState(false);
   const [workflowActionMessage, setWorkflowActionMessage] = useState<string | null>(null);
 
-  const [reportRecordsByRunId, setReportRecordsByRunId] = useState<Record<string, Record<string, unknown>>>({});
+  const [reportRecordsByRunId, setReportRecordsByRunId] = useState<Record<string, ExecutionReport>>({});
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
@@ -297,14 +298,10 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
     setReportError(null);
 
     runtimeClient.executions
-      .getReport<Record<string, unknown>>(selectedRunId)
+      .getReport<ExecutionReport>(selectedRunId)
       .then((data) => {
         if (!cancelled) {
-          if (data.error) {
-            setReportError(String(data.error));
-          } else {
-            setReportRecordsByRunId((current) => ({ ...current, [selectedRunId]: data }));
-          }
+          setReportRecordsByRunId((current) => ({ ...current, [selectedRunId]: data }));
         }
       })
       .catch((err: { message?: string }) => {
