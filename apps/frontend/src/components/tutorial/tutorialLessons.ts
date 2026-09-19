@@ -1,54 +1,120 @@
-export type TutorialScene =
-  "workflow" | "setup" | "preview" | "chart" | "records";
-export type TutorialAction = "point" | "click" | "drag" | "type" | "hold";
-export interface TutorialFrame {
+export interface TutorialCheck {
+  selector?: string;
+  absent?: boolean;
+  text?: string;
+  count?: number;
+  nodeTypes?: string[];
+  parameter?: [string, string, number];
+  phase?: string;
+  selected?: string;
+  user?: string;
+  chartPoints?: number;
+}
+export interface TutorialStep {
   title: string;
   text: string;
   target: string;
-  action?: TutorialAction;
-  scene?: TutorialScene;
-  nodes?: string[];
-  selected?: string;
+  action?: "click" | "type" | "drag" | "context" | "hold";
   value?: string;
-  status?: string;
-  duration?: number;
+  destination?: string;
+  check: TutorialCheck;
 }
 export interface TutorialLesson {
   id: string;
   group: string;
   title: string;
   summary: string;
-  frames: TutorialFrame[];
+  seed: "empty" | "ocp" | "sequence" | "loop";
+  steps: TutorialStep[];
 }
+export const anchor = (name: string) => `[data-tutorial-anchor="${name}"]`;
+export const library = (type: string) => `[data-tutorial-library="${type}"]`;
+export const node = (type: string) => `[data-node-type="${type}"]`;
+const ocp = "ocp_measurement";
+const wait = "wait_delay";
+const eis = "eis_potentiostatic";
+const parameter = (key: string) => `[data-tutorial-parameter="${key}"]`;
+const run: TutorialStep = {
+  title: "点击运行",
+  text: "运行前核对用户、项目、样品及参数。这里启动教学样例，观察真实运行按钮和节点状态的变化。",
+  target: anchor("run"),
+  action: "click",
+  check: { phase: "running" },
+};
 
-// 教学样例只描述画面，不包含真实设备命令或运行时数据。
 export const tutorialLessons: TutorialLesson[] = [
   {
     id: "prepare",
     group: "开始之前",
     title: "准备实验信息",
-    summary: "先确认用户、保存位置和工作站，再开始编排。",
-    frames: [
+    summary: "选择用户，填写保存信息，再选择工作站。",
+    seed: "empty",
+    steps: [
       {
-        title: "选择用户",
-        text: "在顶栏选择用户；首次使用可点击旁边的新建用户按钮。",
-        target: "user",
-        scene: "setup",
+        title: "打开用户列表",
+        text: "点击顶栏的用户选择器；首次使用可通过旁边的新建用户按钮创建用户。",
+        target: anchor("user"),
         action: "click",
+        check: { selector: '[data-tutorial-user="教学用户"]' },
       },
       {
-        title: "设置保存信息",
-        text: "打开用户配置，填写基础路径、项目名称和样品编号，检查路径预览与自动保存状态。",
-        target: "settings",
-        scene: "setup",
+        title: "选择用户",
+        text: "选择教学用户。实际使用时选择实验所属用户。",
+        target: '[data-tutorial-user="教学用户"]',
+        action: "click",
+        check: { user: "教学用户" },
+      },
+      {
+        title: "打开用户配置",
+        text: "点击齿轮，打开日常使用的用户配置窗口。",
+        target: anchor("settings"),
+        action: "click",
+        check: { selector: ".settings__save-indicator" },
+      },
+      {
+        title: "填写保存路径",
+        text: "基础路径、项目名称和样品编号共同决定数据保存位置。",
+        target: anchor("base-path"),
         action: "type",
+        value: "C:\\data\\tutorial",
+        check: { selector: anchor("base-path") },
+      },
+      {
+        title: "填写项目名称",
+        text: "输入 Tutorial。字段通过原有校验后自动保存。",
+        target: '[placeholder="或输入新项目名"]',
+        action: "type",
+        value: "Tutorial",
+        check: { selector: ".save-status.saved" },
+      },
+      {
+        title: "填写样品编号",
+        text: "输入 Sample02，核对下方完整路径与自动保存状态。",
+        target: '[placeholder="输入样品编号"]',
+        action: "type",
+        value: "Sample02",
+        check: { selector: ".save-status.saved" },
+      },
+      {
+        title: "关闭配置",
+        text: "保存完成后返回主界面。",
+        target: ".settings .modal__close",
+        action: "click",
+        check: { selector: ".settings__save-indicator", absent: true },
       },
       {
         title: "选择工作站",
-        text: "选择 ZAHNER ZENNIUM 后可使用节点库。选择型号不代表真机连接已成功。",
-        target: "station",
-        scene: "setup",
+        text: "打开工作站列表。选择型号并不表示已经连接设备。",
+        target: anchor("station"),
         action: "click",
+        check: { selector: '[data-tutorial-workstation="zahner-zennium"]' },
+      },
+      {
+        title: "显示节点库",
+        text: "选择 ZAHNER ZENNIUM，左侧显示该工作站支持的节点。",
+        target: '[data-tutorial-workstation="zahner-zennium"]',
+        action: "click",
+        check: { selector: library(ocp) },
       },
     ],
   },
@@ -56,27 +122,36 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "add",
     group: "工作流编辑",
     title: "添加节点",
-    summary: "从左侧节点库开始搭建你的流程。",
-    frames: [
+    summary: "点击或拖动左侧节点，将步骤加入画布。",
+    seed: "empty",
+    steps: [
       {
         title: "找到测量节点",
-        text: "选择工作站后，左侧显示可用节点。这里以开路电位测量为例。",
-        target: "library",
-        nodes: [],
+        text: "工作站选定后，在左侧找到开路电位测量。",
+        target: library(ocp),
+        check: { nodeTypes: [] },
       },
       {
         title: "点击添加",
-        text: "点击节点，将它添加到画布末尾；也可以从节点库拖入画布。",
-        target: "library",
+        text: "点击后，画布末尾立即加入一个开路电位节点。",
+        target: library(ocp),
         action: "click",
-        nodes: [],
+        check: { nodeTypes: [ocp] },
       },
       {
-        title: "节点已加入",
-        text: "画布中的节点按顺序执行。选中节点后，可以在右侧修改参数。",
-        target: "ocp",
-        nodes: ["ocp"],
-        selected: "ocp",
+        title: "选中节点",
+        text: "点击画布中的节点，右侧显示其属性。",
+        target: node(ocp),
+        action: "click",
+        check: { selected: ocp },
+      },
+      {
+        title: "拖入等待节点",
+        text: "也可以从左侧节点库拖入画布，新节点加在末尾。",
+        target: library(wait),
+        action: "drag",
+        destination: ".canvas__viewport",
+        check: { nodeTypes: [ocp, wait] },
       },
     ],
   },
@@ -85,24 +160,28 @@ export const tutorialLessons: TutorialLesson[] = [
     group: "工作流编辑",
     title: "调整节点顺序",
     summary: "拖动节点，改变实验的执行顺序。",
-    frames: [
+    seed: "sequence",
+    steps: [
       {
-        title: "找到要移动的节点",
-        text: "当前顺序为开路电位、等待、恒电位 EIS。准备把 EIS 移到等待之前。",
-        target: "eis",
+        title: "核对原始顺序",
+        text: "当前顺序为开路电位、等待、恒电位 EIS。",
+        target: node(eis),
+        check: { nodeTypes: [ocp, wait, eis] },
       },
       {
-        title: "按住并拖动",
-        text: "按住 EIS 节点，拖向等待节点所在的位置。",
-        target: "wait",
+        title: "拖动 EIS 节点",
+        text: "按住 EIS，拖到等待节点的位置后松开。",
+        target: node(eis),
         action: "drag",
-        selected: "eis",
+        destination: node(wait),
+        check: { nodeTypes: [ocp, eis, wait] },
       },
       {
-        title: "释放并检查顺序",
-        text: "释放鼠标后，顺序变为开路电位、EIS、等待。运行前再次核对。",
-        target: "eis",
-        nodes: ["ocp", "eis", "wait"],
+        title: "核对新顺序",
+        text: "节点序号及连线已更新；EIS 现在位于等待之前。",
+        target: node(eis),
+        action: "click",
+        check: { nodeTypes: [ocp, eis, wait], selected: eis },
       },
     ],
   },
@@ -110,38 +189,36 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "parameters",
     group: "工作流编辑",
     title: "修改节点参数",
-    summary: "选中节点，在右侧属性栏编辑。",
-    frames: [
+    summary: "通过右侧属性栏修改并确认参数。",
+    seed: "ocp",
+    steps: [
       {
         title: "选中节点",
-        text: "点击画布中的开路电位节点，右侧显示它的参数。",
-        target: "ocp",
+        text: "点击开路电位节点，打开右侧属性栏。",
+        target: node(ocp),
         action: "click",
-        selected: "ocp",
-        value: "10",
+        check: { selected: ocp },
       },
       {
         title: "打开参数页",
-        text: "在右侧属性栏点击参数页签，查看可编辑的测量参数。",
-        target: "parameter-tab",
+        text: "切换到参数页，查看测量时长等配置。",
+        target: anchor("parameter-tab"),
         action: "click",
-        selected: "ocp",
-        value: "10",
+        check: { selector: parameter("measurementDuration") },
       },
       {
-        title: "修改测量时间",
-        text: "在测量时间输入框中修改数值。演示将 10 秒改为 30 秒。",
-        target: "parameter",
+        title: "修改测量时长",
+        text: "输入 30 秒，移开焦点提交修改。参数使用与实际编辑相同的校验。",
+        target: parameter("measurementDuration"),
         action: "type",
-        selected: "ocp",
         value: "30",
+        check: { parameter: [ocp, "measurementDuration", 30] },
       },
       {
-        title: "检查数值和单位",
-        text: "输入数值后点击输入框外，使修改应用到当前节点，无需另点保存。运行期间不能修改参数。",
-        target: "parameter",
-        selected: "ocp",
-        value: "30",
+        title: "核对节点摘要",
+        text: "画布上的参数摘要同步更新为 30 秒。",
+        target: node(ocp),
+        check: { selector: node(ocp), text: "30" },
       },
     ],
   },
@@ -149,25 +226,28 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "delete",
     group: "工作流编辑",
     title: "删除节点",
-    summary: "右键目标节点，确认后删除。",
-    frames: [
+    summary: "右键打开确认框，确认后移除节点。",
+    seed: "sequence",
+    steps: [
       {
-        title: "右键节点",
-        text: "在需要删除的等待节点上点击鼠标右键。",
-        target: "wait",
-        action: "click",
+        title: "右键等待节点",
+        text: "在待删除的节点上点击鼠标右键。",
+        target: node(wait),
+        action: "context",
+        check: { selector: "#confirm-dialog-overlay .dialog__content" },
       },
       {
         title: "确认删除",
-        text: "软件会弹出确认框。确认前检查目标；取消则保留节点。",
-        target: "confirm",
-        status: "confirm",
+        text: "核对节点名称后点击删除。取消则保留原节点。",
+        target: "#confirm-dialog-overlay .btn--danger",
+        action: "click",
+        check: { nodeTypes: [ocp, eis] },
       },
       {
-        title: "检查剩余流程",
-        text: "确认后删除等待节点。若删除循环边界，还需要检查循环是否完整配对。",
-        target: "eis",
-        nodes: ["ocp", "eis"],
+        title: "检查画布",
+        text: "等待节点已删除，序号和连线自动更新。",
+        target: node(eis),
+        check: { selector: node(wait), absent: true, nodeTypes: [ocp, eis] },
       },
     ],
   },
@@ -175,39 +255,51 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "loop",
     group: "流程与执行",
     title: "创建循环",
-    summary: "用循环开始和循环结束包住需要重复的步骤。",
-    frames: [
+    summary: "添加成对的循环边界，并设置重复次数。",
+    seed: "empty",
+    steps: [
       {
-        title: "放入成对边界",
-        text: "将待重复的测量放在循环开始与循环结束之间。",
-        target: "loop",
-        nodes: ["loop", "ocp", "end"],
+        title: "添加循环开始",
+        text: "先添加循环开始，随后放入需要重复的测量节点。",
+        target: library("loop_start"),
+        action: "click",
+        check: { nodeTypes: ["loop_start"] },
+      },
+      {
+        title: "添加循环体",
+        text: "把开路电位测量加入循环体。",
+        target: library(ocp),
+        action: "click",
+        check: { nodeTypes: ["loop_start", ocp] },
+      },
+      {
+        title: "添加循环结束",
+        text: "用循环结束封闭循环体；起止边界必须配对。",
+        target: library("loop_end"),
+        action: "click",
+        check: { nodeTypes: ["loop_start", ocp, "loop_end"] },
+      },
+      {
+        title: "选中循环开始",
+        text: "次数由循环开始节点配置。",
+        target: node("loop_start"),
+        action: "click",
+        check: { selected: "loop_start" },
       },
       {
         title: "打开循环参数",
-        text: "选中循环开始，点击右侧参数页签。",
-        target: "parameter-tab",
+        text: "在右侧切换到参数页。",
+        target: anchor("parameter-tab"),
         action: "click",
-        nodes: ["loop", "ocp", "end"],
-        selected: "loop",
-        value: "3",
+        check: { selector: parameter("loopCount") },
       },
       {
-        title: "设置次数",
-        text: "选中循环开始，在右侧设置循环次数。这里演示重复 3 次。",
-        target: "parameter",
+        title: "设置重复次数",
+        text: "填写 3 次并移开焦点。循环次数为 0 时跳过循环体。",
+        target: parameter("loopCount"),
         action: "type",
-        nodes: ["loop", "ocp", "end"],
-        selected: "loop",
         value: "3",
-      },
-      {
-        title: "检查配对",
-        text: "循环起止必须成对，次数必须为非负整数；设置为 0 会跳过循环体。",
-        target: "end",
-        nodes: ["loop", "ocp", "end"],
-        selected: "loop",
-        value: "3",
+        check: { parameter: ["loop_start", "loopCount", 3] },
       },
     ],
   },
@@ -215,26 +307,39 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "preview",
     group: "流程与执行",
     title: "查看执行步骤",
-    summary: "运行前，检查真正执行的步骤顺序。",
-    frames: [
+    summary: "打开实际执行计划，核对循环与自动边界。",
+    seed: "loop",
+    steps: [
       {
         title: "打开展开预览",
-        text: "点击画布右下方的展开按钮，查看实际执行步骤。",
-        target: "preview",
+        text: "点击右下角展开按钮，后端生成实际执行计划。",
+        target: anchor("preview"),
         action: "click",
+        check: { selector: ".unroll-row[data-step]", count: 5 },
       },
       {
-        title: "检查展开结果",
-        text: "循环、工作流块和高级测量会展开；启动与停止程序由系统自动插入。",
-        target: "sequence",
-        scene: "preview",
+        title: "检查循环展开",
+        text: "循环体展开为 3 次测量，前后包含系统自动插入的启动与停止步骤。",
+        target: ".unroll-dialog__sequence",
+        check: { selector: ".unroll-row--system", count: 2 },
       },
       {
-        title: "核对步骤参数",
-        text: "选择步骤查看参数。可以从允许的步骤启动，但系统自动边界不能作为手动起点。",
-        target: "detail",
-        scene: "preview",
+        title: "选择测量步骤",
+        text: "点击第一条测量查看参数和执行序号。",
+        target: '.unroll-row[data-step="1"]',
         action: "click",
+        check: { selector: '.unroll-row[data-step="1"][aria-pressed="true"]' },
+      },
+      {
+        title: "返回画布",
+        text: "核对完成后关闭预览，画布结构保持不变。",
+        target: '[aria-label="关闭展开步骤"]',
+        action: "click",
+        check: {
+          selector: ".unroll-dialog",
+          absent: true,
+          nodeTypes: ["loop_start", ocp, "loop_end"],
+        },
       },
     ],
   },
@@ -242,25 +347,21 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "run",
     group: "流程与执行",
     title: "开始运行",
-    summary: "核对实验信息与设备准备情况，再启动流程。",
-    frames: [
+    summary: "观察运行按钮、节点状态与实际进度组件。",
+    seed: "ocp",
+    steps: [
+      run,
       {
-        title: "运行前检查",
-        text: "确认用户、项目、样品、保存路径及测量参数。温度和气体节点需要对应设备已连接。",
-        target: "run",
+        title: "观察运行状态",
+        text: "流程启动后，运行按钮变为停止按钮，画布编辑锁定；下方显示当前步骤及预计时间。",
+        target: anchor("progress"),
+        check: { phase: "running", selector: ".toolbar-stop-button" },
       },
       {
-        title: "点击运行",
-        text: "点击画布右上角的运行按钮。工作站启动由系统处理，连接或启动失败时查看通知。",
-        target: "run",
-        action: "click",
-      },
-      {
-        title: "观察当前步骤",
-        text: "运行时节点和底部进度更新，画布编辑被锁定。本窗口展示的只是教学状态。",
-        target: "progress",
-        selected: "ocp",
-        status: "running",
+        title: "等待执行结束",
+        text: "收到完成状态后，按钮变为重置。本教学回放模拟器数据。",
+        target: anchor("run"),
+        check: { phase: "completed" },
       },
     ],
   },
@@ -268,26 +369,32 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "chart",
     group: "流程与执行",
     title: "查看测量曲线",
-    summary: "通过底部进度区域打开测量图表。",
-    frames: [
+    summary: "在实际测量面板中选择节点并查看曲线。",
+    seed: "ocp",
+    steps: [
+      run,
       {
-        title: "找到进度区域",
-        text: "点击主界面底部中央的进度区域，打开测量图表面板。",
-        target: "progress",
+        title: "打开测量面板",
+        text: "点击底部中央进度区域，打开测量曲线。",
+        target: anchor("progress"),
         action: "click",
-        status: "running",
+        check: { selector: ".chart-modal" },
       },
       {
-        title: "选择测量结果",
-        text: "在面板中选择测量类型、节点和循环轮次，查看对应曲线。",
-        target: "chart-tabs",
-        scene: "chart",
+        title: "选择测量类型",
+        text: "顶部按测量类型分类，下方标签对应节点。此例的 OCP 表示开路电位。",
+        target: ".tab-primary-item",
+        action: "click",
+        check: {
+          selector: ".chart-modal__tab-container .is-active",
+          text: "OCP",
+        },
       },
       {
-        title: "查看曲线",
-        text: "测量数据随执行更新；不同节点与轮次分别显示。此处曲线仅为教学示意。",
-        target: "curve",
-        scene: "chart",
+        title: "查看曲线数据",
+        text: "曲线由项目现有图表组件绘制，数据来自模拟器的测量事件。",
+        target: ".chart-modal__content",
+        check: { selector: ".chart-modal__content canvas", chartPoints: 8 },
       },
     ],
   },
@@ -295,34 +402,46 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "stop",
     group: "流程与执行",
     title: "长按停止与重置",
-    summary: "长按 1 秒发出停止请求，结束后再重置。",
-    frames: [
+    summary: "长按停止，等待确认，再重置执行状态。",
+    seed: "ocp",
+    steps: [
+      run,
       {
-        title: "找到停止按钮",
-        text: "流程运行后，运行按钮变为停止按钮。普通点击不会停止流程。",
-        target: "run",
-        status: "running",
+        title: "普通点击不会停止",
+        text: "短按仅提示需要长按，流程仍在运行。",
+        target: anchor("run"),
+        action: "click",
+        check: { phase: "running" },
       },
       {
-        title: "按住 1 秒",
-        text: "持续按住停止按钮，直到环形进度完成。中途松开会取消本次长按。",
-        target: "run",
+        title: "长按 1 秒",
+        text: "持续按住按钮，环形进度完成后才发出停止请求。",
+        target: anchor("run"),
         action: "hold",
-        status: "running",
-        duration: 2400,
+        check: { phase: "cancelling" },
       },
       {
         title: "等待停止确认",
-        text: "请求发出后等待当前步骤按其中断规则退出，不能把按钮变化当作设备已经停止。",
-        target: "run",
-        status: "cancelling",
+        text: "等待当前步骤退出并收到停止确认，按钮随后变为重置。",
+        target: anchor("run"),
+        check: { phase: "cancelled" },
+      },
+      {
+        title: "关闭停止提示",
+        text: "收到停止结果后，通知中心会显示停止原因。核对后关闭通知。",
+        target: '#notification-panel-overlay [title="关闭"]',
+        action: "click",
+        check: {
+          selector: "#notification-panel-overlay .notification",
+          absent: true,
+        },
       },
       {
         title: "重置运行状态",
-        text: "执行结束后按钮变为重置。重置清理本次运行状态，不等于清空画布。",
-        target: "run",
+        text: "点击重置清理本次执行状态，画布节点保留。",
+        target: anchor("run"),
         action: "click",
-        status: "cancelled",
+        check: { phase: "idle", nodeTypes: [ocp] },
       },
     ],
   },
@@ -330,26 +449,49 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "records",
     group: "实验记录",
     title: "查看与复用记录",
-    summary: "找到历史执行、导出报告，并复用已有流程。",
-    frames: [
+    summary: "查看已有实验报告，并将流程重新加载到画布。",
+    seed: "empty",
+    steps: [
       {
         title: "打开实验记录",
-        text: "点击画布左上方的实验记录按钮，按工作流查找历史执行。",
-        target: "records",
+        text: "点击画布左上角的实验记录按钮。",
+        target: anchor("records"),
         action: "click",
+        check: { selector: ".report-history__wf-item" },
       },
       {
-        title: "查看执行报告",
-        text: "选择一次执行，查看步骤结果和输出信息，可导出 HTML 或 PDF 报告。",
-        target: "report",
-        scene: "records",
+        title: "展开历史执行",
+        text: "点击工作流旁的展开箭头，查看每次执行。",
+        target: ".report-history__item-expand",
+        action: "click",
+        check: { selector: ".report-history__run-item" },
       },
       {
-        title: "复用工作流",
-        text: "回到工作流定义，点击加载到画布，再根据当前实验修改参数。",
-        target: "load",
-        scene: "records",
+        title: "查看报告",
+        text: "选择一次执行，查看状态、步骤结果和输出文件信息。",
+        target: ".report-history__run-item",
         action: "click",
+        check: { selector: '[data-tutorial-anchor="export-html"]' },
+      },
+      {
+        title: "报告导出入口",
+        text: "通过这里可导出 HTML 或 PDF。本片段仅展示入口；实际点击会下载报告文件。",
+        target: anchor("export-html"),
+        check: { selector: ".report__preview", text: "开路" },
+      },
+      {
+        title: "返回工作流定义",
+        text: "返回定义后，可核对和复用原流程。",
+        target: anchor("report-definition"),
+        action: "click",
+        check: { selector: '[data-tutorial-anchor="load-workflow"]' },
+      },
+      {
+        title: "加载到画布",
+        text: "加载后在画布中继续编辑。实际使用时会替换当前画布，运行中不可加载。",
+        target: anchor("load-workflow"),
+        action: "click",
+        check: { nodeTypes: [ocp] },
       },
     ],
   },

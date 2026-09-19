@@ -11,10 +11,9 @@ interface LeftPanelProps {
   selectedWorkstation: WorkstationType | null;
   furnaceConnected?: boolean;
   mfcConnected?: boolean;
-  teaching?: boolean;
 }
 
-export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkstation, furnaceConnected = false, mfcConnected = false, teaching = false }) => {
+export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkstation, furnaceConnected = false, mfcConnected = false }) => {
   const editable = useExecutionStore(selectCanvasEditable);
   const addNode = useCanvasStore((state) => state.addNode);
 
@@ -27,7 +26,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
   };
 
   const handleCreateNode = (nodeType: string) => {
-    if (teaching) return;
     if (selectedWorkstation) {
       if (HIDDEN_NODE_LIBRARY_TYPES.has(nodeType)) {
         return;

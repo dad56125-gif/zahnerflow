@@ -242,6 +242,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
               users.map(user => (
                 <div
                   key={user.user}
+                  data-tutorial-user={user.user}
                   className={`dropdown__option ${user.user === currentUser ? 'is-selected' : ''}`}
                   onClick={() => {
                     onUserChange(user.user);

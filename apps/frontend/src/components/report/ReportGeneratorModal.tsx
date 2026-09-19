@@ -8,7 +8,7 @@ import type { ExecutionReport } from '@zahnerflow/types';
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ModalLayer } from '../shared/OverlayLayer';
+import { SplitPaneModal, SplitPaneModalItem } from '../shared/SplitPaneModal';
 import { runtimeClient } from '../../runtimeClient';
 import { useCanvasStore } from '../../state/canvasStore';
 import { useWorkflowStore } from '../../state/currentWorkflowStore';
@@ -625,7 +625,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
               <button
                 type="button"
                 className="btn btn--sm btn--primary is-prominent"
-                onClick={() => void handleLoadWorkflowToCanvas(wf.id)}
+                data-tutorial-anchor="load-workflow" onClick={() => void handleLoadWorkflowToCanvas(wf.id)}
                 disabled={isLoadingWorkflow || !canvasEditable}
               >
                 {isLoadingWorkflow ? '加载中...' : '加载到画布'}
@@ -703,7 +703,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
 
   // ── 左侧 sidebar ──
   const renderSidebar = () => (
-    <aside className="report-history">
+    <>
       {wfError && (
         <div className="report-history__error">
           <span>{wfError}</span>
@@ -731,9 +731,9 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
             return (
               <div key={wf.id} className="report-history__wf-group">
                 {/* workflow 主项 */}
-                <button
-                  type="button"
-                  className={`report-history__item report-history__wf-item ${isSelected ? 'is-selected' : ''}`}
+                <SplitPaneModalItem
+                  selected={isSelected}
+                  className="report-history__item report-history__wf-item"
                   onClick={() => handleSelectWorkflow(wf.id)}
                 >
                   <span className="report-history__wf-content">
@@ -760,7 +760,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                       <WorkflowExpandArrow expanded={isExpanded} />
                     </span>
                   </span>
-                </button>
+                </SplitPaneModalItem>
 
                 {/* 展开后的 runs */}
                 {isExpanded && (
@@ -771,10 +771,10 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                     {runs.map((run) => {
                       const isRunSelected = selectedRunId === run.id;
                       return (
-                        <button
+                        <SplitPaneModalItem
                           key={run.id}
-                          type="button"
-                          className={`report-history__item report-history__run-item ${isRunSelected ? 'is-selected' : ''}`}
+                          selected={isRunSelected}
+                          className="report-history__item report-history__run-item"
                           onClick={() => handleSelectRun(wf.id, run.id)}
                         >
                           <span className="report-history__run-line">
@@ -784,7 +784,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                               <StatusLabel status={run.status} />
                             </span>
                           </span>
-                        </button>
+                        </SplitPaneModalItem>
                       );
                     })}
                     {runTotal > RECENT_RUNS_DEFAULT_LIMIT && runs.length < runTotal && (
@@ -803,22 +803,14 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
           })
         )}
       </div>
-    </aside>
+    </>
   );
 
   // ── 主渲染 ──
   return (
-    <ModalLayer
-      open={isOpen}
-      onOpenChange={(open) => { if (!open) onClose(); }}
-      centered
-      id="report-modal-overlay"
-    >
-      {({ close }) => (
-        <div className="report-modal">
-          <div className="report-modal__header">
-            <div className="report-modal__title-group">
-              <h2>实验记录</h2>
+    <SplitPaneModal open={isOpen} onClose={onClose} id="report-modal-overlay"
+      className="report-modal" title="实验记录" sidebarLabel="实验记录列表"
+      titleTools={<>
               <button
                 type="button"
                 className={`btn btn--xs btn--secondary report-modal__filter-btn ${showFavoritesOnly ? 'is-active' : ''}`}
@@ -833,8 +825,8 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
               >
                 {rightMode === 'map' ? '列表' : '地图'}
               </button>
-            </div>
-            <div className="report-modal__actions">
+      </>}
+      actions={<>
               {rightMode === 'map' && selectedWorkflowId && (
                 <button className="btn btn--sm btn--secondary" onClick={handleBackToDefinition}>
                   返回工作流定义
@@ -842,10 +834,10 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
               )}
               {rightMode === 'report' && (
                 <>
-                  <button className="btn btn--sm btn--secondary" onClick={handleBackToDefinition}>
+                  <button className="btn btn--sm btn--secondary" data-tutorial-anchor="report-definition" onClick={handleBackToDefinition}>
                     ← 返回工作流定义
                   </button>
-                  <button className="btn btn--sm btn--secondary" onClick={handleExportHtml} disabled={isExporting || !reportData}>
+                  <button className="btn btn--sm btn--secondary" data-tutorial-anchor="export-html" onClick={handleExportHtml} disabled={isExporting || !reportData}>
                     导出 HTML
                   </button>
                   <button className="btn btn--sm btn--primary is-prominent" onClick={handleExportPdf} disabled={isExporting || !reportData}>
@@ -853,21 +845,12 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                   </button>
                 </>
               )}
-              <button className="btn btn--sm btn--ghost btn--icon btn--rounded" onClick={close}>
-                ✕
-              </button>
-            </div>
-          </div>
 
-          <div className="report-modal__body">
-            {renderSidebar()}
-            <main className="report-modal__preview-pane">
-              {rightMode === 'definition' ? renderDefinitionPanel() : rightMode === 'map' ? renderMapPanel() : renderReportPanel()}
-            </main>
-          </div>
-        </div>
-      )}
-    </ModalLayer>
+      </>}
+      sidebar={renderSidebar()}
+    >
+      {rightMode === 'definition' ? renderDefinitionPanel() : rightMode === 'map' ? renderMapPanel() : renderReportPanel()}
+    </SplitPaneModal>
   );
 };
 

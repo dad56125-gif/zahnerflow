@@ -72,7 +72,7 @@ export interface BufferedMeasurementPoint {
 
 export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasurementStreamProps) => {
   const dataBufferRef = useRef<BufferedMeasurementPoint[]>([]);
-  const [, setTick] = useState(0);
+  const [dataVersion, setTick] = useState(0);
   const isReceiving = useRef(false);
   const frameIdRef = useRef<number>(0);
 
@@ -138,6 +138,7 @@ export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasur
   }, [activeExecutionId, nodeIndex]);
 
   return {
+    dataVersion,
     consumeBuffer,
     consumeIterationBuffer,
     getFullHistory,

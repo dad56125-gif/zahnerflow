@@ -1,3 +1,4 @@
+import { appStorage } from '../../tutorialEnvironment';
 export type SimulatorDevice = 'furnace' | 'mfc' | 'zahner';
 
 export type FurnaceSimulatorProfile = 'normal' | 'timeout' | 'invalid-response' | 'disconnect';
@@ -47,7 +48,7 @@ const mergeSettings = (value: Partial<SimulatorSettings> | null): SimulatorSetti
 export const loadSimulatorSettings = (): SimulatorSettings => {
   if (typeof window === 'undefined') return DEFAULT_SIMULATOR_SETTINGS;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = appStorage.getItem(STORAGE_KEY);
     return raw ? mergeSettings(JSON.parse(raw)) : DEFAULT_SIMULATOR_SETTINGS;
   } catch {
     return DEFAULT_SIMULATOR_SETTINGS;
@@ -56,7 +57,7 @@ export const loadSimulatorSettings = (): SimulatorSettings => {
 
 export const saveSimulatorSettings = (settings: SimulatorSettings): void => {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  appStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   window.dispatchEvent(new CustomEvent(SIMULATOR_SETTINGS_EVENT, { detail: settings }));
 };
 

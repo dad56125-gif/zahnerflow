@@ -1,3 +1,4 @@
+import { tutorialTransport } from './tutorialEnvironment';
 import { io, Socket } from 'socket.io-client';
 import { getWsUrl } from './config/env.config';
 import { getDesktopRuntimeBaseUrl } from './desktopBridge';
@@ -55,6 +56,11 @@ export async function runtimeRequest<T>(
   body?: RequestBody,
   params?: QueryParams
 ): Promise<T> {
+  if (tutorialTransport) return await tutorialTransport.request(method, endpoint, body, () => runtimeHttpRequest<T>(method, endpoint, body, params)) as T;
+  return runtimeHttpRequest<T>(method, endpoint, body, params);
+}
+
+async function runtimeHttpRequest<T>(method: HttpMethod, endpoint: string, body?: RequestBody, params?: QueryParams): Promise<T> {
   const runtimeBaseUrl = getDesktopRuntimeBaseUrl();
   const requestEndpoint = runtimeBaseUrl && endpoint.startsWith('/') ? `${runtimeBaseUrl}${endpoint}` : endpoint;
   const url = `${requestEndpoint}${queryString(params)}`;
@@ -104,16 +110,19 @@ class RuntimeSocket {
   private socket: Socket | null = null;
 
   connectSocket(): void {
+    if (tutorialTransport) { tutorialTransport.connect(); return; }
     if (this.socket) return;
     this.socket = io(getWsUrl(), { transports: ['websocket'], timeout: 5000 });
   }
 
   disconnectSocket(): void {
+    if (tutorialTransport) { tutorialTransport.disconnect(); return; }
     this.socket?.disconnect();
     this.socket = null;
   }
 
   on<T = unknown>(event: string, handler: RuntimeEventHandler<T>): () => void {
+    if (tutorialTransport) return tutorialTransport.on(event, handler as RuntimeEventHandler);
     this.connectSocket();
     this.socket?.on(event, handler as RuntimeEventHandler);
     return () => this.socket?.off(event, handler as RuntimeEventHandler);
@@ -124,18 +133,20 @@ class RuntimeSocket {
   }
 
   onConnect(handler: () => void): () => void {
+    if (tutorialTransport) return tutorialTransport.on('connect', handler);
     this.connectSocket();
     this.socket?.on('connect', handler);
     return () => this.socket?.off('connect', handler);
   }
 
   emit(event: string, payload?: unknown): void {
+    if (tutorialTransport) { tutorialTransport.emit(event, payload); return; }
     this.connectSocket();
     this.socket?.emit(event, payload);
   }
 
   get connected(): boolean {
-    return Boolean(this.socket?.connected);
+    return tutorialTransport ? tutorialTransport.connected : Boolean(this.socket?.connected);
   }
 }
 

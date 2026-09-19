@@ -160,6 +160,8 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为执行列表与所选步骤详情两栏浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为可以检查但不能手动启动的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。搜索和结构收起后每页最多渲染 100 项；支持编号跳转、方向键和完整参数检查，隐藏的选择可一键定位。`useUnrollPreview` 丢弃过期响应。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
 
+耗时历史并发规则：ETA 历史读取与成功耗时学习共用进程内互斥锁，保护同一 SQLite 连接上的语句执行、结果读取及样本读改写，避免多个预览请求并行访问时发生查询错误或丢失样本。锁仅保护耗时统计，不改变规划结果、执行控制或数据库结构。
+
 时间线规则：计划中的 `timeline.steps` 与 `eta.estimatedTotalSeconds` 来自同一次 `estimate_workflow` 计算。运行时复制计划时间线并在每个实际步骤开始或结束后更新快照；它可以依据执行事实修正剩余显示，但不得为了显示而再次展开工作流或另算一套步骤总数。
 
 Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事实。程序段时间只服从设定速率；ETA 加热按线性速率估算，降温在 500℃ 以下按保守的分温区可实现速率估算，并以进入目标容差带为结束点，禁止在环境温度端点使用趋于无穷的对数外推。运行时可用最近实测温降斜率修正剩余等待；由于起始温度不在节点参数 hash 中，`change_temperature` 不使用整节点的精确参数历史耗时覆盖这套规则。
@@ -236,7 +238,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-派生与展示规则]
 
-当前规则：执行 phase 的含义由 `executionPhases` 表定义，`describeExecution` 将其组织为 `is`、`can`、`keeps`、`view`、`identity`、`progress`、`result`、`command` 等可读分组；React 组件只消费这些自然语言字段，不各自解释原始状态字符串。Zustand 执行 store 只保存 `identity`、`nodes`、`progress`、完整 `snapshot` 和独立 `command` 请求状态，不维护可互相矛盾的布尔副本。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费。测量图表面板每次打开时只对真正处于 active 执行中的当前测量节点自动聚焦；用户手动选择类型、节点或批量范围后，本次打开期间保留用户视图，不提供额外的“跟随当前测试”按钮。IVT/EIS 曲线缓存均按 execution、原节点索引和迭代路径隔离，图表实例按 execution 和节点身份重建；节点或执行切换时必须恢复对应缓存或显示空图，不得沿用前一节点的 series。终态继续保留当前 execution id，使各类曲线具有一致生命周期，显式重置时统一清空。参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
+当前规则：执行 phase 的含义由 `executionPhases` 表定义，`describeExecution` 将其组织为 `is`、`can`、`keeps`、`view`、`identity`、`progress`、`result`、`command` 等可读分组；React 组件只消费这些自然语言字段，不各自解释原始状态字符串。Zustand 执行 store 只保存 `identity`、`nodes`、`progress`、完整 `snapshot` 和独立 `command` 请求状态，不维护可互相矛盾的布尔副本。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费。测量图表面板每次打开时只对真正处于 active 执行中的当前测量节点自动聚焦；用户手动选择类型、节点或批量范围后，本次打开期间保留用户视图，不提供额外的“跟随当前测试”按钮。IVT/EIS 曲线缓存均按 execution、原节点索引和迭代路径隔离，图表实例按 execution 和节点身份重建；节点或执行切换时必须恢复对应缓存或显示空图，不得沿用前一节点的 series。终态继续保留当前 execution id，使各类曲线具有一致生命周期，显式重置时统一清空。IVT 增量缓冲通过 useMeasurementStream 的 dataVersion 通知图表消费；不能只依赖稳定函数引用，否则首次打开空图后收到数据也不会刷新。参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
 
 归属文件：`apps/frontend/src/state/executionStateModel.ts`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/state/appStore.ts`、`apps/frontend/src/modules/common/runtimeDeviceSelectors.ts`、`apps/frontend/src/types/NodeConfiguration.ts`、`apps/frontend/src/components/measurement-dashboard/MeasurementDashboard.tsx`、`apps/frontend/src/components/measurement-dashboard/MeasurementChart.tsx`、`apps/frontend/src/hooks/useMeasurementStream.ts`、`apps/frontend/src/hooks/useEisData.ts`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/utils/iterationPath.ts`、`apps/frontend/src/utils/scheduledStart.ts` 及其消费组件。
 
@@ -246,9 +248,9 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-浮层系统]
 
-当前规则：modal、dropdown、notification、chart modal 等浮层使用统一层级、遮罩、动画和定位边界。只有最顶层浮层响应 Escape 和外部点击；模态窗口限制 Tab 焦点并在关闭后恢复。头像裁剪也使用 `ModalLayer`，预览和 60 像素导出共用同一尺寸与偏移计算。桌面 chrome 高度会影响浮层可用区域和顶部定位。
+当前规则：modal、dropdown、notification、chart modal 等浮层使用统一层级、遮罩、动画和定位边界。只有最顶层浮层响应 Escape 和外部点击；模态窗口限制 Tab 焦点并在关闭后恢复。头像裁剪也使用 `ModalLayer`，预览和 60 像素导出共用同一尺寸与偏移计算。桌面 chrome 高度会影响浮层可用区域和顶部定位。实验记录与教程目录共用从既有实验记录提取的 SplitPaneModal / SplitPaneModalItem；容器、透明背景、标题栏、关闭按钮、左右栏、列表选中态和开关动画由同一组件与样式提供，业务页面只传入各栏内容。
 
-归属文件：`apps/frontend/src/components/shared/OverlayLayer.tsx`、`apps/frontend/src/styles/_advanced-components.scss`、`apps/frontend/src/styles/_chart-modal.scss`、`apps/frontend/src/styles/_report.scss`、`apps/frontend/src/styles/_user-settings.scss`。
+归属文件：`apps/frontend/src/components/shared/OverlayLayer.tsx`、`apps/frontend/src/components/shared/SplitPaneModal.tsx`、`apps/frontend/src/styles/_split-pane-modal.scss`、`apps/frontend/src/styles/_advanced-components.scss`、`apps/frontend/src/styles/_chart-modal.scss`、`apps/frontend/src/styles/_report.scss`、`apps/frontend/src/styles/_user-settings.scss`。
 
 允许变化：可以为具体 modal 增加专用布局，但必须遵守统一浮层层级和桌面 chrome 变量。
 
@@ -304,16 +306,18 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-微教程]
 
-当前规则：顶栏新建用户按钮右侧提供新手教程入口。教程目录沿用统一 ModalLayer，左侧按操作分类，右侧展示片段预览和解释；用户点击“开始界面演示”后关闭目录，在主界面实际节点库、画布、节点、属性栏和工具栏上定位、聚光并演示。目录片段不是全界面教学的替代。教程脚本定义教学帧，不包含运行时命令。
+当前规则：顶栏新建用户按钮右侧提供新手教程入口。目录沿用实验记录的共享 SplitPaneModal（内部使用 ModalLayer），左侧按操作分类，右侧为片段预览与说明；启动后在覆盖整个工作区的实际应用中演示。目录、播放控制与聚光标注是教学专属界面，节点库、画布、属性、设置、进度、展开预览、图表与实验记录均直接使用正常 App 的同一组件树，不存在教学业务组件副本或教学视图属性。
 
-数据边界：教学通过可选的只读视图参数向既有 Canvas、Toolbar、RightPanel、BottomBar 提供临时节点和展示状态，不写入真实画布 store、执行 store、用户配置、默认参数或工作流名称。属性栏教学态使用空真实节点集合，避免向后端估算教学节点；涉及用户设置、执行步骤、曲线和报告的辅助画面使用明确标注的样例，不调用真实保存、运行、停止或设备命令。退出直接移除教学视图，原工作流仍在原 store 中，不采用覆盖后回滚方案。
+数据边界：教学播放器用同源 iframe 创建独立的应用实例，保留原工作区。main.tsx 在导入 App 和建立运行时监听前安装教学数据适配器；runtimeClient 仍是唯一通信入口。教学用户配置和浏览器偏好使用内存 Storage，独立实例的 Zustand store 执行真实编辑动作；父页面的 store、localStorage 和数据库不会被覆盖或回滚。执行、停止、重置和记录读取使用项目 Python 模拟器采集的教学数据与事件，未知教学请求直接报错，不转发到真实设备或持久化接口。仅执行步骤预览与 ETA 两个无副作用的规划接口继续使用实际后端 ExecutionPlanner，不维护第二套计划算法。教学场景记录是随产品发布的示例数据，不是测试夹具。
 
-交互规则：全界面教学层通过语义属性定位可见目标，滚动或窗口尺寸变化后更新位置；鼠标仅展示动画，不合成业务点击。除教学控制条和桌面窗口按钮外拦截输入，支持暂停、逐步浏览、重播与 Escape 退出；拖拽演示复用真实节点渲染器，以临时动画表现移动。页面隐藏时暂停；实验处于活跃态或启动待决时禁止进入，教学中接收到真实实验启动状态立即退出。目录与教学层沿用现有焦点和浮层规则，不覆盖桌面窗口控制区。
+交互规则：步骤通过语义属性定位实际元素，合成点击、输入并失焦、拖拽、右键和长按事件，触发原有业务处理与状态校验；每一步核对画布结构、参数、选中状态、执行阶段或真实图表数据。被遮挡或禁用的目标不允许继续点击。拖拽影像克隆实际节点 DOM；教学层仅绘制光标与边框。物理输入由宿主遮挡层拦截，控制条根据目标位置避让；滚动和缩放后更新定位。暂停在当前原子操作完成后生效，避免半次输入或按住状态残留。页面隐藏请求暂停；重播重新创建隔离实例，退出直接销毁。运行中或启动待决不能进入教学；父页面收到真实执行启动会销毁教学工作区。统一 ModalLayer 管理焦点与 Escape，播放器留出桌面窗口控制区域。
 
-归属文件：`apps/frontend/src/components/tutorial/`、`apps/frontend/src/App.tsx`、`apps/frontend/src/components/TopBar.tsx`、`apps/frontend/src/components/user/UserSelector.tsx`、Canvas、Toolbar、RightPanel、BottomBar 与 `styles/_tutorial.scss`。
+组件修正：正常画布和教学画布共同使用既有 ConfirmDialog 完成节点删除，显示配置表中的实际节点名称；长按按钮只对真实指针请求浏览器指针捕获，合成事件仍走相同计时和取消命令。测量曲线直接消费相同 useMeasurementStream 与 ECharts 组件，不制作示意折线或教学进度条。
 
-允许变化：增加操作教程、教学动作、只读辅助场景及定位锚点，可扩展明确限定在教学数据上的跟做功能。
+归属文件：apps/frontend/src/components/tutorial/、tutorialEnvironment.ts、main.tsx、runtimeClient.ts、App.tsx、TopBar.tsx、components/user/UserSelector.tsx、各业务组件的语义定位属性与 styles/_tutorial.scss。
 
-禁止事项：禁止通过教程调用真实运行、停止、设备或持久化命令；禁止将演示状态写入后端事实或真实 store；禁止用固定屏幕坐标定位业务目标；禁止仅扩大目录中的预览画布冒充主界面教学。
+允许变化：增加教程、同一组件上的操作脚本、配套模拟器数据和验收条件；数据适配器保持明确的教学场景边界，不扩展为另一套通用执行器。
 
-最近复核：2026-09-20，完成 11 项微教程与 36 个步骤的浏览器定位检查，演示期间未产生后端写入请求。
+禁止事项：禁止重写教学专用业务控件或引入 Canvas、Toolbar、RightPanel 等组件的教学状态分支；禁止教学调用真实运行、停止、设备或持久化接口；禁止用固定坐标或绕过遮挡、禁用检查代替实际控件；禁止用 store 赋值冒充正在教授的用户动作。只允许在片段初始化时准备前置工作流。
+
+最近复核：2026-09-20，整改为共用实际组件及处理链；验收结果随本次变更记录保存。

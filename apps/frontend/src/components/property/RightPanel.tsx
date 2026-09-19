@@ -148,24 +148,14 @@ function formatDateTime(value: string | Date | null | undefined): string {
 
 interface RightPanelProps {
   mfcState: MfcState;
-  tutorialNode?: WorkflowNode | null;
-  tutorialTab?: 'basic' | 'parameters';
 }
-const ignoreTutorialEdit = () => {};
-const emptyTutorialNodes: WorkflowNode[] = [];
 
 export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
-  ({ mfcState, tutorialNode, tutorialTab }, ref) => {
+  ({ mfcState }, ref) => {
     // 1. 从 Store 获取选中节点
     // 使用 selectedNodeId 从 nodes 数组中查找，确保数据是最新的
-    const canvasState = useCanvasStore();
-    const teaching = tutorialNode !== undefined;
-    const nodes = teaching ? emptyTutorialNodes : canvasState.nodes;
-    const selectedNodeId = canvasState.selectedNodeId;
-    const updateNodeConfig = teaching ? ignoreTutorialEdit : canvasState.updateNodeConfig;
-    const setNodes = teaching ? ignoreTutorialEdit : canvasState.setNodes;
-    const selectNode = teaching ? ignoreTutorialEdit : canvasState.selectNode;
-    const node = useMemo(() => teaching ? tutorialNode ?? undefined : nodes.find(n => n.id === selectedNodeId), [teaching, tutorialNode, nodes, selectedNodeId]);
+    const { nodes, selectedNodeId, updateNodeConfig, setNodes, selectNode } = useCanvasStore();
+    const node = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
     const workflowBlockNodeId = node?.type === 'workflow_block' ? node.id : null;
     const workflowBlockId = node?.type === 'workflow_block'
       ? String(node.config?.workflowId || '').trim()
@@ -178,16 +168,14 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     const { currentUser } = useUser();
 
     // 2. 获取实时系统状态
-    const actualSystemState = useExecutionSnapshot();
-    const systemState = teaching ? null : actualSystemState;
+    const systemState = useExecutionSnapshot();
     const canvasEditable = useExecutionStore(selectCanvasEditable);
     const execution = useMemo(() => describeExecution(systemState), [systemState]);
     const [nodeRemainingSeconds, setNodeRemainingSeconds] = useState<number | null>(null);
     const [nodeElapsedSeconds, setNodeElapsedSeconds] = useState(0);
     const [plannedEstimate, setPlannedEstimate] = useState<WorkflowEtaEstimate | null>(null);
     const [plannedStartTime, setPlannedStartTime] = useState<string | null>(null);
-    const [storedTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
-    const activeTab = teaching ? tutorialTab || 'basic' : storedTab;
+    const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
     const [workflowOptions, setWorkflowOptions] = useState<WorkflowSummaryOption[]>([]);
     const [workflowBlockDefinition, setWorkflowBlockDefinition] = useState<WorkflowDefinitionPayload | null>(null);
     const [workflowBlockLoading, setWorkflowBlockLoading] = useState(false);
@@ -201,10 +189,10 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 自动切回 basic tab
     useEffect(() => {
-      if (!teaching && !supportsChart && activeTab === 'chart') {
+      if (!supportsChart && activeTab === 'chart') {
         setActiveTab('basic');
       }
-    }, [supportsChart, activeTab, teaching]);
+    }, [supportsChart, activeTab]);
 
     useEffect(() => {
       if (node?.type !== 'workflow_block') return;
@@ -989,9 +977,8 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
                 <span className="btn-icon"><UiIconSvg name="list" /></span><span className="btn-text">基本</span>
               </button>
               <button
-                data-tutorial-anchor="parameter-tab"
                 className={`btn btn--sm glass ${activeTab === 'parameters' ? 'btn--primary' : 'btn--secondary'}`}
-                onClick={() => setActiveTab('parameters')}
+                data-tutorial-anchor="parameter-tab" onClick={() => setActiveTab('parameters')}
               >
                 <span className="btn-icon"><UiIconSvg name="settings" /></span><span className="btn-text">参数</span>
               </button>

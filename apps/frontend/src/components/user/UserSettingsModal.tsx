@@ -413,7 +413,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                     <div className="path-input__group">
                                                         <input
                                                             type="text"
-                                                            value={settings.filePath.basePath}
+                                                            data-tutorial-anchor="base-path" value={settings.filePath.basePath}
                                                             onChange={(e) => updateFilePath('basePath', e.target.value)}
                                                             placeholder="C:\data\archive"
                                                             className={`input ${fieldErrors.basePath ? 'input--error' : ''}`}

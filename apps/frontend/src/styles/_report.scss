@@ -3,54 +3,8 @@
 /* === 实验报告模块：复用全局浮层、按钮、输入和列表契约 === */
 
 .report-modal {
-  @extend %glass-panel-base;
-  --report-header-h: clamp(3.75rem, 3.3rem + 1vw, 4.25rem);
-  --report-content-top: calc(var(--report-header-h) - var(--size-3xs));
   --report-history-gap: var(--size-2xs);
   --report-definition-action-gap: var(--size-5xl);
-
-  position: relative;
-  isolation: isolate;
-  width: min(1180px, 94vw);
-  height: min(820px, 90vh);
-  border-radius: var(--radius-panel);
-  box-shadow: 0 8px var(--effect-2xl) var(--glass-shadow);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  @include top-blur-veil(calc(var(--report-header-h) + var(--size-2xl)), 3, 5px);
-}
-
-.report-modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: absolute;
-  inset: 0 0 auto;
-  height: var(--report-header-h);
-  padding: var(--size-sm) var(--size-xl) var(--size-lg);
-  border-bottom: 0;
-  background: transparent;
-  z-index: 5;
-
-  h2 {
-    margin: 0;
-    color: var(--text-primary);
-    font-size: var(--size-lg);
-    font-weight: 600;
-    text-shadow: var(--text-shadow-body);
-    position: relative;
-    z-index: 1;
-  }
-}
-
-.report-modal__title-group {
-  display: flex;
-  align-items: center;
-  gap: var(--size-sm);
-  min-width: 0;
-  position: relative;
-  z-index: 6;
 }
 
 .report-modal__filter-btn {
@@ -61,64 +15,6 @@
     border-color: var(--color-favorite);
     background: var(--color-favorite-bg);
   }
-}
-
-.report-modal__actions {
-  @extend %flex-center;
-  gap: var(--size-sm);
-  position: relative;
-  z-index: 6;
-}
-
-.report-modal__body {
-  position: relative;
-  z-index: 0;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(8, 13, 28, 0) 0%,
-      rgba(0, 0, 0, 0.05) 18%,
-      rgba(0, 0, 0, 0.08) 100%
-    );
-}
-
-.report-modal__preview-pane {
-  min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  scroll-padding-top: calc(var(--report-header-h) + var(--space));
-  padding: var(--report-content-top) var(--size-xl) var(--size-xl);
-}
-
-.report-modal__preview-pane,
-.report-history {
-  mask-image:
-    linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0) 0,
-      rgba(0, 0, 0, 0.08) var(--size-xl),
-      rgba(0, 0, 0, 0.42) calc(var(--report-header-h) * 0.86),
-      #000 calc(var(--report-header-h) + var(--size-md)),
-      #000 calc(100% - var(--size-2xl)),
-      rgba(0, 0, 0, 0.42) calc(100% - var(--size-lg)),
-      rgba(0, 0, 0, 0) 100%
-    );
-  -webkit-mask-image:
-    linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0) 0,
-      rgba(0, 0, 0, 0.08) var(--size-xl),
-      rgba(0, 0, 0, 0.42) calc(var(--report-header-h) * 0.86),
-      #000 calc(var(--report-header-h) + var(--size-md)),
-      #000 calc(100% - var(--size-2xl)),
-      rgba(0, 0, 0, 0.42) calc(100% - var(--size-lg)),
-      rgba(0, 0, 0, 0) 100%
-    );
 }
 
 .report-modal__feedback,
@@ -137,42 +33,7 @@
   color: var(--color-danger);
 }
 
-.report-history {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  scroll-padding-top: calc(var(--report-header-h) + var(--space));
-  border-right: 0;
-  padding: var(--report-content-top) var(--size-sm) var(--size-sm);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(20, 30, 64, 0) 0%,
-      rgba(20, 30, 64, 0.06) 18%,
-      rgba(0, 0, 0, 0.08) 100%
-    );
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 1px;
-    pointer-events: none;
-    background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0) 12%,
-        var(--glass-border) 30%,
-        var(--glass-border) 100%
-      );
-  }
-}
 
 .report-history__toolbar {
   display: grid;
@@ -204,24 +65,6 @@
   overflow: visible;
   padding: 0;
   @include flex-col(var(--report-history-gap));
-}
-
-.report-history__item {
-  @extend %list-item-base;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--size-sm);
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  min-height: 2.75rem;
-  padding: var(--size-3xs) var(--size-xs) var(--size-3xs) var(--size-md);
-
-  &.is-selected {
-    border-color: var(--color-primary);
-    background: var(--color-primary-bg);
-  }
 }
 
 .report-history__search {
@@ -883,20 +726,6 @@
 }
 
 @media (max-width: 900px) {
-  .report-modal {
-    height: min(90vh, 860px);
-  }
-
-  .report-modal__body {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(220px, 34vh) minmax(0, 1fr);
-  }
-
-  .report-history {
-    border-right: 0;
-    border-bottom: 1px solid var(--glass-border);
-  }
-
   .report__cover-info {
     grid-template-columns: 1fr;
   }
