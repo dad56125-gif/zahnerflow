@@ -1,3 +1,5 @@
+> Thales / Term 研究已独立迁出；本文后续只管理应用项目的来源关系。
+
 # 功能源头与派生关系
 
 状态：当前来源登记与静态核查。归属：各模块维护者；文档维护者负责汇总。复核日期：2026-09-20。
@@ -41,7 +43,6 @@
 | 实时曲线 | 仪器返回的 measurementData / eisDataReady，`workflow.py` 描述载荷 | AppRuntime 丰富执行身份 → `useMeasurementStream.ts` / `useEisData.ts` 内存缓存 → `MeasurementChart.tsx` | IVT / EIS 图；Nyquist 显示 `(z_real, -z_imag)`，nodesReset 清缓存；图表缓存不是永久归档 |
 | CLI / 能力发现 | [CLI main.py](../../apps/zahnerflow_cli/main.py) 的命令映射；后端真实路由与语义表 | urllib client 发送 HTTP；`runtime_api.py` 混合读取模型/语义表及手写 `DEVICE_CAPABILITIES`；设备子命令在 `routers/devices.py` 手写分派 | CLI 输出、App 同步、OpenAPI；CLI 不导入 DB/驱动、不自行展开、不自动启动服务 |
 | 样式与视觉规则 | [样式目录](../../apps/frontend/src/styles) 的 `_tokens.scss`、`_base.scss` 与模块；[视觉规范](../reference/design-system.md) 记录人工约束 | `main.scss` 按层加载 → Vite/Sass 输出 CSS；`check-design.mjs` 只检查定义范围 | 工作台与组件外观；Markdown 不生成 SCSS，静态规则不代替视觉检查 |
-| 设备研究 | 原始安装包/原件及哈希；独立标识的 SDK/项目快照；筛选脚本中的人工政策 | 文本转换/反汇编/摘录 → coverage 与报告；`select_focus.py` 生成分类和正式筛选正文 | [研究目录](../research/thales/README.md)；原件、研究报告都不由运行时直接导入，不能当作已经接入的驱动 |
 
 ### 生成命令与可复现边界
 
@@ -50,7 +51,6 @@
 | 同步应用版本 | `pnpm version:sync` | 不写发布日志，不修改 API / 数据库版本 |
 | 生成共享 TS 契约 | `uv run python -m apps.shared.contracts.generate` | 模型与生成器内手写模板共同决定输出；随后构建和核对实际载荷 |
 | 编译共享类型 | `pnpm --filter @zahnerflow/types build` | 编译现存 TS，不自动运行上行命令 |
-| 重生成现行 Thales 筛选 | `uv run python archive/thales-xt-5.9.5-research/tools/select_focus.py` | 需要本机研究包；原件清单与脚本政策为输入；生成 `focus/` 和 `doc/research/thales/thales-file-shortlist.md` |
 
 研究包不随 Git 分发。`tools/extract_research.py` 从安装包提取并生成 `indexes/manifest.json`；`extract_methods.py` 生成可检索副本、摘录与 SDK/项目代码快照；HAL 与按类型脚本生成反汇编、coverage 及部分报告。它们不是可运行替代驱动。`build_focused_reading.py` 产生历史 `focused/`，不能用来更新现行 `focus/` 的分类。
 
@@ -104,16 +104,7 @@ flowchart TD
         STYLE["_tokens.scss / _base.scss / main.scss"] -->|Sass 编译| CSS["构建 CSS"]
         CSS -->|渲染样式| VIEW
     end
-    subgraph Research["研究证据与文档"]
-        ORIGINAL["安装包与 originals/ 原件"] -->|核对路径与哈希| MANIFEST["indexes/manifest.json"]
-        ORIGINAL -->|解码或反汇编| EXTRACT["摘录 / 类型分析产物"]
-        MANIFEST -->|读取清单| SELECT["tools/select_focus.py · 人工筛选规则"]
-        SELECT -->|生成| SHORT["focus/selection.json / 筛选报告"]
-        EXTRACT -. "证据支持，不等于已实现" .-> REVIEW["research/thales/ 研究结论"]
-        SHORT -. "限定当前阅读范围" .-> REVIEW
-        RT -. "核对实现" .-> DESIGN[".memory/design.md / reference/ / 本登记"]
-        REVIEW -. "实现并验证后才更新设计" .-> DESIGN
-    end
+    RT -. "核对实现" .-> DESIGN[".memory/design.md / reference/ / 本登记"]
 ```
 
 图中的设备调用是职责链，具体方法可能由 worker 调用 `DeviceManager` 获取的设备对象；不表示每一步均有一个独立服务。`logic.py` 不是网络服务。前端/桌面 `appVersion.ts` 是已生成产物，核查时未找到直接导入消费者，不能据此画出不存在的版本文字展示链。
@@ -130,8 +121,6 @@ flowchart TD
 | 数据规范把 `PRAGMA user_version` 当成迁移定义 | 改为 `database_schema.py` 定义迁移，pragma 仅保存已应用版本 |
 | 设计把高级展开参数概括为已完全统一 | `[设备-驱动调用]` 明确现有独立读取边界，保留禁止继续新增重复规则的要求 |
 | 设计中旧执行 ID 过滤描述与新的外部执行快照规则冲突 | 完整快照以 runtimeId / snapshotSequence 接收；增量事件按 executionId 过滤，二者分开说明 |
-| Thales 两套分类都像当前结论 | 22 / 151 / 555 为现行研究筛选；7 / 6 / 621 / 36 / 58 移到 history 并注明已替代 |
-| 筛选生成器仍写 doc 根旧路径 | 本地 `select_focus.py` 同步新路径、来源标记和链接，并重新生成；数量仍为 22 / 151 / 555，未改变分类政策 |
 | GEMINI 重复代理约束、历史链接指向已删除 TS 展开器 | GEMINI 仅指向 AGENTS；旧展开器引用改为明确历史路径，不伪造当前文件 |
 
 ### 仍然存在的人工维护边界与风险
@@ -151,7 +140,6 @@ flowchart TD
 | 类型描述不等于输出强校验 | 设备 envelope 没有对应 `response_model` / `model_validate`；执行 snapshot 与报告 HTTP 则声明输出模型 | 分别记录校验覆盖，生成 TS 不会保留所有 Pydantic 数值限制，也不会自动校验运行数据 |
 | 一部分版本产物尚无直接消费者 | 前端、桌面 generated/appVersion.ts 本次只找到定义；后端 version.py 确有消费者 | 这是未消费产物，不是版本冲突；不要把它描述成界面版本显示的源头 |
 | 源码注释仍可能误导生成方向 | `workflow.py` 顶部保留“基于前端 Interfaces.ts”描述，但现在生成器读取 Python 定义输出 TS | 视为历史来源描述；实际修改方向以生成器为准，未来维护注释时纠正，不能倒过来改生成类型 |
-| 研究快照目录的版本可能漂移 | `extract_methods.py` 用写定版本目录复制重跑时当前 SDK/项目文件 | 重跑记录真实版本/提交/hash；现存目录名本身不证明版本，没有本地包不能宣称已复现 |
 
 ### 本次验证与范围
 

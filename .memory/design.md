@@ -318,4 +318,4 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 最近复核：2026-09-20，文档分类迁移、来源链静态审计及目录/图表校验。本次不改变运行拓扑或设备行为。
 
-专题范围：Thales / Term 反编译研究作为独立子文档维护，入口为 `doc/research/thales/README.md`，材料与功能来源见同目录 `reverse-engineering-map.md`。该研究请求的目录和图只围绕反编译材料，不以整个 ZahnerFlow 项目架构替代研究交付。
+专题范围：Thales / Term 反编译研究已迁出至同级 `thales-reverse-engineering/` 独立目录；本项目文档与代理规则不管理该目录。

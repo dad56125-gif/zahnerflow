@@ -1,3 +1,5 @@
+> Term / Thales 反编译材料已迁出至同级 `thales-reverse-engineering/`，不属于本项目文档或规则的管理范围。
+
 # 项目文档架构与维护规则
 
 状态：当前规则。归属：项目文档维护者；各模块修改者负责同步其相关文档。复核日期：2026-09-20。
@@ -26,15 +28,9 @@ zahnerflow-main/
 │   ├── reference/
 │   │   ├── data-contracts.md     数据命名、单位、契约维护说明
 │   │   └── design-system.md      视觉规范与样式维护说明
-│   ├── research/
-│   │   └── thales/               设备通信研究；不等于已实现能力
-│   │       ├── README.md         研究顺序、有效结论与本地证据入口
-│   │       ├── *.md              专题研究报告
-│   │       └── history/          被后续结论替代的研究记录
 │   └── insight/
 │       ├── 1.0.0/               该版本设计、审计、决策和复盘快照
 │       └── 2.2.1/               优化前评估、过程和交付快照
-├── archive/                     已忽略的本地原始研究材料与分析产物
 └── .codex-run/                  已忽略的临时核查输出
 ```
 
@@ -86,7 +82,6 @@ flowchart TD
 - 当前设计：[设计锚点](../.memory/design.md)、[维护纪律](../.memory/rules.md)、[来源登记与核查](architecture/source-of-truth.md)。
 - 使用：[安装启动](../INSTALL.md)、[CLI 与 Agent](guides/cli-agent.md)。
 - 规范：[数据与命名](reference/data-contracts.md)、[视觉与样式](reference/design-system.md)。
-- 研究：[Thales 研究目录](research/thales/README.md)。
 - 历史：[1.0.0 归档](insight/1.0.0/README.md)、[2.2.1 归档](insight/2.2.1/README.md)。
 - 变化：[发布日志](../CHANGELOG.md)、[设计演进](../.memory/changelog.md)。
 
