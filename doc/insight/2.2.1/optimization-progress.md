@@ -44,7 +44,7 @@
 - 验证：隔离数据断言覆盖迁移、回滚、真实用户、设置合并、历史报告、文件去重；由 Python 输出真实报告夹具验证前端消费。
 
 - 共享类型包改为 ESM，解决生成默认值常量在真实 Vite 打包中无法导入的问题；API 协议独立升级到 4.0.0。
-- `pnpm build` 通过；隔离 HTTP 检查确认健康信息、schema 版本、真实用户档案与规范设置响应。命名与迁移规则见 `doc/data-contracts.md`。
+- `pnpm build` 通过；隔离 HTTP 检查确认健康信息、schema 版本、真实用户档案与规范设置响应。命名与迁移规则见 `doc/reference/data-contracts.md`。
 
 ### 第三阶段：2.1.0
 

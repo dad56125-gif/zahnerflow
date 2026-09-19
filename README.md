@@ -2,24 +2,20 @@
 
 ZahnerFlow 是面向实验室本地工作站的电化学实验编排与执行软件。研究人员通过可视化节点组织电化学测量、炉温变化、气体流量变化和循环流程，观察实时状态与曲线，并按工作流回查执行记录及结果文件。
 
-当前应用版本以根目录 [VERSION](VERSION) 为准。整体优化完成版本为 **2.2.1**，复核日期 **2026-09-08**；优化前基线为 **1.0.11**。
+当前应用版本以根目录 [VERSION](VERSION) 为准。
 
 ## 文档入口
 
 | 文档 | 用途 |
 | --- | --- |
-| [项目全局评估报告](doc/project-assessment-2026-09-07.md) | 项目目的、设计风格、代码风格、适用范围和后续修改建议 |
-| [整体优化交付报告](doc/optimization-results-2026-09-08.md) | 六项任务结果、Git 回溯节点、验证证据和实际边界 |
-| [设计规范](doc/design-system.md) | 固定的视觉令牌、SCSS 模块和组件复用规则 |
-| [数据与命名规范](doc/data-contracts.md) | 数据库单一结构来源、迁移与接口映射 |
-| [CLI 与 Agent 接入](doc/cli-agent.md) | 能力发现、JSON 命令、执行观察与 App 同步 |
-| [当前设计](.memory/design.md) | 架构、运行状态、设备行为、接口和持久化的现行约束 |
-| [项目规则](.memory/rules.md) | 文档同步、代码维护和验证纪律 |
-| [代理工作指南](AGENTS.md) | 环境、提交、版本管理要求 |
-| [应用变更记录](CHANGELOG.md) | 各应用版本的变更 |
-| [设计演进记录](.memory/changelog.md) | 按设计锚点查找历史原因，按需读取 |
+| [统一文档目录](doc/README.md) | 文档层级、归属、架构图与新增维护规则 |
+| [安装与启动](INSTALL.md) | 环境、启动、构建与验证命令 |
+| [当前设计](.memory/design.md) | 现行架构与稳定设计锚点 |
+| [功能源头与派生关系](doc/architecture/source-of-truth.md) | 定义文件、生成和调用链、冲突核查 |
+| [代理工作指南](AGENTS.md) | 项目维护入口 |
+| [应用变更记录](CHANGELOG.md) | 版本发布历史 |
 
-原评估报告保留优化前的观察；其中已实施事项以交付报告与当前设计为准。未实施建议仍不自动成为产品要求。
+使用说明、专题规范、设备研究和历史报告统一从文档目录进入。历史建议与设备研究结论不自动成为当前产品要求。
 
 ## 能力与边界
 
@@ -49,63 +45,8 @@ ZahnerFlow 是面向实验室本地工作站的电化学实验编排与执行软
 
 前端统一通过 `apps/frontend/src/runtimeClient.ts` 访问 REST 和 Socket.IO。后端业务事实由一个 Python 进程中的 `AppRuntime` 协调；阻塞设备调用可在线程中执行，设备驱动不作为独立服务启动。
 
-## 开发入口
+## 开发与维护
 
-环境声明：Node.js ≥ 18、pnpm ≥ 9、Python ≥ 3.11；Python 环境和依赖使用 `uv`。本次验证使用 Node.js 24.18.0、pnpm 11.9.0、uv 0.11.26 和 Python 3.14；没有验证所有最低版本组合。两份依赖锁均纳入版本管理。
+环境要求、启动模式和构建操作统一维护在 [安装与启动](INSTALL.md)。版本同步、契约生成及来源变更的影响范围见 [功能源头与派生关系](doc/architecture/source-of-truth.md)。
 
-在仓库根目录准备依赖：
-
-```powershell
-pnpm install --frozen-lockfile
-uv sync --locked
-```
-
-浏览器开发模式：
-
-```powershell
-pnpm dev
-```
-
-Vite 配置端口为 `8083`，Python 后端默认为 `127.0.0.1:3001`；Vite 将 `/api` 和 `/socket.io` 代理到后端。`/health` 直接访问后端端口。
-
-桌面开发模式：
-
-```powershell
-pnpm desktop:dev
-```
-
-Electron 启动并管理自己的 Python 后端，等待健康检查成功后加载前端。浏览器开发模式与桌面开发模式默认使用同一后端端口，应选择一种运行方式。
-
-开发模式默认数据库为仓库 `data/app.db`，可通过 `ZAHNERFLOW_DATA_DIR` 指定数据目录。桌面模式由 Electron 指定 `app.getPath('appData')/ZahnerFlow/data`；以 `/health` 返回的 `data_dir`、`database_path` 核对实际位置。测量输出目录由用户路径配置决定，与 SQLite 所在目录分别管理。
-
-## 验证与构建
-
-```powershell
-pnpm version:check
-pnpm type-check
-pnpm lint
-pnpm build
-```
-
-`pnpm build` 包括版本检查、共享类型构建和前端 TypeScript/Vite 构建。契约修改从 Python 源开始，在根目录生成后再构建：
-
-```powershell
-uv run python -m apps.shared.contracts.generate
-```
-
-Windows 安装包入口：
-
-```powershell
-pnpm version:check
-pnpm desktop:dist:win
-```
-
-分发脚本会先检查版本，再构建前端、桌面壳和 Python 后端。各子包构建入口也执行版本前置检查。安装包验收范围见优化记录。
-
-仓库规则禁止提交测试源码、测试配置和测试目录。已移除指向不存在目录或文件的测试、服务脚本；外部验证可通过 `pnpm exec vitest run --config <外部配置>` 运行。阶段结果见 [整体优化记录](doc/optimization-progress.md)。
-
-## 修改约定
-
-修改前读取 `.memory/rules.md` 和 `.memory/design.md`。接口变化先改共享契约，通信保持单一入口；架构、设备、数据流、启动或持久化变化需要同步设计并追加设计记录。
-
-应用版本由 `VERSION` 唯一维护，通过 `pnpm version:sync` 同步（包括 uv 锁中的根项目版本），再更新 `CHANGELOG.md` 并运行 `pnpm version:check`。完成变更后创建中文 Git 提交。此次 **1.0.11 → 2.2.1** 包含用户与报告接口的不兼容规范化，故跨越 MAJOR；具体阶段见交付报告。
+修改前读取 [项目维护规则](.memory/rules.md) 和 [当前设计](.memory/design.md)。新增或移动文档遵循 [文档维护流程](doc/README.md)。架构、设备、数据流、启动或持久化变化需要同步设计并追加设计记录；完成变更后按项目规则创建中文 Git 提交。

@@ -1,21 +1,21 @@
 # Term 到 Zennium 的底层通信分析
 
+状态：研究结论。归属：设备通信研究任务。来源和检查日期见正文；目录归属复核：2026-09-20，未新增真机验证。后续阅读与结论优先级见 [研究目录](README.md)。
+
 日期：2026-09-19。依据：用户提供的 Thales XT 5.9.5 安装包，选择性解包配置、PE 导入/导出表和厂商手册。没有加载执行 DLL、启动 Term、操作 USB 设备或修改系统驱动。本文记录已证实结构和静态分析边界，不是底层协议完整实现。
 
 ## 1. 两段不同的通信
 
-```text
-ZahnerFlow / thales_remote
-    │ TCP 260：Remote2 客户端协议
-    ▼
-Windows 电脑上的 Term131.exe
-    │ HAL 函数接口
-    ├─ FTDIHAL.dll → FTD2XX.dll → Windows FTDI 驱动 → USB
-    └─ USB2HAL.dll / Cypress 路径 → Windows Cypress 驱动 → USB
-    ▼
-Zennium 内部计算机上的 Thales / AMOS / Remote2
-    ▼
-仪器测量硬件
+```mermaid
+flowchart TD
+    Client["ZahnerFlow / thales_remote"] -->|"TCP 260 · Remote2 协议"| Term["Windows · Term131.exe"]
+    Term -->|"HAL 调用"| FTDI["FTDIHAL.dll"]
+    FTDI --> D2XX["FTD2XX.dll"]
+    D2XX --> Driver["Windows FTDI 驱动"]
+    Term -->|"另一硬件路径"| Cypress["USB2HAL.dll / Cypress 驱动"]
+    Driver -->|USB| Instrument["Zennium 内部 · Thales / AMOS / Remote2"]
+    Cypress -->|USB| Instrument
+    Instrument -->|控制| Hardware["仪器测量硬件"]
 ```
 
 Term 不只是一个参数窗口。它承担工作站程序的电脑端界面、文件访问和外部 TCP/IP 接入。测量软件运行在仪器端；厂商的现行 Zennium/IM7 对比说明也明确：Zennium 由 Windows 上的 Thales 经 USB 控制，不能把 IM7 的 Ethernet/WebSocket 接口套用于 Zennium。

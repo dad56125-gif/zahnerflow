@@ -6,6 +6,7 @@
 
 ## 锚点索引
 
+- `[文档-架构与来源]`：文档分类、定义来源与派生链维护入口。
 - `[产品-运行拓扑]`：Web 前端、Electron 桌面壳和 Python 运行时的当前组合方式。
 - `[桌面-Electron壳]`：Electron 主进程、preload bridge 和桌面运行时边界。
 - `[桌面-窗口布局]`：无边框窗口、窗口控制按钮和桌面 chrome 高度。
@@ -101,7 +102,9 @@ Furnace 业务时间由后端生命周期事件累计：开始/恢复设置 `cur
 
 允许变化：设备模块可以独立演进硬件细节、协议处理和错误映射。
 
-禁止事项：禁止让 UI 绕过 `DeviceManager` 直接调用设备模块；禁止在真机、模拟器、输出目录或高级节点中再维护一套测量参数别名规则；禁止把 Windows API 路径格式扩散到本机持久化路径。
+当前边界：上述归一化负责进入测量驱动时的参数。`loop_unroller.py` 的高级节点展开仍自行读取别名和默认值；前端 `NodeConfiguration.ts` 的创建预设也不等同于后端空参数缺省。这些是现有人工维护边界，不能宣称所有参数已只有一份定义。具体差异与维护触发见 `doc/architecture/source-of-truth.md`，本次文档整理不改变测量参数。
+
+禁止事项：禁止让 UI 绕过 `DeviceManager` 直接调用设备模块；禁止继续新增独立测量参数别名表，修改高级展开时须核对既有归一化边界；禁止把 Windows API 路径格式扩散到本机持久化路径。
 
 ## [设备-炉子程序段]
 
@@ -191,7 +194,9 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [接口-前端契约]
 
-当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。共享包以 ESM 输出类型及运行时常量；API 版本由 `shared/contracts/protocol.py` 独立维护，当前为 4.0.0。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将设备事件按 `stateVersion` 丢弃旧消息。执行事件与快照都携带 execution id，前端只接收当前执行或显式 `idle` 重置快照，避免相邻执行的数据串写。
+当前规则：前端通信主入口是 `apps/frontend/src/runtimeClient.ts`。共享契约先在 Python contract 中定义，再生成或同步到 `packages/types`。共享包以 ESM 输出类型及运行时常量；API 版本由 `apps/shared/contracts/protocol.py` 独立维护，当前定义以该文件的 `API_VERSION` 为准。设备 REST/Socket 返回完整 runtime envelope；前端在连接、重连和 modal 打开时先水合快照，再将设备事件按 `stateVersion` 丢弃旧消息。完整执行快照按当前连接的 `runtimeId` 与递增 `snapshotSequence` 接收，可水合外部新执行；增量节点与循环事件按当前 `executionId` 过滤，避免相邻执行数据串写。
+
+来源边界：契约生成器还包含手写联合类型，类型包构建不自动重跑生成器；设备 envelope 的生成类型不等同于输出模型强校验。具体生成范围、人工同步点和校验边界见 `doc/architecture/source-of-truth.md`。
 
 归属文件：`apps/frontend/src/runtimeClient.ts`、`apps/shared/contracts/**`、`packages/types/src/contracts/**`。
 
@@ -281,7 +286,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 当前规则：`styles/_tokens.scss` 是颜色、字体、间距、圆角、动效和层级的核心令牌入口；`_base.scss` 只保留基础规则和响应式布局覆盖。`main.scss` 通过 Sass `meta.load-css` 在既有基础、布局、组件三层中加载模块；每个模块显式引入所用占位符。节点库、画布和展开步骤共用 `_node-icons.scss`；无变体按钮也必须具备核心玻璃外观。滚动行不叠加独立模糊层。
 
-归属文件：`apps/frontend/src/styles/`、`scripts/check-design.mjs`、`doc/design-system.md`。
+归属文件：`apps/frontend/src/styles/`、`scripts/check-design.mjs`、`doc/reference/design-system.md`。
 
 允许变化：图表数据系列、设备物理量和装饰渐变可以拥有明确业务语义色；新增 UI 先复用语义令牌，新增令牌必须在核心入口解释用途。
 
@@ -295,8 +300,20 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 快照规则：每次交付包含进程 `runtimeId` 与递增的 `snapshotSequence`；连接事件先宣布当前进程。前端只接受该进程的新序号，不再以旧执行 ID 阻止外部新执行。App 按新执行身份恢复画布，包含未 reset 的终态，状态栏显示命令来源。`commandSource` 每次执行分别保存在 `workflow_snapshot`，不创建重复 SQL 列。暂停仍阻止进入下一步骤，不冻结正在进行的测量或等待；取消仍遵守现有节点中断语义。
 
-归属文件：`apps/zahnerflow_cli/`、`apps/python_backend/routers/runtime_api.py`、`apps/shared/contracts/workflow.py`、`apps/frontend/src/state/executionStateBridge.ts`、`doc/cli-agent.md`。
+归属文件：`apps/zahnerflow_cli/`、`apps/python_backend/routers/runtime_api.py`、`apps/shared/contracts/workflow.py`、`apps/frontend/src/state/executionStateBridge.ts`、`doc/guides/cli-agent.md`。
 
 允许变化：增加已实现能力的 CLI 命令或更精确的节点参数模型；必须先同步后端契约和发现输出。
 
 禁止事项：禁止 CLI 打开另一份 SQLite、另起设备服务或自行展开计划；禁止把通用 config 对象 Schema 宣称为完整设备参数规范。
+
+## [文档-架构与来源]
+
+当前规则：`doc/README.md` 是项目文档架构、类别归属、目录和新增流程的唯一入口；`doc/architecture/source-of-truth.md` 登记定义、生成、人工同步、运行事实与展示之间的关系。根 README 负责导航，INSTALL 负责当前操作说明，`.memory/design.md` 负责现行设计，专题正文归入 guides、reference、research 或 insight。目录使用文本 tree，架构与来源图使用 Mermaid，并标明箭头含义。历史报告和未落地研究不作为当前实现事实。
+
+归属文件：`doc/README.md`、`doc/architecture/source-of-truth.md`、各分类目录入口、`README.md`、`INSTALL.md`、`AGENTS.md`、`.memory/rules.md`。
+
+允许变化：按独立读者任务增加专题；修改定义时同步来源登记、消费者、相关设计锚点和生成器。研究派生报告必须标明输入、脚本和本地证据可用性。
+
+禁止事项：禁止在新目录重复维护相同事实；禁止把生成文件、界面预设、持久化快照或研究摘要误当作其上游定义；禁止将人工同步描述为自动生成；禁止仅移动报告而遗漏生成脚本的输出路径。
+
+最近复核：2026-09-20，文档分类迁移、来源链静态审计及目录/图表校验。本次不改变运行拓扑或设备行为。

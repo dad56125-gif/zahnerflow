@@ -1,5 +1,7 @@
 # CLI 与 Agent 接入
 
+状态：当前使用说明。归属：CLI 维护者。来源：`apps/zahnerflow_cli/` 与 `apps/python_backend/routers/runtime_api.py`。来源复核：2026-09-20；命令使用后端实际能力发现结果。
+
 CLI 操作已经运行的 ZahnerFlow 后端。App、CLI 和 Agent 共用一个 `AppRuntime`、一份执行计划、一份 SQLite 数据和同一个设备连接。导入 CLI 不打开数据库，不启动服务，不加载驱动。
 
 ## 安装与运行

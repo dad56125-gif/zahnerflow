@@ -1,5 +1,7 @@
 # ZahnerFlow 1.0.0 版本归档
 
+状态：历史快照。归属：版本归档维护者。来源：下列封存记录。目录整理：2026-09-20；所有“当前”“最终”等表述限定于 1.0.0 当时，现行规则从 [文档入口](../../README.md) 查询。
+
 本文是 1.0.0 封存后的版本入口。1.0.0 不再作为“开发中版本”描述；后续只允许通过新版本设计继续演进。
 
 ## 归档范围
@@ -8,11 +10,11 @@
 
 - `.memory/design.md`：已压缩为当前设计基线入口；完整旧版见 `design-current-detail-archive.md`。
 - `.memory/changelog.md`：已压缩为设计变更索引；完整旧版见 `changelog-full-history.md`。
-- `doc/运行时间估算与倒计时功能设计.md`：ETA 与倒计时专题设计，已进入最终版本。
-- `doc/frontend_bem_enforcement_audit.md`：前端 BEM 迁移审计结果。
-- `doc/frontend_checkpoint_2026-06-19_bem_pause.md`：BEM 清理暂停点，作为历史检查点保留。
+- `doc/insight/1.0.0/运行时间估算与倒计时功能设计.md`：ETA 与倒计时专题设计，已进入最终版本。
+- `doc/insight/1.0.0/frontend_bem_enforcement_audit.md`：前端 BEM 迁移审计结果。
+- `doc/insight/1.0.0/frontend_checkpoint_2026-06-19_bem_pause.md`：BEM 清理暂停点，作为历史检查点保留。
 - `archive/backend/`：旧 NestJS 后端归档素材。
-- `INSTALL.md`：已更新为 1.0.0 当前安装和启动说明。
+- `INSTALL.md`：当时更新为 1.0.0 安装说明；根文件现已继续维护为现行安装说明，不是封存副本。
 
 ## 版本结论
 

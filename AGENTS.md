@@ -14,6 +14,8 @@
 
 `GEMINI.md` 只在需要兼容旧代理入口时参考。
 
+新增、移动或维护项目文档时，先读 `doc/README.md`，按其分类、归属与维护流程执行；涉及定义来源和派生链时同步 `doc/architecture/source-of-truth.md`。
+
 ## 2. Python 与环境
 
 - 使用 `uv` 管理 Python 环境、依赖和命令执行。

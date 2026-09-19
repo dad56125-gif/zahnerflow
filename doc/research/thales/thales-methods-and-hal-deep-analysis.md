@@ -1,12 +1,14 @@
 # Thales 5.9.5 方法提取与 HAL 深入分析
 
+状态：研究结论。归属：设备通信研究任务。来源和检查日期见正文；目录归属复核：2026-09-20，未新增真机验证。后续阅读与结论优先级见 [研究目录](README.md)。
+
 日期：2026-09-19。范围：安装包静态提取、方法索引、FTDIHAL 二进制分析。未执行厂商 DLL、打开设备或运行校准；未改变 ZahnerFlow 运行时。
 
 后续补充见 [按文件类型分析](thales-file-type-analysis.md)：已定位 `meas141.is_` 的 `chkcal` 及其采样函数；`ParGetLastWriteBuffer` 内部调用已进一步确认是 NUL 字节串长度计算。旧报告中这两处未确认状态以新报告的证据为准。
 
 ## 研究材料入口
 
-本机完整材料位于 [研究包 README](../archive/thales-xt-5.9.5-research/README.md)，按功能阅读请从 [方法索引](../archive/thales-xt-5.9.5-research/METHODS.md) 开始。`archive/` 已忽略，不随仓库提交或发布；这些链接需要本机研究包。
+本机完整材料位于 [研究包 README](../../../archive/thales-xt-5.9.5-research/README.md)，按功能阅读请从 [方法索引](../../../archive/thales-xt-5.9.5-research/METHODS.md) 开始。`archive/` 已忽略，不随仓库提交或发布；这些链接需要本机研究包。
 
 输入 `ThalesXT5.9.5_Setup.exe`，SHA256 为 `03ECCC0C077A03B25FE8926B786EB9C4BBDF84C8B4163AB5F1806BFC6CA0568F`。提取 728 个原文件（81,199,014 字节），保持原路径和字节，逐文件记录 SHA256。另有 481 份可检索副本、321 份源码的 41,219 个标签索引，以及 133 个按主题排列的 Python 方法摘录条目；主题之间允许重叠。
 
@@ -24,7 +26,7 @@ Python 摘录来自另行保存的本机 `thales-remote 1.2.8` 与 ZahnerFlow `2
 
 ## HAL 的已确认结构
 
-详细证据、地址和反汇编分别见 [生命周期与 ABI 报告](../archive/thales-xt-5.9.5-research/analysis/hal_lifecycle/REPORT.md) 和 [传输与恢复报告](../archive/thales-xt-5.9.5-research/analysis/hal_transport/报告.md)。已为全部 39 个具名导出函数生成独立反汇编文件；覆盖导出入口不代表全部内部路径已完整证明。
+详细证据、地址和反汇编分别见 [生命周期与 ABI 报告](../../../archive/thales-xt-5.9.5-research/analysis/hal_lifecycle/REPORT.md) 和 [传输与恢复报告](../../../archive/thales-xt-5.9.5-research/analysis/hal_transport/报告.md)。已为全部 39 个具名导出函数生成独立反汇编文件；覆盖导出入口不代表全部内部路径已完整证明。
 
 分析对象 FTDIHAL.dll 为 x86，SHA256 `6FD92F33C9D653030CE3F52125996F781BF5555E3A72A3E4916FB90B3FE92D4F`。寄存器传参已由指令确认，Delphi register ABI 是据此形成的判断，尚无完整厂商头文件契约。当前 64 位 Python 不能直接加载此 DLL，普通 `ctypes` cdecl/stdcall 声明也不足以调用这些接口。
 
@@ -60,6 +62,6 @@ USB2HAL 属于另一条旧硬件路径且经过 UPX 压缩，本次没有达到 
 
 ## 验证与版本
 
-研究包包含独立回读脚本和 [校验结果](../archive/thales-xt-5.9.5-research/indexes/validation.json)，检查原文件与参考代码哈希、阅读副本逐文转换一致性、导航链接以及 39 个导出的文件覆盖。此验证不证明协议正确或设备运行稳定。
+研究包包含独立回读脚本和 [校验结果](../../../archive/thales-xt-5.9.5-research/indexes/validation.json)，检查原文件与参考代码哈希、阅读副本逐文转换一致性、导航链接以及 39 个导出的文件覆盖。此验证不证明协议正确或设备运行稳定。
 
 本次仅增加研究文档和被忽略的本地分析材料；无运行时、接口契约或实际设备行为变更。应用版本 `2.2.1 → 2.2.1`，不升级。

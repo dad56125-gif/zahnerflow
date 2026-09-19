@@ -1,0 +1,19 @@
+# Thales 通信研究目录
+
+状态：研究结论。归属：设备通信研究任务。来源：本机 Thales 5.9.5 研究包及报告内列出的项目代码。目录复核：2026-09-20；本次整理不代表重新完成真机验证。
+
+本目录用于研究如何改善 ZahnerFlow 与设备的通信；这里的替换 Term、直接使用 HAL 等方案均不能当作现有驱动能力。
+
+| 阅读目的 | 当前入口 |
+| --- | --- |
+| 哪些安装包文件值得继续看 | [文件筛选结果](thales-file-shortlist.md)：22 个优先、151 个备用、555 个本轮排除 |
+| 文件逐类检查得到什么 | [按类型分析](thales-file-type-analysis.md) |
+| 当前 Term 通信链 | [Term 与设备通信](term-device-transport-review.md) |
+| 安装包整体线索 | [Thales 5.9.5 通信检查](thales-595-communication-review.md) |
+| 方法、校准和 HAL | [方法与 HAL 深析](thales-methods-and-hal-deep-analysis.md)，其中补充结论以按类型分析为准 |
+| 直接驱动设备的可行性 | [直接驱动研究](zennium-direct-driver-feasibility.md) |
+| 早期分类与专题导航 | [已被替代的范围划分](history/thales-focused-reading.md)，不能与当前筛选数量混用 |
+
+原件和生成的摘录、反汇编、哈希清单保存在本机已忽略的 [研究包](../../../archive/thales-xt-5.9.5-research/README.md)。Git 中保留研究报告，原始厂商文件不随仓库分发；其他机器缺少这部分链接属于证据包未提供，不能据此假设已复现检查。
+
+22 / 151 / 555 是本轮研究优先级，不是部署必需文件清单。原始文件、工作副本、提取文本、反汇编和报告之间的证据方向见 [来源登记](../../architecture/source-of-truth.md)。

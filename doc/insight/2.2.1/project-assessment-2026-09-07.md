@@ -31,7 +31,7 @@
 2. **保持执行解释一致。** 后端计划统一提供展开步骤、自动测量边界、起点与 ETA，界面消费后端事实。
 3. **保留实验上下文。** 执行记录与工作流快照、节点结果、环境信息和输出文件关联，便于回查。
 
-当前能力来自实际代码：[节点配置](../apps/frontend/src/types/NodeConfiguration.ts)、[执行语义](../apps/python_backend/runtime/execution_semantics.py)、[执行记录器](../apps/python_backend/runtime/execution_recorder.py)、[实验记录界面](../apps/frontend/src/components/report/ReportGeneratorModal.tsx)。
+当前能力来自实际代码：[节点配置](../../../apps/frontend/src/types/NodeConfiguration.ts)、[执行语义](../../../apps/python_backend/runtime/execution_semantics.py)、[执行记录器](../../../apps/python_backend/runtime/execution_recorder.py)、[实验记录界面](../../../apps/frontend/src/components/report/ReportGeneratorModal.tsx)。
 
 | 能力组 | 当前实现 | 限定 |
 | --- | --- | --- |
@@ -75,7 +75,7 @@
 - 主视图由顶栏、左侧节点库、中间画布、右侧属性栏、底部状态栏组成，设备和记录等功能通过浮层展开。
 - Canvas 粒子与波形背景提供动态效果；组件有悬浮、按压、进度环等反馈。
 
-依据：[基础令牌](../apps/frontend/src/styles/_base.scss)、[布局](../apps/frontend/src/styles/_layout.scss)、[背景组件](../apps/frontend/src/components/ParticleBackground.tsx)、[应用根组件](../apps/frontend/src/App.tsx)。这是对当前实现的归纳，不是对未来界面必须沿用此风格的要求。
+依据：[基础令牌](../../../apps/frontend/src/styles/_base.scss)、[布局](../../../apps/frontend/src/styles/_layout.scss)、[背景组件](../../../apps/frontend/src/components/ParticleBackground.tsx)、[应用根组件](../../../apps/frontend/src/App.tsx)。这是对当前实现的归纳，不是对未来界面必须沿用此风格的要求。
 
 ### 4.2 与实验工作的匹配程度
 
@@ -107,9 +107,9 @@ Electron 最小窗口为 `1180 × 760`，CSS 有窄屏规则，但产品仍明�
 
 几个维护热点超过千行非空代码或样式：`app_runtime.py` 约 1344 行、`UserSettingsModal.tsx` 约 1051 行、`ReportGeneratorModal.tsx` 约 1040 行、`_chart-modal.scss` 约 1476 行。文件长本身不构成缺陷，但跨设备协调、状态副作用、编辑表单、报告加载等责任集中，修改时理解成本较高。
 
-类型构建成功不等于严格类型完备：[前端 tsconfig](../apps/frontend/tsconfig.json) 中 `strict: false`、`noUnusedLocals: false`、`noUnusedParameters: false`。后端路由使用字典请求和直接 SQL，后续新增字段时仍需明确校验、事务与错误边界。
+类型构建成功不等于严格类型完备：[前端 tsconfig](../../../apps/frontend/tsconfig.json) 中 `strict: false`、`noUnusedLocals: false`、`noUnusedParameters: false`。后端路由使用字典请求和直接 SQL，后续新增字段时仍需明确校验、事务与错误边界。
 
-另有一个容易误导维护者的残留：[TypeScript 展开器](../apps/shared/loopUnroller.ts) 仍描述旧式 0 起始循环路径；本次在 `apps`、`packages` 的 TS/TSX 中未找到外部调用。当前真实执行使用 Python Planner。应先确认依赖再处理残留，不能把它误认为另一套当前执行事实。
+另有一个容易误导维护者的残留：TypeScript 展开器 `apps/shared/loopUnroller.ts`（历史路径，当前已移除） 仍描述旧式 0 起始循环路径；本次在 `apps`、`packages` 的 TS/TSX 中未找到外部调用。当前真实执行使用 Python Planner。应先确认依赖再处理残留，不能把它误认为另一套当前执行事实。
 
 ## 6. 适用范围
 

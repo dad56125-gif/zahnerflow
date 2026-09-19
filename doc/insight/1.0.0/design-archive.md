@@ -44,9 +44,9 @@
 ## 过时文档与历史信息处理
 
 1. `INSTALL.md` 原先描述 NestJS、FastAPI 设备服务和 PostgreSQL，已经与 1.0.0 最终拓扑冲突；本次已改为当前安装和启动说明。
-2. `doc/frontend_checkpoint_2026-06-19_bem_pause.md` 是暂停点，不应作为当前未完成计划理解；其价值是记录 BEM 清理阶段的验证状态和非阻塞警告。
-3. `doc/frontend_bem_enforcement_audit.md` 是 2026-06-19 审计快照，剩余事项应进入后续版本技术债，而不是 1.0.0 未完成需求。
-4. `doc/运行时间估算与倒计时功能设计.md` 已从方案文档转为已实现专题设计，后续扩展方向应按新版本重新立项。
+2. `doc/insight/1.0.0/frontend_checkpoint_2026-06-19_bem_pause.md` 是暂停点，不应作为当前未完成计划理解；其价值是记录 BEM 清理阶段的验证状态和非阻塞警告。
+3. `doc/insight/1.0.0/frontend_bem_enforcement_audit.md` 是 2026-06-19 审计快照，剩余事项应进入后续版本技术债，而不是 1.0.0 未完成需求。
+4. `doc/insight/1.0.0/运行时间估算与倒计时功能设计.md` 已从方案文档转为已实现专题设计，后续扩展方向应按新版本重新立项。
 5. `archive/backend/` 是旧服务历史源码，不能作为当前运行时的一部分。
 
 ## 冲突点与归档处理

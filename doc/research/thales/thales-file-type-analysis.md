@@ -1,10 +1,12 @@
 # Thales 待确认材料按文件类型分析
 
+状态：研究结论。归属：设备通信研究任务。来源和检查日期见正文；目录归属复核：2026-09-20，未新增真机验证。后续阅读与结论优先级见 [研究目录](README.md)。
+
 本页是检查记录，不是728个文件都有用的结论。后续已筛选为22个优先、151个备用、555个本轮排除，具体文件见 [筛选结果](thales-file-shortlist.md)。
 
 分析日期：2026-09-19 至 2026-09-20。本轮对本地研究包按扩展名互斥分组，采用 Luna / Terra、Medium 的独立轻量代理，每个代理只负责一种原始文件类型。主代理完成本批覆盖核验和交叉检查后，再启动下一批。原生子代理达到数量上限后，使用相同模型与思考强度的独立 `codex exec --ephemeral` 进程；每批最多三个分析任务并行。
 
-研究产物位于本机已忽略的 [分类分析入口](../archive/thales-xt-5.9.5-research/analysis/by_type/README.md)，包含固定输入清单、逐文件覆盖记录、报告、分析脚本和 [批次交叉检查](../archive/thales-xt-5.9.5-research/analysis/by_type/BATCH_REVIEW.md)。这些本地材料不随 Git 或应用发布包分发。
+研究产物位于本机已忽略的 [分类分析入口](../../../archive/thales-xt-5.9.5-research/analysis/by_type/README.md)，包含固定输入清单、逐文件覆盖记录、报告、分析脚本和 [批次交叉检查](../../../archive/thales-xt-5.9.5-research/analysis/by_type/BATCH_REVIEW.md)。这些本地材料不随 Git 或应用发布包分发。
 
 ## 分批范围
 
@@ -25,7 +27,7 @@
 
 ### 偏移校准并非只有调用入口
 
-`script/meas/meas141.is_` 的阅读副本 370–413 行包含 `chkcal` 实现；290–302、1660–1665、2571–2590 行分别包含 `pcaln_p`、`FNavN`、`FNin32`。主代理已回读确认电流/电位偏移采样、平均与参数返回，并另存 [方法摘录](../archive/thales-xt-5.9.5-research/methods/02_calibration_meas141.md)。
+`script/meas/meas141.is_` 的阅读副本 370–413 行包含 `chkcal` 实现；290–302、1660–1665、2571–2590 行分别包含 `pcaln_p`、`FNavN`、`FNin32`。主代理已回读确认电流/电位偏移采样、平均与参数返回，并另存 [方法摘录](../../../archive/thales-xt-5.9.5-research/methods/02_calibration_meas141.md)。
 
 仍未确认硬件原语/寄存器语义、实际运行版本以及设备专属校准文件。不能从源码存在推导出与当前 `im5.rtm` 等价，也不能把 `calfakj/k/l.bin` 当作这些偏移变量的已知序列化表。
 
@@ -57,7 +59,7 @@ RTM 中可定位 IM5/PVI、Remote2、PAD4/FRA 和校准的外部依赖，但字�
 
 ### 已有解析器能缩小格式缺口，但要明确数据选择
 
-主代理检查本机 `zahner-analysis 1.1.5` 的 Python 读取实现，并以原始字节作为输入完成交叉核验。五份 ISM 都成功读取，原始样本数为 30、30、15、15、19，核心数组等长且有限；两份 ISC 读出 110、140 条记录，ISS 读出 26 条记录。解析器版本、源码哈希与结果保存在 [只读解析证据](../archive/thales-xt-5.9.5-research/analysis/by_type/cross_checks/ism-parser-check.json) 及相邻 ISC、ISS 记录。
+主代理检查本机 `zahner-analysis 1.1.5` 的 Python 读取实现，并以原始字节作为输入完成交叉核验。五份 ISM 都成功读取，原始样本数为 30、30、15、15、19，核心数组等长且有限；两份 ISC 读出 110、140 条记录，ISS 读出 26 条记录。解析器版本、源码哈希与结果保存在 [只读解析证据](../../../archive/thales-xt-5.9.5-research/analysis/by_type/cross_checks/ism-parser-check.json) 及相邻 ISC、ISS 记录。
 
 两个 30 点 ISM 的默认 getter 只返回 20 点；显式设置 `includeDoubleFrequencies=True` 才返回全部 30 点。这与库中默认选取非重叠频段的实现一致，不是原件被修改，也不据此认定现场数据丢失。后续分析必须明确选择全量点还是非重叠频段。
 
@@ -65,7 +67,7 @@ ISC/ISS 能读取不等于电位缩放、时间轴与所有扩展字段已独立
 
 ## 完成边界
 
-八批已完成主审；[总校验](../archive/thales-xt-5.9.5-research/analysis/by_type/validation.json) 确认 23 类、728/728 文件分工和覆盖，无重复或遗漏，全部原件大小与 SHA256 保持一致。每类保留独立报告和逐文件状态；版本一致性检查通过。
+八批已完成主审；[总校验](../../../archive/thales-xt-5.9.5-research/analysis/by_type/validation.json) 确认 23 类、728/728 文件分工和覆盖，无重复或遗漏，全部原件大小与 SHA256 保持一致。每类保留独立报告和逐文件状态；版本一致性检查通过。
 
 本轮只进行文件读取与本机 Python 解析器交叉核验；未运行安装包内程序/脚本、加载厂商 DLL、安装驱动、连接设备或写入校准数据。逐文件完成覆盖不代表全部私有格式、命令协议和硬件算法已恢复。各类型报告分别保留可验证事实、推断与未确认项。
 

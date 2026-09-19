@@ -6,7 +6,7 @@
 
 ZahnerFlow 继续面向本地实验工作站：用节点组织电化学测量、温度、流量和循环，由一个 Python 进程执行并保存结果。React/Electron 是操作与观察界面，CLI/Agent 是另一种指令入口；它们共用 AppRuntime、SQLite 和设备连接。
 
-视觉沿用当前主界面的暗色玻璃面板、蓝色主操作、统一图标和语义状态色，已固定为 [设计规范](design-system.md)。代码保持 TypeScript 组件/钩子/状态选择器与 Python 运行时/规划/驱动的分工。此次重点是减少重复事实与隐式桥接，不引入新服务或额外设备端口。
+视觉沿用当前主界面的暗色玻璃面板、蓝色主操作、统一图标和语义状态色，已固定为 [设计规范](../../reference/design-system.md)。代码保持 TypeScript 组件/钩子/状态选择器与 Python 运行时/规划/驱动的分工。此次重点是减少重复事实与隐式桥接，不引入新服务或额外设备端口。
 
 适用范围仍是本地单操作者、一次一条活跃实验；用户档案区分设置和记录，不提供多租户鉴权。CLI 的新增不会改变这一边界。原始全局评估保留在 [优化前报告](project-assessment-2026-09-07.md)。
 
@@ -17,9 +17,9 @@ ZahnerFlow 继续面向本地实验工作站：用节点组织电化学测量、
 | 逐层精简组件 | App 移出执行/桌面/模拟订阅；用户配置防竞态；裁剪、展开请求/详情、报告预览/状态分离；移除无消费者组件和旧展开器 | `hooks/`、`components/user/`、`components/report/` |
 | 统一 SCSS | 194 个核心令牌单一来源；88 处同值颜色回归令牌；共享图标与完整默认按钮；Sass 模块化；规范检查纳入 lint | `_tokens.scss`、`_node-icons.scss`、`scripts/check-design.mjs` |
 | 重做展开 modal | 执行列表与详情两栏、搜索、结构折叠、每页 100 项、编号跳转、键盘操作、完整参数；系统边界可查看；失败保留起点 | `UnrollViewModal.tsx`、`useUnrollPreview.ts`、`unrollViewModel.ts` |
-| CLI/Agent 接入 | `uv run zahnerflow` 提供发现、Schema、计划、执行控制、JSON 报告、NDJSON 观察及设备命令；App 恢复外部执行并显示来源 | `apps/zahnerflow_cli/`、`runtime_api.py`、[使用说明](cli-agent.md) |
+| CLI/Agent 接入 | `uv run zahnerflow` 提供发现、Schema、计划、执行控制、JSON 报告、NDJSON 观察及设备命令；App 恢复外部执行并显示来源 | `apps/zahnerflow_cli/`、`runtime_api.py`、[使用说明](../../guides/cli-agent.md) |
 | 降低维护成本 | 删除 8 项无调用依赖、无入口的撤销快照中间件、未引用样式；报告/PDF 按需加载；统一运行中编辑保护；收录依赖锁和版本派生检查 | `canvasStore.ts`、`vite.config.ts`、`scripts/*version.mjs` |
-| 统一数据库与命名 | 唯一 DDL 与事务迁移；用户真实档案/设置共享模型；报告读边界统一映射；操作者归属每次执行；空值与 0/false 保留 | `database_schema.py`、`report_service.py`、`user_settings.py`、[数据规范](data-contracts.md) |
+| 统一数据库与命名 | 唯一 DDL 与事务迁移；用户真实档案/设置共享模型；报告读边界统一映射；操作者归属每次执行；空值与 0/false 保留 | `database_schema.py`、`report_service.py`、`user_settings.py`、[数据规范](../../reference/data-contracts.md) |
 
 额外修复：无效计划不先创建归档；未配对循环、负数/小数/布尔循环次数明确拒绝；快照使用进程身份和递增序号抵御乱序与断线后执行切换；只有最顶层浮层响应 Escape；裁剪预览和输出使用相同几何；报告零耗时与成功标签一致。
 

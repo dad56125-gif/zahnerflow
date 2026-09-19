@@ -1,5 +1,7 @@
 # 数据与命名规范
 
+状态：当前规则。归属：共享契约与持久化维护者。来源：下表所列契约及迁移定义。来源复核：2026-09-20。文中数值是定义的摘录，协议或迁移更新时必须复核，不在本文独立修改。
+
 ## 单一来源
 
 | 数据 | 定义来源 | 边界 |
@@ -7,7 +9,7 @@
 | 应用版本 | `VERSION` | `pnpm version:sync` 同步各包 |
 | API 与报告协议 | `apps/shared/contracts/protocol.py` | API 4.1.0、报告 3.0，独立于应用版本 |
 | 数据库列和索引 | `apps/python_backend/database_schema.py` | 列定义只维护一次，新建与补列共用 |
-| 数据库迁移 | `PRAGMA user_version` | 当前为 1，禁止与 SQLite 自身的内部 `schema_version` pragma 混用 |
+| 数据库迁移定义 | `apps/python_backend/database_schema.py` | 定义迁移目标与执行逻辑；`PRAGMA user_version` 只记录某个数据库已应用的迁移版本，不能当作迁移定义。禁止与 SQLite 内部 `schema_version` 混用 |
 | 用户档案、设置与默认值 | `apps/shared/contracts/settings.py` | Python 校验并生成 TypeScript 文档类型及初始路径值 |
 | 执行报告 | `apps/shared/contracts/report.py` | 后端 `report_service.py` 输出，前端直接消费生成类型 |
 | 工作流和设备状态 | `apps/shared/contracts/workflow.py`、`runtime_device.py` | 实际运行事实由 `AppRuntime` 持有 |

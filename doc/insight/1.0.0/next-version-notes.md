@@ -30,7 +30,7 @@
 5. 设计长期历史降采样层，明确保留字段、聚合粒度和导出能力。
 6. 扩展 ETA：置信度、偏差统计、更多节点规则和可选相似参数模型。
 7. 重新设计工作流块 v2：是否支持嵌套、块内编辑和跨 workflow 参数化。
-8. 将 `doc/frontend_bem_enforcement_audit.md` 中剩余非 BEM 事项转为可执行清单。
+8. 将 `doc/insight/1.0.0/frontend_bem_enforcement_audit.md` 中剩余非 BEM 事项转为可执行清单。
 
 ## 发布前文档检查清单
 

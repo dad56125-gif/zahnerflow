@@ -1,5 +1,7 @@
 # Thales XT 5.9.5 与 ZahnerFlow 通信核查
 
+状态：研究结论。归属：设备通信研究任务。来源和检查日期见正文；目录归属复核：2026-09-20，未新增真机验证。后续阅读与结论优先级见 [研究目录](README.md)。
+
 核查日期：2026-09-19。范围：用户提供的安装包、当前驱动及本地安装的官方 Python 库。本文是研究结论和改进清单，不表示以下建议已经实现或经过真机验证。
 
 ## 证据与方法
@@ -25,11 +27,14 @@
 
 通信主路径为：
 
-```text
-ZahnerFlow ExecutionPlan / AppRuntime
-  -> DeviceManager -> ZahnerDevice / logic.py
-  -> thales_remote -> TCP 260 -> 电脑上的 Term
-  -> 工作站上的 Thales / Remote2 -> Zennium 测量硬件
+```mermaid
+flowchart LR
+    Runtime["ExecutionPlan / AppRuntime"] -->|调用| Manager["DeviceManager"]
+    Manager -->|调用| Device["ZahnerDevice / logic.py"]
+    Device -->|调用| Library["thales_remote"]
+    Library -->|"TCP 260"| Term["电脑上的 Term"]
+    Term -->|转发| Workstation["工作站上的 Thales / Remote2"]
+    Workstation -->|控制| Hardware["Zennium 测量硬件"]
 ```
 
 `host` 指运行 Term 的电脑，不应笼统描述为工作站自身的 IP。Term 负责界面、电脑文件访问及网络通信。ZahnerFlow 当前选择官方 `thales_remote` 是合适的，无须增加独立设备服务或另写 USB 协议。
