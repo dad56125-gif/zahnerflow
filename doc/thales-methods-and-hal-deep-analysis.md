@@ -2,6 +2,8 @@
 
 日期：2026-09-19。范围：安装包静态提取、方法索引、FTDIHAL 二进制分析。未执行厂商 DLL、打开设备或运行校准；未改变 ZahnerFlow 运行时。
 
+后续补充见 [按文件类型分析](thales-file-type-analysis.md)：已定位 `meas141.is_` 的 `chkcal` 及其采样函数；`ParGetLastWriteBuffer` 内部调用已进一步确认是 NUL 字节串长度计算。旧报告中这两处未确认状态以新报告的证据为准。
+
 ## 研究材料入口
 
 本机完整材料位于 [研究包 README](../archive/thales-xt-5.9.5-research/README.md)，按功能阅读请从 [方法索引](../archive/thales-xt-5.9.5-research/METHODS.md) 开始。`archive/` 已忽略，不随仓库提交或发布；这些链接需要本机研究包。
