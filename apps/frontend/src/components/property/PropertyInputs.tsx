@@ -103,6 +103,7 @@ export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number'
   return (
     <input
       type="text"
+      data-tutorial-parameter={paramKey}
       value={localValue}
       onChange={handleChange}
       onFocus={handleFocus}

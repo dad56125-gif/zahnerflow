@@ -1,0 +1,664 @@
+.tutorial-dialog {
+  position: fixed;
+  inset: var(--canvas-t) var(--space) var(--canvas-b);
+  max-width: 1240px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text-primary);
+  background: var(--glass-bg-active);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  backdrop-filter: blur(var(--blur-panel));
+  box-shadow: var(--shadow-panel);
+  font-size: var(--text-body);
+  &__header,
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    flex-shrink: 0;
+  }
+  &__header {
+    border-bottom: 1px solid var(--glass-border);
+    > div {
+      flex: 1;
+    }
+    h2 {
+      margin: 0;
+      font-size: var(--size-xl);
+    }
+    p {
+      margin: var(--space-1) 0 0;
+      color: var(--text-secondary);
+    }
+  }
+  &__body {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  &__nav {
+    padding: var(--space-4) var(--space-3);
+    overflow: auto;
+    border-right: 1px solid var(--glass-border);
+    h3 {
+      margin: var(--space-4) var(--space-2) var(--space-2);
+      font-size: var(--size-sm);
+      color: var(--text-muted);
+    }
+  }
+  &__lesson {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-3);
+    margin-bottom: var(--space-1);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    small {
+      font-size: var(--size-xs);
+      color: var(--text-muted);
+    }
+    &:hover {
+      background: var(--glass-bg);
+    }
+    &.is-active {
+      background: var(--color-primary-bg);
+      border-color: var(--color-primary);
+      color: var(--text-primary);
+    }
+  }
+  &__main {
+    overflow: auto;
+    min-width: 0;
+    padding: var(--space-6);
+  }
+  &__intro {
+    margin-bottom: var(--space-5);
+    h3 {
+      font-size: var(--size-xl);
+      margin: var(--space-2) 0;
+    }
+    p {
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.6;
+    }
+  }
+  &__eyebrow {
+    color: var(--color-primary);
+    font-size: var(--size-sm);
+  }
+  &__explanation {
+    display: flex;
+    gap: var(--space-4);
+    min-height: 96px;
+    padding-top: var(--space-5);
+    h4 {
+      margin: 0 0 var(--space-2);
+      font-size: var(--size-lg);
+    }
+    p {
+      margin: 0;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+  }
+  &__step-number {
+    color: var(--color-primary);
+    font-size: var(--size-xl);
+  }
+  &__steps {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    button {
+      height: 16px;
+      flex: 1;
+      border: 0;
+      border-radius: var(--radius-xs);
+      background: var(--glass-bg);
+      cursor: pointer;
+      &.is-active {
+        background: var(--color-primary);
+      }
+    }
+  }
+  &__footer {
+    border-top: 1px solid var(--glass-border);
+    flex-wrap: wrap;
+    > span {
+      flex: 1;
+      color: var(--text-muted);
+      font-size: var(--size-sm);
+    }
+  }
+  button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+}
+.tutorial-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 320px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  font-size: var(--size-sm);
+  user-select: none;
+  &__chrome {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    font-size: var(--size-xs);
+  }
+  &__workspace {
+    display: grid;
+    grid-template-columns: 130px minmax(150px, 1fr) 135px;
+    min-height: 250px;
+  }
+  &__library,
+  &__properties {
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    color: var(--text-secondary);
+    small {
+      color: var(--text-muted);
+    }
+  }
+  &__library {
+    border-right: 1px solid var(--glass-border);
+    > div {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding-block: var(--space-2);
+    }
+    svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+  }
+  &__properties {
+    border-left: 1px solid var(--glass-border);
+    line-height: 1.7;
+    strong {
+      color: var(--text-primary);
+    }
+  }
+  &__canvas {
+    position: relative;
+    padding: var(--space-3);
+  }
+  &__tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--size-xs);
+  }
+  &__run {
+    display: inline-block;
+    position: relative;
+    padding: var(--space-2);
+    background: var(--color-primary-bg);
+    color: var(--color-primary);
+    border-radius: var(--radius-md);
+  }
+  &__nodes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) 0 var(--space-8);
+  }
+  &__node {
+    display: flex;
+    position: relative;
+    align-items: center;
+    gap: var(--space-2);
+    width: 90%;
+    max-width: 250px;
+    min-height: 43px;
+    padding: var(--space-2);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg-active);
+    border-radius: var(--radius-md);
+    svg {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    small {
+      position: absolute;
+      right: 0;
+      bottom: -14px;
+      color: var(--color-primary);
+      font-size: var(--size-xs);
+    }
+    &.is-selected {
+      border-color: var(--color-primary);
+    }
+  }
+  &__number {
+    color: var(--text-muted);
+    font-size: var(--size-xs);
+  }
+  &__preview {
+    position: absolute;
+    bottom: var(--space-3);
+    right: var(--space-3);
+    font-size: var(--size-xs);
+  }
+  &__empty {
+    margin: var(--space-8) 0;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  &__progress {
+    border-top: 1px solid var(--glass-border);
+    padding: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--size-xs);
+    > div {
+      flex: 1;
+      height: 5px;
+      background: var(--glass-bg);
+      i {
+        display: block;
+        height: 100%;
+        background: var(--color-primary);
+      }
+    }
+    small {
+      color: var(--text-muted);
+    }
+  }
+  output {
+    display: block;
+    padding: var(--space-2);
+    margin-top: var(--space-2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xs);
+    background: var(--glass-bg);
+    color: var(--text-primary);
+  }
+  &__sheet {
+    padding: var(--space-5);
+    min-height: 290px;
+    h4 {
+      margin: 0 0 var(--space-4);
+    }
+    p {
+      line-height: 1.8;
+    }
+  }
+  &__form {
+    max-width: 400px;
+    margin: var(--space-4) auto;
+    label {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      align-items: center;
+      margin-bottom: var(--space-2);
+    }
+    small {
+      color: var(--color-success);
+    }
+  }
+  &__split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+    > div {
+      padding: var(--space-3);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+    }
+  }
+  &__chart {
+    margin-top: var(--space-5);
+    svg {
+      width: 100%;
+      height: 180px;
+    }
+    small {
+      display: block;
+      text-align: right;
+    }
+  }
+  &__axis {
+    fill: none;
+    stroke: var(--text-muted);
+  }
+  &__curve {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 3;
+    stroke-dasharray: 700;
+    animation: tutorial-curve 2s ease both;
+  }
+  &__confirm {
+    position: absolute;
+    z-index: 2;
+    left: 20%;
+    right: 20%;
+    top: 38%;
+    padding: var(--space-6);
+    display: grid;
+    gap: var(--space-5);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg-active);
+    border-radius: var(--radius-md);
+  }
+  &__spotlight {
+    position: absolute;
+    pointer-events: none;
+    z-index: 3;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 1000px
+      color-mix(in srgb, var(--glass-bg-active) 55%, transparent);
+    transition:
+      left 0.6s,
+      top 0.6s,
+      width 0.3s,
+      height 0.3s;
+  }
+  &__cursor {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+    width: 30px;
+    height: 36px;
+    transition:
+      left 0.85s ease,
+      top 0.85s ease;
+    > svg {
+      width: 100%;
+      height: 100%;
+      fill: var(--text-primary);
+      stroke: var(--color-primary);
+      stroke-width: 1.5;
+    }
+  }
+  &__gesture {
+    position: absolute;
+    left: -12px;
+    top: -12px;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-full);
+    animation: tutorial-click 1.4s 0.7s both;
+  }
+  &__gesture--drag,
+  &__gesture--hold {
+    background: var(--color-primary-bg);
+  }
+  &__hold {
+    position: absolute;
+    width: 42px;
+    height: 42px;
+    left: 0;
+    top: -5px;
+    fill: none;
+    stroke: var(--color-warning);
+    stroke-width: 3;
+    stroke-dasharray: 100;
+    animation: tutorial-hold 1s 0.9s both;
+  }
+  .is-typing {
+    animation: tutorial-type 1s 0.7s both;
+  }
+  &.is-paused * {
+    animation-play-state: paused;
+  }
+}
+@keyframes tutorial-click {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+@keyframes tutorial-hold {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes tutorial-type {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tutorial-curve {
+  from {
+    stroke-dashoffset: 700;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (max-width: 900px) {
+  .tutorial-dialog__body {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+  .tutorial-dialog__main {
+    padding: var(--space-3);
+  }
+  .tutorial-stage__workspace {
+    grid-template-columns: 100px minmax(125px, 1fr) 110px;
+  }
+  .tutorial-dialog__footer > span {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 650px) {
+  .tutorial-dialog__body {
+    display: flex;
+    flex-direction: column;
+  }
+  .tutorial-dialog__nav {
+    max-height: 130px;
+    flex-shrink: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .tutorial-dialog__lesson {
+    padding: var(--space-2);
+  }
+  .tutorial-dialog__main {
+    flex: 1;
+  }
+  .tutorial-stage__workspace {
+    grid-template-columns: 85px minmax(100px, 1fr) 95px;
+  }
+  .tutorial-stage__library,
+  .tutorial-stage__properties {
+    padding: var(--space-2);
+  }
+  .tutorial-dialog__header,
+  .tutorial-dialog__footer {
+    padding: var(--space-3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-stage *,
+  .tutorial-stage__cursor,
+  .tutorial-stage__spotlight {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* 全界面教学：聚光定位真实组件；仅控制条接收输入。 */
+.tutorial-guide {
+  &__spotlight {
+    position: fixed;
+    pointer-events: none;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 200vmax
+      color-mix(in srgb, var(--glass-bg-active) 75%, transparent);
+    transition:
+      left 0.4s,
+      top 0.4s,
+      width 0.3s,
+      height 0.3s;
+  }
+  &__shade {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, var(--glass-bg-active) 75%, transparent);
+  }
+  &__cursor {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 34px;
+    height: 40px;
+    pointer-events: none;
+    > svg {
+      width: 100%;
+      height: 100%;
+      fill: var(--text-primary);
+      stroke: var(--color-primary);
+      stroke-width: 1.5;
+    }
+  }
+  &__cursor > &__hold {
+    position: absolute;
+    left: -18px;
+    top: -18px;
+    width: 40px;
+    height: 40px;
+    fill: none;
+    stroke: var(--color-warning);
+    stroke-width: 3;
+    stroke-dasharray: 100;
+    animation: tutorial-hold 1s 0.9s both;
+  }
+  &__controls {
+    position: fixed;
+    bottom: calc(var(--canvas-b) + var(--space-6));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(620px, calc(100vw - 48px));
+    padding: var(--space-5);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg-active);
+    backdrop-filter: blur(var(--blur-panel));
+    box-shadow: var(--shadow-panel);
+    h3 {
+      margin: var(--space-2) 0;
+      font-size: var(--size-lg);
+    }
+    p {
+      margin: 0;
+      line-height: 1.75;
+      color: var(--text-secondary);
+    }
+    small {
+      color: var(--color-primary);
+    }
+  }
+  &__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  &__panel {
+    position: fixed;
+    inset: calc(var(--canvas-t) + 24px) 15% auto;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg-active);
+    padding: var(--space-5);
+    .tutorial-stage {
+      min-height: 0;
+    }
+    .tutorial-stage__spotlight,
+    .tutorial-stage__cursor {
+      display: none;
+    }
+  }
+  &__confirm {
+    position: fixed;
+    left: 30%;
+    right: 30%;
+    top: 30%;
+    background: var(--glass-bg-active);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-panel);
+    padding: var(--space-6);
+  }
+  &.is-paused * {
+    animation-play-state: paused;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-guide * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.tutorial-guide.overlay-layer {
+  top: var(--app-chrome-h);
+}
+.tutorial-guide .overlay-layer__backdrop {
+  top: var(--app-chrome-h);
+}
+.tutorial-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  font-size: var(--size-xs);
+  color: var(--text-secondary);
+  > div {
+    flex: 1;
+    height: 5px;
+    background: var(--glass-bg);
+    i {
+      display: block;
+      height: 100%;
+      background: var(--color-primary);
+    }
+  }
+}

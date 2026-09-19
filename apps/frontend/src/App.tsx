@@ -28,6 +28,11 @@ import { useFurnace } from './modules/furnace/useFurnace';
 import { isFurnaceReady, isMfcReady } from './modules/common/runtimeDeviceSelectors';
 import { DeviceModal } from './components/furnace/FurnaceDeviceModal';
 const ReportGeneratorModal = lazy(() => import('./components/report/ReportGeneratorModal'));
+const TutorialModal = lazy(() => import('./components/tutorial/TutorialModal'));
+const TutorialGuide = lazy(() => import('./components/tutorial/TutorialGuide'));
+import type { TutorialSession } from './components/tutorial/TutorialGuide';
+import { tutorialLessons } from './components/tutorial/tutorialLessons';
+import { tutorialCanvasView } from './components/tutorial/tutorialView';
 import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
 import { UserProvider } from './components/shared/UserContext';
 import { useWorkflowExecution } from './hooks/useWorkflowExecution';
@@ -74,6 +79,15 @@ const AppContent: React.FC = () => {
 
   // 报告相关状态
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialSession, setTutorialSession] = useState<TutorialSession | null>(null);
+  const tutorialView = useMemo(() => {
+    if (!tutorialSession) return undefined;
+    const lesson = tutorialLessons.find(item => item.id === tutorialSession.lessonId)!;
+    return tutorialCanvasView(lesson.frames[tutorialSession.step]);
+  }, [tutorialSession]);
+  const teachingWorkstation = tutorialSession ? 'zahner-zennium' : selectedWorkstation;
+  const teachingNodeGroups = useMemo(() => tutorialSession ? getNodeGroupsByWorkstation('zahner-zennium') : workstationNodeGroups, [tutorialSession, workstationNodeGroups]);
   const [reportRequested, setReportRequested] = useState(false);
 
   useEffect(() => {
@@ -91,7 +105,8 @@ const AppContent: React.FC = () => {
   const furnaceReady = isFurnaceReady(furnaceState);
   const mfcReady = isMfcReady(mfcState);
   const simulatorActive = hasActiveSimulator(simulatorSettings);
-  const backgroundSuspended = showUnrollView || !!fixedDevice || showSimulatorPanel || showMeasurementDashboard || showReportModal;
+  const backgroundSuspended = showUnrollView || !!fixedDevice || showSimulatorPanel || showMeasurementDashboard || showReportModal || showTutorial || !!tutorialSession;
+  useEffect(() => { if (executionActive) { setShowTutorial(false); setTutorialSession(null); } }, [executionActive]);
 
   const applyWorkstation = useCallback((workstationType: WorkstationType | null) => {
     setSelectedWorkstation(workstationType);
@@ -194,10 +209,12 @@ const AppContent: React.FC = () => {
       <ParticleBackground suspended={backgroundSuspended} />
       <WindowControls expanded={desktopWindowExpanded} />
       <TopBar
+        onTutorialOpen={() => setShowTutorial(true)}
+        tutorialDisabled={executionActive}
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}
         onWorkstationSelect={handleWorkstationSelect}
-        selectedWorkstationId={selectedWorkstation}
+        selectedWorkstationId={teachingWorkstation}
         simulatorActive={simulatorActive}
         furnaceConnected={furnaceReady}
         mfcConnected={mfcReady}
@@ -205,10 +222,13 @@ const AppContent: React.FC = () => {
         hasRunMetadataWarning={Boolean(runMetadataWarning)}
       />
 
+      {showTutorial && !executionActive && <Suspense fallback={null}><TutorialModal onClose={() => setShowTutorial(false)} onPlay={lessonId => { setShowTutorial(false); setTutorialSession({ lessonId, step: 0, playing: true, replay: 0 }); }} /></Suspense>}
+      {tutorialSession && !executionActive && <Suspense fallback={null}><TutorialGuide session={tutorialSession} onChange={setTutorialSession} onClose={() => { setTutorialSession(null); setShowTutorial(true); }} /></Suspense>}
       <div className="leftbar-area">
         <LeftPanel
-          nodeGroups={workstationNodeGroups}
-          selectedWorkstation={selectedWorkstation}
+          teaching={!!tutorialSession}
+          nodeGroups={teachingNodeGroups}
+          selectedWorkstation={teachingWorkstation}
           furnaceConnected={furnaceReady}
           mfcConnected={mfcReady}
         />
@@ -216,7 +236,8 @@ const AppContent: React.FC = () => {
 
       <div className="canvas-area">
         <Canvas
-          selectedWorkstation={selectedWorkstation}
+          tutorialView={executionActive ? undefined : tutorialView}
+          selectedWorkstation={teachingWorkstation}
           executionActive={executionActive}
           hasError={hasError}
           onRunFlow={handleRunFlow}
@@ -231,7 +252,7 @@ const AppContent: React.FC = () => {
       </div>
 
       <div className="right-area">
-        <RightPanel mfcState={mfcState} />
+        <RightPanel mfcState={mfcState} tutorialTab={tutorialSession && tutorialLessons.find(item => item.id === tutorialSession.lessonId)?.frames[tutorialSession.step].target === 'parameter' ? 'parameters' : 'basic'} tutorialNode={tutorialView && !executionActive ? tutorialView.nodes.find(node => node.id === tutorialView.selectedNodeId) ?? null : undefined} />
       </div>
 
       <ModalLayer
@@ -273,6 +294,7 @@ const AppContent: React.FC = () => {
       </ModalLayer>
 
       <BottomBar
+        tutorialView={executionActive ? undefined : tutorialView}
         detectedLoops={detectedLoops}
         systemState={systemState}
         onProgressBarClick={() => setShowMeasurementDashboard(true)}

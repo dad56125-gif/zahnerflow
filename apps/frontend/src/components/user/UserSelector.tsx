@@ -13,6 +13,7 @@ interface UserSelectorProps {
   onUserChange: (user: string) => void;
   developerControls?: React.ReactNode;
   hasRunMetadataWarning?: boolean;
+  tutorialControl?: React.ReactNode;
 }
 
 type UserActionIconName = 'createUser' | 'userSettings';
@@ -54,6 +55,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   currentUser,
   onUserChange,
   developerControls,
+  tutorialControl,
   hasRunMetadataWarning
 }) => {
   const { users, usersLoadError, createUser, deleteUser, filePathConfig, currentUserAvatar } = useUser();
@@ -136,6 +138,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       {/* 用户选择器按钮 - 使用统一按钮系统样式 */}
       <button
         ref={buttonRef}
+        data-tutorial-anchor="user"
         className={`btn btn--md btn--primary ${highlightType === 'select' ? 'user-selector__highlight--active' : ''}`}
         onClick={() => dropdown.toggle()}
       >
@@ -172,6 +175,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         className={`btn btn--md btn--secondary btn--icon btn--round user-selector__action-btn ${highlightType === 'settings' ? 'user-selector__highlight--active' : ''}`}
         onClick={() => setShowSettingsModal(true)}
         title="用户配置"
+        data-tutorial-anchor="settings"
         disabled={!currentUser}
       >
         <span className="btn-icon"><UserActionIcon name="userSettings" /></span>
@@ -190,6 +194,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         <span className="btn-icon"><UserActionIcon name="createUser" /></span>
       </button>
 
+      {tutorialControl}
       {developerControls && (
         <div className="user-selector__developer-controls">
           {developerControls}

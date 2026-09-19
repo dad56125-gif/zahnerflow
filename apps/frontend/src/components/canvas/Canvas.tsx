@@ -11,8 +11,10 @@ import { useLayout, DisplayNode } from './useLayout';
 import { useLoopDetection, SimpleLoopInfo } from './useLoopDetection';
 import type { RunFlowHandler } from '../../types/executionControl';
 import type { NodeParameters } from '../../types/NodeConfiguration';
+import type { TutorialCanvasView } from '../tutorial/tutorialView';
 
 interface CanvasProps {
+  tutorialView?: TutorialCanvasView;
   selectedWorkstation: WorkstationType | null;
   executionActive: boolean;
   hasError: boolean;
@@ -27,6 +29,7 @@ interface CanvasProps {
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
+  tutorialView,
   selectedWorkstation,
   executionActive,
   hasError,
@@ -41,8 +44,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 }) => {
   // 1. 从 Store 获取纯数据和 Actions
   const {
-    nodes, // WorkflowNode[]
-    selectedNodeId,
+    nodes: storedNodes,
+    selectedNodeId: storedSelectedNodeId,
     canvasSize,
     setCanvasSize,
     selectNode,
@@ -50,6 +53,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     addNode,
     reorderNode // 假设你在 Store 中实现了这个 Action
   } = useCanvasStore();
+  const nodes = tutorialView?.nodes ?? storedNodes;
+  const selectedNodeId = tutorialView ? tutorialView.selectedNodeId : storedSelectedNodeId;
 
   const nodeStatuses = useExecutionStore(state => state.nodes.statuses);
 
@@ -83,10 +88,10 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   // 循环检测回调
   useEffect(() => {
-    if (onLoopDetected) {
+    if (onLoopDetected && !tutorialView) {
       onLoopDetected(detectedLoops);
     }
-  }, [detectedLoops, onLoopDetected]);
+  }, [detectedLoops, onLoopDetected, tutorialView]);
 
   // Canvas 尺寸监听（防抖）
   useEffect(() => {
@@ -204,7 +209,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       className="canvas glass-layout"
       ref={canvasRef}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={handleCanvasDrop}
+      onDrop={tutorialView ? undefined : handleCanvasDrop}
     >
       {/* 网格背景 */}
       <div className="canvas__grid"></div>
@@ -212,6 +217,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       {/* Toolbar */}
       {onRunFlow && (
         <Toolbar
+          tutorialView={tutorialView}
           onRunFlow={onRunFlow}
           onResetFlow={onResetFlow}
           selectedWorkstation={selectedWorkstation}
@@ -249,7 +255,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           ))}
 
           {layoutNodes.map((node, index) => {
-            const dragEnabled = !executionActive;
+            const dragEnabled = !executionActive && !tutorialView;
 
             return (
               <NodeRenderer
@@ -258,10 +264,10 @@ export const Canvas: React.FC<CanvasProps> = ({
                 index={index}
                 isSelected={selectedNodeId === node.id}
                 isConnecting={false}
-                nodeStatus={nodeStatuses[index] || 'idle'}
-                onNodeClick={handleNodeClick}
-                onNodeDoubleClick={handleNodeDoubleClick}
-                onNodeContextMenu={handleNodeContextMenu}
+                nodeStatus={tutorialView ? (tutorialView.status === 'running' && index === 0 ? 'running' : 'idle') : nodeStatuses[index] || 'idle'}
+                onNodeClick={tutorialView ? undefined : handleNodeClick}
+                onNodeDoubleClick={tutorialView ? undefined : handleNodeDoubleClick}
+                onNodeContextMenu={tutorialView ? undefined : handleNodeContextMenu}
                 onNodeDragStart={dragEnabled ? handleNodeDragStartEnhanced : undefined}
                 onNodeDragEnd={dragEnabled ? handleNodeDragEndEnhanced : undefined}
               />

@@ -6,8 +6,10 @@ import { describeExecution } from '../state/executionStateModel';
 import { UnrollViewModal } from './UnrollViewModal';
 import type { RunFlowHandler } from '../types/executionControl';
 import type { NodeParameters } from '../types/NodeConfiguration';
+import type { TutorialCanvasView } from './tutorial/tutorialView';
 
 interface ToolbarProps {
+  tutorialView?: TutorialCanvasView;
   onRunFlow: RunFlowHandler;
   onResetFlow?: () => void;
   selectedWorkstation: string | null;
@@ -83,6 +85,7 @@ const ToolbarIcon: React.FC<{ name: ToolbarIconName }> = ({ name }) => {
 };
 
 export const Toolbar: React.FC<ToolbarProps> = ({
+  tutorialView,
   onRunFlow,
   onResetFlow,
   selectedWorkstation,
@@ -113,6 +116,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const stopFeedbackTimerRef = useRef<number | null>(null);
 
   const getButtonStates = () => {
+    if (tutorialView) {
+      const status = tutorialView.status;
+      const stopping = status === 'running' || status === 'cancelling';
+      return { fileOperationsDisabled: false, workflowDisabled: false, primaryButtonDisabled: false,
+        primaryButtonText: stopping ? (status === 'cancelling' ? '停止中' : '停止') : status === 'cancelled' ? '重置' : '运行',
+        primaryButtonVariant: stopping ? 'btn--warning' : 'btn--primary',
+        primaryButtonIcon: (stopping ? 'stop' : status === 'cancelled' ? 'reset' : 'start') as ToolbarIconName,
+        primaryAction: (stopping ? 'stop' : status === 'cancelled' ? 'reset' : 'run') as PrimaryAction };
+    }
     if (!selectedWorkstation) {
       return {
         fileOperationsDisabled: true,
@@ -217,6 +229,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handlePrimaryAction = () => {
+    if (tutorialView) return;
     if (buttonStates.primaryAction === 'stop') {
       void cancelExecution();
       return;
@@ -260,6 +273,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   }, []);
 
   const handleStopPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (tutorialView) return;
     if (buttonStates.primaryAction !== 'stop' || buttonStates.primaryButtonDisabled) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
@@ -304,6 +318,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handleRunPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (tutorialView) return;
     if (!isRunMetadataBlocked) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
@@ -338,6 +353,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handleClearCanvas = () => {
+    if (tutorialView) return;
     clearCanvas();
     setDraftWorkflowName(null);
   };
@@ -359,7 +375,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           {onGenerateReport && (
             <button
               className="btn btn--md btn--icon btn--round glass btn--accent"
-              onClick={onGenerateReport}
+              onClick={tutorialView ? undefined : onGenerateReport}
+              data-tutorial-anchor="records"
               title="查看实验记录"
               aria-label="查看实验记录"
             >
@@ -378,6 +395,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled || isRunMetadataBlocked ? 'disabled' : ''} ${buttonStates.primaryAction === 'stop' ? 'toolbar-stop-button' : ''} ${stopFeedback ? 'is-stop-feedback' : ''}`}
             onClick={handleRunButtonClick}
+            data-tutorial-anchor="run"
             onPointerDown={handleRunPointerDown}
             onPointerDownCapture={handleStopPointerDown}
             onPointerUp={handlePrimaryPointerEnd}
@@ -411,10 +429,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div className="toolbar__group toolbar__group--bottom-right">
           <button
             className={`btn btn--md btn--icon btn--round glass ${buttonStates.workflowDisabled || nodes.length === 0 ? 'disabled' : 'btn--secondary'}`}
-            onClick={() => setUnrollViewOpen(true)}
+            onClick={tutorialView ? undefined : () => setUnrollViewOpen(true)}
+            data-tutorial-anchor="preview"
             title="查看展开后的所有执行步骤"
             aria-label="查看展开后的所有执行步骤"
-            disabled={buttonStates.workflowDisabled || nodes.length === 0}
+            disabled={buttonStates.workflowDisabled || (tutorialView ? tutorialView.nodes.length === 0 : nodes.length === 0)}
           >
             <span className="btn-icon"><ToolbarIcon name="expand" /></span>
           </button>

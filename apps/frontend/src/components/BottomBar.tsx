@@ -7,8 +7,10 @@ import type { ExecutionSnapshot } from '@zahnerflow/types';
 import type { SimpleLoopInfo } from './canvas/useLoopDetection';
 import { useAppStore } from '../state/appStore';
 import { describeExecution } from '../state/executionStateModel';
+import type { TutorialCanvasView } from './tutorial/tutorialView';
 
 interface BottomBarProps {
+  tutorialView?: TutorialCanvasView;
   detectedLoops?: SimpleLoopInfo[];
   systemState?: ExecutionSnapshot | null;
   onProgressBarClick?: () => void;
@@ -16,12 +18,15 @@ interface BottomBarProps {
 }
 
 export const BottomBar: React.FC<BottomBarProps> = ({
+  tutorialView,
   detectedLoops = [],
   systemState = null,
   onProgressBarClick,
   suppressPlannedEstimate = false
 }) => {
-  const { nodes, selectedNodeId } = useCanvasStore();
+  const storedCanvas = useCanvasStore();
+  const nodes = tutorialView?.nodes ?? storedCanvas.nodes;
+  const selectedNodeId = tutorialView ? tutorialView.selectedNodeId : storedCanvas.selectedNodeId;
   const notificationPanelOpen = useAppStore(state => state.notificationPanelOpen);
   const toggleNotificationPanel = useAppStore(state => state.toggleNotificationPanel);
   const setNotificationPanelOpen = useAppStore(state => state.setNotificationPanelOpen);
@@ -44,9 +49,10 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   const displayName = nodeConfig?.name || selectedNode?.type;
 
   const nodeCount = nodes.length;
-  const loopCount = detectedLoops.length;
+  const loopCount = tutorialView ? nodes.filter(node => node.type === 'loop_start').length : detectedLoops.length;
 
   const getStatusMessage = (): string => {
+    if (tutorialView) return '教学演示';
     if (execution.phase !== 'idle') {
       return execution.view.message;
     }
@@ -65,7 +71,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         {/* 运行状态 */}
         <div
           className="bottom-bar__item notification-trigger"
-          onClick={toggleNotificationPanel}
+          onClick={tutorialView ? undefined : toggleNotificationPanel}
           title="点击打开通知面板"
         >
           <span className={`bottom-bar__run-dot ${execution.is.active ? 'is-running' : 'is-ready'}`} />
@@ -77,13 +83,13 @@ export const BottomBar: React.FC<BottomBarProps> = ({
       </div>
 
       {/* 中间：进度条 */}
-      <div className="bottom-bar__center">
-        <ProgressBar
+      <div className="bottom-bar__center" data-tutorial-anchor="progress">
+        {tutorialView ? <div className="tutorial-progress"><span>{tutorialView.status === 'running' ? '正在执行：开路电位测量（演示）' : '教学流程 · 示例数据'}</span><div><i style={{ width: tutorialView.status === 'running' ? '38%' : '0%' }} /></div><small>点击查看测量曲线</small></div> : <ProgressBar
           systemState={systemState}
           nodes={nodes}
           onClick={onProgressBarClick}
           suppressPlannedEstimate={suppressPlannedEstimate}
-        />
+        />}
       </div>
 
       {/* 右侧：统计信息 */}
