@@ -1,5 +1,7 @@
 # Thales 待确认材料按文件类型分析
 
+本页是检查记录，不是728个文件都有用的结论。后续已筛选为22个优先、151个备用、555个本轮排除，具体文件见 [筛选结果](thales-file-shortlist.md)。
+
 分析日期：2026-09-19 至 2026-09-20。本轮对本地研究包按扩展名互斥分组，采用 Luna / Terra、Medium 的独立轻量代理，每个代理只负责一种原始文件类型。主代理完成本批覆盖核验和交叉检查后，再启动下一批。原生子代理达到数量上限后，使用相同模型与思考强度的独立 `codex exec --ephemeral` 进程；每批最多三个分析任务并行。
 
 研究产物位于本机已忽略的 [分类分析入口](../archive/thales-xt-5.9.5-research/analysis/by_type/README.md)，包含固定输入清单、逐文件覆盖记录、报告、分析脚本和 [批次交叉检查](../archive/thales-xt-5.9.5-research/analysis/by_type/BATCH_REVIEW.md)。这些本地材料不随 Git 或应用发布包分发。
