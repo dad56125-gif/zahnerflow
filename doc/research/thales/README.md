@@ -4,10 +4,13 @@
 
 本目录用于研究如何改善 ZahnerFlow 与设备的通信；这里的替换 Term、直接使用 HAL 等方案均不能当作现有驱动能力。
 
+**当前反编译批次只分析厂商软件内部，不分析现有项目或外部 SDK。** 最新结果见 [Thales / Term 功能源头与反编译链路](vendor-function-origins.md)，按通信、校准、EIS、扫描和开路测量的实际来源组织。下面的早期接入研究仅作为历史背景，未纳入本轮分析范围。
+
 本专题的目录、文档分工和功能来源图统一见 [反编译研究材料与功能来源](reverse-engineering-map.md)。此处管理反编译研究材料，不以 ZahnerFlow 整体项目架构图作为交付。
 
 | 阅读目的 | 当前入口 |
 | --- | --- |
+| 本轮纯厂商反编译的新发现与实际调用链 | [功能源头与反编译链路](vendor-function-origins.md) |
 | 哪些安装包文件值得继续看 | [文件筛选结果](thales-file-shortlist.md)：22 个优先、151 个备用、555 个本轮排除 |
 | 文件逐类检查得到什么 | [按类型分析](thales-file-type-analysis.md) |
 | 当前 Term 通信链 | [Term 与设备通信](term-device-transport-review.md) |
