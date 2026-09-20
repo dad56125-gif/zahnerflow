@@ -13,9 +13,10 @@
   .split-pane-modal__main {
     padding-top: calc(var(--split-modal-content-top) + var(--size-lg));
   }
-  &__nav, &__group { display: flex; flex-direction: column; gap: var(--size-2xs); }
+  &__nav { display: flex; flex-direction: column; gap: var(--size-xl); }
+  &__group { display: flex; flex-direction: column; gap: var(--size-2xs); }
   &__group {
-    h3 { margin: var(--size-md) var(--size-md) var(--size-xs); color: var(--text-secondary); font-size: var(--size-sm); font-weight: 600; }
+    h3 { margin: 0 var(--size-md); padding: 0; line-height: 1.4; color: var(--text-secondary); font-size: var(--size-sm); font-weight: 600; }
   }
   &__overview {
     margin-bottom: var(--size-lg);
