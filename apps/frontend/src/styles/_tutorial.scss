@@ -101,6 +101,7 @@
 }
 .tutorial-cursor {
   position: absolute;
+  z-index: 2;
   transition:
     left 700ms ease-in-out,
     top 700ms ease-in-out;
@@ -133,4 +134,18 @@
   position: absolute;
   inset: 0;
   pointer-events: auto;
+}
+.tutorial-lens {
+  position: fixed;
+  z-index: 1;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 10px;
+  border: 1px solid #469fc4;
+  border-radius: 12px;
+  background: #101727;
+  box-shadow: 0 8px 32px #0008;
+  pointer-events: none;
+  &__label { color: #a7cadd; font-size: 11px; margin-bottom: 8px; }
+  &__viewport { overflow: hidden; width: 100%; height: calc(100% - 24px); }
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createTutorialLens } from "./tutorialLens";
 import { getInstanceByDom } from "echarts/core";
 import { appStorage } from "../../tutorialEnvironment";
 import { useCanvasStore } from "../../state/canvasStore";
@@ -89,6 +90,7 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
   controller: TutorialController;
   onEvent: (event: TutorialEvent) => void;
 }) {
+  const lensHost = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<DOMRect | null>(null);
   const [cursor, setCursor] = useState({ x: -100, y: -100, pressed: false });
   useEffect(() => {
@@ -103,12 +105,11 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
     let single = false;
     let current = 0;
     let highlighted: HTMLElement | null = null;
-    let restoreZoom = () => {};
+    const lens = createTutorialLens(lensHost.current!);
     let lastRect: DOMRect | null = null;
     let frame = 0;
     const clearTarget = () => {
-      restoreZoom();
-      restoreZoom = () => {};
+      lens.clear();
       highlighted = null;
     };
     const trackTarget = () => {
@@ -134,21 +135,8 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
     };
     const zoomTarget = (target: HTMLElement) => {
       clearTarget();
-      const rect = target.getBoundingClientRect();
-      // Transform the mounted business element itself; never render a teaching copy.
-      const properties = ['scale', 'transform-origin'] as const;
-      const saved = properties.map(name => [name, target.style.getPropertyValue(name), target.style.getPropertyPriority(name)]);
-      const scale = Math.max(1, Math.min(1.25, (innerWidth - 24) / rect.width, (innerHeight - 24) / rect.height));
-      const originX = rect.left < rect.width * .15 ? 'left' : rect.right > innerWidth - rect.width * .15 ? 'right' : 'center';
-      const originY = rect.top < rect.height * .15 + 24 ? 'top' : rect.bottom > innerHeight - rect.height * .15 ? 'bottom' : 'center';
-      target.style.setProperty('transform-origin', `${originX} ${originY}`, 'important');
-      target.style.setProperty('scale', String(scale), 'important');
-      target.setAttribute('data-tutorial-zoom', '');
-      restoreZoom = () => {
-        saved.forEach(([name, value, priority]) => value ? target.style.setProperty(name, value, priority) : target.style.removeProperty(name));
-        target.removeAttribute('data-tutorial-zoom');
-      };
       highlighted = target;
+      lens.show(target);
     };
     frame = requestAnimationFrame(trackTarget);
     const emit = (phase: string, error?: string) => {
@@ -327,8 +315,8 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
         ghost.removeAttribute("data-tutorial-library");
         ghost.classList.add("tutorial-drag-image");
         Object.assign(ghost.style, {
-          width: `${rect.width / (Number.parseFloat(getComputedStyle(target).scale) || 1)}px`,
-          height: `${rect.height / (Number.parseFloat(getComputedStyle(target).scale) || 1)}px`,
+          width: `${rect.width}px`,
+          height: `${rect.height}px`,
           left: `${rect.x}px`,
           top: `${rect.y}px`,
           opacity: "0.85",
@@ -460,6 +448,7 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
       document.removeEventListener("keydown", blockKeyboard, true);
       cancelAnimationFrame(frame);
       clearTarget();
+      lens.dispose();
       setBox(null);
     };
     controller.stop = async () => { dispose(); await finished; };
@@ -467,6 +456,7 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
   }, [lessonId, tutorialRuntime, controller, onEvent]);
   return (
     <div className="tutorial-annotation" aria-hidden="true">
+      <div ref={lensHost} className="tutorial-lens" />
       {box && (
         <div
           className="tutorial-spotlight"
