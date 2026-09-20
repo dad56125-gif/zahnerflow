@@ -13,7 +13,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas || theme === 'light') return;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -21,7 +21,6 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const palette = getComputedStyle(document.documentElement);
         const background = palette.getPropertyValue('--app-background').trim();
         const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
-        const light = theme === 'light';
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
         let animationFrameId = 0;
@@ -136,7 +135,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             ctx.fillRect(0, 0, width, height);
 
             // === LAYER 1: AURORA WAVES (Background Color Flow) ===
-            ctx.globalCompositeOperation = light ? 'source-over' : 'screen';
+            ctx.globalCompositeOperation = 'screen';
             ctx.filter = 'blur(60px)'; // Heavy blur for aurora effect
 
             waves.forEach(wave => {
@@ -152,8 +151,8 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                 const currentHueEnd = wave.baseHue + wave.hueRange + Math.cos(wave.huePhase) * wave.hueRange;
 
                 const gradient = ctx.createLinearGradient(0, 0, width, 0);
-                gradient.addColorStop(0, `hsla(${currentHueStart}, 70%, ${light ? 75 : 50}%, ${light ? 0.12 : 0.25})`);
-                gradient.addColorStop(1, `hsla(${currentHueEnd}, 70%, ${light ? 75 : 50}%, ${light ? 0.12 : 0.25})`);
+                gradient.addColorStop(0, `hsla(${currentHueStart}, 70%, 50%, 0.25)`);
+                gradient.addColorStop(1, `hsla(${currentHueEnd}, 70%, 50%, 0.25)`);
 
                 ctx.beginPath();
                 ctx.moveTo(0, height);
@@ -204,7 +203,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                 // Draw Particle
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${particleRgb}, ${light ? 0.28 : 0.6})`; // White particles for contrast against aurora
+                ctx.fillStyle = `rgba(${particleRgb}, 0.6)`; // White particles for contrast against aurora
                 ctx.fill();
 
                 // Connect (优化：每隔一个粒子检查连线)
@@ -216,7 +215,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                         const opacity = 1 - (dist / CONNECTION_DISTANCE);
                         ctx.beginPath();
                         ctx.lineWidth = 0.5;
-                        ctx.strokeStyle = `rgba(${particleRgb}, ${opacity * (light ? 0.16 : 0.3)})`; // Subtle white lines
+                        ctx.strokeStyle = `rgba(${particleRgb}, ${opacity * 0.3})`; // Subtle white lines
                         ctx.moveTo(p.x, p.y);
                         ctx.lineTo(p2.x, p2.y);
                         ctx.stroke();

@@ -47,6 +47,9 @@
   @include meta.load-css('./_report.scss');
   @include meta.load-css('../components/_execution-history.scss');
 
+  // 亮色表面层只覆盖视觉，不改组件布局。
+  @include meta.load-css('./_light-theme.scss');
+
   // 滚动区必须最后覆盖高开销的玻璃合成效果。
   @include meta.load-css('./_scroll-rendering.scss');
 }

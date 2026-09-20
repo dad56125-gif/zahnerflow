@@ -1,0 +1,187 @@
+/* 专业亮色表面：保持几何、节点语义和交互不变。颜色源只在 _tokens.scss。 */
+:root[data-theme='light'] {
+  .particle-background { visibility: hidden; }
+
+  .glass, .glass-layout {
+    box-shadow: var(--shadow-panel);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .glass::before, .glass-layout::before,
+  .btn.is-prominent::before { opacity: 0; }
+
+  .top-bar, .bottom-bar {
+    background: var(--surface-toolbar);
+    border-color: transparent;
+    box-shadow: inset 0 -1px var(--separator);
+  }
+
+  .left-panel.glass-layout, .right-panel.glass-layout,
+  .left-panel.glass, .right-panel.glass {
+    background: var(--surface-sidebar);
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .canvas {
+    background: var(--surface-canvas);
+    border-color: var(--separator);
+    box-shadow: none;
+  }
+
+  .canvas__grid {
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  }
+
+  // 节点库属于工具面板，不把每种工具都画成独立浮层。
+  .node-item, .node-item.disabled:hover {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .node-item:not(.disabled):hover {
+    background: var(--surface-hover);
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+  .node-item .node-icon { filter: none; }
+  .category-title, .section-title { color: var(--text-secondary); }
+  .property-group {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: inset 0 -1px var(--separator);
+  }
+
+  // 普通操作使用中性表面，蓝色只在交互反馈与选中时出现。
+  .btn {
+    background: var(--surface-control);
+    border-color: var(--glass-border);
+    box-shadow: var(--shadow-button);
+    color: var(--text-primary);
+    text-shadow: none;
+    backdrop-filter: none;
+  }
+  .btn:not(:disabled):hover {
+    background: var(--surface-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--shadow-button-hover);
+  }
+  .btn--ghost { background: transparent; box-shadow: none; border-color: transparent; }
+  .btn--danger { color: var(--color-danger); }
+  .btn--warning { color: var(--color-warning); }
+  .btn--success { color: var(--color-success); }
+  .btn.is-active, .btn[aria-pressed='true'],
+  .property__tabs .btn--primary {
+    color: var(--color-primary);
+    background: var(--surface-selected);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .btn:focus-visible, .node-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  .btn.is-loading { color: transparent; }
+  .btn.is-loading::after { border-color: var(--color-primary); border-top-color: transparent; }
+
+  .input, .select, .textarea, .segment__input {
+    background: var(--surface-control);
+    border-color: var(--glass-border);
+    box-shadow: inset 0 1px 2px var(--glass-shadow);
+    color: var(--text-primary);
+  }
+  .input:focus, .select:focus, .textarea:focus, .segment__input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-bg);
+  }
+
+  // 真正位于画布上的节点保持悬浮层级，边线通过内描边绘制，保留原盒尺寸。
+  .node.glass {
+    background: var(--surface-card);
+    border-color: transparent;
+    box-shadow: var(--shadow-node), inset 0 0 0 1px var(--separator);
+  }
+  .node.glass:hover { box-shadow: var(--shadow-node), inset 0 0 0 1px var(--glass-border-hover); }
+  .node.glass.is-selected {
+    box-shadow: var(--shadow-node), inset 0 0 0 1px var(--color-primary);
+  }
+  .node__selection-border { border-color: transparent; box-shadow: none; animation: none; }
+  .node__index-badge, .node:hover .node__index-badge {
+    background: var(--surface-inset) !important;
+    border-color: var(--separator);
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-button);
+    text-shadow: none;
+  }
+  .node__icon, .node:hover .node__icon { filter: none; text-shadow: none; }
+  .node.glass.status-running { border-color: var(--workflow-running); }
+  .node.glass.status-completed { border-color: var(--workflow-completed); }
+  .node.glass.status-failed { border-color: var(--workflow-error); }
+  .node.glass.status-paused { border-color: var(--workflow-paused); }
+
+  // 模态表面与内容层分离，去除装饰性彩色光照。
+  .modal, .settings, .workspace-device-modal, .chart-modal,
+  .dropdown, .notification-panel, .create-user__dialog {
+    background: var(--surface-card);
+    border-color: var(--separator);
+    box-shadow: var(--shadow-dialog);
+  }
+  .modal__header, .modal__footer { background: var(--surface-toolbar); }
+  .furnace-modal__sidebar, .mfc__sidebar { background: var(--surface-sidebar); }
+  .path-preview, .current-user__badge {
+    background: var(--surface-sidebar);
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--text-secondary);
+  }
+  .path-preview code { color: var(--text-secondary); }
+
+  .settings__header .tabs__list,
+  .workspace-device-modal .modal__header .tabs__list {
+    background: var(--surface-inset);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .settings__header .tabs__list::before,
+  .workspace-device-modal .modal__header .tabs__list::before {
+    background: var(--surface-card);
+    box-shadow: var(--shadow-button);
+  }
+  .settings__header .btn.btn--sm.tabs__trigger,
+  .workspace-device-modal .modal__header .btn.btn--sm.tabs__trigger {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--text-secondary);
+
+    &::before, &::after { background: none; box-shadow: none; }
+    &.is-active { color: var(--color-primary); }
+  }
+
+  .device-dashboard__metric, .device-dashboard__pv-card,
+  .device-dashboard__mini-card, .device-dashboard__pill-stack,
+  .device-dashboard__pill-meter, .device-dashboard__segment-card,
+  .device-dashboard__total-card, .device-dashboard__runtime-card,
+  .device-dashboard__status-badge, .device-dashboard__chart-tile,
+  .device-dashboard__curve-tile, .device-dashboard__status-item,
+  .mfc__card, .mfc__card.is-active-device {
+    background: var(--surface-sidebar);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .mfc__card.is-active-device::before { background: none; }
+  .device-status__indicator, .workstation-status__indicator,
+  .device-dashboard__status-dot { box-shadow: none; }
+  .device-status__indicator.is-connected,
+  .workstation-status__indicator.is-connected { background: var(--device-online); }
+
+  .logo-text__letter {
+    background-image: none;
+    background-color: var(--text-primary);
+  }
+  .logo-text__letter::after { opacity: 0; }
+}
