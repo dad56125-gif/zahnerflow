@@ -118,7 +118,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   const isActiveDevice = Number(device.setFlow) > 0;
 
   return (
-    <div className={`mfc__card ${isActiveDevice ? 'is-active-device' : 'is-idle-device'} ${loading ? 'is-loading' : ''} ${disabled ? 'is-disabled' : ''}`}>
+    <div data-tutorial-mfc-address={device.address} className={`mfc__card ${isActiveDevice ? 'is-active-device' : 'is-idle-device'} ${loading ? 'is-loading' : ''} ${disabled ? 'is-disabled' : ''}`}>
       {/* 头部：地址 + 气体 + 最大流量 + 状态 */}
       <div className="mfc__card-head">
         <div className="mfc__card-title">

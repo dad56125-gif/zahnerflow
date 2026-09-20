@@ -1,10 +1,11 @@
+import { registerWorkspaceParticipant } from '../../tutorialEnvironment';
 /**
  * Furnace 状态管理 Hook
  * 
  * 提供炉温控制器的状态管理，包括连接、控制、预设、历史数据等功能
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useLayoutEffect, useState, useCallback, useEffect, useRef } from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import type { DeviceError, LogEntry, DeviceConnectionStatus, HistoryQueryParams } from '@zahnerflow/types';
 import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
@@ -238,6 +239,19 @@ const createInitialState = (): FurnaceState => ({
 export function useFurnace(): [FurnaceState, FurnaceControls] {
   const [state, setState] = useState<FurnaceState>(createInitialState);
   const lastRuntimeStateVersionRef = useRef(0);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useLayoutEffect(() => registerWorkspaceParticipant(() => {
+    const previous = stateRef.current;
+    const version = lastRuntimeStateVersionRef.current;
+    lastRuntimeStateVersionRef.current = 0;
+    setState(createInitialState());
+    return () => {
+      lastRuntimeStateVersionRef.current = version;
+      setState(previous);
+    };
+  }), []);
+
 
   // 状态更新辅助函数
   const updateState = useCallback((updates: Partial<FurnaceState>) => {

@@ -168,9 +168,9 @@ const AppContent: React.FC = () => {
     }
   }, [systemState, selectedWorkstation, applyWorkstation]);
 
-  useLayoutEffect(() => registerWorkspaceParticipant(lessonId => {
+  useLayoutEffect(() => registerWorkspaceParticipant(() => {
     const previous = { selectedWorkstation, suppressedEtaNodeFingerprint, hydrated: hydratedExecutionId.current };
-    setSelectedWorkstation(lessonId === 'prepare' ? null : 'zahner-zennium');
+    setSelectedWorkstation('zahner-zennium');
     setSuppressedEtaNodeFingerprint(null);
     hydratedExecutionId.current = null;
     return () => {

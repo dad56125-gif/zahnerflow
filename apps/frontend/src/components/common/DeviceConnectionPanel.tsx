@@ -142,6 +142,7 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
                                 {availablePorts.map(port => (
                                     <div
                                         key={port}
+                                        data-tutorial-port={port}
                                         className={`dropdown__option ${selectedPort === port ? 'is-selected' : ''}`}
                                         onClick={() => selectPort(port)}
                                     >

@@ -251,6 +251,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="top-bar__actions">
         <div
           className="btn btn--md btn--secondary"
+          data-tutorial-anchor="furnace"
           onClick={() => handleDeviceClick('furnace')}
         >
           <span className="btn-icon"><TopBarDeviceIcon type="furnace" /></span>
@@ -260,6 +261,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div
           className="btn btn--md btn--secondary"
+          data-tutorial-anchor="mfc"
           onClick={() => handleDeviceClick('mfc')}
         >
           <span className="btn-icon"><TopBarDeviceIcon type="mfc" /></span>

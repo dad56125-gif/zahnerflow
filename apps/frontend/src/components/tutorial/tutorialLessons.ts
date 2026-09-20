@@ -1,4 +1,5 @@
 import type { WorkflowNode } from "@zahnerflow/types";
+import { deviceLessons } from "./deviceLessons";
 import { protonSopLessons } from "./protonSopLessons";
 export interface TutorialCheck {
   selector?: string;
@@ -52,9 +53,20 @@ export const tutorialLessons: TutorialLesson[] = [
     id: "prepare",
     group: "开始之前",
     title: "准备实验信息",
-    summary: "选择用户，填写保存信息，再选择工作站。",
-    seed: "empty",
+    summary: "先观察缺少用户、项目和样品时的运行提示，再补齐信息。工作站与示例流程已预置。",
+    seed: "ocp",
     steps: [
+      {
+        title: "缺少信息时尝试运行",
+        text: "先不填写实验信息，点击运行，看看系统为什么没有开始。用户决定实验归属，项目和样品用于识别及保存实验数据。",
+        target: anchor("run"), action: "click",
+        check: { selector: ".toolbar-run-warning", text: "缺少用户、项目名称、样品名称", phase: "idle" },
+      },
+      {
+        title: "看懂信息缺失提示",
+        text: "提示出现时，运行按钮暂不可用，流程仍未启动。请先补齐实验归属和项目、样品信息，避免生成无法识别的实验记录。",
+        target: ".toolbar__group--top-right", check: { selector: ".toolbar-run-warning", phase: "idle" },
+      },
       {
         title: "打开用户列表",
         text: "点击顶栏的用户选择器；首次使用可通过旁边的新建用户按钮创建用户。",
@@ -68,6 +80,12 @@ export const tutorialLessons: TutorialLesson[] = [
         target: '[data-tutorial-user="教学用户"]',
         action: "click",
         check: { user: "教学用户" },
+      },
+      {
+        title: "仅选择用户仍不够",
+        text: "再次点击运行：用户已确定，但项目和样品仍为空，提示现在只列出这两项。",
+        target: anchor("run"), action: "click",
+        check: { selector: ".toolbar-run-warning", text: "缺少项目名称、样品名称", phase: "idle" },
       },
       {
         title: "打开用户配置",
@@ -108,18 +126,9 @@ export const tutorialLessons: TutorialLesson[] = [
         check: { selector: ".settings__save-indicator", absent: true },
       },
       {
-        title: "选择工作站",
-        text: "打开工作站列表。选择型号并不表示已经连接设备。",
-        target: anchor("station"),
-        action: "click",
-        check: { selector: '[data-tutorial-workstation="zahner-zennium"]' },
-      },
-      {
-        title: "显示节点库",
-        text: "选择 ZAHNER ZENNIUM，左侧显示该工作站支持的节点。",
-        target: '[data-tutorial-workstation="zahner-zennium"]',
-        action: "click",
-        check: { selector: library(ocp) },
+        title: "信息齐全后开始",
+        text: "用户、项目和样品已填写，点击运行不再出现信息缺失提示。工作站和 OCP 节点是本课预置条件，播放的是隔离教学记录。",
+        target: anchor("run"), action: "click", check: { phase: "running" },
       },
     ],
   },
@@ -500,5 +509,6 @@ export const tutorialLessons: TutorialLesson[] = [
       },
     ],
   },
+  ...deviceLessons,
   ...protonSopLessons,
 ];

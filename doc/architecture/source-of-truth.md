@@ -11,6 +11,7 @@
 | 课程步骤 | [tutorialLessons.ts](../../apps/frontend/src/components/tutorial/tutorialLessons.ts) | 目录说明、演示脚本与步骤结果检查读取 |
 | SOP 综合课程 | 用户提供的 LAB-ELEC-001 V1.0 与 [课程映射说明](../tutorial-proton-sop.md) | protonSopLessons.ts 定义四章、教学前置模板及操作检查；原文未给定值不能当作已确认实验参数 |
 | 教学数据 | [tutorialScenario.json](../../apps/frontend/src/components/tutorial/tutorialScenario.json) | Python 模拟器采集，TutorialRuntime 读取和重放；不是独立执行规划算法 |
+| 设备连接与控制 | [deviceLessons.ts](../../apps/frontend/src/components/tutorial/deviceLessons.ts) 与 [课程说明](../tutorial-devices.md) | 使用现有管式炉、MFC 窗口、连接面板和设备 hook；tutorialDeviceScenario.json 存放 Python 模拟器真实路由采集结果，含缺失实验信息的 409 响应 |
 | 会话生命周期 | [tutorialSession.ts](../../apps/frontend/src/components/tutorial/tutorialSession.ts) | 切换数据源，保存和恢复既有组件所消费的数据与界面状态 |
 | 请求与事件 | [runtimeClient.ts](../../apps/frontend/src/runtimeClient.ts) | 同一通信入口与实际 Socket；教学仅规划接口可访问后端 |
 | 步骤规划 | Python ExecutionPlanner | 正常操作和教学请求均调用同一后端预览与 ETA 接口 |

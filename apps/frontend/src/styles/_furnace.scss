@@ -706,6 +706,14 @@
   }
 }
 
+// The monitoring column shares the window with connection/log controls.
+// Six cards do not fit at intermediate desktop widths.
+@media (min-width: 901px) and (max-width: 1200px) {
+  .workspace-device-modal--furnace .device-dashboard__furnace-layout {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .workspace-device-modal .modal__header {
   h3,
   .tabs__trigger {

@@ -2,6 +2,7 @@ import type {
   ExecutionSnapshot,
   ExecutionStartRequest,
   UserSettings,
+  RuntimeDeviceStatusEnvelope,
 } from "@zahnerflow/types";
 import {
   type TutorialTransport,
@@ -11,12 +12,19 @@ import {
   WORKFLOW_SNAPSHOT,
   WORKFLOW_NODES_RESET,
   WORKFLOW_NODE_STATUS,
+  DEVICE_STATUS_UPDATE,
 } from "../../eventContracts";
 import scenario from "./tutorialScenario.json";
+import deviceScenario from "./tutorialDeviceScenario.json";
 
 /** Recorded from the project's Python simulator; no UI or execution planner lives here. */
 export class TutorialRuntime implements TutorialTransport {
-  constructor(readonly lessonId: string) {}
+  constructor(readonly lessonId: string) {
+    if (lessonId === "prepare") {
+      this.settings.filePath.projectName = "";
+      this.settings.filePath.individualName = "";
+    }
+  }
   connected = false;
   paused = false;
   private listeners = new Map<string, Set<(payload: unknown) => void>>();
@@ -30,6 +38,28 @@ export class TutorialRuntime implements TutorialTransport {
   private requestBody: ExecutionStartRequest | null = null;
   private elapsed = 0;
   private playbackStartedAt = 0;
+  private deviceStates: Record<string, RuntimeDeviceStatusEnvelope> = {
+    furnace: structuredClone(scenario.furnace) as RuntimeDeviceStatusEnvelope,
+    mfc: structuredClone(scenario.mfc) as RuntimeDeviceStatusEnvelope,
+  };
+  private deviceSequence = 0;
+  private deviceTimeOffset = Date.now() - Date.parse(deviceScenario.furnace.connect.status.timestamp);
+  private replayDevice(record: { response: unknown; status: unknown }) {
+    // Business controls consume simulator recordings through the usual status event.
+    // Versions are session-local so replay/rescan never goes backwards.
+    const status = JSON.parse(JSON.stringify(record.status), (_key, value) =>
+      typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)
+        ? new Date(Date.parse(value) + this.deviceTimeOffset).toISOString() : value,
+    ) as RuntimeDeviceStatusEnvelope;
+    status.stateVersion = ++this.deviceSequence;
+    if (status.runtimeState) status.runtimeState.stateVersion = status.stateVersion;
+    this.deviceStates[status.device] = status;
+    this.dispatch(DEVICE_STATUS_UPDATE, status);
+    const response = structuredClone(record.response);
+    if (response && typeof response === "object" && "runtimeStatus" in response)
+      response.runtimeStatus = status;
+    return response;
+  }
 
   on(event: string, handler: (payload: unknown) => void) {
     const handlers = this.listeners.get(event) ?? new Set();
@@ -165,14 +195,58 @@ export class TutorialRuntime implements TutorialTransport {
     if (method === "GET" && endpoint.endsWith("/runtime/status")) {
       const device = endpoint.split("/")[3] as
         "mfc" | "furnace" | "zahner-zennium";
-      return structuredClone(scenario[device]);
+      return structuredClone(this.deviceStates[device] ?? scenario[device]);
     }
     if (method === "GET" && endpoint.endsWith("/command-logs"))
       return { logs: [] };
     if (method === "GET" && endpoint === "/api/devices/furnace/presets")
-      return { presets: [] };
+      return [];
+    if (method === "GET" && /^\/api\/devices\/(furnace|mfc)\/ports$/.test(endpoint))
+      return ["COM_SIMULATOR"];
+    if (method === "GET" && endpoint === "/api/devices/furnace/program/segments")
+      return structuredClone(deviceScenario.furnace.segments);
+    if (method === "GET" && /\/(activity-summary|samples|logs\/temperature)$/.test(endpoint))
+      return [];
+    if (method === "GET" && endpoint === "/api/devices/mfc/logs/flow")
+      return { samples: [] };
+    if (method === "POST" && this.lessonId === "furnace-control") {
+      const command = endpoint.replace("/api/devices/furnace/", "");
+      if (["connect", "run", "pause", "stop", "disconnect"].includes(command)) {
+        const key = command === "run" && this.deviceStates.furnace.runtimeState?.executionStatus === "paused" ? "resume" : command;
+        return this.replayDevice(deviceScenario.furnace[key as "connect" | "run" | "pause" | "resume" | "stop" | "disconnect"]);
+      }
+    }
+    if (method === "POST" && this.lessonId === "mfc-control") {
+      const command = endpoint.replace("/api/devices/mfc/", "");
+      if (command === "connect" || command === "disconnect")
+        return this.replayDevice(deviceScenario.mfc[command]);
+      if (command === "scan") {
+        const { address } = body as { address: number };
+        const record = (deviceScenario.mfc.scan as Record<string, { response: unknown; status: unknown }>)[address];
+        if (record) {
+          await new Promise(resolve => window.setTimeout(resolve, 35));
+          return this.replayDevice(record);
+        }
+      }
+      if (command === "setpoint") {
+        const { address, sccm } = body as { address: number; sccm: number };
+        if (address === 32 && (sccm === 0 || sccm === 50))
+          return this.replayDevice(deviceScenario.mfc[sccm === 50 ? "flow50" : "flow0"]);
+      }
+    }
     if (method === "POST" && endpoint === "/api/executions") {
       this.requestBody = structuredClone(body) as ExecutionStartRequest;
+      const missing = [
+        !this.requestBody.ownerName?.trim() && "ownerName",
+        !this.requestBody.pathConfig?.projectName?.trim() && "projectName",
+        !this.requestBody.pathConfig?.individualName?.trim() && "individualName",
+      ].filter(Boolean);
+      if (missing.length && !this.requestBody.forceStartWithMissingRunMetadata) {
+        const detail = Object.values(deviceScenario.metadata).find(item =>
+          JSON.stringify(item.missingFields) === JSON.stringify(missing));
+        if (!detail) throw new Error("未采集的教学信息缺失组合");
+        throw Object.assign(new Error(detail.message), { code: "HTTP_409", status: 409, details: structuredClone(detail) });
+      }
       if (
         this.requestBody.nodes?.length !== 1 ||
         this.requestBody.nodes[0].type !== "ocp_measurement"

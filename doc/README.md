@@ -7,6 +7,7 @@
 - [当前设计与教学边界](../.memory/design.md)
 - [教学功能来源与派生链](architecture/source-of-truth.md)
 - [质子导体 SOP 综合教程](tutorial-proton-sop.md)
+- [实验信息与设备控制教程](tutorial-devices.md)
 - [教学样式定稿](tutorial-style.md)
 - [视觉规范](design-system.md)
 - [接口契约](data-contracts.md)
