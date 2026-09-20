@@ -13,22 +13,21 @@
 
   .top-bar, .bottom-bar {
     background: var(--surface-toolbar);
-    border-color: var(--glass-border);
-    box-shadow: var(--shadow-toolbar);
+    border-color: transparent;
+    box-shadow: inset 0 -1px var(--separator);
   }
 
   .left-panel.glass-layout, .right-panel.glass-layout,
   .left-panel.glass, .right-panel.glass {
     background: var(--surface-sidebar);
-    border-color: var(--separator);
-    box-shadow: var(--shadow-panel);
+    border-color: transparent;
+    box-shadow: none;
   }
 
   .canvas {
     background: var(--surface-canvas);
-    background-image: var(--canvas-atmosphere);
-    border-color: var(--glass-border);
-    box-shadow: var(--shadow-panel), var(--canvas-edge-shadow);
+    border-color: var(--separator);
+    box-shadow: none;
   }
 
   .canvas__grid {
@@ -37,10 +36,7 @@
       linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   }
 
-  .connections-layer > line, .connections-layer > path,
-  .connections-layer marker path { stroke: var(--connection-line); }
-
-  // 默认即有功能卡片边界；悬停、按下、键盘焦点和禁用保持清晰区分。
+  // 灰色面板上的独立功能卡片；色彩只属于图标与交互反馈。
   .node-item {
     background: var(--surface-library);
     border-color: var(--glass-border);
@@ -53,8 +49,7 @@
     box-shadow: var(--shadow-library-hover);
     transform: none;
   }
-  .node-item:not(.disabled):active,
-  .node-item:not(.disabled):focus-visible {
+  .node-item:not(.disabled):active, .node-item:not(.disabled):focus-visible {
     background: var(--surface-selected);
     border-color: var(--color-primary);
     box-shadow: var(--shadow-library);
@@ -64,15 +59,15 @@
     background: var(--surface-library-disabled);
     border-color: var(--separator);
     box-shadow: none;
-    opacity: 0.65;
+    opacity: 0.6;
     cursor: not-allowed;
   }
-  .node-item .node-icon { filter: none; }
+  .node-item .node-icon { filter: none; opacity: 1; }
   .category-title, .section-title { color: var(--text-secondary); }
   .property-group {
-    background: var(--surface-property);
-    border-radius: var(--radius-sm);
-    box-shadow: inset 0 0 0 1px var(--separator), var(--shadow-button);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: inset 0 -1px var(--separator);
   }
 
   // 普通操作使用中性表面，蓝色只在交互反馈与选中时出现。
@@ -93,6 +88,7 @@
   .btn--danger { color: var(--color-danger); }
   .btn--warning { color: var(--color-warning); }
   .btn--success { color: var(--color-success); }
+  .toolbar__group--top-right .btn:not(:disabled):not(.disabled) { color: var(--color-primary); }
   .btn.is-active, .btn[aria-pressed='true'],
   .property__tabs .btn--primary {
     color: var(--color-primary);
@@ -106,27 +102,6 @@
   }
   .btn.is-loading { color: transparent; }
   .btn.is-loading::after { border-color: var(--color-primary); border-top-color: transparent; }
-
-  .toolbar .btn:not(.disabled):not(:disabled) {
-    background: var(--surface-card);
-    border-color: var(--glass-border);
-    box-shadow: var(--shadow-floating-control);
-  }
-  .toolbar .btn:not(.disabled):not(:disabled):hover {
-    background: var(--surface-hover);
-    border-color: var(--glass-border-hover);
-  }
-  .top-bar__actions {
-    background: var(--surface-inset);
-    border-radius: var(--radius-full);
-    box-shadow: 0 0 0 5px var(--surface-inset), 0 0 0 6px var(--control-section-line);
-  }
-  .property__tabs .btn--primary {
-    color: var(--text-primary);
-    background: var(--surface-card);
-    border-color: var(--glass-border-hover);
-    box-shadow: var(--shadow-button), inset 0 -2px var(--color-primary);
-  }
 
   .input, .select, .textarea, .segment__input {
     background: var(--surface-control);
