@@ -288,6 +288,9 @@
   --text-saved: #087f60;
   --glass-border-muted: rgba(75, 105, 140, 0.12);
   --app-background: #f0f5f8;
+  --wave-sage-rgb: 104, 140, 105;
+  --wave-blue-rgb: 77, 136, 164;
+  --wave-mauve-rgb: 154, 117, 143;
   --wave-mist: #e8f0ee;
   --wave-lilac: #eeebf3;
   --wave-warm: #f6eee6;
@@ -355,7 +358,7 @@
   --shadow-frame-glass: 0 4px 18px rgba(40, 47, 66, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(255, 255, 255, 0.18);
   --surface-toolbar: #f3f5f7;
   --surface-sidebar: #f2f5f7;
-  --surface-canvas: #fafbfc;
+  --surface-canvas: rgba(250, 251, 252, 0.48);
   --surface-card: #ffffff;
   --surface-inset: #edf0f3;
   --surface-control: #fcfdff;

@@ -52,6 +52,8 @@
 
   .canvas {
     background: var(--surface-canvas);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-color: var(--separator);
     box-shadow: none;
   }
