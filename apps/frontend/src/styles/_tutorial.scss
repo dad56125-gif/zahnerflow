@@ -24,7 +24,7 @@
   inset: var(--app-chrome-h) 0 0;
   pointer-events: none;
   z-index: 22000;
-  [data-tutorial-controls] { pointer-events: auto; }
+  [data-tutorial-controls] { pointer-events: auto; z-index: 1; }
 }
 .tutorial-instructions {
   color: var(--text-primary);
@@ -87,7 +87,7 @@
 .tutorial-annotation {
   position: fixed;
   inset: 0;
-  z-index: 20000;
+  z-index: 0;
   pointer-events: none;
 }
 .tutorial-spotlight {
@@ -95,9 +95,9 @@
   border: 2px solid #469fc4;
   border-radius: 10px;
   box-shadow:
-    0 0 0 9999px #182d441c,
+    0 0 0 9999px rgb(0 0 0 / 62%),
     0 0 18px #469fc470;
-  transition: all 220ms ease;
+  // Follow the real target without leaving a trailing hole during menu transitions.
 }
 .tutorial-cursor {
   position: absolute;

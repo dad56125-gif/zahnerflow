@@ -103,18 +103,54 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
     let single = false;
     let current = 0;
     let highlighted: HTMLElement | null = null;
-    const trackTarget = () => {
-      const rect = highlighted?.isConnected
-        ? highlighted.getBoundingClientRect()
-        : null;
-      setBox(rect);
-      report(
-        { type: "tutorial-target", rect },
-        window.location.origin,
-      );
+    let restoreZoom = () => {};
+    let lastRect: DOMRect | null = null;
+    let frame = 0;
+    const clearTarget = () => {
+      restoreZoom();
+      restoreZoom = () => {};
+      highlighted = null;
     };
-    window.addEventListener("resize", trackTarget);
-    document.addEventListener("scroll", trackTarget, true);
+    const trackTarget = () => {
+      let rect: DOMRect | null = null;
+      if (highlighted) {
+        const visible = highlighted.isConnected &&
+          highlighted.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) &&
+          !highlighted.closest('[data-state="closing"], .is-hiding, [aria-hidden="true"]');
+        if (visible) {
+          const bounds = highlighted.getBoundingClientRect();
+          const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+          if (bounds.width > 0 && bounds.height > 0 && hit && (highlighted.contains(hit) || hit.closest('[data-tutorial-controls]'))) rect = bounds;
+        }
+        if (!rect) clearTarget();
+      }
+      if (rect?.x !== lastRect?.x || rect?.y !== lastRect?.y ||
+          rect?.width !== lastRect?.width || rect?.height !== lastRect?.height) {
+        lastRect = rect;
+        setBox(rect);
+        report({ type: "tutorial-target", rect });
+      }
+      if (!disposed) frame = requestAnimationFrame(trackTarget);
+    };
+    const zoomTarget = (target: HTMLElement) => {
+      clearTarget();
+      const rect = target.getBoundingClientRect();
+      // Transform the mounted business element itself; never render a teaching copy.
+      const properties = ['scale', 'transform-origin'] as const;
+      const saved = properties.map(name => [name, target.style.getPropertyValue(name), target.style.getPropertyPriority(name)]);
+      const scale = Math.max(1, Math.min(1.25, (innerWidth - 24) / rect.width, (innerHeight - 24) / rect.height));
+      const originX = rect.left < rect.width * .15 ? 'left' : rect.right > innerWidth - rect.width * .15 ? 'right' : 'center';
+      const originY = rect.top < rect.height * .15 + 24 ? 'top' : rect.bottom > innerHeight - rect.height * .15 ? 'bottom' : 'center';
+      target.style.setProperty('transform-origin', `${originX} ${originY}`, 'important');
+      target.style.setProperty('scale', String(scale), 'important');
+      target.setAttribute('data-tutorial-zoom', '');
+      restoreZoom = () => {
+        saved.forEach(([name, value, priority]) => value ? target.style.setProperty(name, value, priority) : target.style.removeProperty(name));
+        target.removeAttribute('data-tutorial-zoom');
+      };
+      highlighted = target;
+    };
+    frame = requestAnimationFrame(trackTarget);
     const emit = (phase: string, error?: string) => {
       if (!disposed)
         report(
@@ -194,11 +230,12 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
     inputEvents.forEach(name => document.addEventListener(name, blockPointer, { capture: true, passive: false }));
     const act = async (step: TutorialStep) => {
       const target = await find(step.target);
-      highlighted = target;
+      clearTarget();
       target.scrollIntoView({ block: "nearest", inline: "nearest" });
       await sleep(150);
+      zoomTarget(target);
+      await sleep(100);
       const rect = target.getBoundingClientRect();
-      trackTarget();
       const point = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
       setCursor({ ...point, pressed: false });
       await sleep(800);
@@ -284,17 +321,19 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
         );
         // Browser-generated drag images are not available to synthetic drags. Clone the actual DOM, never re-render a replica node.
         const ghost = target.cloneNode(true) as HTMLElement;
+        ghost.removeAttribute("data-tutorial-zoom");
         ghost.removeAttribute("data-tutorial-node");
         ghost.removeAttribute("data-node-type");
         ghost.removeAttribute("data-tutorial-library");
         ghost.classList.add("tutorial-drag-image");
         Object.assign(ghost.style, {
-          width: `${rect.width}px`,
-          height: `${rect.height}px`,
+          width: `${rect.width / (Number.parseFloat(getComputedStyle(target).scale) || 1)}px`,
+          height: `${rect.height / (Number.parseFloat(getComputedStyle(target).scale) || 1)}px`,
           left: `${rect.x}px`,
           top: `${rect.y}px`,
           opacity: "0.85",
         });
+        ghost.style.setProperty("transform-origin", "0 0", "important");
         document.body.appendChild(ghost);
         try {
           setCursor({ ...to, pressed: true });
@@ -361,9 +400,7 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
         () => passes(step.check),
         `操作结果未达到预期：${step.title}`,
       );
-      // Track reflow or a modal opened by the action.
-      if (target.isConnected) setBox(target.getBoundingClientRect());
-      else setBox(null);
+      // The animation-frame tracker follows closing, reflow and unmounting targets.
     };
     const run = async () => {
       await until(
@@ -404,6 +441,7 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
       current = lesson.steps.length - 1;
       playing = false;
       tutorialRuntime.paused = true;
+      clearTarget();
       setBox(null);
       emit("complete");
     };
@@ -420,8 +458,9 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
       if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
       inputEvents.forEach(name => document.removeEventListener(name, blockPointer, true));
       document.removeEventListener("keydown", blockKeyboard, true);
-      window.removeEventListener("resize", trackTarget);
-      document.removeEventListener("scroll", trackTarget, true);
+      cancelAnimationFrame(frame);
+      clearTarget();
+      setBox(null);
     };
     controller.stop = async () => { dispose(); await finished; };
     return dispose;
