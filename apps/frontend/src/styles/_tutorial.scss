@@ -1,10 +1,18 @@
 @use "./placeholders" as *;
 // 目录外壳与列表由 SplitPaneModal 提供，这里只定义教学内容的排版。
+.tutorial-dialog.split-pane-modal {
+  width: min(960px, 92vw);
+  height: min(660px, 82vh);
+}
+@media (min-width: 901px) {
+  .tutorial-dialog .split-pane-modal__body {
+    grid-template-columns: minmax(220px, 26%) minmax(0, 1fr);
+  }
+}
 .tutorial-dialog {
   &__nav, &__group { display: flex; flex-direction: column; gap: var(--size-2xs); }
   &__group {
     h3 { margin: var(--size-md) var(--size-md) var(--size-xs); color: var(--text-secondary); font-size: var(--size-xs); font-weight: 500; }
-    small { color: var(--text-muted); font-size: var(--size-xs); }
   }
   &__overview {
     margin-bottom: var(--size-lg);

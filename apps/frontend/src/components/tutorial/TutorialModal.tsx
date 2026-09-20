@@ -43,7 +43,6 @@ export default function TutorialModal({
                   onClick={() => setLessonId(item.id)}
                 >
                   <span>{item.title}</span>
-                  <small>{item.outline.length} 个阶段</small>
                 </SplitPaneModalItem>
               ))}
             </section>
