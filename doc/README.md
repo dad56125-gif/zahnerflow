@@ -28,6 +28,8 @@ zahnerflow-main/
 │   ├── reference/
 │   │   ├── data-contracts.md     数据命名、单位、契约维护说明
 │   │   └── design-system.md      视觉规范与样式维护说明
+│   ├── research/
+│   │   └── unroll-modal-redesign-2026-09-20.md  展开执行步骤 modal 改版前现状复核
 │   └── insight/
 │       ├── 1.0.0/               该版本设计、审计、决策和复盘快照
 │       └── 2.2.1/               优化前评估、过程和交付快照
@@ -82,6 +84,7 @@ flowchart TD
 - 当前设计：[设计锚点](../.memory/design.md)、[维护纪律](../.memory/rules.md)、[来源登记与核查](architecture/source-of-truth.md)。
 - 使用：[安装启动](../INSTALL.md)、[CLI 与 Agent](guides/cli-agent.md)。
 - 规范：[数据与命名](reference/data-contracts.md)、[视觉与样式](reference/design-system.md)。
+- 研究：[展开执行步骤 modal 改版前现状复核](research/unroll-modal-redesign-2026-09-20.md)。
 - 历史：[1.0.0 归档](insight/1.0.0/README.md)、[2.2.1 归档](insight/2.2.1/README.md)。
 - 变化：[发布日志](../CHANGELOG.md)、[设计演进](../.memory/changelog.md)。
 
