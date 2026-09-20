@@ -30,6 +30,11 @@ function tutorialFacts() {
 
 function passes(check: TutorialCheck) {
   const facts = tutorialFacts();
+  if (check.selectedId && useCanvasStore.getState().selectedNodeId !== check.selectedId) return false;
+  if (check.nodeParameter) {
+    const [id, key, value] = check.nodeParameter;
+    if (useCanvasStore.getState().nodes.find(node => node.id === id)?.config?.[key] !== value) return false;
+  }
   if (
     check.nodeTypes &&
     JSON.stringify(check.nodeTypes) !==

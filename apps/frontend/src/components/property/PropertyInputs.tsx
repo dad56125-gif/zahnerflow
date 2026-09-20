@@ -143,6 +143,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
     <div className="dropdown-wrapper">
       <button
         type="button"
+        data-tutorial-parameter={paramKey}
         className="btn btn--md btn--secondary btn--block dropdown-trigger"
         onClick={(e) => !disabled && dropdownState.open(dropdownId, e)}
         disabled={disabled}
@@ -164,6 +165,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
           {effectiveOptions.map((opt) => (
             <div
               key={opt}
+              data-tutorial-option={`${paramKey}:${opt}`}
               className={`dropdown__option ${String(val) === opt ? 'is-selected' : ''}`}
               onClick={() => {
                 const finalVal = isBool ? (opt === 'true') : opt;
@@ -200,6 +202,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
     return (
       <input
         type="text"
+        data-tutorial-parameter={paramKey}
         value={externalValue}
         disabled
         className="input glass disabled"
@@ -213,6 +216,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
     return (
       <input
         type="text"
+        data-tutorial-parameter={paramKey}
         value={localValue}
         onChange={(e) => {
           const val = e.target.value;
@@ -251,6 +255,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
     return (
       <input
         type="text"
+        data-tutorial-parameter={paramKey}
         value={localValue}
         onChange={(e) => {
           const val = e.target.value;

@@ -33,7 +33,7 @@ export async function createTutorialSession(lessonId: string) {
   const restoreParticipants = enterWorkspaceParticipants(lessonId);
   const create = (type: NodeType, id: string): WorkflowNode => ({ ...createWorkflowNode(type), id });
   const ocp = structuredClone(scenario.final.nodes[0]) as WorkflowNode;
-  const nodes = lesson.seed === 'empty' ? [] : lesson.seed === 'ocp' ? [ocp] : lesson.seed === 'sequence'
+  const nodes = lesson.initialNodes ? structuredClone(lesson.initialNodes) : lesson.seed === 'empty' ? [] : lesson.seed === 'ocp' ? [ocp] : lesson.seed === 'sequence'
     ? [ocp, create('wait_delay', 'tutorial-wait'), create('eis_potentiostatic', 'tutorial-eis')]
     : [{ ...create('loop_start', 'tutorial-loop'), config: { loopCount: 3 } }, ocp, create('loop_end', 'tutorial-end')];
   useCanvasStore.setState({ nodes, selectedNodeId: null, validationError: null });

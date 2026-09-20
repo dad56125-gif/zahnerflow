@@ -1,3 +1,5 @@
+import type { WorkflowNode } from "@zahnerflow/types";
+import { protonSopLessons } from "./protonSopLessons";
 export interface TutorialCheck {
   selector?: string;
   absent?: boolean;
@@ -9,6 +11,8 @@ export interface TutorialCheck {
   selected?: string;
   user?: string;
   chartPoints?: number;
+  selectedId?: string;
+  nodeParameter?: [string, string, number | string | boolean];
 }
 export interface TutorialStep {
   title: string;
@@ -26,6 +30,7 @@ export interface TutorialLesson {
   summary: string;
   seed: "empty" | "ocp" | "sequence" | "loop";
   steps: TutorialStep[];
+  initialNodes?: WorkflowNode[];
 }
 export const anchor = (name: string) => `[data-tutorial-anchor="${name}"]`;
 export const library = (type: string) => `[data-tutorial-library="${type}"]`;
@@ -495,4 +500,5 @@ export const tutorialLessons: TutorialLesson[] = [
       },
     ],
   },
+  ...protonSopLessons,
 ];

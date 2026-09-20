@@ -9,6 +9,7 @@
 | 操作与外观 | 前端既有 Canvas、Toolbar、RightPanel、用户设置、展开预览、图表与报告组件 | 普通操作与 TutorialRunner 使用同一控件和业务处理 |
 | 教学视觉引导 | [TutorialRunner.tsx](../../apps/frontend/src/components/tutorial/TutorialRunner.tsx) 与 _tutorial.scss | 逐帧定位真实控件；仅遮罩、描边与光标标注，源组件不缩放，不显示镜像窗；样式基线见 [教学样式](../tutorial-style.md) |
 | 课程步骤 | [tutorialLessons.ts](../../apps/frontend/src/components/tutorial/tutorialLessons.ts) | 目录说明、演示脚本与步骤结果检查读取 |
+| SOP 综合课程 | 用户提供的 LAB-ELEC-001 V1.0 与 [课程映射说明](../tutorial-proton-sop.md) | protonSopLessons.ts 定义四章、教学前置模板及操作检查；原文未给定值不能当作已确认实验参数 |
 | 教学数据 | [tutorialScenario.json](../../apps/frontend/src/components/tutorial/tutorialScenario.json) | Python 模拟器采集，TutorialRuntime 读取和重放；不是独立执行规划算法 |
 | 会话生命周期 | [tutorialSession.ts](../../apps/frontend/src/components/tutorial/tutorialSession.ts) | 切换数据源，保存和恢复既有组件所消费的数据与界面状态 |
 | 请求与事件 | [runtimeClient.ts](../../apps/frontend/src/runtimeClient.ts) | 同一通信入口与实际 Socket；教学仅规划接口可访问后端 |
