@@ -6,15 +6,15 @@
   .topbar-workstation-icon__primary { fill: var(--color-info); }
   .topbar-workstation-icon__secondary { fill: var(--node-library-icon-blue-gray); }
   .theme-toggle > svg { color: var(--color-indigo); }
-  .user-selector__container .ui-svg-icon--user { color: var(--color-info); }
+  .user-selector__container .ui-svg-icon--user { color: var(--node-library-icon-ocp); }
   .user-action-icon--userSettings { color: var(--color-indigo); }
   .user-action-icon--userSettings .btn-svg-icon__secondary { stroke: var(--color-info); }
-  .user-action-icon--createUser { color: var(--color-info); }
+  .user-action-icon--createUser { color: var(--node-library-icon-loop); }
   .user-action-icon--createUser .btn-svg-icon__secondary { stroke: var(--color-success); }
   .toolbar-icon--clear { color: var(--color-warning); }
   .toolbar-icon--records { color: var(--color-info); }
   .toolbar-icon--records .btn-svg-icon__secondary { stroke: var(--color-indigo); }
-  .toolbar-icon--expand { color: var(--color-info); }
+  .toolbar-icon--expand { color: var(--node-library-icon-ramp-voltage); }
   .toolbar-icon--reset { color: var(--color-warning); }
   .toolbar-icon--start { color: var(--color-success); }
   .toolbar-icon--start .btn-svg-icon__secondary {
