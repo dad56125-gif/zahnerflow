@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { createTutorialLens } from "./tutorialLens";
+import { useEffect, useState } from "react";
 import { getInstanceByDom } from "echarts/core";
 import { appStorage } from "../../tutorialEnvironment";
 import { useCanvasStore } from "../../state/canvasStore";
@@ -90,7 +89,6 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
   controller: TutorialController;
   onEvent: (event: TutorialEvent) => void;
 }) {
-  const lensHost = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<DOMRect | null>(null);
   const [cursor, setCursor] = useState({ x: -100, y: -100, pressed: false });
   useEffect(() => {
@@ -105,11 +103,9 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
     let single = false;
     let current = 0;
     let highlighted: HTMLElement | null = null;
-    const lens = createTutorialLens(lensHost.current!);
     let lastRect: DOMRect | null = null;
     let frame = 0;
     const clearTarget = () => {
-      lens.clear();
       highlighted = null;
     };
     const trackTarget = () => {
@@ -133,10 +129,9 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
       }
       if (!disposed) frame = requestAnimationFrame(trackTarget);
     };
-    const zoomTarget = (target: HTMLElement) => {
+    const focusTarget = (target: HTMLElement) => {
       clearTarget();
       highlighted = target;
-      lens.show(target);
     };
     frame = requestAnimationFrame(trackTarget);
     const emit = (phase: string, error?: string) => {
@@ -221,7 +216,7 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
       clearTarget();
       target.scrollIntoView({ block: "nearest", inline: "nearest" });
       await sleep(150);
-      zoomTarget(target);
+      focusTarget(target);
       await sleep(100);
       const rect = target.getBoundingClientRect();
       const point = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
@@ -309,7 +304,6 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
         );
         // Browser-generated drag images are not available to synthetic drags. Clone the actual DOM, never re-render a replica node.
         const ghost = target.cloneNode(true) as HTMLElement;
-        ghost.removeAttribute("data-tutorial-zoom");
         ghost.removeAttribute("data-tutorial-node");
         ghost.removeAttribute("data-node-type");
         ghost.removeAttribute("data-tutorial-library");
@@ -448,7 +442,6 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
       document.removeEventListener("keydown", blockKeyboard, true);
       cancelAnimationFrame(frame);
       clearTarget();
-      lens.dispose();
       setBox(null);
     };
     controller.stop = async () => { dispose(); await finished; };
@@ -456,7 +449,6 @@ export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, con
   }, [lessonId, tutorialRuntime, controller, onEvent]);
   return (
     <div className="tutorial-annotation" aria-hidden="true">
-      <div ref={lensHost} className="tutorial-lens" />
       {box && (
         <div
           className="tutorial-spotlight"

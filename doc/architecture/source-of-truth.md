@@ -7,7 +7,7 @@
 | 职责 | 源头 | 消费与派生关系 |
 | --- | --- | --- |
 | 操作与外观 | 前端既有 Canvas、Toolbar、RightPanel、用户设置、展开预览、图表与报告组件 | 普通操作与 TutorialRunner 使用同一控件和业务处理 |
-| 教学视觉引导 | [TutorialRunner.tsx](../../apps/frontend/src/components/tutorial/TutorialRunner.tsx) 与 _tutorial.scss | 逐帧定位真实控件；tutorialLens.ts 将计算样式、输入值和 canvas 像素镜像到隔离的只读展示层，源组件不缩放；遮罩与光标为纯标注 |
+| 教学视觉引导 | [TutorialRunner.tsx](../../apps/frontend/src/components/tutorial/TutorialRunner.tsx) 与 _tutorial.scss | 逐帧定位真实控件；仅遮罩、描边与光标标注，源组件不缩放，不显示镜像窗；样式基线见 [教学样式](../tutorial-style.md) |
 | 课程步骤 | [tutorialLessons.ts](../../apps/frontend/src/components/tutorial/tutorialLessons.ts) | 目录说明、演示脚本与步骤结果检查读取 |
 | 教学数据 | [tutorialScenario.json](../../apps/frontend/src/components/tutorial/tutorialScenario.json) | Python 模拟器采集，TutorialRuntime 读取和重放；不是独立执行规划算法 |
 | 会话生命周期 | [tutorialSession.ts](../../apps/frontend/src/components/tutorial/tutorialSession.ts) | 切换数据源，保存和恢复既有组件所消费的数据与界面状态 |

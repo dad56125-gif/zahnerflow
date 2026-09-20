@@ -6,6 +6,7 @@
 
 - [当前设计与教学边界](../.memory/design.md)
 - [教学功能来源与派生链](architecture/source-of-truth.md)
+- [教学样式定稿](tutorial-style.md)
 - [视觉规范](design-system.md)
 - [接口契约](data-contracts.md)
 - [CLI 使用](cli-agent.md)
