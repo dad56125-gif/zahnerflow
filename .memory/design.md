@@ -307,7 +307,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-微教程]
 
-当前规则：顶栏新建用户按钮右侧提供新手教程入口。目录沿用实验记录的共享 SplitPaneModal，左侧分类目录，右侧说明与实际界面录制的视频片段。开始演示时收起目录，在当前已挂载的 App 上显示教学控制、光标与聚光标注。主页面、Canvas、Toolbar、RightPanel、用户配置、执行预览、图表和实验记录沿用真实组件及处理链，不创建 iframe、第二个 React 根或业务控件副本。
+当前规则：顶栏新建用户按钮右侧提供新手教程入口。目录沿用实验记录的共享 SplitPaneModal，左侧分类目录，右侧课程概述与编号步骤说明，内容直接读取当前课程步骤。开始演示时收起目录，在当前已挂载的 App 上显示教学控制、光标与聚光标注。主页面、Canvas、Toolbar、RightPanel、用户配置、执行预览、图表和实验记录沿用真实组件及处理链，不创建 iframe、第二个 React 根或业务控件副本。
 
 数据边界：tutorialSession 在进入前等待用户既有防抖编辑与请求结束，保留原画布、执行、草稿、应用偏好、用户配置、属性页签和滚动位置；在目录关闭前准备课程前置数据。runtimeClient 保留同一个真实 Socket 和消费者订阅，会话内切换到 TutorialRuntime；教学写入只到内存对象和内存 Storage，曲线缓存切换独立 Map。退出时先停止脚本、释放指针和关闭教学打开的真实浮层，取消未完成的教学规划请求，再恢复原数据和存储入口。恢复持久化 store 时仍处于内存 Storage，不向真实 localStorage 回写快照。UserSettingsModal 的防抖保存校验工作区代次，旧教学设置不得在恢复原用户时重新保存。
 
@@ -315,11 +315,11 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 交互规则：步骤用语义属性定位真实控件，合成点击、输入失焦、拖拽、右键和长按，核对真实状态、参数、图表数据或可见结果后推进。不得操作被遮挡或禁用的目标。光标与标注由教学层绘制；拖拽影像克隆真实节点 DOM。捕获阶段拦截用户对业务界面的物理输入，只允许教学控制；暂停在原子操作完成后生效，隐藏页面暂停，Tab 在教学控制间移动，Escape 退出。取消拖拽只发送一次结束事件，退出长按释放指针；重播重建教学会话数据，不重建 App。控制条按目标位置避让并置于遮罩上方。目标逐帧检查实际位置、可见性、关闭状态和遮挡，菜单关闭或目标卸载立即移除高亮。教学用 62% 黑色遮罩压暗目标外区域；不提供局部放大、镜像窗或控件缩放，真实控件保持原有样式、尺寸和布局。教学视觉基线固定为遮罩、目标描边、光标、说明面板与顶部状态条，具体参数和维护约束见 doc/tutorial-style.md。
 
-来源：课程步骤及验收条件在 tutorialLessons.ts；质子导体 SOP 综合课程在 protonSopLessons.ts，分升温、预处理、发电和电解四章，来源及未给定参数边界见 doc/tutorial-proton-sop.md。课程可声明 initialNodes 作为隔离会话前置状态，播放时仍必须通过真实组件操作，同类型节点按实例 ID 检查参数。综合课程只进行配置与真实计划核对，不执行未补齐参数的完整实验，不用单 OCP 回放冒充复合测量；实验信息课程预置工作站和 OCP，不教授工作站选择；通过真实 Toolbar 展示缺少用户、项目、样品时的阻断提示，补齐后运行隔离样例。设备课程在 deviceLessons.ts，使用现有管式炉和 MFC 组件演示连接、扫描、程序读取及控制；Python 模拟器路由采集的教学响应和设备状态在 tutorialDeviceScenario.json，仅允许已采集动作回放。管式炉和 MFC hook 参与会话保存恢复，包括状态版本、历史与日志；回放状态版本按会话单调递增。课程映射见 doc/tutorial-devices.md。其他教学数据在 tutorialScenario.json；应用行为由各真实业务组件定义。public/tutorial/*.webm 是真实演示录屏裁剪的预览产物，组件、步骤或文案变化后重新录制，不将视频当作完整交互演示。来源登记见 doc/architecture/source-of-truth.md。
+来源：课程步骤及验收条件在 tutorialLessons.ts；质子导体 SOP 综合课程在 protonSopLessons.ts，分升温、预处理、发电和电解四章，来源及未给定参数边界见 doc/tutorial-proton-sop.md。课程可声明 initialNodes 作为隔离会话前置状态，播放时仍必须通过真实组件操作，同类型节点按实例 ID 检查参数。综合课程只进行配置与真实计划核对，不执行未补齐参数的完整实验，不用单 OCP 回放冒充复合测量；实验信息课程预置工作站和 OCP，不教授工作站选择；通过真实 Toolbar 展示缺少用户、项目、样品时的阻断提示，补齐后运行隔离样例。设备课程在 deviceLessons.ts，使用现有管式炉和 MFC 组件演示连接、扫描、程序读取及控制；Python 模拟器路由采集的教学响应和设备状态在 tutorialDeviceScenario.json，仅允许已采集动作回放。管式炉和 MFC hook 参与会话保存恢复，包括状态版本、历史与日志；回放状态版本按会话单调递增。课程映射见 doc/tutorial-devices.md。其他教学数据在 tutorialScenario.json；应用行为由各真实业务组件定义。目录不再加载视频，也不随应用发布教学视频；验收录屏只作为忽略目录中的开发证据。来源登记见 doc/architecture/source-of-truth.md。
 
 归属文件：apps/frontend/src/components/tutorial/、tutorialEnvironment.ts、runtimeClient.ts、App.tsx、UserContext.tsx、UserSettingsModal.tsx、曲线缓存 hooks、RightPanel.tsx、styles/_tutorial.scss。
 
-允许变化：增加教程、真实控件上的操作脚本、模拟器场景、配套预览视频与验收条件；会话参与者可以保存和恢复界面状态，不提供教学业务组件分支。
+允许变化：增加教程、真实控件上的操作脚本、模拟器场景、分步说明与验收条件；会话参与者可以保存和恢复界面状态，不提供教学业务组件分支。
 
 禁止事项：禁止 iframe 或重新挂载 App；禁止教学业务控件副本；禁止教学调用真实执行、停止、设备或持久化接口；禁止固定坐标和绕过遮挡、禁用校验；禁止用 store 赋值冒充正在教授的动作。仅初始化课程前置数据允许直接赋值。
 
@@ -327,7 +327,7 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [文档-架构与来源]
 
-当前规则：doc/README.md 是当前独立教学分支的文档导航；保留基线文档布局，不引入其他分支的文档搬迁。架构事实由本文件维护，演进原因与证据由 changelog.md 维护，应用发布变化由根 CHANGELOG.md 维护。doc/architecture/source-of-truth.md 当前限定教学功能的源头与派生链，明确源码、模拟器采集数据和人工录制视频的不同职责，不声称覆盖全项目来源审计。
+当前规则：doc/README.md 是当前独立教学分支的文档导航；保留基线文档布局，不引入其他分支的文档搬迁。架构事实由本文件维护，演进原因与证据由 changelog.md 维护，应用发布变化由根 CHANGELOG.md 维护。doc/architecture/source-of-truth.md 当前限定教学功能的源头与派生链，明确源码、模拟器采集数据和开发验收录屏的不同职责，不声称覆盖全项目来源审计。
 
 归属文件：doc/README.md、doc/architecture/source-of-truth.md、.memory/design.md、.memory/changelog.md。
 

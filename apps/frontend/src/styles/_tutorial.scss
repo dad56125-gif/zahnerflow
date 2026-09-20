@@ -11,13 +11,14 @@
     h3 { margin: 0 0 var(--size-sm); font-size: var(--size-lg); }
     p { margin: 0; color: var(--text-secondary); font-size: var(--size-sm); }
   }
-}
-.tutorial-preview-video {
-  display: block;
-  width: 100%;
-  max-height: 48vh;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--size-sm);
+  &__steps {
+    margin: 0;
+    padding-left: var(--size-xl);
+    li { padding-left: var(--size-xs); margin-bottom: var(--size-lg); }
+    li::marker { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    h4 { margin: 0 0 var(--size-xs); font-size: var(--size-sm); }
+    p { margin: 0; color: var(--text-secondary); font-size: var(--size-sm); line-height: 1.7; }
+  }
 }
 .tutorial-player {
   position: fixed;

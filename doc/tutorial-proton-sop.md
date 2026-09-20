@@ -61,4 +61,4 @@
 - [TutorialRunner.tsx](../apps/frontend/src/components/tutorial/TutorialRunner.tsx)：按节点ID验收同类型节点的参数和选中状态。
 - [PropertyInputs.tsx](../apps/frontend/src/components/property/PropertyInputs.tsx)：在原温度输入框和枚举选项增加语义定位属性，不增加教学专用业务控件。
 
-验收应逐步核对四章的真实动作与结果，独立检查最终模板的温度顺序、监测时长、LSV参考和终点、EIS设置；教学网络仅允许既有只读规划请求。确认菜单关闭清理、暂停退出恢复、单一App/Socket及课程片段播放。证据放在忽略目录 `.codex-run/tutorial/sop/`，预览视频由真实浏览器录屏裁剪。
+验收应逐步核对四章的真实动作与结果，独立检查最终模板的温度顺序、监测时长、LSV参考和终点、EIS设置；教学网络仅允许既有只读规划请求。确认菜单关闭清理、暂停退出恢复、单一App/Socket及目录步骤说明。证据放在忽略目录 `.codex-run/tutorial/sop/`，浏览器录屏仅作为验收证据。

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { SplitPaneModal, SplitPaneModalItem } from "../shared/SplitPaneModal";
 import { tutorialLessons } from "./tutorialLessons";
 
@@ -13,6 +13,10 @@ export default function TutorialModal({
 }) {
   const [lessonId, setLessonId] = useState("prepare");
   const lesson = tutorialLessons.find((item) => item.id === lessonId)!;
+  const overviewRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    overviewRef.current?.parentElement?.scrollTo({ top: 0 });
+  }, [lessonId]);
   return (
     <SplitPaneModal
       id="tutorial-overlay"
@@ -47,11 +51,18 @@ export default function TutorialModal({
         </nav>
       }
     >
-      <div className="tutorial-dialog__overview">
+      <div className="tutorial-dialog__overview" ref={overviewRef}>
         <h3>{lesson.title}</h3>
         <p>{lesson.summary}</p>
       </div>
-      <video key={lessonId} className="tutorial-preview-video" controls muted playsInline preload="metadata" src={`./tutorial/${lessonId}.webm`} aria-label={`${lesson.title}片段预览`} />
+      <ol className="tutorial-dialog__steps" aria-label={`${lesson.title}教学步骤`}>
+        {lesson.steps.map((step, index) => (
+          <li key={`${lessonId}-${index}`}>
+            <h4>{step.title}</h4>
+            <p>{step.text}</p>
+          </li>
+        ))}
+      </ol>
     </SplitPaneModal>
   );
 }

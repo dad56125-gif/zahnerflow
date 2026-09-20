@@ -8,8 +8,8 @@
 
 - 入口在顶栏“新建用户”按钮右侧。
 - 目录使用现有 `SplitPaneModal` 与 `SplitPaneModalItem`，与实验记录弹窗共享外壳、标题、关闭按钮、列表选中态和开关动画。
-- 左侧按分类列出课程及步数；右侧显示课程说明和真实界面录制的片段视频。
-- 视频宽度为容器的 100%，最大高度 48vh；边框使用 `--glass-border`，圆角使用 `--size-sm`。
+- 左侧按分类列出课程及步数；右侧显示课程概述及编号步骤列表，每步展示标题和解释，直接读取演示课程定义。
+- 步骤列表沿用共享弹窗右栏滚动区域；切换课程回到顶部，保留“开始界面演示”按钮。
 - “开始界面演示”沿用 `btn btn--sm btn--primary is-prominent`。开始后关闭目录，完整演示在当前应用界面中进行。
 
 ## 2. 演示视觉参数
@@ -53,14 +53,13 @@
 
 | 内容 | 文件 |
 | --- | --- |
-| 目录与片段视频 | [TutorialModal.tsx](../apps/frontend/src/components/tutorial/TutorialModal.tsx) |
+| 目录与分步说明 | [TutorialModal.tsx](../apps/frontend/src/components/tutorial/TutorialModal.tsx) |
 | 状态条、说明面板、避让与控制 | [TutorialPlayer.tsx](../apps/frontend/src/components/tutorial/TutorialPlayer.tsx) |
 | 真实操作、目标跟踪、光标及清理 | [TutorialRunner.tsx](../apps/frontend/src/components/tutorial/TutorialRunner.tsx) |
 | 教学专用样式 | [_tutorial.scss](../apps/frontend/src/styles/_tutorial.scss) |
 | 课程内容与验收条件 | [tutorialLessons.ts](../apps/frontend/src/components/tutorial/tutorialLessons.ts) |
 | 数据及原工作区恢复 | [tutorialSession.ts](../apps/frontend/src/components/tutorial/tutorialSession.ts) |
-| 派生视频 | [public/tutorial](../apps/frontend/public/tutorial) |
 
-样式调整必须同步本文与当前设计；原因和验证记录在 `.memory/changelog.md`。可见行为变化后重新录制对应预览，不保留展示旧效果的视频。来源关系见 [source-of-truth.md](architecture/source-of-truth.md)。
+样式调整必须同步本文与当前设计；原因和验证记录在 `.memory/changelog.md`。步骤文案由课程定义统一维护，目录不加载视频。来源关系见 [source-of-truth.md](architecture/source-of-truth.md)。
 
 验收重点：普通操作与教学的真实控件尺寸和行为一致；用户菜单关闭后无残留高亮；路径输入框不越出弹窗；小窗口下控制可用；暂停、重播、退出没有残留标注或输入状态；全过程没有放大窗、第二个 App 或额外 Socket。测试和录屏原始证据放在忽略目录 `.codex-run/tutorial/`，不提交测试源码。
