@@ -13,7 +13,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas || theme === 'light') return;
+        if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -21,6 +21,9 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const palette = getComputedStyle(document.documentElement);
         const background = palette.getPropertyValue('--app-background').trim();
         const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
+        const lightWaveColors = ['--wave-mist', '--wave-lilac', '--wave-warm'].map(token => palette.getPropertyValue(token).trim());
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let waveTime = 0;
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
         let animationFrameId = 0;
@@ -133,6 +136,30 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             // Clear
             ctx.fillStyle = background; // Deep background base
             ctx.fillRect(0, 0, width, height);
+
+            if (theme === 'light') {
+                if (advance) waveTime += 0.008;
+                // 浅色渐变托底，点阵沿连续波面起伏，不使用随机星座连线。
+                const wash = ctx.createLinearGradient(0, 0, width, height);
+                lightWaveColors.forEach((color, index) => wash.addColorStop(index / 2, color));
+                ctx.fillStyle = wash;
+                ctx.fillRect(0, 0, width, height);
+                for (let row = 0; row < 24; row++) {
+                    const depth = row / 23;
+                    for (let x = -24; x <= width + 24; x += 22) {
+                        const phase = x / Math.max(width, 1) * Math.PI * 2;
+                        const y = height * (0.18 + depth * 0.72)
+                            + Math.sin(phase * 1.15 + waveTime + depth * 3.2) * height * 0.075
+                            + Math.cos(phase * 0.65 - waveTime * 0.7 + depth * 2) * height * 0.045;
+                        const envelope = 0.5 + 0.5 * Math.sin(phase * 0.5 + depth * 2);
+                        ctx.beginPath();
+                        ctx.arc(x, y, 0.8 + depth * 0.65, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(${particleRgb}, ${0.12 + envelope * 0.22})`;
+                        ctx.fill();
+                    }
+                }
+                return;
+            }
 
             // === LAYER 1: AURORA WAVES (Background Color Flow) ===
             ctx.globalCompositeOperation = 'screen';
@@ -254,7 +281,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         };
 
         const start = () => {
-            if (isRunning || suspendedRef.current || document.hidden) return;
+            if (isRunning || suspendedRef.current || document.hidden || reducedMotion.matches) return;
             isRunning = true;
             // 恢复时从当前时间重新计帧，避免把暂停期间的时间差一次性补算成跳变。
             lastFrameTime = performance.now();
@@ -270,6 +297,11 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             start();
         };
 
+        const handleMotionChange = () => {
+            if (reducedMotion.matches) stop();
+            else start();
+        };
+        reducedMotion.addEventListener('change', handleMotionChange);
         controlsRef.current = { start, stop };
 
         window.addEventListener('resize', handleResize);
@@ -280,6 +312,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         start();
 
         return () => {
+            reducedMotion.removeEventListener('change', handleMotionChange);
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
