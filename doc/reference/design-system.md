@@ -68,3 +68,7 @@ Sass 入口保留 `base → layout → components` 的 CSS 层顺序，通过 `m
 
 浏览器截图 .codex-run/cascade-workspace.png 已审阅；动画、减少动态效果暂停、缩放、玻璃面板与深色隔离检查通过。
 本次版本检查、完整构建与 lint 通过。
+
+粉蓝双向浪涌（已完成）：上半部改为反向樱花粉浪涌，颗粒由波峰向上延伸；下半部保留海蓝向下垂落，交界以浅粉白波缘衔接。保持玻璃、布局及功能逻辑。
+
+版本检查、完整构建、lint 及浏览器动画、缩放、暂停和深色隔离检查通过；截图 .codex-run/pink-blue-workspace.png 已审阅。

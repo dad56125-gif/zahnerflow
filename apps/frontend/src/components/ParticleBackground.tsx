@@ -22,7 +22,8 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const background = palette.getPropertyValue('--app-background').trim();
         const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
         const cascadeColors = ['--cascade-surface', '--cascade-mid', '--cascade-deep', '--cascade-bottom'].map(token => palette.getPropertyValue(token).trim());
-        const cascadePaper = palette.getPropertyValue('--cascade-paper').trim();
+        const blossomColors = ['--cascade-blossom-top', '--cascade-blossom-edge'].map(token => palette.getPropertyValue(token).trim());
+        const blossomInk = palette.getPropertyValue('--cascade-blossom-ink-rgb').trim();
         const cascadeRim = palette.getPropertyValue('--cascade-rim').trim();
         const cascadeInk = palette.getPropertyValue('--cascade-ink-rgb').trim();
         const noise = (a: number, b = 0) => {
@@ -168,8 +169,30 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                     ctx.lineTo(width + 10, height);
                     ctx.closePath();
                 };
-                ctx.fillStyle = cascadePaper;
+                const blossomWash = ctx.createLinearGradient(0, 0, 0, height * 0.3);
+                blossomWash.addColorStop(0, blossomColors[0]);
+                blossomWash.addColorStop(1, blossomColors[1]);
+                ctx.fillStyle = blossomWash;
                 ctx.fillRect(0, 0, width, height);
+                // 上部使用同一波峰反向生长，颗粒向上运动，和下部海蓝相对。
+                cascadeColumns.forEach((column, index) => {
+                    const u = index / cascadeColumns.length;
+                    const x = u * width;
+                    const y = crest(u) - 12;
+                    const length = column.length * height * 0.55;
+                    ctx.strokeStyle = `rgba(${blossomInk}, 0.18)`;
+                    ctx.lineWidth = 0.7;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y - 3);
+                    ctx.lineTo(x + Math.sin(waveTime * 0.25 + u * 9) * 2, y - length);
+                    ctx.stroke();
+                    column.dots.forEach(dot => {
+                        if (!dot.visible) return;
+                        ctx.fillStyle = `rgba(${blossomInk}, ${dot.alpha})`;
+                        ctx.fillRect(x + Math.sin(dot.depth * 6 + u * 7 - waveTime * 0.25) * 1.4,
+                            y - dot.depth * length - (waveTime * 6 + column.offset) % 7, 1, dot.height);
+                    });
+                });
                 wavePath(-12);
                 ctx.fillStyle = cascadeRim;
                 ctx.fill();
