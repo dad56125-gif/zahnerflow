@@ -26,7 +26,7 @@ const STOP_LONG_PRESS_MS = 1000;
 
 const ToolbarIcon: React.FC<{ name: ToolbarIconName }> = ({ name }) => {
   const commonProps = {
-    className: 'btn-svg-icon',
+    className: `btn-svg-icon toolbar-icon--${name}`,
     viewBox: '0 0 24 24',
     'aria-hidden': true,
     focusable: false,

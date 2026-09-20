@@ -23,7 +23,7 @@ const errorMessage = (error: unknown, fallback: string): string => (
 
 const UserActionIcon: React.FC<{ name: UserActionIconName }> = ({ name }) => {
   const commonProps = {
-    className: 'btn-svg-icon',
+    className: `btn-svg-icon user-action-icon--${name}`,
     viewBox: '0 0 24 24',
     'aria-hidden': true,
     focusable: false,
