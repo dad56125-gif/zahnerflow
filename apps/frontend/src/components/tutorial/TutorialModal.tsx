@@ -43,7 +43,7 @@ export default function TutorialModal({
                   onClick={() => setLessonId(item.id)}
                 >
                   <span>{item.title}</span>
-                  <small>{item.steps.length} 步</small>
+                  <small>{item.outline.length} 个阶段</small>
                 </SplitPaneModalItem>
               ))}
             </section>
@@ -55,8 +55,8 @@ export default function TutorialModal({
         <h3>{lesson.title}</h3>
         <p>{lesson.summary}</p>
       </div>
-      <ol className="tutorial-dialog__steps" aria-label={`${lesson.title}教学步骤`}>
-        {lesson.steps.map((step, index) => (
+      <ol className="tutorial-dialog__steps" aria-label={`${lesson.title}教学阶段`}>
+        {lesson.outline.map((step, index) => (
           <li key={`${lessonId}-${index}`}>
             <h4>{step.title}</h4>
             <p>{step.text}</p>

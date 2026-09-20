@@ -1,3 +1,4 @@
+import { tutorialOutlines } from "./tutorialOutlines";
 import type { WorkflowNode } from "@zahnerflow/types";
 import { deviceLessons } from "./deviceLessons";
 import { protonSopLessons } from "./protonSopLessons";
@@ -29,6 +30,7 @@ export interface TutorialLesson {
   group: string;
   title: string;
   summary: string;
+  outline: { title: string; text: string }[];
   seed: "empty" | "ocp" | "sequence" | "loop";
   steps: TutorialStep[];
   initialNodes?: WorkflowNode[];
@@ -51,6 +53,7 @@ const run: TutorialStep = {
 export const tutorialLessons: TutorialLesson[] = [
   {
     id: "prepare",
+    outline: tutorialOutlines["prepare"],
     group: "开始之前",
     title: "准备实验信息",
     summary: "先观察缺少用户、项目和样品时的运行提示，再补齐信息。工作站与示例流程已预置。",
@@ -134,6 +137,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "add",
+    outline: tutorialOutlines["add"],
     group: "工作流编辑",
     title: "添加节点",
     summary: "点击或拖动左侧节点，将步骤加入画布。",
@@ -171,6 +175,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "reorder",
+    outline: tutorialOutlines["reorder"],
     group: "工作流编辑",
     title: "调整节点顺序",
     summary: "拖动节点，改变实验的执行顺序。",
@@ -201,6 +206,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "parameters",
+    outline: tutorialOutlines["parameters"],
     group: "工作流编辑",
     title: "修改节点参数",
     summary: "通过右侧属性栏修改并确认参数。",
@@ -238,6 +244,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "delete",
+    outline: tutorialOutlines["delete"],
     group: "工作流编辑",
     title: "删除节点",
     summary: "右键打开确认框，确认后移除节点。",
@@ -267,6 +274,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "loop",
+    outline: tutorialOutlines["loop"],
     group: "流程与执行",
     title: "创建循环",
     summary: "添加成对的循环边界，并设置重复次数。",
@@ -319,6 +327,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "preview",
+    outline: tutorialOutlines["preview"],
     group: "流程与执行",
     title: "查看执行步骤",
     summary: "打开实际执行计划，核对循环与自动边界。",
@@ -359,6 +368,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "run",
+    outline: tutorialOutlines["run"],
     group: "流程与执行",
     title: "开始运行",
     summary: "观察运行按钮、节点状态与实际进度组件。",
@@ -381,6 +391,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "chart",
+    outline: tutorialOutlines["chart"],
     group: "流程与执行",
     title: "查看测量曲线",
     summary: "在实际测量面板中选择节点并查看曲线。",
@@ -414,6 +425,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "stop",
+    outline: tutorialOutlines["stop"],
     group: "流程与执行",
     title: "长按停止与重置",
     summary: "长按停止，等待确认，再重置执行状态。",
@@ -461,6 +473,7 @@ export const tutorialLessons: TutorialLesson[] = [
   },
   {
     id: "records",
+    outline: tutorialOutlines["records"],
     group: "实验记录",
     title: "查看与复用记录",
     summary: "查看已有实验报告，并将流程重新加载到画布。",

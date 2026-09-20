@@ -1,3 +1,4 @@
+import { tutorialOutlines } from "./tutorialOutlines";
 import type { TutorialLesson, TutorialStep } from "./tutorialLessons";
 
 const furnace = ".workspace-device-modal--furnace";
@@ -13,7 +14,7 @@ const connection = (modal: string, name: string): TutorialStep[] => [
 
 export const deviceLessons: TutorialLesson[] = [
   {
-    id: "furnace-control", group: "设备连接与控制", title: "连接与控制管式炉",
+    id: "furnace-control", outline: tutorialOutlines["furnace-control"], group: "设备连接与控制", title: "连接与控制管式炉",
     summary: "选择端口并连接，读取程序段，辨认 PV/SV，演示运行、保温、继续、停止与断开。", seed: "empty",
     steps: [
       ...connection(furnace, "管式炉"),
@@ -30,7 +31,7 @@ export const deviceLessons: TutorialLesson[] = [
     ],
   },
   {
-    id: "mfc-control", group: "设备连接与控制", title: "连接与控制流量计",
+    id: "mfc-control", outline: tutorialOutlines["mfc-control"], group: "设备连接与控制", title: "连接与控制流量计",
     summary: "连接并自动扫描 MFC，核对气体及量程，设置 N₂ 流量、观察反馈、归零后断开。", seed: "empty",
     steps: [
       ...connection(mfc, "流量计"),

@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 操作与外观 | 前端既有 Canvas、Toolbar、RightPanel、用户设置、展开预览、图表与报告组件 | 普通操作与 TutorialRunner 使用同一控件和业务处理 |
 | 教学视觉引导 | [TutorialRunner.tsx](../../apps/frontend/src/components/tutorial/TutorialRunner.tsx) 与 _tutorial.scss | 逐帧定位真实控件；仅遮罩、描边与光标标注，源组件不缩放，不显示镜像窗；样式基线见 [教学样式](../tutorial-style.md) |
-| 课程步骤 | [tutorialLessons.ts](../../apps/frontend/src/components/tutorial/tutorialLessons.ts) | 目录概述、编号步骤说明、演示脚本与步骤结果检查共同读取；不再加载视频 |
+| 课程步骤 | [tutorialLessons.ts](../../apps/frontend/src/components/tutorial/tutorialLessons.ts) | 课程元数据与完整演示步骤；outline 必填并引用 tutorialOutlines.ts 的总结性阶段，目录只读取 outline，演示与验收只读取 steps；不加载视频 |
 | SOP 综合课程 | 用户提供的 LAB-ELEC-001 V1.0 与 [课程映射说明](../tutorial-proton-sop.md) | protonSopLessons.ts 定义四章、教学前置模板及操作检查；原文未给定值不能当作已确认实验参数 |
 | 教学数据 | [tutorialScenario.json](../../apps/frontend/src/components/tutorial/tutorialScenario.json) | Python 模拟器采集，TutorialRuntime 读取和重放；不是独立执行规划算法 |
 | 设备连接与控制 | [deviceLessons.ts](../../apps/frontend/src/components/tutorial/deviceLessons.ts) 与 [课程说明](../tutorial-devices.md) | 使用现有管式炉、MFC 窗口、连接面板和设备 hook；tutorialDeviceScenario.json 存放 Python 模拟器真实路由采集结果，含缺失实验信息的 409 响应 |

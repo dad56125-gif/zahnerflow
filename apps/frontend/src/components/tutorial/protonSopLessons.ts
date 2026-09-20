@@ -1,3 +1,4 @@
+import { tutorialOutlines } from "./tutorialOutlines";
 import type { NodeType, WorkflowNode } from '@zahnerflow/types';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import type { TutorialLesson, TutorialStep } from './tutorialLessons';
@@ -99,11 +100,11 @@ function measurementCourse(electrolysis: boolean): TutorialLesson {
   steps.push(select(`sop-${prefix}-return`, '全部测试后回到 650°C', 'SOP 要求升回 650°C；回温速率未给出，正式使用前确认。'),
     ...preview('核对四组 650 → 600 → 550 → 500°C，每组稳定观察后按 OCV → LSV → EIS 顺序；最后回到 650°C。'),
     note('完成配置教学，正式执行前补齐条件', '再次核对气路、湿度、连续OCV方案、阈值判定、扫描速度和保护限值。遇到异常停止后续步骤并报告。本教程不启动完整实验。', anchor('run')));
-  return { id: `sop-${prefix}`, group, title: electrolysis ? '04 电解模式与四温度点复核' : '03 发电模式与四温度点配置', summary: `基于 LAB-ELEC-001 V1.0，实操 OCV 参考、${end}V 终点、EIS 单位换算与完整降温计划。未给定参数明确标注；只做配置与核对。`, seed: 'empty', initialNodes: nodes, steps };
+  return { id: `sop-${prefix}`, outline: tutorialOutlines[electrolysis ? "sop-ec" : "sop-fc"], group, title: electrolysis ? '04 电解模式与四温度点复核' : '03 发电模式与四温度点配置', summary: `基于 LAB-ELEC-001 V1.0，实操 OCV 参考、${end}V 终点、EIS 单位换算与完整降温计划。未给定参数明确标注；只做配置与核对。`, seed: 'empty', initialNodes: nodes, steps };
 }
 
 export const protonSopLessons: TutorialLesson[] = [
-  { id: 'sop-heating', group, title: '01 分段升温与保温编排', summary: '从真实节点配置 93°C、260°C、665°C 三段升温和两段保温，核对时间单位及执行顺序。', seed: 'empty', initialNodes: heatingNodes, steps: heatSteps },
-  { id: 'sop-preparation', group, title: '02 预处理与 OCV 放行判据', summary: '学习 30min、2h、1h 三个监测时段，核对预处理气氛、切换条件及人工放行边界。', seed: 'empty', initialNodes: preNodes, steps: preSteps },
+  { id: 'sop-heating', outline: tutorialOutlines['sop-heating'], group, title: '01 分段升温与保温编排', summary: '从真实节点配置 93°C、260°C、665°C 三段升温和两段保温，核对时间单位及执行顺序。', seed: 'empty', initialNodes: heatingNodes, steps: heatSteps },
+  { id: 'sop-preparation', outline: tutorialOutlines['sop-preparation'], group, title: '02 预处理与 OCV 放行判据', summary: '学习 30min、2h、1h 三个监测时段，核对预处理气氛、切换条件及人工放行边界。', seed: 'empty', initialNodes: preNodes, steps: preSteps },
   measurementCourse(false), measurementCourse(true),
 ];
