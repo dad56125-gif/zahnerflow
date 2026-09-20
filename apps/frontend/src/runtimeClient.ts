@@ -1,8 +1,8 @@
-import { tutorialTransport } from './tutorialEnvironment';
+import { onTutorialTransportChange, tutorialTransport } from './tutorialEnvironment';
 import { io, Socket } from 'socket.io-client';
 import { getWsUrl } from './config/env.config';
 import { getDesktopRuntimeBaseUrl } from './desktopBridge';
-import { DEVICE_STATUS_UPDATE } from './eventContracts';
+import { DEVICE_STATUS_UPDATE, RUNTIME_CONNECTED, WORKFLOW_SNAPSHOT } from './eventContracts';
 import type {
   RuntimeDeviceStatusEnvelope,
   UserListResponse, UserSettingsResponse, CreateUserResponse, ExecutionReport,
@@ -50,21 +50,42 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+const pendingRequests = new Set<Promise<unknown>>();
+const teachingRequests = new Set<AbortController>();
+export function cancelTeachingRequests() {
+  teachingRequests.forEach(controller => controller.abort());
+}
+export async function settleRuntimeRequests() {
+  do {
+    await Promise.allSettled([...pendingRequests]);
+    // Let business continuations finish and register dependent requests before switching scope.
+    await new Promise(resolve => window.setTimeout(resolve, 0));
+  } while (pendingRequests.size);
+}
+
 export async function runtimeRequest<T>(
   method: HttpMethod,
   endpoint: string,
   body?: RequestBody,
   params?: QueryParams
 ): Promise<T> {
-  if (tutorialTransport) return await tutorialTransport.request(method, endpoint, body, () => runtimeHttpRequest<T>(method, endpoint, body, params)) as T;
-  return runtimeHttpRequest<T>(method, endpoint, body, params);
+  const controller = new AbortController();
+  if (tutorialTransport) teachingRequests.add(controller);
+  const request = tutorialTransport
+    ? tutorialTransport.request(method, endpoint, body, () => runtimeHttpRequest<T>(method, endpoint, body, params, controller.signal))
+    : runtimeHttpRequest<T>(method, endpoint, body, params);
+  pendingRequests.add(request);
+  try { return await request as T; }
+  finally { pendingRequests.delete(request); teachingRequests.delete(controller); }
+
 }
 
-async function runtimeHttpRequest<T>(method: HttpMethod, endpoint: string, body?: RequestBody, params?: QueryParams): Promise<T> {
+async function runtimeHttpRequest<T>(method: HttpMethod, endpoint: string, body?: RequestBody, params?: QueryParams, signal?: AbortSignal): Promise<T> {
   const runtimeBaseUrl = getDesktopRuntimeBaseUrl();
   const requestEndpoint = runtimeBaseUrl && endpoint.startsWith('/') ? `${runtimeBaseUrl}${endpoint}` : endpoint;
   const url = `${requestEndpoint}${queryString(params)}`;
   const init: RequestInit = {
+    signal,
     method,
     headers: { 'Content-Type': 'application/json' },
   };
@@ -108,11 +129,62 @@ export type RuntimeEventHandler<T = unknown> = (payload: T) => void;
 
 class RuntimeSocket {
   private socket: Socket | null = null;
+  liveSnapshot: ExecutionSnapshot | null = null;
+  private liveRuntimeId: string | null = null;
+  private subscriptions = new Map<string, Set<RuntimeEventHandler>>();
+  private teachingUnsubscribe: (() => void)[] = [];
+  private liveObservers = new Set<(event: string, payload: unknown) => void>();
+  private deferredLiveEvents: { event: string; payload: unknown }[] = [];
+
+  constructor() {
+    onTutorialTransportChange(() => {
+      this.teachingUnsubscribe.splice(0).forEach(off => off());
+      if (tutorialTransport) {
+        for (const event of this.subscriptions.keys()) this.bindTeachingEvent(event);
+        tutorialTransport.connect();
+      }
+    });
+  }
+
+  private dispatch(event: string, payload: unknown) {
+    this.subscriptions.get(event)?.forEach(handler => handler(payload));
+  }
+
+  private receiveLive = (event: string, payload: unknown) => {
+    if (event === WORKFLOW_SNAPSHOT) this.liveSnapshot = payload as ExecutionSnapshot;
+    if (event === RUNTIME_CONNECTED) this.liveRuntimeId = (payload as { runtimeId: string }).runtimeId;
+    if (tutorialTransport) this.deferredLiveEvents.push({ event, payload });
+    else this.dispatch(event, payload);
+    this.liveObservers.forEach(observer => observer(event, payload));
+  };
+
+  private bindTeachingEvent(event: string) {
+    const source = tutorialTransport;
+    if (!source || event === 'connect' || event === 'disconnect') return;
+    this.teachingUnsubscribe.push(source.on(event, payload => {
+      if (tutorialTransport === source) this.dispatch(event, payload);
+    }));
+  }
+
+  onLiveEvent(observer: (event: string, payload: unknown) => void) {
+    this.liveObservers.add(observer);
+    return () => { this.liveObservers.delete(observer); };
+  }
+
+  restoreLiveEvents(runtimeId: string | null) {
+    if (tutorialTransport) throw new Error('请先退出教学数据源');
+    const restoredRuntimeId = runtimeId ?? this.liveRuntimeId;
+    if (restoredRuntimeId) this.dispatch(RUNTIME_CONNECTED, { runtimeId: restoredRuntimeId });
+    this.deferredLiveEvents.splice(0).forEach(({ event, payload }) => this.dispatch(event, payload));
+  }
 
   connectSocket(): void {
     if (tutorialTransport) { tutorialTransport.connect(); return; }
     if (this.socket) return;
     this.socket = io(getWsUrl(), { transports: ['websocket'], timeout: 5000 });
+    this.socket.onAny(this.receiveLive);
+    this.socket.on('connect', () => this.receiveLive('connect', undefined));
+    this.socket.on('disconnect', reason => this.receiveLive('disconnect', reason));
   }
 
   disconnectSocket(): void {
@@ -122,22 +194,22 @@ class RuntimeSocket {
   }
 
   on<T = unknown>(event: string, handler: RuntimeEventHandler<T>): () => void {
-    if (tutorialTransport) return tutorialTransport.on(event, handler as RuntimeEventHandler);
+    let handlers = this.subscriptions.get(event);
+    if (!handlers) {
+      handlers = new Set();
+      this.subscriptions.set(event, handlers);
+      this.bindTeachingEvent(event);
+    }
+    handlers.add(handler as RuntimeEventHandler);
     this.connectSocket();
-    this.socket?.on(event, handler as RuntimeEventHandler);
-    return () => this.socket?.off(event, handler as RuntimeEventHandler);
+    return () => { handlers.delete(handler as RuntimeEventHandler); };
   }
 
   onDeviceStatus(handler: RuntimeEventHandler<RuntimeDeviceStatusEnvelope>): () => void {
     return this.on(deviceStatusUpdateEvent, handler);
   }
 
-  onConnect(handler: () => void): () => void {
-    if (tutorialTransport) return tutorialTransport.on('connect', handler);
-    this.connectSocket();
-    this.socket?.on('connect', handler);
-    return () => this.socket?.off('connect', handler);
-  }
+  onConnect(handler: () => void): () => void { return this.on('connect', handler); }
 
   emit(event: string, payload?: unknown): void {
     if (tutorialTransport) { tutorialTransport.emit(event, payload); return; }

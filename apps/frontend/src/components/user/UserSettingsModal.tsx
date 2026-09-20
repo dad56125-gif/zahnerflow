@@ -1,3 +1,4 @@
+import { workspaceGeneration, trackWorkspaceEdit } from '../../tutorialEnvironment';
 import { AvatarCropDialog } from './AvatarCropDialog';
 import React, { useState, useEffect, useRef } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
@@ -125,6 +126,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // 头像裁剪与预设相关状态
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const skipNextAutoSaveRef = useRef(false);
+    const settingsGenerationRef = useRef(workspaceGeneration);
     const [cropImage, setCropImage] = useState<string | null>(null);
     
     // 裁剪框常数
@@ -196,12 +198,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         if (!isOpen || !currentUser) return;
 
         let active = true;
+        const generation = workspaceGeneration;
         const loadSettings = async () => {
             setLoading(true);
             setError('');
             try {
                 const response = await runtimeClient.users.getSettings<UserSettingsResponse>(currentUser);
                 if (active && response.success && response.settings) {
+                    settingsGenerationRef.current = generation;
                     skipNextAutoSaveRef.current = true;
                     setSettings(response.settings);
                 }
@@ -285,14 +289,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     // 自动保存（防抖）
     useEffect(() => {
-        if (!settings || !currentUser) return;
+        if (!settings || !currentUser || settingsGenerationRef.current !== workspaceGeneration) return;
         if (skipNextAutoSaveRef.current) {
             skipNextAutoSaveRef.current = false;
             return;
         }
 
         const settingsSnapshot = settings;
+        const generation = settingsGenerationRef.current;
+        let settled!: () => void;
+        trackWorkspaceEdit(new Promise<void>(resolve => { settled = resolve; }));
         const timeoutId = setTimeout(async () => {
+            if (generation !== workspaceGeneration) { settled(); return; }
             setSaving(true);
             setError('');
             try {
@@ -309,10 +317,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 setError('保存配置失败');
             } finally {
                 setSaving(false);
+                settled();
             }
         }, 800);
 
-        return () => clearTimeout(timeoutId);
+        return () => { clearTimeout(timeoutId); settled(); };
     }, [currentUser, setCurrentUserAvatar, setFilePathConfig, settings]);
 
     const updateFilePath = (field: keyof UserSettings['filePath'], value: string) => {

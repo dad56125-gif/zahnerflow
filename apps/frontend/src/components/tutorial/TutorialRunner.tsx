@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { getInstanceByDom } from "echarts/core";
-import type { WorkflowNode, NodeType } from "@zahnerflow/types";
-import { appStorage, tutorialContext } from "../../tutorialEnvironment";
+import { appStorage } from "../../tutorialEnvironment";
 import { useCanvasStore } from "../../state/canvasStore";
 import { useExecutionStore } from "../../state/executionStateBridge";
-import { createWorkflowNode } from "../../utils/nodeUtilities";
 import {
   tutorialLessons,
   anchor,
   type TutorialCheck,
   type TutorialStep,
 } from "./tutorialLessons";
-import { tutorialRuntime } from "./tutorialRuntime";
-import scenario from "./tutorialScenario.json";
+import type { TutorialRuntime } from "./tutorialRuntime";
 
 function tutorialFacts() {
   const { nodes, selectedNodeId } = useCanvasStore.getState();
@@ -71,15 +68,37 @@ function passes(check: TutorialCheck) {
   return true;
 }
 
-export default function TutorialRunner() {
+export interface TutorialController {
+  send: (command: string) => void;
+  stop: () => Promise<void>;
+}
+export interface TutorialEvent {
+  type: string;
+  lessonId?: string;
+  step?: number;
+  phase?: string;
+  playing?: boolean;
+  error?: string;
+  rect?: DOMRect | null;
+  facts?: ReturnType<typeof tutorialFacts>;
+  backward?: boolean;
+}
+export default function TutorialRunner({ lessonId, runtime: tutorialRuntime, controller, onEvent }: {
+  lessonId: string;
+  runtime: TutorialRuntime;
+  controller: TutorialController;
+  onEvent: (event: TutorialEvent) => void;
+}) {
   const [box, setBox] = useState<DOMRect | null>(null);
   const [cursor, setCursor] = useState({ x: -100, y: -100, pressed: false });
   useEffect(() => {
     const lesson = tutorialLessons.find(
-      (item) => item.id === tutorialContext?.lessonId,
+      (item) => item.id === lessonId,
     );
     if (!lesson) return;
     let disposed = false;
+    const abort = new AbortController();
+    const report = (event: TutorialEvent, _origin?: string) => onEvent(event);
     let playing = false;
     let single = false;
     let current = 0;
@@ -89,8 +108,8 @@ export default function TutorialRunner() {
         ? highlighted.getBoundingClientRect()
         : null;
       setBox(rect);
-      window.parent.postMessage(
-        { type: "tutorial-target", rect: rect?.toJSON() ?? null },
+      report(
+        { type: "tutorial-target", rect },
         window.location.origin,
       );
     };
@@ -98,7 +117,7 @@ export default function TutorialRunner() {
     document.addEventListener("scroll", trackTarget, true);
     const emit = (phase: string, error?: string) => {
       if (!disposed)
-        window.parent.postMessage(
+        report(
           {
             type: "tutorial-state",
             lessonId: lesson.id,
@@ -112,7 +131,11 @@ export default function TutorialRunner() {
         );
     };
     const sleep = async (ms: number) => {
-      await new Promise((resolve) => window.setTimeout(resolve, ms));
+      await new Promise<void>((resolve) => {
+        const done = () => { window.clearTimeout(timer); abort.signal.removeEventListener('abort', done); resolve(); };
+        const timer = window.setTimeout(done, ms);
+        abort.signal.addEventListener('abort', done, { once: true });
+      });
       if (disposed) throw new Error("disposed");
     };
     const until = async <T,>(
@@ -134,47 +157,41 @@ export default function TutorialRunner() {
         () => document.querySelector<HTMLElement>(selector),
         `未找到操作目标：${selector}`,
       );
-    const click = async (selector: string) => {
-      (await find(selector)).click();
-      await sleep(80);
-    };
-    const onMessage = (event: MessageEvent) => {
-      if (
-        event.origin !== window.location.origin ||
-        event.source !== window.parent ||
-        event.data?.type !== "tutorial-command"
-      )
-        return;
-      if (event.data.command === "play") {
+    controller.send = (command: string) => {
+      if (command === 'play' || command === 'next') {
         playing = true;
-        single = false;
+        single = command === 'next';
         tutorialRuntime.paused = false;
       }
-      if (event.data.command === "pause") playing = false;
-      if (event.data.command === "next") {
-        playing = true;
-        single = true;
-        tutorialRuntime.paused = false;
-      }
+      if (command === 'pause') playing = false;
     };
-    window.addEventListener("message", onMessage);
     const blockKeyboard = (event: KeyboardEvent) => {
       if (!event.isTrusted) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (event.key === "Escape")
-        window.parent.postMessage(
-          { type: "tutorial-dismiss" },
-          window.location.origin,
-        );
-      if (event.key === "Tab")
-        window.parent.postMessage(
-          { type: "tutorial-focus", backward: event.shiftKey },
-          window.location.origin,
-        );
+      const inControls = event.target instanceof Element && event.target.closest('[data-tutorial-controls]');
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-tutorial-controls] button:not(:disabled)')];
+        const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        const next = current < 0 ? (event.shiftKey ? buttons.length - 1 : 0) : (current + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+        buttons[next]?.focus();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        report({ type: 'tutorial-dismiss' });
+      } else if (!inControls) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
     };
     document.addEventListener("keydown", blockKeyboard, true);
-    // Physical input is intercepted by the host player. Only these actions reach business handlers.
+    const blockPointer = (event: Event) => {
+      if (!event.isTrusted || (event.target instanceof Element && event.target.closest('[data-tutorial-controls]'))) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    const inputEvents = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'wheel', 'touchstart'];
+    inputEvents.forEach(name => document.addEventListener(name, blockPointer, { capture: true, passive: false }));
     const act = async (step: TutorialStep) => {
       const target = await find(step.target);
       highlighted = target;
@@ -212,9 +229,11 @@ export default function TutorialRunner() {
         target.dispatchEvent(new PointerEvent("pointerdown", pointer));
         target.dispatchEvent(new MouseEvent("mousedown", pointer));
         target.focus();
-        await sleep(100);
-        target.dispatchEvent(new PointerEvent("pointerup", pointer));
-        target.dispatchEvent(new MouseEvent("mouseup", pointer));
+        try { await sleep(100); }
+        finally {
+          target.dispatchEvent(new PointerEvent("pointerup", pointer));
+          target.dispatchEvent(new MouseEvent("mouseup", pointer));
+        }
         target.click();
       }
       if (step.action === "context") {
@@ -308,15 +327,13 @@ export default function TutorialRunner() {
               clientY: to.y,
             }),
           );
-          target.dispatchEvent(
-            new DragEvent("dragend", {
-              bubbles: true,
-              dataTransfer,
-              clientX: to.x,
-              clientY: to.y,
-            }),
-          );
         } finally {
+          // A drag has one terminal event; cancellation ends at its original position.
+          target.dispatchEvent(new DragEvent('dragend', {
+            bubbles: true, dataTransfer,
+            clientX: disposed ? point.x : to.x,
+            clientY: disposed ? point.y : to.y,
+          }));
           ghost.remove();
           target.style.opacity = "";
         }
@@ -357,40 +374,6 @@ export default function TutorialRunner() {
         const splash = document.getElementById('loadingScreen');
         return !splash || getComputedStyle(splash).display === 'none';
       }, '应用仍在加载');
-      if (lesson.id !== "prepare") {
-        await click(anchor("station"));
-        await click('[data-tutorial-workstation="zahner-zennium"]');
-        await until(
-          () =>
-            document.querySelector('[data-tutorial-library="ocp_measurement"]'),
-          "节点库未加载",
-        );
-        const create = (type: NodeType, id: string): WorkflowNode => ({
-          ...createWorkflowNode(type),
-          id,
-        });
-        const ocp = structuredClone(scenario.final.nodes[0]) as WorkflowNode;
-        const nodes =
-          lesson.seed === "empty"
-            ? []
-            : lesson.seed === "ocp"
-              ? [ocp]
-              : lesson.seed === "sequence"
-                ? [
-                    ocp,
-                    create("wait_delay", "tutorial-wait"),
-                    create("eis_potentiostatic", "tutorial-eis"),
-                  ]
-                : [
-                    {
-                      ...create("loop_start", "tutorial-loop"),
-                      config: { loopCount: 3 },
-                    },
-                    ocp,
-                    create("loop_end", "tutorial-end"),
-                  ];
-        useCanvasStore.getState().setNodes(nodes);
-      }
       await sleep(400);
       emit("ready");
       for (current = 0; current < lesson.steps.length; current++) {
@@ -424,21 +407,25 @@ export default function TutorialRunner() {
       setBox(null);
       emit("complete");
     };
-    void run().catch((error) => {
+    const finished = run().catch((error) => {
       if (!disposed) {
         playing = false;
         tutorialRuntime.paused = true;
         emit("error", error instanceof Error ? error.message : String(error));
       }
     });
-    return () => {
+    const dispose = () => {
       disposed = true;
-      window.removeEventListener("message", onMessage);
+      abort.abort();
+      if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
+      inputEvents.forEach(name => document.removeEventListener(name, blockPointer, true));
       document.removeEventListener("keydown", blockKeyboard, true);
       window.removeEventListener("resize", trackTarget);
       document.removeEventListener("scroll", trackTarget, true);
     };
-  }, []);
+    controller.stop = async () => { dispose(); await finished; };
+    return dispose;
+  }, [lessonId, tutorialRuntime, controller, onEvent]);
   return (
     <div className="tutorial-annotation" aria-hidden="true">
       {box && (

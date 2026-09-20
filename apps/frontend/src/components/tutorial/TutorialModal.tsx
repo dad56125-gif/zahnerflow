@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { SplitPaneModal, SplitPaneModalItem } from "../shared/SplitPaneModal";
-import { TutorialFrame } from "./TutorialFrame";
 import { tutorialLessons } from "./tutorialLessons";
 
 export default function TutorialModal({
   onClose,
   onPlay,
+  preparing = false,
 }: {
   onClose: () => void;
   onPlay: (lessonId: string) => void;
+  preparing?: boolean;
 }) {
   const [lessonId, setLessonId] = useState("prepare");
   const lesson = tutorialLessons.find((item) => item.id === lessonId)!;
@@ -21,8 +22,8 @@ export default function TutorialModal({
       onClose={onClose}
       sidebarLabel="教程目录"
       actions={
-        <button className="btn btn--sm btn--primary is-prominent" onClick={() => onPlay(lessonId)}>
-          ▶ 开始界面演示
+        <button className="btn btn--sm btn--primary is-prominent" disabled={preparing} onClick={() => onPlay(lessonId)}>
+          {preparing ? '正在准备…' : '▶ 开始界面演示'}
         </button>
       }
       sidebar={
@@ -50,7 +51,7 @@ export default function TutorialModal({
         <h3>{lesson.title}</h3>
         <p>{lesson.summary}</p>
       </div>
-      <TutorialFrame key={lessonId} lessonId={lessonId} preview onExit={onClose} />
+      <video key={lessonId} className="tutorial-preview-video" controls muted playsInline preload="metadata" src={`./tutorial/${lessonId}.webm`} aria-label={`${lesson.title}片段预览`} />
     </SplitPaneModal>
   );
 }

@@ -29,7 +29,8 @@ import { isFurnaceReady, isMfcReady } from './modules/common/runtimeDeviceSelect
 import { DeviceModal } from './components/furnace/FurnaceDeviceModal';
 const TutorialModal = lazy(() => import('./components/tutorial/TutorialModal'));
 const TutorialPlayer = lazy(() => import('./components/tutorial/TutorialPlayer'));
-import { tutorialContext } from './tutorialEnvironment';
+import { registerWorkspaceParticipant } from './tutorialEnvironment';
+import { createTutorialSession, type TutorialSession } from './components/tutorial/tutorialSession';
 const ReportGeneratorModal = lazy(() => import('./components/report/ReportGeneratorModal'));
 import { SimulatorControlPanel } from './components/simulator/SimulatorControlPanel';
 import { UserProvider } from './components/shared/UserContext';
@@ -78,6 +79,8 @@ const AppContent: React.FC = () => {
   // 报告相关状态
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialLesson, setTutorialLesson] = useState<string | null>(null);
+  const [tutorialSession, setTutorialSession] = useState<TutorialSession | null>(null);
+  const [tutorialPreparing, setTutorialPreparing] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportRequested, setReportRequested] = useState(false);
 
@@ -93,7 +96,7 @@ const AppContent: React.FC = () => {
     [executionCommand, systemState],
   );
   const executionActive = execution.is.active || execution.command.pending === 'start';
-  useEffect(() => { if (executionActive) { setShowTutorial(false); setTutorialLesson(null); } }, [executionActive]);
+  useEffect(() => { if (executionActive && !tutorialSession) setShowTutorial(false); }, [executionActive, tutorialSession]);
   const furnaceReady = isFurnaceReady(furnaceState);
   const mfcReady = isMfcReady(mfcState);
   const simulatorActive = hasActiveSimulator(simulatorSettings);
@@ -165,6 +168,34 @@ const AppContent: React.FC = () => {
     }
   }, [systemState, selectedWorkstation, applyWorkstation]);
 
+  useLayoutEffect(() => registerWorkspaceParticipant(lessonId => {
+    const previous = { selectedWorkstation, suppressedEtaNodeFingerprint, hydrated: hydratedExecutionId.current };
+    setSelectedWorkstation(lessonId === 'prepare' ? null : 'zahner-zennium');
+    setSuppressedEtaNodeFingerprint(null);
+    hydratedExecutionId.current = null;
+    return () => {
+      setSelectedWorkstation(previous.selectedWorkstation);
+      setSuppressedEtaNodeFingerprint(previous.suppressedEtaNodeFingerprint);
+      hydratedExecutionId.current = previous.hydrated;
+      setShowMeasurementDashboard(false);
+      setShowReportModal(false);
+      setFixedDevice(null);
+      setShowSimulatorPanel(false);
+    };
+  }), [selectedWorkstation, suppressedEtaNodeFingerprint]);
+
+  const startTutorial = async (id: string) => {
+    setTutorialPreparing(true);
+    try {
+      const session = await createTutorialSession(id);
+      setShowTutorial(false);
+      setTutorialSession(session);
+      setTutorialLesson(id);
+    } catch (error) {
+      useAppStore.getState().addNotification({ type: 'error', title: '无法开始教学', message: error instanceof Error ? error.message : String(error) });
+    } finally { setTutorialPreparing(false); }
+  };
+
   // 玻璃态效果
   useEffect(() => {
     const observer = setupAutoGlassEffect();
@@ -200,8 +231,8 @@ const AppContent: React.FC = () => {
       <ParticleBackground suspended={backgroundSuspended} />
       <WindowControls expanded={desktopWindowExpanded} />
       <TopBar
-        onTutorialOpen={tutorialContext ? undefined : () => setShowTutorial(true)}
-        tutorialDisabled={executionActive}
+        onTutorialOpen={() => setShowTutorial(true)}
+        tutorialDisabled={executionActive || tutorialPreparing || !!tutorialSession}
         fixedDevice={fixedDevice}
         onDeviceClick={(d) => setFixedDevice(d)}
         onWorkstationSelect={handleWorkstationSelect}
@@ -213,8 +244,8 @@ const AppContent: React.FC = () => {
         hasRunMetadataWarning={Boolean(runMetadataWarning)}
       />
 
-      {showTutorial && <Suspense fallback={null}><TutorialModal onClose={() => setShowTutorial(false)} onPlay={id => { setShowTutorial(false); setTutorialLesson(id); }} /></Suspense>}
-      {tutorialLesson && <Suspense fallback={null}><TutorialPlayer lessonId={tutorialLesson} onClose={() => { setTutorialLesson(null); setShowTutorial(true); }} /></Suspense>}
+      {showTutorial && <Suspense fallback={null}><TutorialModal preparing={tutorialPreparing} onClose={() => setShowTutorial(false)} onPlay={id => { void startTutorial(id); }} /></Suspense>}
+      {tutorialLesson && tutorialSession && <Suspense fallback={null}><TutorialPlayer key={tutorialLesson} lessonId={tutorialLesson} session={tutorialSession} onClose={interrupted => { setTutorialLesson(null); setTutorialSession(null); setShowTutorial(!interrupted); }} onReplay={() => { const id = tutorialLesson; setTutorialLesson(null); setTutorialSession(null); void startTutorial(id); }} /></Suspense>}
       <div className="leftbar-area">
         <LeftPanel
           nodeGroups={workstationNodeGroups}

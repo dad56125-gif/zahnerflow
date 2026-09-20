@@ -1,5 +1,5 @@
-import { appStorage } from '../../tutorialEnvironment';
-import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { appStorage, registerWorkspaceParticipant } from '../../tutorialEnvironment';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import {
   UserContext,
@@ -166,6 +166,23 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
     return false;
   };
+
+  useLayoutEffect(() => registerWorkspaceParticipant(() => {
+    ++configRequestRef.current;
+    const previous = { currentUser, users, usersLoadError, currentUserAvatar, filePathConfig };
+    setCurrentUserState('');
+    setCurrentUserAvatarState('');
+    setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
+    void loadUsers();
+    return () => {
+      ++configRequestRef.current;
+      setCurrentUserState(previous.currentUser);
+      setUsers(previous.users);
+      setUsersLoadError(previous.usersLoadError);
+      setCurrentUserAvatarState(previous.currentUserAvatar);
+      setFilePathConfigState(previous.filePathConfig);
+    };
+  }), [currentUser, users, usersLoadError, currentUserAvatar, filePathConfig, loadUsers]);
 
   // 初始化时加载用户列表
   useEffect(() => {

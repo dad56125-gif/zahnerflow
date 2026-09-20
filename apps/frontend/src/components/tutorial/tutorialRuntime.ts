@@ -4,9 +4,6 @@ import type {
   UserSettings,
 } from "@zahnerflow/types";
 import {
-  appStorage,
-  installTutorialTransport,
-  tutorialContext,
   type TutorialTransport,
 } from "../../tutorialEnvironment";
 import {
@@ -18,7 +15,8 @@ import {
 import scenario from "./tutorialScenario.json";
 
 /** Recorded from the project's Python simulator; no UI or execution planner lives here. */
-class TutorialRuntime implements TutorialTransport {
+export class TutorialRuntime implements TutorialTransport {
+  constructor(readonly lessonId: string) {}
   connected = false;
   paused = false;
   private listeners = new Map<string, Set<(payload: unknown) => void>>();
@@ -113,7 +111,7 @@ class TutorialRuntime implements TutorialTransport {
         event.payload.status === "completed",
     );
     const events =
-      tutorialContext?.lessonId === "stop"
+      this.lessonId === "stop"
         ? trace.slice(0, measurementEnd)
         : trace;
     let next = 0;
@@ -245,11 +243,4 @@ class TutorialRuntime implements TutorialTransport {
       return structuredClone(scenario.report);
     throw new Error(`教学数据不包含此操作：${method} ${endpoint}`);
   }
-}
-
-export const tutorialRuntime = new TutorialRuntime();
-export function installTutorialRuntime() {
-  if (tutorialContext?.lessonId !== "prepare")
-    appStorage.setItem("currentUser", "教学用户");
-  installTutorialTransport(tutorialRuntime);
 }

@@ -1,6 +1,5 @@
 import ReactDOM from "react-dom/client";
 import { StrictMode } from "react";
-import { tutorialContext } from "./tutorialEnvironment";
 import "@fontsource/oxanium/400.css";
 import "@fontsource/oxanium/500.css";
 import "@fontsource/oxanium/600.css";
@@ -10,15 +9,7 @@ import "@fontsource-variable/noto-sans-sc";
 import "./styles/main.scss";
 
 async function bootstrap() {
-  if (tutorialContext) {
-    const { installTutorialRuntime } =
-      await import("./components/tutorial/tutorialRuntime");
-    installTutorialRuntime();
-  }
   const { default: App } = await import("./App");
-  const TutorialRunner = tutorialContext
-    ? (await import("./components/tutorial/TutorialRunner")).default
-    : null;
   const root = ReactDOM.createRoot(
     document.getElementById("root") as HTMLElement,
   );
@@ -26,7 +17,6 @@ async function bootstrap() {
   root.render(
     <StrictMode>
       <App />
-      {TutorialRunner && <TutorialRunner />}
     </StrictMode>,
   );
 }

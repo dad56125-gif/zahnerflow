@@ -1,3 +1,4 @@
+import { registerWorkspaceParticipant } from '../tutorialEnvironment';
 /**
  * 监听 EIS 测量完成事件，并按 execution、原节点索引和迭代路径保存完整结果。
  */
@@ -26,7 +27,12 @@ export interface EisData {
 
 type EisIterations = Map<string, EisData>;
 type EisNodes = Map<number, EisIterations>;
-const globalEisCache = new Map<string, EisNodes>();
+let globalEisCache = new Map<string, EisNodes>();
+registerWorkspaceParticipant(() => {
+  const original = globalEisCache;
+  globalEisCache = new Map();
+  return () => { globalEisCache = original; };
+});
 
 function clearEisCache() {
   globalEisCache.clear();
