@@ -21,16 +21,25 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const palette = getComputedStyle(document.documentElement);
         const background = palette.getPropertyValue('--app-background').trim();
         const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
-        const lightWaveColors = ['--wave-mist', '--wave-lilac', '--wave-warm'].map(token => palette.getPropertyValue(token).trim());
-        const waveInks = ['--wave-sage-rgb', '--wave-blue-rgb', '--wave-mauve-rgb'].map(token => palette.getPropertyValue(token).trim());
-        // 固定采样位置，避免每帧随机生成造成颗粒闪烁。
-        const grainSeeds = Array.from({ length: 1800 }, (_, index) => {
-            const noise = (offset: number) => {
-                const value = Math.sin((index + 1) * 127.1 + offset * 311.7) * 43758.5453;
-                return value - Math.floor(value);
-            };
-            return { x: noise(0), depth: noise(1), size: noise(2), drift: noise(3) };
-        });
+        const cascadeColors = ['--cascade-surface', '--cascade-mid', '--cascade-deep', '--cascade-bottom'].map(token => palette.getPropertyValue(token).trim());
+        const cascadePaper = palette.getPropertyValue('--cascade-paper').trim();
+        const cascadeRim = palette.getPropertyValue('--cascade-rim').trim();
+        const cascadeInk = palette.getPropertyValue('--cascade-ink-rgb').trim();
+        const noise = (a: number, b = 0) => {
+            const value = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
+            return value - Math.floor(value);
+        };
+        // 固定采样，动画只更新波峰和下落位置，避免逐帧随机闪烁。
+        const cascadeColumns = Array.from({ length: Math.ceil(window.innerWidth / 4) }, (_, column) => ({
+            length: 0.28 + noise(column, 4) * 0.4,
+            offset: noise(column, 1) * 7,
+            dots: Array.from({ length: 80 }, (_, row) => ({
+                depth: row / 80,
+                visible: noise(column, row) <= 1 - row / 80 * 0.85,
+                alpha: (1 - row / 80) ** 1.8 * (0.2 + noise(column, row + 2) * 0.48),
+                height: 1.1 + noise(column, row) * 1.8,
+            })),
+        }));
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
         let waveTime = 0;
         let width = canvas.width = window.innerWidth;
@@ -147,55 +156,45 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             ctx.fillRect(0, 0, width, height);
 
             if (theme === 'light') {
-                if (advance) waveTime += 0.005;
-                const wash = ctx.createLinearGradient(0, 0, width, height);
-                lightWaveColors.forEach((color, index) => wash.addColorStop(index / 2, color));
-                ctx.fillStyle = wash;
-                ctx.fillRect(0, 0, width, height);
-
-                const crest = (x: number, band: number) => height * (
-                    0.38 + band * 0.19
-                    + Math.sin(x * Math.PI * 2.2 + waveTime + band * 1.8) * 0.12
-                    + Math.sin(x * Math.PI * 4.6 - waveTime * 0.6 + band) * 0.035
-                );
-                waveInks.forEach((ink, band) => {
-                    // 曲面内部由细丝叠成，边缘保留空气感，不填充厚重色块。
-                    for (let strand = 0; strand < 38; strand++) {
-                        const depth = strand / 37;
-                        ctx.beginPath();
-                        for (let x = 0; x <= width + 10; x += 10) {
-                            const u = x / width;
-                            const y = crest(u, band) + depth * height * 0.16
-                                + Math.sin(u * 9 + depth * 4 + waveTime) * depth * 18;
-                            if (x === 0) ctx.moveTo(x, y);
-                            else ctx.lineTo(x, y);
-                        }
-                        ctx.lineWidth = strand % 5 === 0 ? 1 : 0.65;
-                        ctx.strokeStyle = `rgba(${ink}, ${0.035 + Math.sin(depth * Math.PI) * 0.08})`;
-                        ctx.stroke();
-                    }
-                    // 竖向短丝穿过波面，呼应参考图的纤维和测量信号质感。
-                    for (let column = 0; column < 150; column++) {
-                        const u = column / 149;
-                        const y = crest(u, band);
-                        const length = 10 + (0.5 + 0.5 * Math.sin(column * 2.4 + band)) * height * 0.055;
-                        ctx.beginPath();
-                        ctx.moveTo(u * width, y - length);
-                        ctx.bezierCurveTo(u * width, y, u * width + 5, y + 20, u * width + 13, y + 36);
-                        ctx.strokeStyle = `rgba(${ink}, 0.12)`;
-                        ctx.lineWidth = 0.75;
-                        ctx.stroke();
-                    }
-                });
-                grainSeeds.forEach((seed, index) => {
-                    const band = index % 3;
-                    const x = seed.x * width + Math.sin(waveTime + seed.drift * 6) * 5;
-                    const spread = seed.depth ** 2;
-                    const y = crest(x / width, band) - spread * height * 0.15 + 18;
+                if (advance) waveTime += 1 / TARGET_FPS;
+                const crest = (u: number) => height * (0.22
+                    + Math.sin(u * 12 + waveTime * 0.4) * 0.021
+                    + Math.sin(u * 29 - waveTime * 0.22) * 0.017
+                    + Math.cos(u * 49 + waveTime * 0.16) * 0.008);
+                const wavePath = (offset: number) => {
                     ctx.beginPath();
-                    ctx.arc(x, y, 0.45 + seed.size * 0.8, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${waveInks[band]}, ${(1 - spread) * 0.25 + 0.025})`;
-                    ctx.fill();
+                    ctx.moveTo(-10, height);
+                    for (let x = -10; x <= width + 10; x += 3) ctx.lineTo(x, crest(x / width) + offset);
+                    ctx.lineTo(width + 10, height);
+                    ctx.closePath();
+                };
+                ctx.fillStyle = cascadePaper;
+                ctx.fillRect(0, 0, width, height);
+                wavePath(-12);
+                ctx.fillStyle = cascadeRim;
+                ctx.fill();
+                const wash = ctx.createLinearGradient(0, height * 0.2, 0, height);
+                [0, 0.38, 0.76, 1].forEach((stop, index) => wash.addColorStop(stop, cascadeColors[index]));
+                wavePath(0);
+                ctx.fillStyle = wash;
+                ctx.fill();
+                cascadeColumns.forEach((column, index) => {
+                    const u = index / cascadeColumns.length;
+                    const x = u * width;
+                    const y = crest(u);
+                    const length = column.length * height;
+                    ctx.strokeStyle = `rgba(${cascadeInk}, 0.12)`;
+                    ctx.lineWidth = 0.7;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + 3);
+                    ctx.lineTo(x + Math.sin(waveTime * 0.25 + u * 9) * 2, y + length);
+                    ctx.stroke();
+                    column.dots.forEach(dot => {
+                        if (!dot.visible) return;
+                        ctx.fillStyle = `rgba(${cascadeInk}, ${dot.alpha})`;
+                        ctx.fillRect(x + Math.sin(dot.depth * 6 + u * 7 + waveTime * 0.25) * 1.4,
+                            y + dot.depth * length + (waveTime * 6 + column.offset) % 7, 1, dot.height);
+                    });
                 });
                 return;
             }
