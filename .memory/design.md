@@ -284,6 +284,8 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-设计规范]
 
+主题规则：以原有玻璃布局提供亮色和暗色两套配色，默认亮色。`appStore.theme` 是唯一主题状态，沿用 `app-storage` 持久化；`main.tsx` 在首次 React 渲染前应用主题，顶栏按钮切换 `data-theme`。背景画布订阅同一状态，图表沿用现有主题订阅刷新；核心中性色通道和语义色均由 `_tokens.scss` 提供，阴影、遮罩和测量曲线不整体反色。
+
 当前规则：`styles/_tokens.scss` 是颜色、字体、间距、圆角、动效和层级的核心令牌入口；`_base.scss` 只保留基础规则和响应式布局覆盖。`main.scss` 通过 Sass `meta.load-css` 在既有基础、布局、组件三层中加载模块；每个模块显式引入所用占位符。节点库、画布和展开步骤共用 `_node-icons.scss`；无变体按钮也必须具备核心玻璃外观。滚动行不叠加独立模糊层。
 
 归属文件：`apps/frontend/src/styles/`、`scripts/check-design.mjs`、`doc/reference/design-system.md`。

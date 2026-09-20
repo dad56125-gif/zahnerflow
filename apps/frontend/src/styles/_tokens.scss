@@ -263,3 +263,81 @@
   --notification-panel-min-height: clamp(200px, 60vh, 300px);
   --notification-panel-z-index: var(--z-notification);
 }
+
+/* 主题中性色通道：前景细节与凹面分别映射，阴影和遮罩不反色。 */
+:root {
+  color-scheme: dark;
+  --text-path: rgba(165, 243, 252, 0.92);
+  --text-notice: #ffd666;
+  --text-saving: rgba(251, 191, 36, 0.8);
+  --text-saved: rgba(74, 222, 128, 0.8);
+  --glass-border-muted: rgba(255, 255, 255, 0.04);
+  --app-background: #0f172a;
+  --ui-ink-rgb: 255, 255, 255;
+  --ui-recess-rgb: 0, 0, 0;
+  --particle-rgb: 255, 255, 255;
+  --logo-light-gradient: linear-gradient(150deg, #174875, #337daa 55%, #293f68);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --text-path: #08778c;
+  --text-notice: #89600d;
+  --text-saving: #89600d;
+  --text-saved: #087f60;
+  --glass-border-muted: rgba(75, 105, 140, 0.12);
+  --app-background: #edf3f9;
+  --ui-ink-rgb: 35, 56, 82;
+  --ui-recess-rgb: 161, 182, 205;
+  --particle-rgb: 75, 113, 151;
+  --text-primary: #20344d;
+  --text-secondary: #485d75;
+  --text-muted: #61758b;
+  --text-disabled: #8292a3;
+  --text-shadow-body: none;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-hover: rgba(255, 255, 255, 0.9);
+  --glass-bg-active: rgba(223, 235, 249, 0.94);
+  --glass-border: rgba(97, 126, 157, 0.24);
+  --glass-border-hover: rgba(75, 114, 159, 0.42);
+  --glass-shadow: rgba(50, 77, 108, 0.09);
+  --glass-shadow-hover: rgba(50, 77, 108, 0.14);
+  --glass-hover: rgba(78, 112, 152, 0.06);
+  --shadow-panel: 0 8px 32px var(--glass-shadow), inset 0 1px 0 white;
+  --shadow-panel-hover: 0 16px 48px var(--glass-shadow-hover), inset 0 1px 0 white;
+  --shadow-button: 0 3px 12px var(--glass-shadow), inset 0 1px 0 white;
+  --shadow-button-hover: 0 6px 20px var(--glass-shadow-hover), inset 0 1px 0 white;
+  --color-primary: #2563c5;
+  --color-success: #087f60;
+  --color-warning: #a56208;
+  --color-danger: #cc3545;
+  --color-info: #087f99;
+  --color-favorite: #9a6500;
+  --color-indigo: #5952c5;
+  --color-indigo-light: #625bbd;
+  --color-log-success: #087f60;
+  --color-log-warning: #a56208;
+  --color-log-error: #cc3545;
+  --color-pv: #087da9;
+  --color-sv: #585ac2;
+  --color-mv: #b64282;
+  --color-segment: #8050ba;
+  --device-icon-furnace: #b9583b;
+  --device-icon-mfc: #267baf;
+  --node-library-icon-blue-gray: #537390;
+  --node-library-icon-eis-voltage: #19749c;
+  --node-library-icon-eis-current: #b2557c;
+  --node-library-icon-chrono-voltage: #098679;
+  --node-library-icon-chrono-current: #a45382;
+  --node-library-icon-ramp-voltage: #237bbe;
+  --node-library-icon-ramp-current: #b75083;
+  --node-library-icon-switching-voltage: #6b50c8;
+  --node-library-icon-switching-current: #b55a29;
+  --node-library-icon-ocp: #7954b4;
+  --node-library-icon-loop: #2d8661;
+  --node-library-icon-workflow: #987022;
+  --loop-level-0: #00856b;
+  --loop-level-1: #087cba;
+  --loop-level-2: #7550c7;
+  --loop-level-3: #b43e82;
+}

@@ -7,7 +7,7 @@
   --btn-b: #{$b};
   background: linear-gradient(135deg, $bg-var, rgba($r, $g, $b, 0.05));
   border: 1px solid $border-var;
-  color: white;
+  color: var(--text-primary);
   box-shadow:
     0 4px var(--effect-md) rgba($r, $g, $b, 0.2),
     inset 0 1px 0 var(--glass-hover);
@@ -166,7 +166,7 @@
     box-shadow:
       0 8px var(--effect-xl) rgba(var(--btn-r, 0), var(--btn-g, 0), var(--btn-b, 0), 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(var(--ui-ink-rgb), 0.25);
   }
 
   &::before {
@@ -176,7 +176,7 @@
     left: 0;
     width: var(--size-5xl);
     height: var(--size-5xl);
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, var(--glass-hover) 40%, transparent 70%);
+    background: radial-gradient(circle, rgba(var(--ui-ink-rgb), 0.25) 0%, var(--glass-hover) 40%, transparent 70%);
     filter: blur(var(--blur-6));
     border-radius: 50%;
     pointer-events: none;

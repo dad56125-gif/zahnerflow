@@ -61,7 +61,7 @@
 }
 
 .modal__body   { flex: 1; overflow-y: auto; padding: var(--size-xl); }
-.modal__footer { padding: var(--size-lg); border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; gap: var(--size-lg); background: rgba(0, 0, 0, 0.05); }
+.modal__footer { padding: var(--size-lg); border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; gap: var(--size-lg); background: rgba(var(--ui-recess-rgb), 0.05); }
 
 /* ==========================================================================
    3. Notification
@@ -121,7 +121,7 @@
   margin: var(--size-xs) 0 0;
   padding: var(--size-xs);
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(var(--ui-recess-rgb), 0.2);
   color: var(--text-secondary);
   font-size: var(--size-xs);
   white-space: pre-wrap;
@@ -168,7 +168,7 @@
 
 .tabs__list {
   display: flex; border-bottom: 1px solid var(--glass-border);
-  background: rgba(0, 0, 0, 0.05); border-radius: var(--effect-lg) var(--effect-lg) 0 0; overflow-x: auto;
+  background: rgba(var(--ui-recess-rgb), 0.05); border-radius: var(--effect-lg) var(--effect-lg) 0 0; overflow-x: auto;
 }
 
 .tabs__trigger {
@@ -219,7 +219,7 @@
   display: flex; gap: var(--size-sm); padding: var(--size-2xs) var(--size-sm);
   border-radius: var(--radius-sm); font-size: var(--size-xs);
   font-family: var(--font-number);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--ui-ink-rgb), 0.03);
 
   &--success { color: var(--color-log-success); background: var(--color-success-bg); }
   &--error   { color: var(--color-log-error);   background: var(--color-danger-bg); }

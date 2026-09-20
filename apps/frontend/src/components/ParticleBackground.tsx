@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
+import { useAppStore } from '../state/appStore';
 
 interface ParticleBackgroundProps {
     suspended?: boolean;
 }
 
 const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = false }) => {
+    const theme = useAppStore(state => state.theme);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const suspendedRef = useRef(suspended);
     const controlsRef = useRef<{ start: () => void; stop: () => void } | null>(null);
@@ -16,6 +18,10 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        const palette = getComputedStyle(document.documentElement);
+        const background = palette.getPropertyValue('--app-background').trim();
+        const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
+        const light = theme === 'light';
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
         let animationFrameId = 0;
@@ -126,11 +132,11 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
 
         const drawFrame = (advance: boolean) => {
             // Clear
-            ctx.fillStyle = '#0f172a'; // Deep background base
+            ctx.fillStyle = background; // Deep background base
             ctx.fillRect(0, 0, width, height);
 
             // === LAYER 1: AURORA WAVES (Background Color Flow) ===
-            ctx.globalCompositeOperation = 'screen';
+            ctx.globalCompositeOperation = light ? 'source-over' : 'screen';
             ctx.filter = 'blur(60px)'; // Heavy blur for aurora effect
 
             waves.forEach(wave => {
@@ -146,8 +152,8 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                 const currentHueEnd = wave.baseHue + wave.hueRange + Math.cos(wave.huePhase) * wave.hueRange;
 
                 const gradient = ctx.createLinearGradient(0, 0, width, 0);
-                gradient.addColorStop(0, `hsla(${currentHueStart}, 70%, 50%, 0.25)`);
-                gradient.addColorStop(1, `hsla(${currentHueEnd}, 70%, 50%, 0.25)`);
+                gradient.addColorStop(0, `hsla(${currentHueStart}, 70%, ${light ? 75 : 50}%, ${light ? 0.12 : 0.25})`);
+                gradient.addColorStop(1, `hsla(${currentHueEnd}, 70%, ${light ? 75 : 50}%, ${light ? 0.12 : 0.25})`);
 
                 ctx.beginPath();
                 ctx.moveTo(0, height);
@@ -198,7 +204,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                 // Draw Particle
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White particles for contrast against aurora
+                ctx.fillStyle = `rgba(${particleRgb}, ${light ? 0.28 : 0.6})`; // White particles for contrast against aurora
                 ctx.fill();
 
                 // Connect (优化：每隔一个粒子检查连线)
@@ -210,7 +216,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                         const opacity = 1 - (dist / CONNECTION_DISTANCE);
                         ctx.beginPath();
                         ctx.lineWidth = 0.5;
-                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.3})`; // Subtle white lines
+                        ctx.strokeStyle = `rgba(${particleRgb}, ${opacity * (light ? 0.16 : 0.3)})`; // Subtle white lines
                         ctx.moveTo(p.x, p.y);
                         ctx.lineTo(p2.x, p2.y);
                         ctx.stroke();
@@ -281,7 +287,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             stop();
             controlsRef.current = null;
         };
-    }, []);
+    }, [theme]);
 
     useEffect(() => {
         suspendedRef.current = suspended;
@@ -305,7 +311,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                 width: '100%',
                 height: '100%',
                 zIndex: -1,
-                background: '#0f172a'
+                background: 'var(--app-background)'
             }}
         />
     );

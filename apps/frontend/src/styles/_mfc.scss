@@ -42,7 +42,7 @@
     border-color: transparent;
     background:
       radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 46%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018)),
+      linear-gradient(135deg, rgba(var(--ui-ink-rgb), 0.085), rgba(var(--ui-ink-rgb), 0.018)),
       var(--glass-hover);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.11),
@@ -80,8 +80,8 @@
     overflow: hidden;
     border-color: rgba(148, 163, 184, 0.12);
     background:
-      linear-gradient(135deg, rgba(148, 163, 184, 0.055), rgba(255, 255, 255, 0.012)),
-      rgba(0, 0, 0, 0.12);
+      linear-gradient(135deg, rgba(148, 163, 184, 0.055), rgba(var(--ui-ink-rgb), 0.012)),
+      rgba(var(--ui-recess-rgb), 0.12);
 
     .mfc__card-head {
       gap: var(--size-xs);
@@ -229,7 +229,7 @@
   display: inline-flex; align-items: center; gap: var(--size-2xs);
   width: fit-content;
 
-  &--idle { color: var(--text-muted); background: rgba(255, 255, 255, 0.05); }
+  &--idle { color: var(--text-muted); background: rgba(var(--ui-ink-rgb), 0.05); }
 }
 
 /* ==========================================================================
@@ -284,8 +284,8 @@
     linear-gradient(
       180deg,
       rgba(8, 13, 28, 0) 0%,
-      rgba(0, 0, 0, 0.045) 22%,
-      rgba(0, 0, 0, 0.08) 100%
+      rgba(var(--ui-recess-rgb), 0.045) 22%,
+      rgba(var(--ui-recess-rgb), 0.08) 100%
     );
 
   &.is-disconnected {
@@ -319,7 +319,7 @@
       180deg,
       rgba(20, 30, 64, 0) 0%,
       rgba(20, 30, 64, 0.05) 22%,
-      rgba(0, 0, 0, 0.08) 100%
+      rgba(var(--ui-recess-rgb), 0.08) 100%
     );
 
   &::before {
@@ -333,8 +333,8 @@
     background:
       linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0) 10%,
+        rgba(var(--ui-ink-rgb), 0) 0%,
+        rgba(var(--ui-ink-rgb), 0) 10%,
         var(--glass-border) 28%,
         var(--glass-border) 100%
       );
@@ -416,7 +416,7 @@
 .scanning__overlay,
 .loading__overlay {
   position: absolute; inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(var(--ui-recess-rgb), 0.7);
   backdrop-filter: blur(var(--blur-2));
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
@@ -436,7 +436,7 @@
   background: var(--color-primary-bg);
   border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 
-  &-bar  { flex: 1; height: var(--size-3xs); background: rgba(255, 255, 255, 0.15); border-radius: var(--radius-xs); overflow: hidden; }
+  &-bar  { flex: 1; height: var(--size-3xs); background: rgba(var(--ui-ink-rgb), 0.15); border-radius: var(--radius-xs); overflow: hidden; }
   &-fill { height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-success)); border-radius: var(--radius-xs); transition: width 0.3s ease-out; }
   &-text { font-size: var(--size-xs); color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
 

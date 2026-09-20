@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDeveloperMode } from '../modules/simulator/useDeveloperMode';
+import { useAppStore } from '../state/appStore';
 import { UserSelector } from './user/UserSelector';
 import { useUser } from './shared/userContextState';
 import { Dropdown } from './shared/Dropdown';
@@ -99,6 +100,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   mfcConnected = false,
 }) => {
   const { currentUser, setCurrentUser } = useUser();
+  const theme = useAppStore(state => state.theme);
+  const setTheme = useAppStore(state => state.setTheme);
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
   const selectedWorkstation = WORKSTATIONS.find(workstation => workstation.id === selectedWorkstationId) || null;
   const [workstationPosition, setWorkstationPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -244,6 +247,17 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="top-bar__actions">
+        <button
+          type="button"
+          className="btn btn--md btn--secondary theme-toggle"
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          aria-label={theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
+          title={theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+            {theme === 'light' ? <path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z" /> : <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></>}
+          </svg>
+        </button>
         <div
           className="btn btn--md btn--secondary"
           onClick={() => handleDeviceClick('furnace')}

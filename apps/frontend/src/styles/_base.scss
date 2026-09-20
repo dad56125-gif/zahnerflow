@@ -55,8 +55,8 @@ body {
   line-height: 1.6;
   letter-spacing: var(--font-ui-tracking);
   color: var(--text-primary);
-  background: #0f172a;
-  /* Fallback dark color */
+  background: var(--app-background);
+  /* 主题底色与背景画布共用令牌。 */
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -205,7 +205,7 @@ a:hover {
 
 ::selection {
   background: rgba(59, 130, 246, 0.3);
-  color: white;
+  color: var(--text-primary);
 }
 
 /* 全局隐藏滚动条 */
@@ -276,7 +276,7 @@ a:hover {
   height: 1.28em;
   color: transparent;
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.98) 4%, rgba(191, 235, 255, 0.88) 36%, rgba(74, 222, 255, 0.46) 62%, rgba(148, 163, 184, 0.72) 100%);
+    linear-gradient(150deg, rgba(var(--ui-ink-rgb), 0.98) 4%, rgba(191, 235, 255, 0.88) 36%, rgba(74, 222, 255, 0.46) 62%, rgba(148, 163, 184, 0.72) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -308,7 +308,7 @@ a:hover {
 
 .logo-text__letter::after {
   color: transparent;
-  background: linear-gradient(108deg, transparent 0 28%, rgba(255, 255, 255, 0.96) 43%, rgba(185, 245, 255, 0.2) 54%, transparent 68% 100%);
+  background: linear-gradient(108deg, transparent 0 28%, rgba(var(--ui-ink-rgb), 0.96) 43%, rgba(185, 245, 255, 0.2) 54%, transparent 68% 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -380,7 +380,7 @@ a:hover {
   left: 0;
   width: var(--size-5xl);
   height: var(--size-5xl);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, var(--glass-border-hover) 20%, var(--glass-hover) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--ui-ink-rgb), 0.25) 0%, var(--glass-border-hover) 20%, var(--glass-hover) 40%, transparent 70%);
   filter: blur(var(--blur-6));
   -webkit-filter: blur(var(--blur-6));
   border-radius: 50%;
@@ -395,7 +395,7 @@ a:hover {
 }
 
 .glass:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(var(--ui-ink-rgb), 0.2);
   box-shadow: 0 16px 48px var(--glass-shadow-hover), inset 0 1px 0 var(--text-disabled), inset 0 -1px 0 var(--glass-hover);
   transform: translateY(-2px);
 }
@@ -418,7 +418,7 @@ a:hover {
   left: 0;
   width: var(--size-5xl);
   height: var(--size-5xl);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, var(--glass-border-hover) 20%, var(--glass-hover) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--ui-ink-rgb), 0.25) 0%, var(--glass-border-hover) 20%, var(--glass-hover) 40%, transparent 70%);
   filter: blur(var(--blur-6));
   -webkit-filter: blur(var(--blur-6));
   border-radius: 50%;

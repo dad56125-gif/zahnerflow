@@ -37,7 +37,7 @@
     height: $height;
     z-index: $z-index;
     pointer-events: none;
-    background: rgba(255, 255, 255, 0.001);
+    background: rgba(var(--ui-ink-rgb), 0.001);
     backdrop-filter: blur($blur);
     -webkit-backdrop-filter: blur($blur);
     mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.84) 36%, rgba(0, 0, 0, 0.24) 68%, rgba(0, 0, 0, 0) 100%);
@@ -80,7 +80,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--size-sm);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ui-ink-rgb), 0.05);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-button);
   padding: var(--size-sm);
@@ -96,7 +96,7 @@
 /* 红点角标 */
 %badge-base {
   background: rgba(255, 107, 107, 0.9);
-  color: white;
+  color: var(--text-primary);
   font-size: var(--size-xs);
   font-weight: bold;
   padding: var(--size-3xs) var(--size-2xs);
@@ -116,7 +116,7 @@
   align-items: center;
   padding: var(--size-sm) var(--size-xl);
   border-bottom: 1px solid var(--glass-border);
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(var(--ui-recess-rgb), 0.1);
 }
 
 /* 隐藏滚动条 */
@@ -140,7 +140,7 @@
 
 /* 管理面板 */
 %manager-panel {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(var(--ui-recess-rgb), 0.4);
   backdrop-filter: blur(var(--blur-overlay));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);

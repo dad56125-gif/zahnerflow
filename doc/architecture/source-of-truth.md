@@ -42,6 +42,7 @@
 | 已执行事实 / 报告 | SQLite 执行、步骤、警告、产物关联与实际测量文件；`report.py` 定义报告形状 | `execution_recorder.py` 存储 → `report_service.py` 查询并在历史读取边界归一化 → `ExecutionReport` → runtimeClient → `reportDataBuilder.ts` | 实验记录、预览和 PDF；前端按物理路径去重展示，后端保留不同节点的来源关联 |
 | 实时曲线 | 仪器返回的 measurementData / eisDataReady，`workflow.py` 描述载荷 | AppRuntime 丰富执行身份 → `useMeasurementStream.ts` / `useEisData.ts` 内存缓存 → `MeasurementChart.tsx` | IVT / EIS 图；Nyquist 显示 `(z_real, -z_imag)`，nodesReset 清缓存；图表缓存不是永久归档 |
 | CLI / 能力发现 | [CLI main.py](../../apps/zahnerflow_cli/main.py) 的命令映射；后端真实路由与语义表 | urllib client 发送 HTTP；`runtime_api.py` 混合读取模型/语义表及手写 `DEVICE_CAPABILITIES`；设备子命令在 `routers/devices.py` 手写分派 | CLI 输出、App 同步、OpenAPI；CLI 不导入 DB/驱动、不自行展开、不自动启动服务 |
+| 主题选择 | `state/appStore.ts` 的 `theme`，沿用 `app-storage` | `main.tsx` 首次渲染前应用；`TopBar.tsx` 切换 `data-theme`；背景和图表订阅同一状态 | `_tokens.scss` 提供明暗配色，不增加后端用户设置或数据库字段 |
 | 样式与视觉规则 | [样式目录](../../apps/frontend/src/styles) 的 `_tokens.scss`、`_base.scss` 与模块；[视觉规范](../reference/design-system.md) 记录人工约束 | `main.scss` 按层加载 → Vite/Sass 输出 CSS；`check-design.mjs` 只检查定义范围 | 工作台与组件外观；Markdown 不生成 SCSS，静态规则不代替视觉检查 |
 
 ### 生成命令与可复现边界

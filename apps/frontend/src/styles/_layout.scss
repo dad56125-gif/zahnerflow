@@ -26,13 +26,13 @@
   padding: 0;
   border: 0;
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.94);
+  color: rgba(var(--ui-ink-rgb), 0.94);
   background: transparent;
   cursor: pointer;
   -webkit-app-region: no-drag;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(var(--ui-ink-rgb), 0.15);
   }
 
   &--close:hover {
@@ -189,7 +189,7 @@
   margin: 0;
   gap: var(--space);
   font-size: var(--size-sm);
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--ui-ink-rgb), 0.8);
 }
 
 /* ==========================================================================
@@ -251,7 +251,7 @@
   max-width: 100%;
   font-weight: 500;
   font-size: var(--size-sm);
-  color: white;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -319,4 +319,24 @@
   .app-root { display: block; height: auto; overflow: visible; }
   .top-bar, .leftbar-area, .right-area, .bottom-bar { display: none !important; }
   .canvas-area { width: 100%; height: auto; overflow: visible; }
+}
+
+/* 亮色沿用相同组件结构，仅调整暗色装饰的光照。 */
+:root[data-theme='light'] {
+  h1, h2, h3, h4, h5, h6,
+  .node__label { text-shadow: none; }
+
+  .logo-text { filter: none; }
+  .logo-text__letter {
+    background-image: var(--logo-light-gradient);
+    -webkit-text-stroke: 0;
+  }
+  .logo-text__letter::before { opacity: 0; }
+  .logo-text__letter::after { opacity: 0.2; }
+}
+
+.theme-toggle {
+  flex-shrink: 0;
+  padding-inline: var(--size-sm);
+  aspect-ratio: 1;
 }

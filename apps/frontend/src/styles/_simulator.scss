@@ -31,8 +31,8 @@
 .developer-hint {
   padding: 0 var(--space-2);
   border: 1px solid var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.78);
+  background: rgba(var(--ui-ink-rgb), 0.1);
+  color: rgba(var(--ui-ink-rgb), 0.78);
   position: relative;
   z-index: 2;
 }
@@ -41,7 +41,7 @@
   padding: 0 var(--space-2);
   border: 1px solid rgba(251, 191, 36, 0.42);
   background: rgba(251, 191, 36, 0.1);
-  color: #fde68a;
+  color: var(--text-notice);
   cursor: pointer;
   position: relative;
   z-index: 2;
@@ -65,7 +65,7 @@
 }
 
 .sim-modal__eyebrow {
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(var(--ui-ink-rgb), 0.45);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: var(--font-ui-tracking);
@@ -101,7 +101,7 @@
 .sim-panel__master-subtitle,
 .sim-device p,
 .sim-panel__footer {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(var(--ui-ink-rgb), 0.62);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -116,7 +116,7 @@
   padding: var(--space-4);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--ui-ink-rgb), 0.045);
 }
 
 .sim-device.is-enabled {
@@ -142,7 +142,7 @@
 
 .sim-device__field legend {
   margin-bottom: var(--space-2);
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(var(--ui-ink-rgb), 0.72);
   font-size: 12px;
   font-weight: 600;
 }
@@ -158,10 +158,10 @@
   gap: var(--space-2);
   min-height: 30px;
   padding: var(--size-3xs) var(--size-2xs);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--ui-ink-rgb), 0.1);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.045);
-  color: rgba(255, 255, 255, 0.78);
+  background: rgba(var(--ui-ink-rgb), 0.045);
+  color: rgba(var(--ui-ink-rgb), 0.78);
   font-size: 12px;
   cursor: pointer;
 }
@@ -174,7 +174,7 @@
 .sim-choice.is-selected {
   border-color: rgba(129, 140, 248, 0.58);
   background: rgba(99, 102, 241, 0.16);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .sim-device__field:disabled .sim-choice {

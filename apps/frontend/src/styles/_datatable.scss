@@ -37,7 +37,7 @@
     @extend %text-ellipsis;
     padding: var(--size-2xs) var(--size-sm);
     color: var(--text-secondary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(var(--ui-ink-rgb), 0.05);
   }
 
   tbody tr {
@@ -46,7 +46,7 @@
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(var(--ui-ink-rgb), 0.03);
     }
 
     &:first-child {
@@ -60,7 +60,7 @@
   cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--ui-ink-rgb), 0.06);
   }
 }
 

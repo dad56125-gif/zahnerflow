@@ -63,8 +63,8 @@
 .canvas__grid {
   position: absolute; inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(var(--ui-ink-rgb), 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--ui-ink-rgb), 0.05) 1px, transparent 1px);
   background-size: var(--size-lg) var(--size-lg);
   pointer-events: none; z-index: 0;
 }

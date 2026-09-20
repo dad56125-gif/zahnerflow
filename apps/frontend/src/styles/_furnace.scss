@@ -90,7 +90,7 @@
 }
 
 .status__label {
-  font-size: var(--size-sm); font-weight: 600; color: rgba(255, 255, 255, 0.9);
+  font-size: var(--size-sm); font-weight: 600; color: rgba(var(--ui-ink-rgb), 0.9);
   min-width: 6rem; text-shadow: var(--text-shadow-body);
 }
 
@@ -103,9 +103,9 @@
   &--pv      { color: var(--color-pv); }
   &--sv      { color: var(--color-sv); }
   &--mv      { color: var(--color-mv); }
-  &--program { color: rgba(255, 255, 255, 0.9); }
+  &--program { color: rgba(var(--ui-ink-rgb), 0.9); }
   &--segment { color: var(--color-segment); }
-  &--time    { color: rgba(255, 255, 255, 0.9); }
+  &--time    { color: rgba(var(--ui-ink-rgb), 0.9); }
   &--running { color: var(--color-success); }
   &--paused  { color: var(--color-warning); }
   &--stopped { color: var(--text-secondary); }
@@ -136,7 +136,7 @@
     border-radius: var(--radius-full);
     background:
       linear-gradient(135deg, rgba(var(--btn-r, 255), var(--btn-g, 255), var(--btn-b, 255), 0.1), rgba(var(--btn-r, 255), var(--btn-g, 255), var(--btn-b, 255), 0.025)),
-      rgba(255, 255, 255, 0.035);
+      rgba(var(--ui-ink-rgb), 0.035);
     color: var(--text-primary);
     font-family: var(--device-ui-font);
     font-size: var(--size-lg);
@@ -151,13 +151,13 @@
     transform: translateY(-1px);
     background:
       linear-gradient(135deg, rgba(var(--btn-r, 255), var(--btn-g, 255), var(--btn-b, 255), 0.15), rgba(var(--btn-r, 255), var(--btn-g, 255), var(--btn-b, 255), 0.045)),
-      rgba(255, 255, 255, 0.045);
+      rgba(var(--ui-ink-rgb), 0.045);
     opacity: 1;
   }
 
   > .btn:disabled {
     opacity: 0.44;
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(var(--ui-ink-rgb), 0.1);
     color: var(--text-secondary);
   }
 
@@ -165,8 +165,8 @@
   > .input {
     border-color: var(--glass-hover);
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
-      rgba(0, 0, 0, 0.12);
+      linear-gradient(135deg, rgba(var(--ui-ink-rgb), 0.045), rgba(var(--ui-ink-rgb), 0.012)),
+      rgba(var(--ui-recess-rgb), 0.12);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
       inset 0 -1px 0 rgba(0, 0, 0, 0.18);
@@ -201,12 +201,12 @@
   grid-template-areas: "clabel temp-group tlabel time-group";
   gap: 0; align-items: center;
   padding: var(--size-3xs);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ui-ink-rgb), 0.05);
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-hover);
   transition: var(--transition);
 
-  &:hover { background: var(--glass-hover); border-color: rgba(255, 255, 255, 0.2); }
+  &:hover { background: var(--glass-hover); border-color: rgba(var(--ui-ink-rgb), 0.2); }
 }
 
 .segment__label {
@@ -391,9 +391,9 @@
   min-width: 0;
   width: var(--activity-cell);
   height: var(--activity-cell);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(var(--ui-ink-rgb), 0.04);
   border-radius: calc(var(--radius-sm) * 0.7);
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(var(--ui-ink-rgb), 0.055);
   color: transparent;
   cursor: pointer;
   transition: var(--transition);
@@ -534,8 +534,8 @@
     linear-gradient(
       180deg,
       rgba(8, 13, 28, 0) 0%,
-      rgba(0, 0, 0, 0.045) 22%,
-      rgba(0, 0, 0, 0.08) 100%
+      rgba(var(--ui-recess-rgb), 0.045) 22%,
+      rgba(var(--ui-recess-rgb), 0.08) 100%
     );
 
   &__main {
@@ -592,7 +592,7 @@
         180deg,
         rgba(20, 30, 64, 0) 0%,
         rgba(20, 30, 64, 0.05) 22%,
-        rgba(0, 0, 0, 0.08) 100%
+        rgba(var(--ui-recess-rgb), 0.08) 100%
       );
 
     &::before {
@@ -606,8 +606,8 @@
       background:
         linear-gradient(
           180deg,
-          rgba(255, 255, 255, 0) 0%,
-          rgba(255, 255, 255, 0) 10%,
+          rgba(var(--ui-ink-rgb), 0) 0%,
+          rgba(var(--ui-ink-rgb), 0) 10%,
           var(--glass-border) 28%,
           var(--glass-border) 100%
         );
@@ -763,13 +763,13 @@
       );
       border-radius: var(--radius-full);
       background:
-        radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.24), transparent 36%),
+        radial-gradient(circle at 20% 18%, rgba(var(--ui-ink-rgb), 0.24), transparent 36%),
         linear-gradient(
           135deg,
           rgba(var(--device-tab-active-r), var(--device-tab-active-g), var(--device-tab-active-b), 0.34),
           rgba(var(--device-tab-active-r), var(--device-tab-active-g), var(--device-tab-active-b), 0.075)
         ),
-        rgba(255, 255, 255, 0.035);
+        rgba(var(--ui-ink-rgb), 0.035);
       box-shadow:
         0 0 0 1px rgba(var(--device-tab-active-r), var(--device-tab-active-g), var(--device-tab-active-b), 0.16),
         0 var(--size-3xs) var(--size-lg) rgba(var(--device-tab-active-r), var(--device-tab-active-g), var(--device-tab-active-b), 0.22),
@@ -804,7 +804,7 @@
       z-index: -1;
       border-radius: inherit;
       background:
-        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.22), transparent 34%),
+        radial-gradient(circle at 18% 18%, rgba(var(--ui-ink-rgb), 0.22), transparent 34%),
         linear-gradient(135deg, rgba(var(--device-tab-r), var(--device-tab-g), var(--device-tab-b), 0.36), rgba(var(--device-tab-r), var(--device-tab-g), var(--device-tab-b), 0.08));
       opacity: 0;
       transform: scaleX(0.76) translateX(-8%);

@@ -6,7 +6,7 @@
 .chart-modal-backdrop {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.005); /* 极微弱背景色（0.5% 不透明度），诱骗浏览器渲染引擎进行背景像素采样，肉眼完全透明 */
+  background: rgba(var(--ui-recess-rgb), 0.005); /* 极微弱背景色（0.5% 不透明度），诱骗浏览器渲染引擎进行背景像素采样，肉眼完全透明 */
   z-index: var(--z-modal, 200);
   pointer-events: auto;
 
@@ -65,7 +65,7 @@
   align-items: center;
   gap: var(--size-3xs);
   padding: 0.45rem 1rem; /* 增大间距，符合 md 尺寸 */
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--ui-ink-rgb), 0.06);
   border: 1px solid var(--glass-border);
   border-radius: 9999px;
   color: var(--text-secondary);
@@ -81,16 +81,16 @@
   will-change: transform, filter, backdrop-filter;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(var(--ui-ink-rgb), 0.1);
+    border-color: rgba(var(--ui-ink-rgb), 0.2);
     color: var(--text-primary);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
   &.is-active {
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.32);
-    color: #fff;
+    background: rgba(var(--ui-ink-rgb), 0.16);
+    border-color: rgba(var(--ui-ink-rgb), 0.32);
+    color: var(--text-primary);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
@@ -108,8 +108,8 @@
     transition: all var(--duration-fast) var(--ease-in-out);
 
     .tab-primary-item.is-active & {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
+      background: rgba(var(--ui-ink-rgb), 0.2);
+      color: var(--text-primary);
     }
   }
 }
@@ -127,7 +127,7 @@
   max-height: 32px; /* 未展开时最大限制为 32px */
   border: 1px solid var(--glass-border);
   border-radius: 16px; /* 胶囊圆角，高 32px 时刚好是完美药丸状；展开时是精致的圆角面板 */
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ui-ink-rgb), 0.05);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   box-shadow: 0 4px 12px var(--glass-bg), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -161,7 +161,7 @@
       width: 6px;
     }
     &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(var(--ui-ink-rgb), 0.15);
       border-radius: 3px;
     }
     &::-webkit-scrollbar-track {
@@ -202,7 +202,7 @@
     align-items: center;
     justify-content: center;
     height: 16px;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(var(--ui-ink-rgb), 0.4);
     transition: color var(--duration-fast) var(--ease-in-out);
     flex-shrink: 0;
     cursor: pointer;
@@ -213,7 +213,7 @@
     }
 
     &:hover {
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(var(--ui-ink-rgb), 0.85);
     }
   }
 
@@ -222,7 +222,7 @@
     margin-left: var(--space-2);
     padding: 0;
     border: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 1px solid rgba(var(--ui-ink-rgb), 0.1);
     background: transparent;
     outline: none;
 
@@ -231,7 +231,7 @@
     }
 
     &.is-active {
-      color: #ffd666;
+      color: var(--text-notice);
       filter: drop-shadow(0 0 5px rgba(255, 214, 102, 0.45));
     }
   }
@@ -249,7 +249,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--ui-ink-rgb), 0.04);
   border: 1px solid var(--glass-hover);
   border-radius: 9999px;
   color: var(--text-muted);
@@ -266,15 +266,15 @@
 
   &:hover {
     background: var(--glass-hover);
-    border-color: rgba(255, 255, 255, 0.16);
+    border-color: rgba(var(--ui-ink-rgb), 0.16);
     color: var(--text-secondary);
     box-shadow: 0 4px 10px var(--glass-bg), inset 0 1px 0 var(--glass-hover);
   }
 
   &.is-active {
     background: var(--glass-border);
-    border-color: rgba(255, 255, 255, 0.22);
-    color: #fff;
+    border-color: rgba(var(--ui-ink-rgb), 0.22);
+    color: var(--text-primary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
@@ -308,12 +308,12 @@
   -webkit-backdrop-filter: none;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--ui-ink-rgb), 0.06);
     border-color: var(--glass-hover);
   }
   &.is-active {
     background: var(--glass-border);
-    border-color: rgba(255, 255, 255, 0.16);
+    border-color: rgba(var(--ui-ink-rgb), 0.16);
   }
 }
 
@@ -331,7 +331,7 @@
   top: calc(var(--canvas-t) - var(--space));
   width: calc(100vw - 2 * var(--space));
   height: calc(100vh - var(--canvas-t) - var(--canvas-b) + var(--space));
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
+  background: linear-gradient(135deg, rgba(var(--ui-recess-rgb), 0.2) 0%, rgba(var(--ui-recess-rgb), 0.4) 100%);
   border: 1px solid var(--text-disabled);
   border-radius: var(--effect-xl);
   backdrop-filter: blur(var(--effect-xl));
@@ -382,11 +382,11 @@
     gap: var(--size-2xs);
     max-width: min(46rem, 54vw);
     padding: var(--size-2xs);
-    border: 1px solid rgba(255, 255, 255, 0.095);
+    border: 1px solid rgba(var(--ui-ink-rgb), 0.095);
     border-radius: var(--radius-full);
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
-      rgba(0, 0, 0, 0.16);
+      linear-gradient(135deg, rgba(var(--ui-ink-rgb), 0.045), rgba(var(--ui-ink-rgb), 0.012)),
+      rgba(var(--ui-recess-rgb), 0.16);
     box-shadow:
       inset 0 1px 0 var(--glass-hover),
       inset 0 -1px 0 rgba(0, 0, 0, 0.24);
@@ -416,7 +416,7 @@
 
   .modal__header .tabs__trigger:hover:not(:disabled) {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.055);
+    background: rgba(var(--ui-ink-rgb), 0.055);
     opacity: 1;
   }
 
@@ -425,7 +425,7 @@
     border-color: rgba(96, 165, 250, 0.46);
     background:
       linear-gradient(135deg, rgba(59, 130, 246, 0.28), rgba(59, 130, 246, 0.09)),
-      rgba(255, 255, 255, 0.055);
+      rgba(var(--ui-ink-rgb), 0.055);
     box-shadow:
       0 0 0 1px rgba(147, 197, 253, 0.12),
       0 var(--size-3xs) var(--size-lg) rgba(59, 130, 246, 0.22),
@@ -446,8 +446,8 @@
       linear-gradient(
         180deg,
         rgba(8, 13, 28, 0) 0%,
-        rgba(0, 0, 0, 0.045) 18%,
-        rgba(0, 0, 0, 0.08) 100%
+        rgba(var(--ui-recess-rgb), 0.045) 18%,
+        rgba(var(--ui-recess-rgb), 0.08) 100%
       );
   }
 }

@@ -67,8 +67,8 @@
 }
 
 .select option {
-  background: rgba(0, 0, 0, 0.95);
-  color: white;
+  background: rgba(var(--ui-recess-rgb), 0.95);
+  color: var(--text-primary);
   padding: var(--size-2xs);
 }
 
@@ -120,7 +120,7 @@
 
 /* === Overlay Base === */
 .overlay-base {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(var(--ui-recess-rgb), 0.1);
   backdrop-filter: blur(var(--blur-3));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
@@ -209,8 +209,8 @@
     left: 50%;
     transform: translateX(-50%);
     padding: var(--size-3xs) var(--size-xs);
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
+    background: rgba(var(--ui-recess-rgb), 0.9);
+    color: var(--text-primary);
     font-size: var(--size-xs);
     border-radius: var(--radius-badge);
     white-space: nowrap;
@@ -229,7 +229,7 @@
     left: 50%;
     transform: translateX(-50%);
     border: 5px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
+    border-top-color: rgba(var(--ui-recess-rgb), 0.9);
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
@@ -261,7 +261,7 @@
   width: 38px;
   height: 20px;
   background: var(--glass-hover);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--ui-ink-rgb), 0.2);
   border-radius: 20px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -292,14 +292,14 @@
 .switch__label {
   font-size: var(--size-md);
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   letter-spacing: var(--font-ui-tracking);
 }
 
 .switch--sub .switch__label {
   font-size: var(--size-sm);
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--ui-ink-rgb), 0.8);
 }
 
 /* === Error Message 通用错误消息 === */
@@ -329,7 +329,7 @@
 .scanning__overlay,
 .loading__overlay {
   position: absolute; inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(var(--ui-recess-rgb), 0.7);
   backdrop-filter: blur(var(--blur-2));
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
@@ -365,7 +365,7 @@
   top: calc(var(--canvas-t));
   width: calc(100vw - 2 * var(--space));
   height: calc(100vh - var(--canvas-t) - var(--canvas-b));
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
+  background: linear-gradient(135deg, rgba(var(--ui-recess-rgb), 0.2) 0%, rgba(var(--ui-recess-rgb), 0.4) 100%);
   border: 1px solid var(--text-disabled);
   border-radius: var(--effect-xl);
   backdrop-filter: blur(var(--effect-xl));
