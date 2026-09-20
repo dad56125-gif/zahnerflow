@@ -51,7 +51,7 @@
       }
       &:last-child { padding-bottom: 0; }
     }
-    h4 { display: flex; align-items: center; min-height: var(--tutorial-step-size); margin: 0 0 var(--size-xs); font-size: var(--size-sm); }
+    h4 { display: flex; align-items: center; padding: 0; min-height: var(--tutorial-step-size); margin: 0 0 var(--size-xs); font-size: var(--size-sm); }
     p { margin: 0; color: var(--text-secondary); font-size: var(--size-sm); line-height: 1.7; }
   }
 }
