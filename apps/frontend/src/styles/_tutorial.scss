@@ -1,7 +1,7 @@
 @use "./placeholders" as *;
 // 目录外壳与列表由 SplitPaneModal 提供，这里只定义教学内容的排版。
 .tutorial-dialog.split-pane-modal {
-  width: min(820px, 92vw);
+  width: min(660px, 92vw);
   height: min(660px, 82vh);
 }
 @media (min-width: 901px) {
