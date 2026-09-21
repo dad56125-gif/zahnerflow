@@ -72,16 +72,12 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
       ? { left: '27.777778%', right: '27.777778%', top: '20.833333%', bottom: '12.5%' }
       : { left: '12.222222%', right: '4.444444%', top: '20.833333%', bottom: '12.5%' };
     const axisBounds: { min?: number; max?: number }[] = [{}, {}];
-    const lsv = first.name === 'LSV';
-    const plotted = comparison.entries.map((entry) => lsv
-      ? entry.series.points.map(([x, y]) => [Math.abs(x), Math.abs(y)])
-      : entry.series.points);
+    const plotted = comparison.entries.map((entry) => entry.series.points);
     let peak = { value: -Infinity, point: [0, 0], series: 0 };
     plotted.forEach((points, series) => points.forEach((point) => {
       if (point[1] > peak.value) peak = { value: point[1], point, series };
     }));
     if (comparison.ocv) axisBounds[1] = { min: 0, max: peak.value > 0 ? peak.value * 1.1 : 1 };
-    if (lsv) { axisBounds[0] = { min: 0 }; axisBounds[1] = { min: 0 }; }
     if (first.equalScale) {
       let minX = 0, maxX = 0, maxY = 0;
       for (const points of plotted) for (const [x, y] of points) {
@@ -98,9 +94,9 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
         tooltip: { show: false },
         dataZoom: [{ type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }, { type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }],
         legend: { top: 12, left: 24, right: 24, selectedMode: true, textStyle: { fontSize: 11 } },
-        xAxis: { type: 'value', name: first.equalScale ? 'Re (Ω)' : lsv ? '|电压| (V)' : first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
+        xAxis: { type: 'value', name: first.equalScale ? 'Re (Ω)' : first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
           ...axisBounds[0], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
-        yAxis: { type: 'value', name: first.equalScale ? '-Im (Ω)' : lsv ? '|电流| (A)' : first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
+        yAxis: { type: 'value', name: first.equalScale ? '-Im (Ω)' : first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
           ...axisBounds[1], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
         series: comparison.entries.map((entry, index) => ({
           name: entry.label, type: first.equalScale ? 'scatter' : 'line', data: plotted[index], clip: true,
