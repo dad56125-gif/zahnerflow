@@ -6,9 +6,10 @@
   font-size: var(--text-body);
 
   &__header {
-    justify-content: flex-start;
-    gap: var(--space-4);
     min-height: 4rem;
+    border-bottom: 0;
+    background: transparent;
+    box-shadow: none;
     h3 { margin: 0 0 var(--space-1); font-size: var(--size-lg); }
     span { color: var(--text-secondary); font-size: var(--size-sm); }
   }
@@ -16,28 +17,6 @@
   &__title {
     min-width: 0;
     span { display: block; }
-  }
-
-  &__summary {
-    margin-left: auto;
-    white-space: nowrap;
-  }
-
-  &__jump {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    input { width: 7rem; }
-  }
-
-  &__jump input {
-    min-height: var(--size-2xl);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-input);
-    border: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    color: var(--text-primary);
-    font: inherit;
   }
 
   &__body {
@@ -71,6 +50,13 @@
   }
 }
 
+.unroll-dialog > .unroll-dialog__header.modal__header {
+  border: 0;
+  border-bottom: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .unroll-finder {
   display: flex;
   flex: 1;
@@ -98,18 +84,6 @@
     border-right: 1px solid var(--glass-border);
     background: var(--glass-bg);
 
-    > header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-2);
-      min-height: 2.75rem;
-      padding: var(--space-2) var(--space-3);
-      border-bottom: 1px solid var(--glass-border);
-      background: var(--glass-bg-hover);
-      strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      span { flex-shrink: 0; color: var(--text-muted); font-size: var(--size-xs); }
-    }
   }
 
   &__items {
@@ -210,7 +184,6 @@
 }
 
 @media (max-width: 900px) {
-  .unroll-dialog__summary { display: none; }
   .unroll-finder {
     &__column { flex-basis: 15rem; }
     &__preview { flex-basis: 19rem; }
@@ -220,9 +193,6 @@
 @media (max-width: 600px) {
   .unroll-dialog {
     inset: calc(var(--app-chrome-h) + var(--space-2)) var(--space-2) var(--space-2);
-    &__header { flex-wrap: wrap; }
-    &__summary { display: none; }
-    &__jump { margin-left: auto; }
     &__body { padding: var(--space-2); }
   }
   .unroll-finder {
