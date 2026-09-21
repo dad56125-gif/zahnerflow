@@ -87,6 +87,37 @@ export interface UnrollExplorerModel {
   maxLoopDepth: number;
 }
 
+export interface UnrollColumnGroupNode {
+  kind: 'group';
+  key: string;
+  title: string;
+  meta: string;
+  groupKind: UnrollExplorerGroupKind;
+  firstPosition: number;
+  lastPosition: number;
+  stepCount: number;
+  children: UnrollColumnNode[];
+}
+
+export interface UnrollColumnStepNode {
+  kind: 'step';
+  key: string;
+  title: string;
+  meta: string;
+  firstPosition: number;
+  lastPosition: number;
+  stepCount: 1;
+  row: UnrollExplorerRow;
+}
+
+export type UnrollColumnNode = UnrollColumnGroupNode | UnrollColumnStepNode;
+
+export interface UnrollColumnTree {
+  items: UnrollColumnNode[];
+  nodeByKey: ReadonlyMap<string, UnrollColumnNode>;
+  pathByRowKey: ReadonlyMap<string, string[]>;
+}
+
 export type UnrollRenderItem =
   | { kind: 'row'; row: UnrollExplorerRow }
   | {
@@ -264,10 +295,10 @@ function addRowGroupMemberships(seeds: Map<string, GroupSeed>, row: UnrollExplor
 
   row.iterationPath.forEach((entry, depthIndex) => {
     const path = row.iterationPath.slice(0, depthIndex + 1);
-    const identityKey = `loop:${JSON.stringify({
-      blockPath: row.blockKey,
-      iterationPath: iterationPathKey(path),
-    })}`;
+    // A workflow block may sit inside an already active loop. Keep the loop
+    // identity independent of blockPath so the outer loop remains one group;
+    // splitOccurrences still separates repeated, non-contiguous appearances.
+    const identityKey = `loop:${iterationPathKey(path)}`;
     addGroupMembership(seeds, {
       identityKey,
       kind: 'loop',
@@ -521,4 +552,135 @@ export function buildUnrollRenderItems(
     }
   });
   return renderItems;
+}
+
+interface MutableColumnGroupNode extends Omit<UnrollColumnGroupNode, 'children'> {
+  children: MutableColumnNode[];
+  childByKey: Map<string, MutableColumnNode>;
+}
+
+type MutableColumnNode = MutableColumnGroupNode | UnrollColumnStepNode;
+
+function isMutableGroup(node: MutableColumnNode): node is MutableColumnGroupNode {
+  return node.kind === 'group';
+}
+
+function groupPathForPosition(model: UnrollExplorerModel, position: number): UnrollExplorerGroup[] {
+  return model.groups
+    .filter((group) => group.memberPositions.includes(position))
+    .sort((left, right) => {
+      const leftContainsRight = right.memberPositions.every((member) => left.memberPositions.includes(member));
+      const rightContainsLeft = left.memberPositions.every((member) => right.memberPositions.includes(member));
+      if (leftContainsRight !== rightContainsLeft) return leftContainsRight ? -1 : 1;
+      return (
+        GROUP_KIND_PRIORITY[left.kind] - GROUP_KIND_PRIORITY[right.kind]
+        || left.depth - right.depth
+        || right.stepCount - left.stepCount
+        || left.key.localeCompare(right.key)
+      );
+    });
+}
+
+function nearestStructuralPosition(model: UnrollExplorerModel, row: UnrollExplorerRow): number {
+  if (!row.isAutomaticBoundary) return row.position;
+
+  const preferForward = row.step.nodeType === 'startup';
+  const positions = model.rows
+    .filter((candidate) => !candidate.isAutomaticBoundary)
+    .map((candidate) => candidate.position);
+  const preferred = positions
+    .filter((position) => preferForward ? position > row.position : position < row.position)
+    .sort((left, right) => Math.abs(left - row.position) - Math.abs(right - row.position))[0];
+  if (preferred !== undefined) return preferred;
+
+  return positions
+    .sort((left, right) => Math.abs(left - row.position) - Math.abs(right - row.position))[0]
+    ?? row.position;
+}
+
+function freezeColumnNodes(nodes: MutableColumnNode[]): UnrollColumnNode[] {
+  return nodes
+    .sort((left, right) => (
+      left.firstPosition - right.firstPosition
+      || (left.kind === right.kind ? 0 : left.kind === 'group' ? -1 : 1)
+      || left.key.localeCompare(right.key)
+    ))
+    .map((node) => {
+      if (!isMutableGroup(node)) return node;
+      return {
+        kind: node.kind,
+        key: node.key,
+        title: node.title,
+        meta: node.meta,
+        groupKind: node.groupKind,
+        firstPosition: node.firstPosition,
+        lastPosition: node.lastPosition,
+        stepCount: node.stepCount,
+        children: freezeColumnNodes(node.children),
+      };
+    });
+}
+
+/** Build Finder-style presentation columns without changing backend sequence identities. */
+export function buildUnrollColumnTree(model: UnrollExplorerModel): UnrollColumnTree {
+  const root: MutableColumnGroupNode = {
+    kind: 'group', key: 'finder:root', title: '全部步骤', meta: '', groupKind: 'workflow',
+    firstPosition: 0, lastPosition: Math.max(0, model.rows.length - 1), stepCount: model.rows.length,
+    children: [], childByKey: new Map(),
+  };
+  const pathByRowKey = new Map<string, string[]>();
+
+  model.rows.forEach((row) => {
+    const structuralPosition = nearestStructuralPosition(model, row);
+    const groups = groupPathForPosition(model, structuralPosition);
+    const path: string[] = [];
+    let parent = root;
+
+    groups.forEach((group) => {
+      const scopedKey = `${parent.key}/${group.key}`;
+      let child = parent.childByKey.get(scopedKey);
+      if (!child || child.kind !== 'group') {
+        child = {
+          kind: 'group',
+          key: scopedKey,
+          title: group.title,
+          meta: `${group.meta} · ${group.stepCount} 步`,
+          groupKind: group.kind,
+          firstPosition: group.memberPositions[0] ?? row.position,
+          lastPosition: group.memberPositions.at(-1) ?? row.position,
+          stepCount: group.stepCount,
+          children: [],
+          childByKey: new Map(),
+        };
+        parent.children.push(child);
+        parent.childByKey.set(scopedKey, child);
+      }
+      path.push(child.key);
+      parent = child;
+    });
+
+    const stepNode: UnrollColumnStepNode = {
+      kind: 'step',
+      key: row.key,
+      title: row.advancedLabel || row.displayName,
+      meta: row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary,
+      firstPosition: row.position,
+      lastPosition: row.position,
+      stepCount: 1,
+      row,
+    };
+    parent.children.push(stepNode);
+    parent.childByKey.set(stepNode.key, stepNode);
+    pathByRowKey.set(row.key, [...path, row.key]);
+  });
+
+  const items = freezeColumnNodes(root.children);
+  const nodeByKey = new Map<string, UnrollColumnNode>();
+  const visit = (nodes: readonly UnrollColumnNode[]) => nodes.forEach((node) => {
+    nodeByKey.set(node.key, node);
+    if (node.kind === 'group') visit(node.children);
+  });
+  visit(items);
+
+  return { items, nodeByKey, pathByRowKey };
 }

@@ -160,7 +160,7 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`，循环展开路径和 `loopiteration_start` 事件中的 `iteration` 均是从 1 开始的业务序号，前端必须直接显示，不得再次加一。执行快照持久携带当前 `loopProgress`，节点计时携带对应 `iterationPath`，因此刷新或错过增量事件后仍能恢复当前循环的节点状态。流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
 
-展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为执行列表与所选步骤详情两栏浏览器，不重新展开、排序或编号。完整计划中的自动 `startup` / `shutdown` 保留为可以检查但不能手动启动的系统边界，普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份；循环和高级步骤按完整结构化上下文分组，工作流块按块路径覆盖其内部全部循环，再以连续 occurrence 区分重复出现。多个收起组重叠时按 `workflow > loop > advanced` 分配精确片段，不允许出现“状态已收起但部分成员仍可见”。搜索和结构收起后每页最多渲染 100 项；支持编号跳转、方向键和完整参数检查，隐藏的选择可一键定位。`useUnrollPreview` 丢弃过期响应。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
+展开浏览规则：`UnrollViewModal` 通过 `runtimeClient` 读取 `/unroll-preview`，`unrollViewModel` 只把后端原序列适配为 Finder 式分栏树，不重新展开、排序或编号。根列显示当前执行结构；选择循环、工作流块或高级节点后在右侧追加子列，选择最终步骤后最右侧追加详情与启动操作。循环组身份由完整迭代路径确定，不把工作流块路径拼入已激活的外层循环；循环和工作流块通过实际成员包含关系形成父子层级，连续 occurrence 继续隔离重复引用。改变左侧选择会替换其后的路径；窄屏保留横向分栏并自动滚到新列或详情，不回退为另一套上下布局。完整计划中的自动 `startup` / `shutdown` 保留为可以检查但不能手动启动的系统边界，并在展示上归入最近的真实步骤结构；普通步骤继续使用真实 `unrolledIndex` 作为选择和启动身份。搜索结果只作为定位入口，选中后恢复完整分栏路径；编号跳转遵循相同路径恢复规则。`useUnrollPreview` 丢弃过期响应。启动回调显式返回结果，modal 只有在后端启动成功后关闭；缺少运行信息或启动失败时保留所选起点供再次确认。
 
 时间线规则：计划中的 `timeline.steps` 与 `eta.estimatedTotalSeconds` 来自同一次 `estimate_workflow` 计算。运行时复制计划时间线并在每个实际步骤开始或结束后更新快照；它可以依据执行事实修正剩余显示，但不得为了显示而再次展开工作流或另算一套步骤总数。
 
@@ -250,9 +250,9 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 
 ## [前端-浮层系统]
 
-当前规则：modal、dropdown、notification、chart modal 等浮层使用统一层级、遮罩、动画和定位边界。只有最顶层浮层响应 Escape 和外部点击；模态窗口限制 Tab 焦点并在关闭后恢复。头像裁剪也使用 `ModalLayer`，预览和 60 像素导出共用同一尺寸与偏移计算。桌面 chrome 高度会影响浮层可用区域和顶部定位。
+当前规则：modal、dropdown、notification、chart modal 等浮层使用统一层级、遮罩、动画和定位边界。只有最顶层浮层响应 Escape 和外部点击；模态窗口限制 Tab 焦点并在关闭后恢复。头像裁剪也使用 `ModalLayer`，预览和 60 像素导出共用同一尺寸与偏移计算。执行步骤 modal 使用同一 `ModalLayer`，内部专用 Finder 分栏只改变内容导航，不建立第二套遮罩或焦点边界。桌面 chrome 高度会影响浮层可用区域和顶部定位。
 
-归属文件：`apps/frontend/src/components/shared/OverlayLayer.tsx`、`apps/frontend/src/styles/_advanced-components.scss`、`apps/frontend/src/styles/_chart-modal.scss`、`apps/frontend/src/styles/_report.scss`、`apps/frontend/src/styles/_user-settings.scss`。
+归属文件：`apps/frontend/src/components/shared/OverlayLayer.tsx`、`apps/frontend/src/styles/_advanced-components.scss`、`apps/frontend/src/styles/_chart-modal.scss`、`apps/frontend/src/styles/_report.scss`、`apps/frontend/src/styles/_user-settings.scss`、`apps/frontend/src/styles/_unroll.scss`。
 
 允许变化：可以为具体 modal 增加专用布局，但必须遵守统一浮层层级和桌面 chrome 变量。
 
