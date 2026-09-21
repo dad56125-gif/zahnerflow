@@ -350,6 +350,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             ref={canvasRef}
             className={`particle-background fixed inset-0 -z-50 pointer-events-none ${suspended ? 'particle-background--suspended' : ''}`}
             style={{
+                opacity: theme === 'light' && (backgroundPalette === 'mint' || backgroundPalette === 'pink') ? 0.75 : undefined,
                 position: 'fixed',
                 top: 0,
                 left: 0,
