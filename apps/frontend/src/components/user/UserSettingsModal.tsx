@@ -1,3 +1,4 @@
+import { useAppStore, type BackgroundPalette } from '../../state/appStore';
 import { AvatarCropDialog } from './AvatarCropDialog';
 import React, { useState, useEffect, useRef } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
@@ -104,6 +105,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 }) => {
     const { currentUser, setFilePathConfig, setCurrentUserAvatar } = useUser();
 
+    const backgroundPalette = useAppStore(state => state.backgroundPalette);
+    const setBackgroundPalette = useAppStore(state => state.setBackgroundPalette);
     const [activeSection, setActiveSection] = useState<SettingsSection>('filePath');
     const [settings, setSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(false);
@@ -732,6 +735,19 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                         )}
 
                                         {/* 个人偏好配置 */}
+                                        {activeSection === 'cloud' && (
+                                            <section className="settings-background" aria-label="背景配色">
+                                                <h3>背景配色</h3>
+                                                <div className="settings-background__choices">
+                                                    {([['blue', '雾蓝'], ['mint', '薄荷'], ['pink', '樱粉'], ['mixed', '奶杏混色']] as const).map(([id, label]) => (
+                                                        <button key={id} type="button" className={"settings-background__pill settings-background__pill--" + id} aria-pressed={backgroundPalette === id} onClick={() => setBackgroundPalette(id as BackgroundPalette)}>
+                                                            <span>{label}</span><span aria-hidden="true">{backgroundPalette === id ? '✓' : ''}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        )}
+
                                         {activeSection === 'cloud' && (
                                             <div className="settings__section-content" style={{ display: 'flex', gap: 'var(--size-md)', alignItems: 'flex-start' }}>
 

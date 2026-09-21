@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDeveloperMode } from '../modules/simulator/useDeveloperMode';
-import { useAppStore, type BackgroundPalette } from '../state/appStore';
+import { useAppStore } from '../state/appStore';
 import { UserSelector } from './user/UserSelector';
 import { useUser } from './shared/userContextState';
 import { Dropdown } from './shared/Dropdown';
@@ -101,8 +101,6 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { currentUser, setCurrentUser } = useUser();
   const theme = useAppStore(state => state.theme);
-  const backgroundPalette = useAppStore(state => state.backgroundPalette);
-  const setBackgroundPalette = useAppStore(state => state.setBackgroundPalette);
   const setTheme = useAppStore(state => state.setTheme);
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
   const selectedWorkstation = WORKSTATIONS.find(workstation => workstation.id === selectedWorkstationId) || null;
@@ -249,14 +247,6 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="top-bar__actions">
-        {theme === 'light' && (
-          <select className="btn btn--md btn--secondary background-palette-select" aria-label="背景配色" title="背景配色" value={backgroundPalette} onChange={event => setBackgroundPalette(event.target.value as BackgroundPalette)}>
-            <option value="blue">雾蓝</option>
-            <option value="mint">薄荷</option>
-            <option value="pink">樱粉</option>
-            <option value="mixed">奶杏混色</option>
-          </select>
-        )}
         <button
           type="button"
           className="btn btn--md btn--secondary theme-toggle"
