@@ -10,13 +10,7 @@
     border-bottom: 0;
     background: transparent;
     box-shadow: none;
-    h3 { margin: 0 0 var(--space-1); font-size: var(--size-lg); }
-    span { color: var(--text-secondary); font-size: var(--size-sm); }
-  }
-
-  &__title {
-    min-width: 0;
-    span { display: block; }
+    h3 { margin: 0; font-size: var(--size-lg); }
   }
 
   &__body {
@@ -24,7 +18,7 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    padding: var(--size-lg);
+    padding: 0;
   }
 
   :is(button, input, summary):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
@@ -57,14 +51,18 @@
   box-shadow: none;
 }
 
+.unroll-dialog > .unroll-dialog__body.modal__body {
+  padding: 0;
+}
+
 .unroll-finder {
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  background: var(--glass-bg);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 
   &__columns {
     display: flex;
