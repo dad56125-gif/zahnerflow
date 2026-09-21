@@ -287,7 +287,7 @@
   --surface-dialog-chrome: rgba(238, 242, 247, 0.38);
   --connection-stroke: #858585;
   --connection-arrow: #858585;
-  --status-ready-indicator: #35b981;
+  --status-ready-indicator: var(--color-success);
   --text-path: #555c66;
   --text-notice: #89600d;
   --text-saving: #89600d;
@@ -316,14 +316,16 @@
   --shadow-button: 0 1px 2px var(--glass-shadow);
   --shadow-button-hover: 0 1px 3px var(--glass-shadow-hover);
   --color-primary: #397fab;
-  --color-success: #36856c;
+  --color-success-rgb: 53, 185, 129;
+  --color-success: rgb(var(--color-success-rgb));
+  --color-success-bg: rgba(var(--color-success-rgb), 0.1);
   --color-warning: #a67e45;
   --color-danger: #b9656d;
   --color-info: #398d9e;
   --color-favorite: #ae8c4f;
   --color-indigo: #8872af;
   --color-indigo-light: #a498bd;
-  --color-log-success: #087f60;
+  --color-log-success: var(--color-success);
   --color-log-warning: #a56208;
   --color-log-error: #cc3545;
   --color-pv: #087da9;
@@ -349,7 +351,7 @@
   --loop-level-2: #9a88b2;
   --loop-level-3: #b78195;
   --color-primary-bg: rgba(57, 127, 171, 0.1);
-  --device-online: var(--color-primary);
+  --device-online: var(--color-success);
   --device-icon-furnace-fill-start: #ecd4b9;
   --device-icon-furnace-fill-end: #d5a58b;
   --device-icon-mfc-fill-start: #d5e7e4;
