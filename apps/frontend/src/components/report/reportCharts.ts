@@ -28,6 +28,7 @@ interface Comparison {
   title: string;
   group: string;
   ocv: boolean;
+  mode?: string;
   entries: CurveEntry[];
 }
 
@@ -57,7 +58,7 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
     for (const series of curve.series) {
       const kind = curve.nodeType === 'ocp_measurement' ? 'OCV' : series.name;
       const key = JSON.stringify([group, condition ? curve.nodeType : curve.nodeId, series.name, series.xLabel, series.yLabel]);
-      const comparison = comparisons.get(key) || { group, title: `${group} · ${kind}`, ocv: curve.nodeType === 'ocp_measurement', entries: [] };
+      const comparison = comparisons.get(key) || { group, title: `${group} · ${kind}`, ocv: curve.nodeType === 'ocp_measurement', mode: condition?.mode, entries: [] };
       comparison.entries.push({ series, temperature: condition?.temperature ?? null, repeat,
         label: `${condition ? `${condition.temperature}°C` : step}${iteration ? ` · ${iteration}` : ''} · #${curve.unrolledIndex + 1}` });
       comparisons.set(key, comparison);
@@ -128,32 +129,38 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
         })),
       };
       if (first.name === 'LSV') {
+        const fuelCell = comparison.mode === '发电';
+        const electrolysis = comparison.mode === '电解';
+        const currentForDisplay = (current: number) => fuelCell ? Math.abs(current) : electrolysis ? -Math.abs(current) : current;
+        const powerForDisplay = (power: number) => fuelCell ? Math.abs(power) : power;
+
         option.grid = { left: '12.222222%', right: '12.222222%', top: '25%', bottom: '12.5%' };
         option.xAxis = { type: 'value', name: '电流 (A)', nameLocation: 'middle', nameGap: 36,
-          scale: true, axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } };
-        option.yAxis = ['电压 (V)', '功率 (W)'].map((name, index) => ({ type: 'value', name,
+          scale: true, ...(fuelCell ? { min: 0 } : electrolysis ? { max: 0 } : {}),
+          axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } };
+        option.yAxis = (electrolysis ? ['电压 (V)'] : ['电压 (V)', '功率 (W)']).map((name, index) => ({ type: 'value', name,
           position: index === 0 ? 'left' : 'right', nameLocation: 'middle', nameGap: 48, scale: true,
           splitLine: { show: index === 0 },
           axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() },
         }));
         option.dataZoom = [{ type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }];
-        option.series = comparison.entries.flatMap((entry, index) => [0, 1].map((axis) => {
+        option.series = comparison.entries.flatMap((entry, index) => (electrolysis ? [0] : [0, 1]).map((axis) => {
           const extreme = axis === 0 ? extrema.current : extrema.power;
           return { name: entry.label, type: 'line', yAxisIndex: axis,
-            data: entry.series.points.map(([voltage, current]) => [current, axis === 0 ? voltage : voltage * current]),
+            data: entry.series.points.map(([voltage, current]) => [currentForDisplay(current), axis === 0 ? voltage : powerForDisplay(voltage * current)]),
             smooth: false, showSymbol: false, clip: true,
             lineStyle: { width: 1.5, type: axis === 0 ? 'solid' : 'dashed' },
             symbol: ['circle', 'triangle', 'rect', 'diamond'][entry.repeat % 4],
             itemStyle: { color: colors[Math.max(0, temperatures.indexOf(entry.temperature ?? NaN)) % colors.length] },
             markPoint: { symbol: 'circle', symbolSize: 7, data: extreme.series === index ? [{
-              coord: [extreme.point[1], axis === 0 ? extreme.point[0] : extreme.value],
+              coord: [currentForDisplay(extreme.point[1]), axis === 0 ? extreme.point[0] : powerForDisplay(extreme.value)],
               label: { show: true, position: axis === 0 ? 'insideTopRight' : 'insideBottomRight',
-                formatter: `${axis === 0 ? '最大电流点' : '最大功率点'}\n${Number(extreme.value.toPrecision(5))} ${axis === 0 ? 'A' : 'W'}` },
+                formatter: `${axis === 0 ? '最大电流点' : '最大功率点'}\n${Number((axis === 0 ? currentForDisplay(extreme.value) : powerForDisplay(extreme.value)).toPrecision(5))} ${axis === 0 ? 'A' : 'W'}` },
             }] : [] },
           };
         }));
         option.graphic = [{ type: 'text', left: 'center', top: '19%',
-          style: { text: '实线：电压（左轴）    虚线：功率（右轴）', fill: '#374151', fontSize: 11 } }];
+          style: { text: electrolysis ? '电解：电压—电流' : '实线：电压（左轴）    虚线：功率（右轴）', fill: '#374151', fontSize: 11 } }];
       }
       return { key, title: comparison.title, group: comparison.group,
         pointCount: comparison.entries.reduce((count, entry) => count + entry.series.points.length, 0),
