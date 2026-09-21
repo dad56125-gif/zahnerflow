@@ -6,6 +6,7 @@ interface ParticleBackgroundProps {
 }
 
 const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = false }) => {
+    const backgroundPalette = useAppStore(state => state.backgroundPalette);
     const theme = useAppStore(state => state.theme);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const suspendedRef = useRef(suspended);
@@ -21,7 +22,10 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const palette = getComputedStyle(document.documentElement);
         const background = palette.getPropertyValue('--app-background').trim();
         const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
-        const meshColors = ['--mesh-blue', '--mesh-mint', '--mesh-pink', '--mesh-apricot', '--mesh-slate', '--mesh-lilac'].map(token => palette.getPropertyValue(token).trim());
+        const meshTokens = backgroundPalette === 'mixed'
+            ? ['--mesh-blue', '--mesh-mint', '--mesh-pink', '--mesh-apricot', '--mesh-slate', '--mesh-lilac']
+            : Array.from({ length: 6 }, (_, index) => `--mesh-${backgroundPalette}-${index + 1}`);
+        const meshColors = meshTokens.map(token => palette.getPropertyValue(token).trim());
         // 低分辨率径向色团平滑放大，避免全屏模糊与密集粒子。
         const colorField = document.createElement('canvas');
         colorField.width = 192;
@@ -328,7 +332,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
             stop();
             controlsRef.current = null;
         };
-    }, [theme]);
+    }, [theme, backgroundPalette]);
 
     useEffect(() => {
         suspendedRef.current = suspended;

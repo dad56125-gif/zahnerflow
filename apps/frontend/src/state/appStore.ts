@@ -8,10 +8,14 @@ type StoredNotification = NotificationMessage & {
   read: boolean;
 };
 
+export type BackgroundPalette = 'blue' | 'mint' | 'pink' | 'mixed';
+
 interface AppState {
   leftPanelOpen: boolean;
   notificationPanelOpen: boolean;
   theme: 'light' | 'dark';
+  backgroundPalette: BackgroundPalette;
+  setBackgroundPalette: (palette: BackgroundPalette) => void;
   notifications: StoredNotification[];
 
   toggleLeftPanel: () => void;
@@ -32,6 +36,8 @@ export const useAppStore = create<AppState>()(
         leftPanelOpen: true,
         notificationPanelOpen: false,
         theme: 'light',
+        backgroundPalette: 'mixed',
+        setBackgroundPalette: (backgroundPalette) => set({ backgroundPalette }),
         notifications: [],
 
         toggleLeftPanel: () => set(state => ({ leftPanelOpen: !state.leftPanelOpen })),
@@ -73,7 +79,7 @@ export const useAppStore = create<AppState>()(
       }),
       {
         name: 'app-storage',
-        partialize: (state) => ({ theme: state.theme, leftPanelOpen: state.leftPanelOpen }),
+        partialize: (state) => ({ theme: state.theme, backgroundPalette: state.backgroundPalette, leftPanelOpen: state.leftPanelOpen }),
       }
     ),
     { name: 'app-store' }
