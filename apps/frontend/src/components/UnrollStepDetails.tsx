@@ -1,7 +1,7 @@
 import type { UnrollExplorerRow } from './unrollViewModel';
 
 export function UnrollStepDetails({ row }: { row: UnrollExplorerRow | null }) {
-  if (!row) return <div className="unroll-dialog__state"><strong>选择步骤查看详情</strong><p>支持搜索、结构定位和步骤编号跳转。列表内可用方向键切换。</p></div>;
+  if (!row) return <div className="unroll-dialog__state"><strong>选择步骤查看详情</strong><p>从左向右逐层打开执行结构，最终步骤会在最右侧显示完整信息。</p></div>;
   return <>
     <h4>步骤 #{row.ordinal} · {row.advancedLabel || row.displayName}</h4>
     <dl>
