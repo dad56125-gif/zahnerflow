@@ -58,8 +58,10 @@
 .unroll-finder {
   display: flex;
   flex: 1;
+  gap: var(--space-3);
   min-height: 0;
   overflow: hidden;
+  padding: 0 var(--size-xl) var(--size-xl);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -67,10 +69,12 @@
   &__columns {
     display: flex;
     flex: 1;
+    gap: var(--space-3);
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    background: var(--glass-bg);
+    padding: var(--space-2) 0;
+    background: transparent;
   }
 
   &__column {
@@ -79,9 +83,11 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    border-right: 1px solid var(--glass-border);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
     background: var(--glass-bg);
-
+    box-shadow: 0 var(--space-2) var(--size-xl) var(--glass-shadow);
   }
 
   &__items {
@@ -153,7 +159,12 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+    margin-block: var(--space-2);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
     background: var(--glass-bg-hover);
+    box-shadow: 0 var(--space-2) var(--size-xl) var(--glass-shadow);
   }
 
   &__preview-body {
@@ -194,9 +205,11 @@
     &__body { padding: var(--space-2); }
   }
   .unroll-finder {
+    gap: var(--space-2);
+    padding: 0 var(--space-2) var(--space-2);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    &__columns { flex: 0 0 auto; overflow: visible; }
+    &__columns { flex: 0 0 auto; gap: var(--space-2); overflow: visible; }
     &__column, &__preview { flex-basis: calc(100vw - 2 * var(--space-2)); scroll-snap-align: start; }
   }
 }
