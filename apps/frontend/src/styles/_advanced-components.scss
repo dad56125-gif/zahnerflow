@@ -27,7 +27,7 @@
    ========================================================================== */
 
 .modal__content {
-  border-radius: var(--effect-xl);
+  border-radius: var(--radius-panel);
   box-shadow: 0 16px 64px var(--glass-shadow-hover), inset 0 1px 0 var(--text-disabled), inset 0 -1px 0 var(--glass-hover);
   @include flex-col(0); overflow: hidden;
 }
