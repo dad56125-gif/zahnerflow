@@ -1,12 +1,12 @@
 import * as echarts from 'echarts/core';
 import { LineChart, ScatterChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TooltipComponent, DataZoomComponent, ToolboxComponent } from 'echarts/components';
+import { GridComponent, LegendComponent, DataZoomComponent, MarkPointComponent } from 'echarts/components';
 import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 import type { ReportCurveSeries, ReportMeasurementCurve } from '@zahnerflow/types';
 import { getNodeDisplayName } from '../../types/NodeConfiguration';
 import { formatIterationPath, toIterationPath } from '../../utils/iterationPath';
 
-echarts.use([LineChart, ScatterChart, GridComponent, LegendComponent, TooltipComponent, DataZoomComponent, ToolboxComponent, CanvasRenderer, SVGRenderer]);
+echarts.use([LineChart, ScatterChart, GridComponent, LegendComponent, DataZoomComponent, MarkPointComponent, CanvasRenderer, SVGRenderer]);
 
 export interface ReportChartImage {
   key: string;
@@ -27,6 +27,7 @@ interface CurveEntry {
 interface Comparison {
   title: string;
   group: string;
+  ocv: boolean;
   entries: CurveEntry[];
 }
 
@@ -56,7 +57,7 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
     for (const series of curve.series) {
       const kind = curve.nodeType === 'ocp_measurement' ? 'OCV' : series.name;
       const key = JSON.stringify([group, condition ? curve.nodeType : curve.nodeId, series.name, series.xLabel, series.yLabel]);
-      const comparison = comparisons.get(key) || { group, title: `${group} · ${kind}`, entries: [] };
+      const comparison = comparisons.get(key) || { group, title: `${group} · ${kind}`, ocv: curve.nodeType === 'ocp_measurement', entries: [] };
       comparison.entries.push({ series, temperature: condition?.temperature ?? null, repeat,
         label: `${condition ? `${condition.temperature}°C` : step}${iteration ? ` · ${iteration}` : ''} · #${curve.unrolledIndex + 1}` });
       comparisons.set(key, comparison);
@@ -71,33 +72,43 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
       ? { left: '27.777778%', right: '27.777778%', top: '20.833333%', bottom: '12.5%' }
       : { left: '12.222222%', right: '4.444444%', top: '20.833333%', bottom: '12.5%' };
     const axisBounds: { min?: number; max?: number }[] = [{}, {}];
+    const lsv = first.name === 'LSV';
+    const plotted = comparison.entries.map((entry) => lsv
+      ? entry.series.points.map(([x, y]) => [Math.abs(x), Math.abs(y)])
+      : entry.series.points);
+    let peak = { value: -Infinity, point: [0, 0], series: 0 };
+    plotted.forEach((points, series) => points.forEach((point) => {
+      if (point[1] > peak.value) peak = { value: point[1], point, series };
+    }));
+    if (comparison.ocv) axisBounds[1] = { min: 0, max: peak.value > 0 ? peak.value * 1.1 : 1 };
+    if (lsv) { axisBounds[0] = { min: 0 }; axisBounds[1] = { min: 0 }; }
     if (first.equalScale) {
-      const mins = [Infinity, Infinity], maxs = [-Infinity, -Infinity];
-      for (const entry of comparison.entries) for (const point of entry.series.points) for (let axis = 0; axis < 2; axis++) {
-        mins[axis] = Math.min(mins[axis], point[axis]);
-        maxs[axis] = Math.max(maxs[axis], point[axis]);
+      let minX = 0, maxX = 0, maxY = 0;
+      for (const points of plotted) for (const [x, y] of points) {
+        if (y < 0) continue;
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
       }
-      if (Number.isFinite(mins[0])) {
-        const span = Math.max(maxs[0] - mins[0], maxs[1] - mins[1], 1e-9) * 1.12;
-        for (let axis = 0; axis < 2; axis++) {
-          const middle = (mins[axis] + maxs[axis]) / 2;
-          axisBounds[axis] = { min: middle - span / 2, max: middle + span / 2 };
-        }
-      }
+      const span = Math.max(maxX - minX, maxY, 1e-9) * 1.1;
+      axisBounds[0] = { min: minX, max: minX + span };
+      axisBounds[1] = { min: 0, max: span };
     }
     const option: echarts.EChartsCoreOption = {
         animation: false, backgroundColor: '#ffffff', grid,
         textStyle: { fontFamily: 'sans-serif' },
-        tooltip: { trigger: first.equalScale ? 'item' : 'axis', confine: true },
-        toolbox: { right: 8, top: 68, feature: { restore: { title: '复位' }, dataZoom: { title: { zoom: '框选缩放', back: '撤销缩放' } } } },
+        tooltip: { show: false },
         dataZoom: [{ type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }, { type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }],
         legend: { top: 12, left: 24, right: 24, selectedMode: true, textStyle: { fontSize: 11 } },
-        xAxis: { type: 'value', name: first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
+        xAxis: { type: 'value', name: first.equalScale ? 'Re (Ω)' : lsv ? '|电压| (V)' : first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
           ...axisBounds[0], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
-        yAxis: { type: 'value', name: first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
+        yAxis: { type: 'value', name: first.equalScale ? '-Im (Ω)' : lsv ? '|电流| (A)' : first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
           ...axisBounds[1], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
-        series: comparison.entries.map((entry) => ({
-          name: entry.label, type: first.equalScale ? 'scatter' : 'line', data: entry.series.points,
+        series: comparison.entries.map((entry, index) => ({
+          name: entry.label, type: first.equalScale ? 'scatter' : 'line', data: plotted[index], clip: true,
+          markPoint: comparison.ocv && peak.series === index ? {
+            symbol: 'circle', symbolSize: 7,
+            label: { show: true, position: 'top', formatter: `最大 OCV ${Number(peak.value.toPrecision(5))} V` },
+            data: [{ coord: peak.point, value: peak.value }],
+          } : undefined,
           smooth: false, showSymbol: false, symbol: ['circle', 'triangle', 'rect', 'diamond'][entry.repeat % 4], symbolSize: 4,
           lineStyle: { width: 1.5, type: ['solid', 'dashed', 'dotted'][entry.repeat % 3] },
           itemStyle: { color: colors[Math.max(0, temperatures.indexOf(entry.temperature ?? NaN)) % colors.length] },
@@ -128,7 +139,7 @@ export function reportChartImages(charts: ReportChartImage[], container?: HTMLEl
     if (container) {
       const live = element && echarts.getInstanceByDom(element);
       if (!live) throw new Error('图表尚未加载完成，请稍后导出');
-      return { ...chart, image: live.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff', excludeComponents: ['toolbox', 'dataZoom'] }) };
+      return { ...chart, image: live.getDataURL({ type: 'png', pixelRatio: 2, excludeComponents: ['toolbox', 'dataZoom'] }) };
     }
     const renderer = echarts.init(null, undefined, { renderer: 'svg', ssr: true, width: 720, height: 480 });
     try {
