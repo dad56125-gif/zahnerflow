@@ -9,23 +9,13 @@
   // 仅图标使用语义色，文字和玻璃按钮保持中性。
   .topbar-workstation-icon__primary { fill: var(--color-info); }
   .topbar-workstation-icon__secondary { fill: var(--node-library-icon-blue-gray); }
-  .theme-toggle > svg { color: var(--color-indigo); }
-  .user-selector__container .ui-svg-icon--user { color: var(--node-library-icon-ocp); }
-  .user-action-icon--userSettings { color: var(--color-indigo); }
-  .user-action-icon--userSettings .btn-svg-icon__secondary { stroke: var(--color-info); }
-  .user-action-icon--createUser { color: var(--node-library-icon-loop); }
-  .user-action-icon--createUser .btn-svg-icon__secondary { stroke: var(--color-success); }
-  .toolbar-icon--clear { color: var(--color-warning); }
-  .toolbar-icon--records { color: var(--color-info); }
-  .toolbar-icon--records .btn-svg-icon__secondary { stroke: var(--color-indigo); }
-  .toolbar-icon--expand { color: var(--node-library-icon-ramp-voltage); }
-  .toolbar-icon--reset { color: var(--color-warning); }
-  .toolbar-icon--start { color: var(--color-success); }
-  .toolbar-icon--start .btn-svg-icon__secondary {
-    stroke: var(--color-success);
-    fill: var(--color-success-bg);
-  }
-  .toolbar-icon--stop { color: var(--color-danger); }
+  .user-selector__container .ui-svg-icon--user,
+  .user-action-icon--userSettings,
+  .user-action-icon--createUser,
+  [class*='toolbar-icon--'] { color: var(--text-primary); }
+  .user-action-icon--userSettings .btn-svg-icon__secondary,
+  .user-action-icon--createUser .btn-svg-icon__secondary,
+  [class*='toolbar-icon--'] .btn-svg-icon__secondary { stroke: var(--text-secondary); }
   .btn:disabled .btn-svg-icon, .btn.disabled .btn-svg-icon,
   .btn[aria-disabled='true'] .btn-svg-icon { filter: grayscale(1); }
 
