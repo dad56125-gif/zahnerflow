@@ -21,27 +21,8 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const palette = getComputedStyle(document.documentElement);
         const background = palette.getPropertyValue('--app-background').trim();
         const particleRgb = palette.getPropertyValue('--particle-rgb').trim();
-        const cascadeColors = ['--cascade-surface', '--cascade-mid', '--cascade-deep', '--cascade-bottom'].map(token => palette.getPropertyValue(token).trim());
-        const blossomColors = ['--cascade-blossom-top', '--cascade-blossom-edge'].map(token => palette.getPropertyValue(token).trim());
-        const blossomInk = palette.getPropertyValue('--cascade-blossom-ink-rgb').trim();
-        const cascadeBlend = palette.getPropertyValue('--cascade-blend').trim();
-        const blendPink = palette.getPropertyValue('--cascade-blend-pink').trim();
-        const blendBlue = palette.getPropertyValue('--cascade-blend-blue').trim();
-        const cascadeInk = palette.getPropertyValue('--cascade-ink-rgb').trim();
-        const noise = (a: number, b = 0) => {
-            const value = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
-            return value - Math.floor(value);
-        };
-        // 固定 42 片花瓣与 110 粒沙砾，替代随屏幕宽度增长的密集点阵。
-        const lightParticles = Array.from({ length: 152 }, (_, index) => ({
-            petal: index < 42,
-            x: noise(index, 1),
-            depth: noise(index, 2),
-            size: 1.8 + noise(index, 3) * 2.2,
-            phase: noise(index, 4) * Math.PI * 2,
-            speed: 0.009 + noise(index, 5) * 0.008,
-        }));
-        // 低分辨率色场经平滑放大，保持浪涌软边，避免全屏模糊与逐像素计算。
+        const meshColors = ['--mesh-blue', '--mesh-mint', '--mesh-pink', '--mesh-apricot', '--mesh-slate', '--mesh-lilac'].map(token => palette.getPropertyValue(token).trim());
+        // 低分辨率径向色团平滑放大，避免全屏模糊与密集粒子。
         const colorField = document.createElement('canvas');
         colorField.width = 192;
         colorField.height = 128;
@@ -163,53 +144,29 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
 
             if (theme === 'light') {
                 if (advance) waveTime += 1 / TARGET_FPS;
-                const boundary = (u: number) => 0.35
-                    + Math.sin(u * Math.PI * 4 + waveTime * 0.4) * 0.055
-                    + Math.sin(u * Math.PI * 10 - waveTime * 0.22) * 0.016;
                 if (fieldCtx) {
-                    for (let x = 0; x < colorField.width; x++) {
-                        const center = boundary(x / colorField.width);
-                        const wash = fieldCtx.createLinearGradient(0, 0, 0, colorField.height);
-                        wash.addColorStop(0, blossomColors[0]);
-                        wash.addColorStop(center - 0.055, blossomColors[1]);
-                        wash.addColorStop(center - 0.025, blendPink);
-                        wash.addColorStop(center, cascadeBlend);
-                        wash.addColorStop(center + 0.025, blendBlue);
-                        wash.addColorStop(center + 0.055, cascadeColors[0]);
-                        wash.addColorStop(0.58, cascadeColors[1]);
-                        wash.addColorStop(0.82, cascadeColors[2]);
-                        wash.addColorStop(1, cascadeColors[3]);
-                        fieldCtx.fillStyle = wash;
-                        fieldCtx.fillRect(x, 0, 1, colorField.height);
-                    }
+                    const w = colorField.width;
+                    const h = colorField.height;
+                    fieldCtx.fillStyle = background;
+                    fieldCtx.fillRect(0, 0, w, h);
+                    const anchors = [[0.16, 0.2], [0.78, 0.24], [0.72, 0.78], [0.32, 0.65], [0.12, 0.86], [0.52, 0.15]];
+                    fieldCtx.save();
+                    fieldCtx.scale(w, h);
+                    meshColors.forEach((color, index) => {
+                        const phase = index * Math.PI / 3;
+                        const t = waveTime * Math.PI / 24;
+                        const x = anchors[index][0] + Math.sin(t + phase) * 0.2;
+                        const y = anchors[index][1] + Math.cos(t + phase * 2) * 0.18;
+                        const gradient = fieldCtx.createRadialGradient(x, y, 0, x, y, 0.72);
+                        gradient.addColorStop(0, color);
+                        gradient.addColorStop(1, color + '00');
+                        fieldCtx.fillStyle = gradient;
+                        fieldCtx.fillRect(0, 0, 1, 1);
+                    });
+                    fieldCtx.restore();
                     ctx.imageSmoothingEnabled = true;
                     ctx.drawImage(colorField, 0, 0, width, height);
                 }
-                lightParticles.forEach(particle => {
-                    const x = particle.x * width + Math.sin(waveTime * 0.5 + particle.phase) * 12;
-                    const edge = boundary(x / width) * height;
-                    const travel = (particle.depth + waveTime * particle.speed) % 1;
-                    const y = particle.petal
-                        ? edge * (1 - travel)
-                        : edge + (height - edge) * travel;
-                    // 首尾淡入淡出，循环时不闪跳。
-                    const alpha = Math.min(1, travel * 12, (1 - travel) * 12) * 0.9;
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(particle.phase + waveTime * (particle.petal ? 0.35 : 0.08));
-                    ctx.fillStyle = `rgba(${particle.petal ? blossomInk : cascadeInk}, ${alpha})`;
-                    ctx.beginPath();
-                    const size = particle.size;
-                    if (particle.petal) {
-                        ctx.moveTo(0, -size);
-                        ctx.bezierCurveTo(size * 1.5, -size, size, size, 0, size * 1.6);
-                        ctx.bezierCurveTo(-size, size, -size * 1.3, -size * 0.8, 0, -size);
-                    } else {
-                        ctx.ellipse(0, 0, size * 0.75, size * 0.5, 0, 0, Math.PI * 2);
-                    }
-                    ctx.fill();
-                    ctx.restore();
-                });
                 return;
             }
 
