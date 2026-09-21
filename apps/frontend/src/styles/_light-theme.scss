@@ -1,6 +1,6 @@
 /* 专业亮色表面：保持几何、节点语义和交互不变。颜色源只在 _tokens.scss。 */
 :root[data-theme='light'] {
-  .particle-background { visibility: visible; filter: brightness(1.5) saturate(0.5); }
+  .particle-background { visibility: visible; filter: brightness(1.25) saturate(0.7); }
   .bottom-bar__run-dot.is-ready {
     background: var(--status-ready-indicator);
     box-shadow: none;
