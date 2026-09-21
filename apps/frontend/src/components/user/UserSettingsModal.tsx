@@ -736,9 +736,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
                                         {/* 个人偏好配置 */}
                                         {activeSection === 'cloud' && (
-                                            <section className="settings-background" aria-label="背景配色">
-                                                <h3>背景配色</h3>
-                                                <div className="settings-background__choices">
+                                            <section className="settings__section-content settings__form-group" aria-label="背景配色">
+                                                <div className="settings__form-label-row"><label id="background-palette-label">背景配色</label></div>
+                                                <div className="settings-background__choices" role="group" aria-labelledby="background-palette-label">
                                                     {([['blue', '雾蓝'], ['mint', '薄荷'], ['pink', '樱粉'], ['mixed', '奶杏混色'], ['aurora', '经典极光']] as const).map(([id, label]) => (
                                                         <button key={id} type="button" className={"settings-background__pill settings-background__pill--" + id} aria-pressed={backgroundPalette === id} onClick={() => setBackgroundPalette(id as BackgroundPalette)}>
                                                             <span>{label}</span><span aria-hidden="true">{backgroundPalette === id ? '✓' : ''}</span>
