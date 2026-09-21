@@ -182,12 +182,24 @@
 
   // 浮层共享半透明玻璃表面，透出背景并保留文字对比。
   .modal, .settings, .workspace-device-modal, .chart-modal,
-  .dropdown, .notification-panel, .create-user__dialog {
+  .dropdown, .notification, .create-user__dialog {
     background: var(--surface-dialog-glass);
     backdrop-filter: blur(var(--blur-4)) saturate(1.15);
     -webkit-backdrop-filter: blur(var(--blur-4)) saturate(1.15);
     border-color: var(--separator);
     box-shadow: var(--shadow-dialog);
+  }
+  .notification {
+    background: var(--control-white-mask);
+  }
+  .notification .notification__action-btn,
+  .notification .notification__delete-btn,
+  .notification__details {
+    background: var(--control-white-mask);
+  }
+  .notification .notification__action-btn:hover,
+  .notification .notification__delete-btn:hover {
+    background: var(--control-glass-base);
   }
   .modal__header, .modal__footer, .settings__header { background: var(--surface-dialog-chrome); }
   .furnace-modal__sidebar, .mfc__sidebar { background: var(--surface-sidebar); }
