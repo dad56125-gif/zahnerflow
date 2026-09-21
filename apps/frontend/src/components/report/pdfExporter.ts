@@ -154,10 +154,7 @@ export function generateReportHtml(reportData: ReportData): string {
         </table>
       </div>
       ` : ''}
-      <div class="report-footer">
-        <p>生成时间: ${formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
-      </div>
-    </div>
+</div>
   `;
 }
 

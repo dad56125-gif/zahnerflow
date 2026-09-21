@@ -572,7 +572,7 @@
 
 .report__summary-item--full {
   grid-column: 1 / -1;
-  grid-template-columns: minmax(5.5rem, 16%) minmax(0, 1fr);
+  grid-template-columns: minmax(5.5rem, calc(17% - var(--size-sm) * 0.34 - 0.17px)) minmax(0, 1fr);
 }
 
 .report__summary-item--error strong {
@@ -731,4 +731,9 @@
   .report__cover-info {
     grid-template-columns: 1fr;
   }
+}
+
+.report__section-title--summary {
+  border-bottom: 0;
+  padding-bottom: 0;
 }

@@ -21,7 +21,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
         </div>
 
         <section className="report__section">
-          <h2 className="report__section-title">执行摘要</h2>
+          <h2 className="report__section-title report__section-title--summary">执行摘要</h2>
           <div className="report__summary-grid">
             <div className="report__summary-item report__summary-item--full">
               <span>状态</span>
@@ -93,9 +93,6 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
           </section>
         )}
 
-        <div className="report__footer">
-          <p>生成时间: {formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
-        </div>
-      </div>
+</div>
     );
 });
