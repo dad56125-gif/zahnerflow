@@ -363,6 +363,10 @@
   --surface-card: rgba(255, 255, 255, 0.622);
   --surface-inset: #edf0f3;
   --surface-control: rgba(255, 255, 255, 0.594);
+  --control-white-mask: rgba(255, 255, 255, 0.3);
+  --control-glass-base: rgba(255, 255, 255, 0.42);
+  --shadow-control-glass: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.22), 0 2px 6px var(--glass-shadow);
+  --shadow-control-glass-hover: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 4px 12px var(--glass-shadow-hover);
   --surface-hover: rgba(234, 241, 247, 0.64);
   --surface-selected: rgba(220, 234, 247, 0.62);
   --grid-line: rgba(45, 54, 66, 0.025);
