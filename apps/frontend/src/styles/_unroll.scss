@@ -2,55 +2,35 @@
 .unroll-dialog {
   position: fixed;
   inset: var(--canvas-t) var(--space) var(--canvas-b);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--glass-bg-active) 96%, var(--ui-recess) 4%);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-panel);
-  backdrop-filter: blur(var(--blur-panel));
-  box-shadow: var(--shadow-panel);
   font-size: var(--text-body);
 
-  &__header,
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--glass-border);
-  }
-
   &__header {
-    min-height: 4.5rem;
-    > svg { width: var(--size-xl); height: var(--size-xl); color: var(--color-primary); }
-    > div { flex: 1; min-width: 0; }
+    justify-content: flex-start;
+    gap: var(--space-4);
+    min-height: 4rem;
     h3 { margin: 0 0 var(--space-1); font-size: var(--size-lg); }
     span { color: var(--text-secondary); font-size: var(--size-sm); }
   }
 
-  &__summary { white-space: nowrap; }
-
-  &__toolbar {
-    padding-block: var(--space-3);
-    background: color-mix(in srgb, var(--ui-recess) 8%, transparent);
-    form { display: flex; gap: var(--space-2); }
-    form input { width: 7rem; }
+  &__title {
+    min-width: 0;
+    span { display: block; }
   }
 
-  &__search {
-    position: relative;
+  &__summary {
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  &__jump {
     display: flex;
     align-items: center;
-    flex: 1;
-    min-width: 14rem;
-    > svg { position: absolute; left: var(--space-3); width: var(--size-lg); height: var(--size-lg); color: var(--text-muted); pointer-events: none; }
-    input { width: 100%; padding-left: calc(var(--space-3) * 2 + var(--size-lg)); }
+    gap: var(--space-2);
+    input { width: 7rem; }
   }
 
-  input {
+  &__jump input {
     min-height: var(--size-2xl);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-input);
@@ -58,6 +38,14 @@
     background: var(--glass-bg);
     color: var(--text-primary);
     font: inherit;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--size-lg);
   }
 
   :is(button, input, summary):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
@@ -88,6 +76,9 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-bg);
 
   &__columns {
     display: flex;
@@ -95,7 +86,7 @@
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    background: color-mix(in srgb, var(--ui-recess) 4%, transparent);
+    background: var(--glass-bg);
   }
 
   &__column {
@@ -105,7 +96,7 @@
     min-width: 0;
     min-height: 0;
     border-right: 1px solid var(--glass-border);
-    background: color-mix(in srgb, var(--glass-bg) 82%, transparent);
+    background: var(--glass-bg);
 
     > header {
       display: flex;
@@ -115,12 +106,10 @@
       min-height: 2.75rem;
       padding: var(--space-2) var(--space-3);
       border-bottom: 1px solid var(--glass-border);
-      background: color-mix(in srgb, var(--ui-recess) 8%, transparent);
+      background: var(--glass-bg-hover);
       strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       span { flex-shrink: 0; color: var(--text-muted); font-size: var(--size-xs); }
     }
-
-    &--search { flex-basis: min(32rem, 52vw); }
   }
 
   &__items {
@@ -192,7 +181,7 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    background: color-mix(in srgb, var(--glass-bg-active) 92%, var(--ui-recess) 8%);
+    background: var(--glass-bg-hover);
   }
 
   &__preview-body {
@@ -231,9 +220,10 @@
 @media (max-width: 600px) {
   .unroll-dialog {
     inset: calc(var(--app-chrome-h) + var(--space-2)) var(--space-2) var(--space-2);
-    &__toolbar { align-items: stretch; flex-direction: column; }
-    &__toolbar form { justify-content: flex-end; }
-    &__search { min-width: 0; }
+    &__header { flex-wrap: wrap; }
+    &__summary { display: none; }
+    &__jump { margin-left: auto; }
+    &__body { padding: var(--space-2); }
   }
   .unroll-finder {
     overflow-x: auto;

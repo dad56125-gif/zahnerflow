@@ -6,7 +6,6 @@ import { useUnrollPreview } from '../hooks/useUnrollPreview';
 import {
   buildUnrollColumnTree,
   buildUnrollExplorerModel,
-  filterUnrollExplorerRows,
   type UnrollColumnNode,
 } from './unrollViewModel';
 import { UnrollStepDetails } from './UnrollStepDetails';
@@ -40,13 +39,12 @@ function groupOrdinal(node: Extract<UnrollColumnNode, { kind: 'group' }>): strin
   return first === last ? `#${first}` : `#${first}–#${last}`;
 }
 
-/** 只浏览后端执行计划；分栏路径和搜索不会改变执行索引。 */
+/** 只浏览后端执行计划；分栏路径和编号定位不会改变执行索引。 */
 export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
   canRunFromStep = false, runMetadataWarning, onRunFromStep }: UnrollViewModalProps) {
   const { previewState, preview, retry } = useUnrollPreview(isOpen, nodes, autoStartupConfig);
   const model = useMemo(() => buildUnrollExplorerModel(preview), [preview]);
   const tree = useMemo(() => buildUnrollColumnTree(model), [model]);
-  const [query, setQuery] = useState('');
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [jump, setJump] = useState('');
@@ -68,13 +66,8 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
     return result;
   }, [selectedPath, tree]);
 
-  const searchItems = useMemo(() => filterUnrollExplorerRows(model, query).flatMap((row) => {
-    const node = tree.nodeByKey.get(row.key);
-    return node?.kind === 'step' ? [node] : [];
-  }), [model, query, tree]);
-
   useEffect(() => {
-    setQuery(''); setSelectedPath([]); setSelectedIndex(null);
+    setSelectedPath([]); setSelectedIndex(null);
     setJump(''); setNotice(null); setStarting(false);
   }, [preview, isOpen]);
 
@@ -92,7 +85,7 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
     if (!row) { setNotice('该步骤编号不存在。'); return; }
     const path = tree.pathByRowKey.get(row.key);
     if (!path) { setNotice('无法定位该步骤。'); return; }
-    setQuery(''); setSelectedPath([...path]); setSelectedIndex(index); setNotice(null);
+    setSelectedPath([...path]); setSelectedIndex(index); setNotice(null);
     requestAnimationFrame(() => {
       const target = document.querySelector<HTMLElement>(`[data-step="${index}"]`);
       target?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); target?.focus();
@@ -104,12 +97,6 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
     setSelectedPath(path); setNotice(null);
     if (node.kind === 'step') setSelectedIndex(node.row.unrolledIndex);
     else setSelectedIndex(null);
-  };
-
-  const locateSearchResult = (node: Extract<UnrollColumnNode, { kind: 'step' }>) => {
-    const path = tree.pathByRowKey.get(node.row.key);
-    if (!path) return;
-    setQuery(''); setSelectedPath([...path]); setSelectedIndex(node.row.unrolledIndex); setNotice(null);
   };
 
   const run = async (close: () => void) => {
@@ -138,39 +125,30 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
 
   return <ModalLayer open={isOpen} onClose={onClose} id="unroll-view-modal"
     closeOnEscape={!starting} closeOnBackdrop={!starting} blur>
-    {({ close }) => <section className="unroll-dialog" role="dialog" aria-modal="true" aria-labelledby="unroll-title">
-      <header className="unroll-dialog__header">
-        <UiIconSvg name="list" />
-        <div><h3 id="unroll-title">执行步骤</h3><span>逐层浏览执行结构，选择最终步骤作为起点</span></div>
+    {({ close }) => <section className="modal__content unroll-dialog" role="dialog" aria-modal="true" aria-labelledby="unroll-title">
+      <header className="modal__header unroll-dialog__header">
+        <div className="unroll-dialog__title"><h3 id="unroll-title">执行步骤</h3><span>逐层浏览执行结构，选择最终步骤作为起点</span></div>
         {previewState.status === 'success' && <span className="unroll-dialog__summary">
           {preview.nodeCount} 个节点 · {model.totalSteps} 步 · {model.automaticBoundaryCount} 个系统边界
         </span>}
-        <button className="btn btn--sm btn--ghost btn--icon btn--rounded" aria-label="关闭展开步骤" onClick={close} disabled={starting}><UiIconSvg name="close" /></button>
+        {previewState.status === 'success' && model.totalSteps > 0 && <form className="unroll-dialog__jump"
+          onSubmit={(event) => { event.preventDefault(); reveal(Number(jump) - 1); }}>
+          <input aria-label="跳转步骤编号" type="number" min="1" max={model.rows.reduce((max, row) => Math.max(max, row.ordinal), 0)}
+            placeholder="步骤号" value={jump} onChange={(event) => setJump(event.target.value)} required />
+          <button className="btn btn--sm" type="submit">定位</button>
+        </form>}
+        <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" aria-label="关闭展开步骤" onClick={close} disabled={starting}><UiIconSvg name="close" /></button>
       </header>
+      <div className="modal__body unroll-dialog__body">
       {previewState.status === 'loading' && <div className="unroll-dialog__state" role="status">正在生成执行计划…</div>}
       {previewState.status === 'error' && <div className="unroll-dialog__state" role="alert">
         <strong>无法生成执行计划</strong><p>{previewState.message}</p><button className="btn btn--sm" onClick={retry}>重新加载</button>
       </div>}
       {previewState.status === 'success' && model.totalSteps === 0 && <div className="unroll-dialog__state">当前没有可执行步骤。请添加节点或检查循环配置。</div>}
       {previewState.status === 'success' && model.totalSteps > 0 && <>
-        <div className="unroll-dialog__toolbar">
-          <div className="unroll-dialog__search"><UiIconSvg name="list" /><input type="search" aria-label="筛选执行步骤"
-            placeholder="搜索步骤、参数或路径" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
-          <form onSubmit={(event) => { event.preventDefault(); reveal(Number(jump) - 1); }}>
-            <input aria-label="跳转步骤编号" type="number" min="1" max={model.rows.reduce((max, row) => Math.max(max, row.ordinal), 0)}
-              placeholder="步骤号" value={jump} onChange={(event) => setJump(event.target.value)} required />
-            <button className="btn btn--sm" type="submit">定位</button>
-          </form>
-        </div>
         <div className="unroll-finder" ref={finderRef}>
           <div className="unroll-finder__columns" ref={columnsRef} aria-label="执行步骤分栏">
-            {query.trim() ? <section className="unroll-finder__column unroll-finder__column--search">
-              <header><strong>搜索结果</strong><span>{searchItems.length} 项</span></header>
-              <div className="unroll-finder__items">
-                {searchItems.map((node) => renderStep(node, selectedIndex === node.row.unrolledIndex, () => locateSearchResult(node)))}
-                {searchItems.length === 0 && <div className="unroll-dialog__state">没有匹配步骤。</div>}
-              </div>
-            </section> : columns.map((items, columnIndex) => <section className="unroll-finder__column" key={`column:${columnIndex}:${selectedPath[columnIndex - 1] ?? 'root'}`}>
+            {columns.map((items, columnIndex) => <section className="unroll-finder__column" key={`column:${columnIndex}:${selectedPath[columnIndex - 1] ?? 'root'}`}>
               <header><strong>{columnLabel(columnIndex, selectedPath, tree)}</strong><span>{items.length} 项</span></header>
               <div className="unroll-finder__items">
                 {items.map((node) => node.kind === 'group' ? <button key={node.key}
@@ -200,6 +178,7 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
           {notice || runMetadataWarning}
         </div>}
       </>}
+      </div>
     </section>}
   </ModalLayer>;
 }
