@@ -107,3 +107,7 @@ flowchart TD
 - [教学样式](tutorial-style.md)
 - [设备教程](tutorial-devices.md)
 - [质子导体 SOP 教程](tutorial-proton-sop.md)
+
+## 当前会话交接
+
+用户指定的根目录 [handoff.MD](../handoff.MD) 是本次会话交接快照，记录已完成改动、验证和下一会话入口，不替代当前设计文档。
