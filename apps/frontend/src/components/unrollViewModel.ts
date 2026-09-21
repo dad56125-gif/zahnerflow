@@ -567,7 +567,9 @@ function isMutableGroup(node: MutableColumnNode): node is MutableColumnGroupNode
 
 function groupPathForPosition(model: UnrollExplorerModel, position: number): UnrollExplorerGroup[] {
   return model.groups
-    .filter((group) => group.memberPositions.includes(position))
+    // The preview is already fully unrolled by the backend. Workflow blocks
+    // remain provenance on each row, but are transparent in Finder navigation.
+    .filter((group) => group.kind !== 'workflow' && group.memberPositions.includes(position))
     .sort((left, right) => {
       const leftContainsRight = right.memberPositions.every((member) => left.memberPositions.includes(member));
       const rightContainsLeft = left.memberPositions.every((member) => right.memberPositions.includes(member));
