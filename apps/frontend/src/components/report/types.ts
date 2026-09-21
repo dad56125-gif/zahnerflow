@@ -1,3 +1,4 @@
+import type { ReportChartImage } from './reportCharts';
 import type { UiIconName } from '../shared/uiIcons';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 
@@ -24,6 +25,7 @@ export interface ReportData {
   warningDetails: ReportWarningInfo[];
   artifactDetails: ReportArtifactInfo[];
   nodes: ReportNodeInfo[];
+  charts: ReportChartImage[];
 }
 
 export interface ReportNodeInfo {

@@ -60,6 +60,23 @@ export interface ReportEnvironment {
   mfcSamples: any[];
 }
 
+export interface ReportCurveSeries {
+  name: string;
+  xLabel: string;
+  yLabel: string;
+  points: number[][];
+  equalScale: boolean;
+}
+
+export interface ReportMeasurementCurve {
+  unrolledIndex: number;
+  nodeId: string;
+  nodeType: string;
+  iterationPath: any[];
+  series: ReportCurveSeries[];
+  error: string | null;
+}
+
 export interface ExecutionReport {
   reportVersion: string;
   executionMetadata: ReportExecutionMetadata;
@@ -67,6 +84,7 @@ export interface ExecutionReport {
   pathConfig: FilePathConfig;
   unrolledSteps: ReportStep[];
   artifacts: ReportArtifact[];
+  measurementCurves: ReportMeasurementCurve[];
   environmentSnapshot: ReportEnvironment;
   warningFlags: ReportWarning[];
   summaryMetrics: Record<string, any>;

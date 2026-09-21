@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 
 from database import db
+from report_measurements import load_measurement_curves
 from shared.contracts.report import (
     ExecutionReport, ReportArtifact, ReportEnvironment, ReportExecutionMetadata, ReportStep, ReportWarning,
 )
@@ -78,6 +79,7 @@ def load_execution_report(execution_id: str) -> ExecutionReport | None:
             status=execution["status"], started_at=execution["start_time"], ended_at=execution["end_time"], duration_ms=execution["duration"], error=execution["error"],
         ),
         workflow_snapshot=workflow, path_config=path, unrolled_steps=steps, artifacts=artifacts,
+        measurement_curves=load_measurement_curves(steps),
         environment_snapshot=ReportEnvironment.model_validate(read_json(execution["environment_snapshot"], {})),
         warning_flags=warnings, summary_metrics=read_json(execution["summary_metrics"], {}), generated_at=datetime.now(timezone.utc).isoformat(),
     )

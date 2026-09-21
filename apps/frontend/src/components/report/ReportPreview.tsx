@@ -1,3 +1,4 @@
+import { groupReportCharts } from './reportCharts';
 import { forwardRef } from 'react';
 import type { ReportData } from './types';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
@@ -64,18 +65,21 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
           </div>
         </section>
 
-        {reportData.artifactDetails.length > 0 && (
-          <section className="report__section">
-            <h2 className="report__section-title">测量输出</h2>
-            <div className="report__artifact-list">
-              {reportData.artifactDetails.map((artifact) => (
-                <div className="report__artifact" key={artifact.filePath}>
-                  <span className="report__artifact-type">{artifact.fileType || 'output'}</span>
-                  <span className="report__artifact-path">{artifact.filePath}</span>
-                  {artifact.dataPoints != null && <span className="report__artifact-meta">{artifact.dataPoints} 点</span>}
-                </div>
-              ))}
-            </div>
+        {reportData.charts.length > 0 && (
+          <section className="report__section report__section--charts">
+            <h2 className="report__section-title">测量曲线</h2>
+            {groupReportCharts(reportData.charts).map((group) => (
+              <div className="report__chart-group" key={group.title}>
+                <h3>{group.title}</h3>
+                {group.charts.map((chart) => (
+              <figure className="report__chart-card" key={chart.key}>
+                <figcaption>{chart.title}</figcaption>
+                {chart.image && <img src={chart.image} alt={chart.title} width="720" height="420" />}
+                {chart.error ? <p>{chart.error}</p> : <p>{chart.pointCount} 个数据点</p>}
+              </figure>
+                ))}
+              </div>
+            ))}
           </section>
         )}
 

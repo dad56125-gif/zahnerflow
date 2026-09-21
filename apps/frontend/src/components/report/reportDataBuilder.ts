@@ -1,3 +1,4 @@
+import { buildReportCharts } from './reportCharts';
 import {
   type ReportArtifactInfo,
   type ReportData,
@@ -327,6 +328,7 @@ export function buildReportData(payload: ExecutionReport): ReportData {
     warnings: warningDetails.length,
     artifacts: artifactDetails.length,
     warningDetails,
+    charts: buildReportCharts(payload.measurementCurves, workflowNodes),
     artifactDetails,
     nodes,
   };

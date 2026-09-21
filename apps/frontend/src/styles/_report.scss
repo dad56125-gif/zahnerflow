@@ -764,3 +764,14 @@
 .report__summary-item .is-status-failed .report__status-text {
   transform: translateY(2px);
 }
+
+.report__chart-card {
+  margin: var(--size-lg) 0;
+  padding: var(--size-md);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  break-inside: avoid;
+  figcaption { color: var(--text-primary); font-weight: 600; }
+  img { display: block; width: 100%; height: auto; margin-top: var(--size-sm); }
+  p { color: var(--text-muted); margin-bottom: 0; }
+}

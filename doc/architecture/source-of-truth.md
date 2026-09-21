@@ -173,3 +173,7 @@ flowchart TD
 | 步骤规划 | Python ExecutionPlanner | 正常操作和教学请求均调用同一后端预览与 ETA 接口 |
 
 更新规则：改动真实组件后核对教学脚本定位与步骤结果；改动场景、步骤或可见行为后重新验收；录屏仅作开发证据，不随应用发布。验收脚本、截图、录屏原始文件存放忽略目录 `.codex-run/tutorial/`，不进入仓库测试目录。
+
+### 报告测量曲线
+
+执行步骤归档的 csvPath/outputFile → report_measurements.py 只读解析 → report.py 的 measurementCurves → 生成 TypeScript → reportDataBuilder → reportCharts → 报告预览与 HTML/PDF。模式与温度分组来自 workflowSnapshot.nodes 的显式 group.label，保留循环身份。真实测量 CSV 与模拟 CSV 按各自已知列名读取；前端不依赖实时缓存恢复历史曲线。
