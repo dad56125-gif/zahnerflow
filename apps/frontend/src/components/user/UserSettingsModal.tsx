@@ -749,7 +749,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                         )}
 
                                         {activeSection === 'cloud' && (
-                                            <div className="settings__section-content" style={{ display: 'flex', gap: 'var(--size-md)', alignItems: 'flex-start' }}>
+                                            <section className="settings__section-content settings__form-group" aria-label="用户头像">
+                                                <div className="settings__form-label-row"><label>用户头像</label></div>
+                                                <div style={{ display: 'flex', gap: 'var(--size-md)', alignItems: 'flex-start' }}>
 
                                                 {/* 1. 预览与标题区域 (左侧垂直排布，顶齐) */}
                                                 <div 
@@ -762,9 +764,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                         marginTop: '2px'
                                                     }}
                                                 >
-                                                    <label style={{ margin: 0, fontSize: 'var(--size-xs)', fontWeight: 'bold', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                                                        <SpacedCjkText text="用户头像" />
-                                                    </label>
+
                                                     
                                                     <div 
                                                         className="avatar-uploader__preview glass" 
@@ -891,7 +891,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                         支持常见图片格式，系统将自动像素化为 60x60 像素存储；或者您可以直接点击选择头像，点击列表末尾的 “+” 号可上传自定义图片。
                                                     </p>
                                                 </div>
-                                            </div>
+                                                </div>
+                                            </section>
                                         )}
                                     </>
                                 ) : (
