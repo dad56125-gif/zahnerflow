@@ -74,7 +74,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
                 {group.charts.map((chart) => (
               <figure className="report__chart-card" key={chart.key}>
                 <figcaption>{chart.title}</figcaption>
-                {chart.image && <img src={chart.image} alt={chart.title} width="720" height="420" />}
+                {chart.image && <img src={chart.image} alt={chart.title} width="720" height="480" />}
                 {chart.error ? <p>{chart.error}</p> : <p>{chart.pointCount} 个数据点</p>}
               </figure>
                 ))}

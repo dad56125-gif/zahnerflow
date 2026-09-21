@@ -176,4 +176,4 @@ flowchart TD
 
 ### 报告测量曲线
 
-执行步骤归档的 csvPath/outputFile → report_measurements.py 只读解析 → report.py 的 measurementCurves → 生成 TypeScript → reportDataBuilder → reportCharts → 报告预览与 HTML/PDF。模式与温度分组来自 workflowSnapshot.nodes 的显式 group.label，保留循环身份。真实测量 CSV 与模拟 CSV 按各自已知列名读取；前端不依赖实时缓存恢复历史曲线。
+执行步骤归档的 csvPath/outputFile → report_measurements.py 只读解析 → report.py 的 measurementCurves → 生成 TypeScript → reportDataBuilder → reportCharts → 报告预览与 HTML/PDF。模式与温度来自 workflowSnapshot.nodes 的显式 group.label（发电/电解、温度及模拟条件标签），按模式和测量类型叠加不同温度；颜色区分温度，线型/点型区分重复轮次。未声明温度的工作流不推断温度，不混入温度对比组。真实测量 CSV 与模拟 CSV 按各自已知列名读取；前端不依赖实时缓存恢复历史曲线。

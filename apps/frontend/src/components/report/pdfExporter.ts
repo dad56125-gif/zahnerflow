@@ -142,7 +142,7 @@ export function generateReportHtml(reportData: ReportData): string {
         <h2 class="report-section-title">测量曲线</h2>
         ${groupReportCharts(reportData.charts).map((group) => `<section><h3>${escapeHtml(group.title)}</h3>${group.charts.map((chart) => `<figure class="report-chart">
           <figcaption>${escapeHtml(chart.title)}</figcaption>
-          ${chart.image ? `<img src="${escapeHtml(chart.image)}" alt="${escapeHtml(chart.title)}" width="720" height="420">` : ''}
+          ${chart.image ? `<img src="${escapeHtml(chart.image)}" alt="${escapeHtml(chart.title)}" width="720" height="480">` : ''}
           <p>${chart.error ? escapeHtml(chart.error) : `${chart.pointCount} 个数据点`}</p>
         </figure>`).join('')}</section>`).join('')}
       </div>` : ''}
