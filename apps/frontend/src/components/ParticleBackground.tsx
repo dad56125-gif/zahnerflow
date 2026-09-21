@@ -24,23 +24,26 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const cascadeColors = ['--cascade-surface', '--cascade-mid', '--cascade-deep', '--cascade-bottom'].map(token => palette.getPropertyValue(token).trim());
         const blossomColors = ['--cascade-blossom-top', '--cascade-blossom-edge'].map(token => palette.getPropertyValue(token).trim());
         const blossomInk = palette.getPropertyValue('--cascade-blossom-ink-rgb').trim();
-        const cascadeRim = palette.getPropertyValue('--cascade-rim').trim();
+        const cascadeBlend = palette.getPropertyValue('--cascade-blend').trim();
         const cascadeInk = palette.getPropertyValue('--cascade-ink-rgb').trim();
         const noise = (a: number, b = 0) => {
             const value = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
             return value - Math.floor(value);
         };
-        // 固定采样，动画只更新波峰和下落位置，避免逐帧随机闪烁。
-        const cascadeColumns = Array.from({ length: Math.ceil(window.innerWidth / 4) }, (_, column) => ({
-            length: 0.28 + noise(column, 4) * 0.4,
-            offset: noise(column, 1) * 7,
-            dots: Array.from({ length: 80 }, (_, row) => ({
-                depth: row / 80,
-                visible: noise(column, row) <= 1 - row / 80 * 0.85,
-                alpha: (1 - row / 80) ** 1.8 * (0.2 + noise(column, row + 2) * 0.48),
-                height: 1.1 + noise(column, row) * 1.8,
-            })),
+        // 固定 42 片花瓣与 110 粒沙砾，替代随屏幕宽度增长的密集点阵。
+        const lightParticles = Array.from({ length: 152 }, (_, index) => ({
+            petal: index < 42,
+            x: noise(index, 1),
+            depth: noise(index, 2),
+            size: 1.8 + noise(index, 3) * 2.2,
+            phase: noise(index, 4) * Math.PI * 2,
+            speed: 0.009 + noise(index, 5) * 0.008,
         }));
+        // 低分辨率色场经平滑放大，保持浪涌软边，避免全屏模糊与逐像素计算。
+        const colorField = document.createElement('canvas');
+        colorField.width = 192;
+        colorField.height = 128;
+        const fieldCtx = colorField.getContext('2d');
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
         let waveTime = 0;
         let width = canvas.width = window.innerWidth;
@@ -48,7 +51,7 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         let animationFrameId = 0;
         let isRunning = false;
         let lastFrameTime = 0;
-        const TARGET_FPS = 30;
+        const TARGET_FPS = theme === 'light' ? 24 : 30;
         const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
         // === CONFIGURATION (性能优化版) ===
@@ -158,66 +161,50 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
 
             if (theme === 'light') {
                 if (advance) waveTime += 1 / TARGET_FPS;
-                const crest = (u: number) => height * (0.22
-                    + Math.sin(u * 12 + waveTime * 0.4) * 0.021
-                    + Math.sin(u * 29 - waveTime * 0.22) * 0.017
-                    + Math.cos(u * 49 + waveTime * 0.16) * 0.008);
-                const wavePath = (offset: number) => {
+                const boundary = (u: number) => 0.3
+                    + Math.sin(u * Math.PI * 4 + waveTime * 0.4) * 0.018
+                    + Math.sin(u * Math.PI * 10 - waveTime * 0.22) * 0.009;
+                if (fieldCtx) {
+                    for (let x = 0; x < colorField.width; x++) {
+                        const center = boundary(x / colorField.width);
+                        const wash = fieldCtx.createLinearGradient(0, 0, 0, colorField.height);
+                        wash.addColorStop(0, blossomColors[0]);
+                        wash.addColorStop(center - 0.065, blossomColors[1]);
+                        wash.addColorStop(center, cascadeBlend);
+                        wash.addColorStop(center + 0.065, cascadeColors[0]);
+                        wash.addColorStop(0.58, cascadeColors[1]);
+                        wash.addColorStop(0.82, cascadeColors[2]);
+                        wash.addColorStop(1, cascadeColors[3]);
+                        fieldCtx.fillStyle = wash;
+                        fieldCtx.fillRect(x, 0, 1, colorField.height);
+                    }
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.drawImage(colorField, 0, 0, width, height);
+                }
+                lightParticles.forEach(particle => {
+                    const x = particle.x * width + Math.sin(waveTime * 0.5 + particle.phase) * 12;
+                    const edge = boundary(x / width) * height;
+                    const travel = (particle.depth + waveTime * particle.speed) % 1;
+                    const y = particle.petal
+                        ? edge * (1 - travel)
+                        : edge + (height - edge) * travel;
+                    // 首尾淡入淡出，循环时不闪跳。
+                    const alpha = Math.min(1, travel * 12, (1 - travel) * 12) * 0.9;
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(particle.phase + waveTime * (particle.petal ? 0.35 : 0.08));
+                    ctx.fillStyle = `rgba(${particle.petal ? blossomInk : cascadeInk}, ${alpha})`;
                     ctx.beginPath();
-                    ctx.moveTo(-10, height);
-                    for (let x = -10; x <= width + 10; x += 3) ctx.lineTo(x, crest(x / width) + offset);
-                    ctx.lineTo(width + 10, height);
-                    ctx.closePath();
-                };
-                const blossomWash = ctx.createLinearGradient(0, 0, 0, height * 0.3);
-                blossomWash.addColorStop(0, blossomColors[0]);
-                blossomWash.addColorStop(1, blossomColors[1]);
-                ctx.fillStyle = blossomWash;
-                ctx.fillRect(0, 0, width, height);
-                // 上部使用同一波峰反向生长，颗粒向上运动，和下部海蓝相对。
-                cascadeColumns.forEach((column, index) => {
-                    const u = index / cascadeColumns.length;
-                    const x = u * width;
-                    const y = crest(u) - 12;
-                    const length = column.length * height * 0.55;
-                    ctx.strokeStyle = `rgba(${blossomInk}, 0.18)`;
-                    ctx.lineWidth = 0.7;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y - 3);
-                    ctx.lineTo(x + Math.sin(waveTime * 0.25 + u * 9) * 2, y - length);
-                    ctx.stroke();
-                    column.dots.forEach(dot => {
-                        if (!dot.visible) return;
-                        ctx.fillStyle = `rgba(${blossomInk}, ${dot.alpha})`;
-                        ctx.fillRect(x + Math.sin(dot.depth * 6 + u * 7 - waveTime * 0.25) * 1.4,
-                            y - dot.depth * length - (waveTime * 6 + column.offset) % 7, 1, dot.height);
-                    });
-                });
-                wavePath(-12);
-                ctx.fillStyle = cascadeRim;
-                ctx.fill();
-                const wash = ctx.createLinearGradient(0, height * 0.2, 0, height);
-                [0, 0.38, 0.76, 1].forEach((stop, index) => wash.addColorStop(stop, cascadeColors[index]));
-                wavePath(0);
-                ctx.fillStyle = wash;
-                ctx.fill();
-                cascadeColumns.forEach((column, index) => {
-                    const u = index / cascadeColumns.length;
-                    const x = u * width;
-                    const y = crest(u);
-                    const length = column.length * height;
-                    ctx.strokeStyle = `rgba(${cascadeInk}, 0.12)`;
-                    ctx.lineWidth = 0.7;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y + 3);
-                    ctx.lineTo(x + Math.sin(waveTime * 0.25 + u * 9) * 2, y + length);
-                    ctx.stroke();
-                    column.dots.forEach(dot => {
-                        if (!dot.visible) return;
-                        ctx.fillStyle = `rgba(${cascadeInk}, ${dot.alpha})`;
-                        ctx.fillRect(x + Math.sin(dot.depth * 6 + u * 7 + waveTime * 0.25) * 1.4,
-                            y + dot.depth * length + (waveTime * 6 + column.offset) % 7, 1, dot.height);
-                    });
+                    const size = particle.size;
+                    if (particle.petal) {
+                        ctx.moveTo(0, -size);
+                        ctx.bezierCurveTo(size * 1.5, -size, size, size, 0, size * 1.6);
+                        ctx.bezierCurveTo(-size, size, -size * 1.3, -size * 0.8, 0, -size);
+                    } else {
+                        ctx.ellipse(0, 0, size * 0.75, size * 0.5, 0, 0, Math.PI * 2);
+                    }
+                    ctx.fill();
+                    ctx.restore();
                 });
                 return;
             }
