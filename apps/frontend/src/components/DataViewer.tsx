@@ -193,8 +193,8 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
         <div className={`health-badge ${healthData.status}`} style={{
           padding: '12px 24px',
           borderRadius: '12px',
-          backgroundColor: healthData.status === 'healthy' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)',
-          border: `1px solid ${healthData.status === 'healthy' ? '#4caf50' : '#ff9800'}`,
+          backgroundColor: healthData.status === 'healthy' ? 'rgba(var(--color-success-rgb), 0.2)' : 'rgba(var(--color-warning-rgb), 0.2)',
+          border: `1px solid ${healthData.status === 'healthy' ? 'var(--color-success)' : 'var(--color-warning)'}`,
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
@@ -204,17 +204,17 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
           <span className="health-icon">
             <UiIconSvg name={healthData.status === 'healthy' ? 'check' : 'warning'} />
           </span>
-          <span className="health-text" style={{ color: healthData.status === 'healthy' ? '#81c784' : '#ffb74d' }}>
+          <span className="health-text" style={{ color: healthData.status === 'healthy' ? 'var(--color-success)' : 'var(--color-warning)' }}>
             {healthData.status === 'healthy' ? '电池状况良好' : '电池异常 (需关注)'}
           </span>
         </div>
 
         <div className="health-metrics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <div className="health-metric-card glass" style={{ padding: '15px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="health-metric-card glass" style={{ padding: '15px', borderRadius: '10px', backgroundColor: 'var(--glass-bg)' }}>
             <div className="metric-label" style={{ fontSize: '0.8rem', opacity: 0.6 }}>平均电压</div>
             <div className="metric-value" style={{ fontSize: '1.4rem', fontWeight: 600 }}>{healthData.avgVoltage.toFixed(4)} V</div>
           </div>
-          <div className="health-metric-card glass" style={{ padding: '15px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="health-metric-card glass" style={{ padding: '15px', borderRadius: '10px', backgroundColor: 'var(--glass-bg)' }}>
             <div className="metric-label" style={{ fontSize: '0.8rem', opacity: 0.6 }}>电压偏差</div>
             <div className="metric-value" style={{ fontSize: '1.4rem', fontWeight: 600 }}>{healthData.deviation.toFixed(2)}%</div>
           </div>
@@ -222,15 +222,15 @@ export const DataViewer: React.FC<DataViewerProps> = ({ isVisible = true, select
 
         {healthData.issues && healthData.issues.length > 0 && (
           <div className="health-issues-section" style={{ marginTop: '10px' }}>
-            <div className="issues-title" style={{ fontWeight: 'bold', marginBottom: '10px', color: '#ffb74d' }}>发现的问题:</div>
+            <div className="issues-title" style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--color-warning)' }}>发现的问题:</div>
             <ul className="issues-list" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {healthData.issues.map((issue: string, idx: number) => (
                 <li key={idx} className="issue-item" style={{
                   padding: '8px 12px',
-                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  backgroundColor: 'var(--glass-bg)',
                   borderRadius: '6px',
                   fontSize: '0.9rem',
-                  borderLeft: '3px solid #ff9800'
+                  borderLeft: '3px solid var(--color-warning)'
                 }}>
                   {issue}
                 </li>

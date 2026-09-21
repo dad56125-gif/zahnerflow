@@ -298,7 +298,7 @@ export const LoopBoundary: React.FC<LoopBoundaryProps> = ({
           };
 
           // 根据级别选择文字颜色 (与边界颜色同步: 青绿、天蓝、紫罗兰、玫红)
-          const levelColors = ['#00E6B4', '#00B4FF', '#8A64FF', '#FF50B4'];
+          const levelColors = ['var(--loop-level-0)', 'var(--loop-level-1)', 'var(--loop-level-2)', 'var(--loop-level-3)'];
           const textColor = levelColors[loop.level] || levelColors[0];
 
           return (

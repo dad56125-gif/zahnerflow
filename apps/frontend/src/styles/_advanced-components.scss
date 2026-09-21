@@ -302,7 +302,7 @@
   &.is-connected,
   &.is-success {
     background: var(--device-online);
-    box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 16px rgba(var(--color-success-rgb), 0.6);
     animation: device_online_pulse 2s ease-in-out infinite;
   }
 
@@ -313,7 +313,7 @@
 
   &.is-error {
     background: var(--device-error);
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 16px rgba(var(--color-danger-rgb), 0.6);
     animation: device_error_blink 1s ease-in-out infinite;
   }
 }

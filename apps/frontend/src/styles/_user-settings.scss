@@ -730,16 +730,16 @@ label.setting-toggle {
 }
 
 .setting-toggle input:checked + .toggle-track {
-  border-color: rgba(16, 185, 129, 0.42);
+  border-color: rgba(var(--color-success-rgb), 0.42);
   background:
-    linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.08)),
+    linear-gradient(135deg, rgba(var(--color-success-rgb), 0.3), rgba(var(--color-success-rgb), 0.08)),
     rgba(var(--ui-recess-rgb), 0.12);
 }
 
 .setting-toggle input:checked + .toggle-track .toggle-thumb {
   left: calc(100% - var(--size-xl) + var(--size-3xs));
   background: var(--color-success);
-  box-shadow: 0 0 var(--size-md) rgba(16, 185, 129, 0.44);
+  box-shadow: 0 0 var(--size-md) rgba(var(--color-success-rgb), 0.44);
 }
 
 .toggle-label {

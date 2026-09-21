@@ -182,7 +182,7 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
           padding: '0 0.85rem',
           display: 'flex',
           alignItems: 'center',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          boxShadow: 'var(--shadow-button)',
           transform: 'translateZ(0)',
           willChange: 'transform, filter, backdrop-filter',
           pointerEvents: 'auto'
@@ -192,7 +192,7 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
         <span style={{
           marginLeft: 8,
           fontSize: '11px',
-          color: activeNode.type.includes('eis') ? '#52c41a' : '#40a9ff',
+          color: activeNode.type.includes('eis') ? 'var(--color-success)' : 'var(--color-info)',
           fontWeight: 'normal'
         }}>
           [{activeNode.type.includes('eis')
@@ -291,7 +291,7 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
                       width="2.7"
                       height="2.7"
                       rx="0.7"
-                      fill={isLit ? '#ffd666' : 'currentColor'}
+                      fill={isLit ? 'var(--color-warning)' : 'currentColor'}
                       opacity={isLit ? 1 : 0.28}
                     />
                   );
@@ -337,11 +337,11 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
         const isFailed = nodePhase === 'failed';
         const isCancelled = nodePhase === 'cancelled';
 
-        let borderColor = 'rgba(24, 144, 255, 0.2)';
-        if (isRunning) borderColor = 'rgba(82, 196, 26, 0.4)';
-        else if (isPending) borderColor = 'rgba(250, 173, 20, 0.3)';
-        else if (isFailed) borderColor = 'rgba(255, 77, 79, 0.45)';
-        else if (isCancelled) borderColor = 'rgba(250, 173, 20, 0.4)';
+        let borderColor = 'rgba(var(--color-primary-rgb), 0.2)';
+        if (isRunning) borderColor = 'rgba(var(--color-success-rgb), 0.4)';
+        else if (isPending) borderColor = 'rgba(var(--color-warning-rgb), 0.3)';
+        else if (isFailed) borderColor = 'rgba(var(--color-danger-rgb), 0.45)';
+        else if (isCancelled) borderColor = 'rgba(var(--color-warning-rgb), 0.4)';
 
         return (
           <div
@@ -353,10 +353,10 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
               alignItems: 'center',
               background: 'var(--glass-bg)',
               borderColor,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              boxShadow: 'var(--shadow-button)',
               transform: 'translateZ(0)',
               willChange: 'transform, filter, backdrop-filter',
-              color: isRunning ? '#52c41a' : isFailed ? '#ff4d4f' : isPending || isCancelled ? '#faad14' : '#1890ff',
+              color: isRunning ? 'var(--color-success)' : isFailed ? 'var(--color-danger)' : isPending || isCancelled ? 'var(--color-warning)' : 'var(--color-primary)',
               fontWeight: isRunning ? 'bold' : 'normal',
               pointerEvents: 'auto'
             }}
@@ -373,9 +373,9 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
                   display: 'inline-block',
                   width: '5px',
                   height: '5px',
-                  background: '#52c41a',
+                  background: 'var(--color-success)',
                   borderRadius: '50%',
-                  boxShadow: '0 0 6px #52c41a',
+                  boxShadow: '0 0 6px var(--color-success)',
                   animation: 'tab-pulse 1.5s infinite'
                 }} />
                 测量中

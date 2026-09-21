@@ -10,15 +10,6 @@ interface TemperatureChartProps {
   xDomainEnd?: string | number;
 }
 
-// 图表颜色配置
-const CHART_COLORS = {
-  pv: '#ef4444', // 红色 - 实际温度
-  sv: '#3b82f6', // 蓝色 - 设定温度
-  mv: '#10b981', // 绿色 - 输出功率
-  grid: 'rgba(255, 255, 255, 0.08)',
-  text: 'rgba(255, 255, 255, 0.7)',
-};
-
 // 最大显示点数
 const MAX_DISPLAY_POINTS = 200;
 
@@ -180,7 +171,7 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
       return fontSize || defaultValue;
     };
 
-    const gridColor = 'rgba(255, 255, 255, 0.1)';
+    const gridColor = getCssVariable('--glass-border', '');
     const textColor = getCssVariable('--text-secondary', 'rgba(255, 255, 255, 0.62)');
     const axisFontSize = resolveCssFontSize('--size-md', '14px');
     const axisFontFamily = getCssVariable('--font-ui', '"Oxanium", "Noto Sans SC Variable", "Microsoft YaHei UI", sans-serif');
@@ -312,15 +303,15 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
     };
 
     // 绘制三条线
-    drawLine('pv', CHART_COLORS.pv);
-    drawLine('sv', CHART_COLORS.sv);
+    drawLine('pv', getCssVariable('--chart-furnace-pv', ''));
+    drawLine('sv', getCssVariable('--chart-furnace-sv', ''));
     // MV 使用不同的比例 (0-100%)
     const mvData = displayData.filter(d => d.mv !== null);
     if (mvData.length > 0) {
-      ctx.strokeStyle = CHART_COLORS.mv;
+      ctx.strokeStyle = getCssVariable('--chart-furnace-mv', '');
       ctx.lineWidth = 1.8;
       ctx.setLineDash([4, 2]);
-      ctx.shadowColor = CHART_COLORS.mv;
+      ctx.shadowColor = getCssVariable('--chart-furnace-mv', '');
       ctx.shadowBlur = 3;
       ctx.beginPath();
 
@@ -436,13 +427,13 @@ export const TemperatureChart: React.FC<TemperatureChartProps> = ({
               style={{ left: leftPos, top: tooltip.y - 80 }}
             >
               <div className="tooltip__time">{formatTime(tooltip.point.ts)}</div>
-              <div className="tooltip__row" style={{ color: CHART_COLORS.pv }}>
+              <div className="tooltip__row" style={{ color: 'var(--chart-furnace-pv)' }}>
                 PV: {tooltip.point.pv?.toFixed(1) ?? 'N/A'}°C
               </div>
-              <div className="tooltip__row" style={{ color: CHART_COLORS.sv }}>
+              <div className="tooltip__row" style={{ color: 'var(--chart-furnace-sv)' }}>
                 SV: {tooltip.point.sv?.toFixed(1) ?? 'N/A'}°C
               </div>
-              <div className="tooltip__row" style={{ color: CHART_COLORS.mv }}>
+              <div className="tooltip__row" style={{ color: 'var(--chart-furnace-mv)' }}>
                 MV: {tooltip.point.mv?.toFixed(1) ?? 'N/A'}%
               </div>
               {tooltip.point.segment !== undefined && (

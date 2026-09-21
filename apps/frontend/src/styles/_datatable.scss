@@ -190,7 +190,7 @@
 
 /* @keyframes — DataTable: tbody tr:first-child 新行高亮 */
 @keyframes datatable-new-row {
-  from { background: rgba(59, 130, 246, 0.2); }
+  from { background: rgba(var(--color-primary-rgb), 0.2); }
   to   { background: transparent; }
 }
 

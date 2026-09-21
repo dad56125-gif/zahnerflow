@@ -667,18 +667,18 @@
 }
 
 .device-dashboard__gauge--success .device-dashboard__gauge-progress {
-  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-success), rgba(16, 185, 129, 0.62)); }
-  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-success), rgba(16, 185, 129, 0.62)); }
+  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-success), rgba(var(--color-success-rgb), 0.62)); }
+  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-success), rgba(var(--color-success-rgb), 0.62)); }
 }
 
 .device-dashboard__gauge--warning .device-dashboard__gauge-progress {
-  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-warning), rgba(245, 158, 11, 0.62)); }
-  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-warning), rgba(245, 158, 11, 0.62)); }
+  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-warning), rgba(var(--color-warning-rgb), 0.62)); }
+  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-warning), rgba(var(--color-warning-rgb), 0.62)); }
 }
 
 .device-dashboard__gauge--danger .device-dashboard__gauge-progress {
-  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-danger), rgba(239, 68, 68, 0.62)); }
-  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-danger), rgba(239, 68, 68, 0.62)); }
+  &::-webkit-progress-value { background: linear-gradient(90deg, var(--color-danger), rgba(var(--color-danger-rgb), 0.62)); }
+  &::-moz-progress-bar { background: linear-gradient(90deg, var(--color-danger), rgba(var(--color-danger-rgb), 0.62)); }
 }
 
 @media (max-width: 900px) {

@@ -126,9 +126,9 @@
 }
 
 .node.is-drag-over {
-  border-color: var(--color-primary); background: rgba(59, 130, 246, 0.2);
+  border-color: var(--color-primary); background: rgba(var(--color-primary-rgb), 0.2);
   transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 32px rgba(var(--color-primary-rgb), 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   outline: 2px dashed var(--color-primary); outline-offset: 4px;
 }
 
@@ -324,7 +324,7 @@
   &__warning       { font-size: calc(var(--size-xs) * 0.85); color: var(--color-favorite); font-weight: 400; white-space: nowrap; }
   &__icon          { font-size: var(--size-5xl); margin-bottom: var(--size-md); text-align: center; }
   &__warning-text  { margin: 16px 0; font-size: 16px; color: var(--text-primary); text-align: center;
-    strong { color: #f44336; font-weight: 600; }
+    strong { color: var(--color-danger); font-weight: 600; }
   }
   &__warning-subtext { margin: var(--space-2) 0 var(--space-6) 0; font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.4; }
 }

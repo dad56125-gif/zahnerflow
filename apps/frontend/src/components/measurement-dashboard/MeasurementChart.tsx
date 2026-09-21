@@ -301,14 +301,14 @@ name: 'Voltage (Target)',
 type: 'line',
 yAxisIndex: 0,
 showSymbol: false,
-itemStyle: { color: '#40a9ff' },
+itemStyle: { color: getCssVariable('--chart-voltage') },
 lineStyle: { type: 'dashed', width: 1 },
 step: 'end',
 data: data.voltage,
 markLine: vSetpoint !== undefined ? {
 symbol: 'none',
-label: { position: 'start', formatter: `${vSetpoint}V`, color: '#40a9ff', fontSize: 10 },
-lineStyle: { type: 'dotted', color: 'rgba(64, 169, 255, 0.4)', width: 1 },
+label: { position: 'start', formatter: `${vSetpoint}V`, color: getCssVariable('--chart-voltage'), fontSize: 10 },
+lineStyle: { type: 'dotted', color: getCssVariable('--chart-voltage-guide'), width: 1 },
 data: [{ yAxis: vSetpoint }]
 } : undefined,
 });
@@ -337,14 +337,14 @@ name: 'Current (Target)',
 type: 'line',
 yAxisIndex: 1,
 showSymbol: false,
-itemStyle: { color: '#fa8c16' },
+itemStyle: { color: getCssVariable('--chart-current') },
 lineStyle: { type: 'dashed', width: 1 },
 step: 'end',
 data: data.current,
 markLine: iSetpoint !== undefined ? {
 symbol: 'none',
-label: { position: 'end', formatter: `${iSetpoint}A`, color: '#fa8c16', fontSize: 10 },
-lineStyle: { type: 'dotted', color: 'rgba(250, 140, 22, 0.4)', width: 1 },
+label: { position: 'end', formatter: `${iSetpoint}A`, color: getCssVariable('--chart-current'), fontSize: 10 },
+lineStyle: { type: 'dotted', color: getCssVariable('--chart-current-guide'), width: 1 },
 data: [{ yAxis: iSetpoint }]
 } : undefined,
 });
@@ -421,9 +421,9 @@ type: 'value',
 name: 'V',
 position: 'left',
 scale: true,
-axisLine: { show: true, lineStyle: { color: '#40a9ff', width: 3 } },
-axisLabel: { color: '#40a9ff', fontSize: 14, formatter: formatPrecision, margin: 4 },
-nameTextStyle: { color: '#40a9ff', fontWeight: 'bold', fontSize: 16 },
+axisLine: { show: true, lineStyle: { color: getCssVariable('--chart-voltage'), width: 3 } },
+axisLabel: { color: getCssVariable('--chart-voltage'), fontSize: 14, formatter: formatPrecision, margin: 4 },
+nameTextStyle: { color: getCssVariable('--chart-voltage'), fontWeight: 'bold', fontSize: 16 },
 splitLine: { show: true, lineStyle: { type: 'dashed', color: getCssVariable('--glass-border-muted', 'rgba(255, 255, 255, 0.04)') } }
 },
 {
@@ -431,9 +431,9 @@ type: 'value',
 name: 'A',
 position: 'right',
 scale: true,
-axisLine: { show: true, lineStyle: { color: '#fa8c16', width: 3 } },
-axisLabel: { color: '#fa8c16', fontSize: 14, formatter: formatPrecision, margin: 4 },
-nameTextStyle: { color: '#fa8c16', fontWeight: 'bold', fontSize: 16 },
+axisLine: { show: true, lineStyle: { color: getCssVariable('--chart-current'), width: 3 } },
+axisLabel: { color: getCssVariable('--chart-current'), fontSize: 14, formatter: formatPrecision, margin: 4 },
+nameTextStyle: { color: getCssVariable('--chart-current'), fontWeight: 'bold', fontSize: 16 },
 splitLine: { show: false }
 }
 ],
@@ -487,7 +487,7 @@ series: [{
 name: 'Nyquist',
 type: 'scatter',
 symbolSize: 6,
-itemStyle: { color: '#52c41a' },
+itemStyle: { color: getCssVariable('--chart-eis') },
 data: []
 }]
 });

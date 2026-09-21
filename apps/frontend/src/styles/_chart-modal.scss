@@ -280,7 +280,7 @@
 
   &.is-running {
     color: var(--color-success);
-    border-color: rgba(16, 185, 129, 0.25);
+    border-color: rgba(var(--color-success-rgb), 0.25);
 
     &::before {
       content: '';
@@ -424,11 +424,11 @@
     color: var(--text-primary);
     border-color: rgba(96, 165, 250, 0.46);
     background:
-      linear-gradient(135deg, rgba(59, 130, 246, 0.28), rgba(59, 130, 246, 0.09)),
+      linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.28), rgba(var(--color-primary-rgb), 0.09)),
       rgba(var(--ui-ink-rgb), 0.055);
     box-shadow:
       0 0 0 1px rgba(147, 197, 253, 0.12),
-      0 var(--size-3xs) var(--size-lg) rgba(59, 130, 246, 0.22),
+      0 var(--size-3xs) var(--size-lg) rgba(var(--color-primary-rgb), 0.22),
       inset 0 1px 0 var(--glass-border-hover);
     opacity: 1;
   }

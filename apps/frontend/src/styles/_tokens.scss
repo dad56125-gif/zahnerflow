@@ -68,18 +68,32 @@
      2. 功能色系统 (Functional Color System)
      ========================================================================== */
 
-  --color-primary: #3b82f6;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-info: #06b6d4;
+  --color-primary-rgb: 59, 130, 246;
+  --color-primary: rgb(var(--color-primary-rgb));
+  --color-accent-rgb: 168, 85, 247;
+  --chart-voltage: #40a9ff;
+  --chart-voltage-guide: rgba(64, 169, 255, 0.4);
+  --chart-current: #fa8c16;
+  --chart-current-guide: rgba(250, 140, 22, 0.4);
+  --chart-eis: #52c41a;
+  --chart-furnace-pv: #ef4444;
+  --chart-furnace-sv: #3b82f6;
+  --chart-furnace-mv: #10b981;
+  --color-success-rgb: 16, 185, 129;
+  --color-success: rgb(var(--color-success-rgb));
+  --color-warning-rgb: 245, 158, 11;
+  --color-warning: rgb(var(--color-warning-rgb));
+  --color-danger-rgb: 239, 68, 68;
+  --color-danger: rgb(var(--color-danger-rgb));
+  --color-info-rgb: 6, 182, 212;
+  --color-info: rgb(var(--color-info-rgb));
   --color-neutral: #6b7280;
 
-  --color-primary-bg: rgba(59, 130, 246, 0.1);
-  --color-success-bg: rgba(16, 185, 129, 0.1);
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-danger-bg: rgba(239, 68, 68, 0.1);
-  --color-info-bg: rgba(6, 182, 212, 0.1);
+  --color-primary-bg: rgba(var(--color-primary-rgb), 0.1);
+  --color-success-bg: rgba(var(--color-success-rgb), 0.1);
+  --color-warning-bg: rgba(var(--color-warning-rgb), 0.1);
+  --color-danger-bg: rgba(var(--color-danger-rgb), 0.1);
+  --color-info-bg: rgba(var(--color-info-rgb), 0.1);
   --color-neutral-bg: rgba(107, 114, 128, 0.1);
 
   /* 扩展功能色 */
@@ -315,13 +329,17 @@
   --shadow-panel-hover: 0 2px 6px var(--glass-shadow-hover);
   --shadow-button: 0 1px 2px var(--glass-shadow);
   --shadow-button-hover: 0 1px 3px var(--glass-shadow-hover);
-  --color-primary: #397fab;
+  --color-primary-rgb: 57, 127, 171;
+  --color-primary: rgb(var(--color-primary-rgb));
   --color-success-rgb: 53, 185, 129;
   --color-success: rgb(var(--color-success-rgb));
   --color-success-bg: rgba(var(--color-success-rgb), 0.1);
-  --color-warning: #a67e45;
-  --color-danger: #b9656d;
-  --color-info: #398d9e;
+  --color-warning-rgb: 166, 126, 69;
+  --color-warning: rgb(var(--color-warning-rgb));
+  --color-danger-rgb: 185, 101, 109;
+  --color-danger: rgb(var(--color-danger-rgb));
+  --color-info-rgb: 57, 141, 158;
+  --color-info: rgb(var(--color-info-rgb));
   --color-favorite: #ae8c4f;
   --color-indigo: #8872af;
   --color-indigo-light: #a498bd;
@@ -350,7 +368,7 @@
   --loop-level-1: #7196ad;
   --loop-level-2: #9a88b2;
   --loop-level-3: #b78195;
-  --color-primary-bg: rgba(57, 127, 171, 0.1);
+  --color-primary-bg: rgba(var(--color-primary-rgb), 0.1);
   --device-online: var(--color-success);
   --device-icon-furnace-fill-start: #ecd4b9;
   --device-icon-furnace-fill-end: #d5a58b;

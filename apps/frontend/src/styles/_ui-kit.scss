@@ -50,7 +50,7 @@
 
   &:focus {
     border-color: var(--color-danger);
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--color-danger-rgb), 0.15);
   }
 }
 
@@ -318,8 +318,8 @@
 
 /* === Error Banner 通用错误横幅 === */
 .error-banner {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(var(--color-danger-rgb), 0.2);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.3);
   border-radius: var(--radius); padding: var(--size-md);
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: var(--size-md);

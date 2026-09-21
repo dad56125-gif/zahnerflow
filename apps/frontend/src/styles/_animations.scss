@@ -67,11 +67,11 @@
 @keyframes device_online_pulse {
   0%, 100% {
     border-color: var(--device-online);
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 8px rgba(var(--color-success-rgb), 0.3);
   }
   50% {
     border-color: var(--device-online);
-    box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 16px rgba(var(--color-success-rgb), 0.6);
   }
 }
 
