@@ -136,14 +136,18 @@ export function reportChartImages(charts: ReportChartImage[], container?: HTMLEl
   return charts.map((chart) => {
     if (!chart.option) return chart;
     const element = elements.find((item) => item.dataset.reportChart === chart.key);
-    if (container) {
-      const live = element && echarts.getInstanceByDom(element);
-      if (!live) throw new Error('图表尚未加载完成，请稍后导出');
-      return { ...chart, image: live.getDataURL({ type: 'png', pixelRatio: 2, excludeComponents: ['toolbox', 'dataZoom'] }) };
-    }
-    const renderer = echarts.init(null, undefined, { renderer: 'svg', ssr: true, width: 720, height: 480 });
+    const live = element && echarts.getInstanceByDom(element);
+    if (container && !live) throw new Error('图表尚未加载完成，请稍后导出');
+    const renderer = echarts.init(null, undefined, { renderer: 'svg', ssr: true,
+      width: live?.getWidth() || 720, height: live?.getHeight() || 480 });
     try {
-      renderer.setOption({ ...chart.option, toolbox: { show: false } });
+      renderer.setOption(live ? live.getOption() : chart.option);
+      const axis = { nameTextStyle: { color: '#374151' }, axisLabel: { color: '#374151' },
+        axisLine: { lineStyle: { color: '#374151' } }, splitLine: { lineStyle: { color: '#e5e7eb' } } };
+      renderer.setOption({ backgroundColor: '#ffffff', textStyle: { color: '#374151' },
+        legend: { textStyle: { color: '#374151' } }, xAxis: axis, yAxis: axis,
+        series: ((chart.option.series || []) as Array<unknown>).map(() => ({ markPoint: { label: { color: '#374151' } } })),
+      });
       return { ...chart, image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderer.renderToSVGString())}` };
     } finally { renderer.dispose(); }
   });
