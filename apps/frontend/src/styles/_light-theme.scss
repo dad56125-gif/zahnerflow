@@ -82,11 +82,20 @@
   .node-item .node-icon { filter: none; opacity: 1; }
   .category-title, .section-title { color: var(--text-secondary); }
   .property-group {
-    background: rgba(var(--ui-ink-rgb), 0.03);
+    background: var(--control-white-mask);
     border-radius: var(--radius-sm);
     box-shadow: none;
   }
 
+  .progress-bar__container.glass {
+    background: var(--control-white-mask);
+    box-shadow: var(--shadow-control-glass);
+  }
+  .progress-bar__container.glass:hover {
+    background: var(--control-glass-base);
+    box-shadow: var(--shadow-control-glass-hover);
+  }
+  .progress-bar__track { background: var(--control-white-mask); }
   // 普通操作使用中性表面，蓝色只在交互反馈与选中时出现。
   .btn {
     background: linear-gradient(var(--control-white-mask), var(--control-white-mask)), var(--control-glass-base);
