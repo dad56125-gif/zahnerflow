@@ -1,6 +1,6 @@
 {
   "name": "@zahnerflow/types",
-  "version": "2.3.15",
+  "version": "2.3.16",
   "description": "Shared TypeScript types for ZahnerFlow",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

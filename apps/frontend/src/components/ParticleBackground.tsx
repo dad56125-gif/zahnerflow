@@ -25,6 +25,8 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
         const blossomColors = ['--cascade-blossom-top', '--cascade-blossom-edge'].map(token => palette.getPropertyValue(token).trim());
         const blossomInk = palette.getPropertyValue('--cascade-blossom-ink-rgb').trim();
         const cascadeBlend = palette.getPropertyValue('--cascade-blend').trim();
+        const blendPink = palette.getPropertyValue('--cascade-blend-pink').trim();
+        const blendBlue = palette.getPropertyValue('--cascade-blend-blue').trim();
         const cascadeInk = palette.getPropertyValue('--cascade-ink-rgb').trim();
         const noise = (a: number, b = 0) => {
             const value = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
@@ -169,9 +171,11 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
                         const center = boundary(x / colorField.width);
                         const wash = fieldCtx.createLinearGradient(0, 0, 0, colorField.height);
                         wash.addColorStop(0, blossomColors[0]);
-                        wash.addColorStop(center - 0.032, blossomColors[1]);
+                        wash.addColorStop(center - 0.055, blossomColors[1]);
+                        wash.addColorStop(center - 0.025, blendPink);
                         wash.addColorStop(center, cascadeBlend);
-                        wash.addColorStop(center + 0.032, cascadeColors[0]);
+                        wash.addColorStop(center + 0.025, blendBlue);
+                        wash.addColorStop(center + 0.055, cascadeColors[0]);
                         wash.addColorStop(0.58, cascadeColors[1]);
                         wash.addColorStop(0.82, cascadeColors[2]);
                         wash.addColorStop(1, cascadeColors[3]);
