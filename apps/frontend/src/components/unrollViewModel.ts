@@ -10,6 +10,7 @@ import {
 } from '../utils/iterationPath';
 import {
   formatPresentationNumber,
+  getNodePresentation,
   getNodeDisplayName,
   summarizeNodeParameters,
 } from '../types/NodeConfiguration';
@@ -202,6 +203,7 @@ function buildAdvancedMeta(step: UnrolledWorkflowStep): UnrollAdvancedMeta | nul
   if (!parentNodeType && !parentNodeId) return null;
 
   const resolvedParentType = parentNodeType ?? '高级节点';
+  const valueUnit = getNodePresentation(resolvedParentType)?.summaryFields.find(field => field.unit === 'A' || field.unit === 'V')?.unit;
   const stepIndex = optionalInteger(step.stepIndex) ?? null;
   const totalSteps = optionalInteger(step.totalSteps) ?? null;
   const cycleIndex = optionalInteger(step.cycleIndex) ?? null;
@@ -219,7 +221,7 @@ function buildAdvancedMeta(step: UnrolledWorkflowStep): UnrollAdvancedMeta | nul
       ? ''
       : `步骤 ${stepIndex + 1}${totalSteps === null ? '' : `/${totalSteps}`}`,
     cycleLabel: cycleIndex === null ? '' : `周期 ${cycleIndex + 1}`,
-    valueLabel: stepValue === null ? '' : `设定值 ${formatPresentationNumber(stepValue)}`,
+    valueLabel: stepValue === null ? '' : `设定值 ${formatPresentationNumber(stepValue)}${valueUnit ? ` ${valueUnit}` : ''}`,
   };
 }
 
@@ -633,6 +635,7 @@ export function buildUnrollColumnTree(model: UnrollExplorerModel): UnrollColumnT
   const pathByRowKey = new Map<string, string[]>();
 
   model.rows.forEach((row) => {
+    if (row.isAutomaticBoundary || row.step.nodeType === 'startup' || row.step.nodeType === 'shutdown') return;
     const structuralPosition = nearestStructuralPosition(model, row);
     const groups = groupPathForPosition(model, structuralPosition);
     const path: string[] = [];

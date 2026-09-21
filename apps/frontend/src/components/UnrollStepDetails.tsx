@@ -5,14 +5,12 @@ export function UnrollStepDetails({ row }: { row: UnrollExplorerRow | null }) {
   return <>
     <h4>步骤 #{row.ordinal} · {row.advancedLabel || row.displayName}</h4>
     <dl>
-      <dt>画布来源</dt><dd>节点 #{row.step.originalIndex + 1}</dd>
-      <dt>实际执行</dt><dd>{row.displayName}</dd>
-      {row.iterationLabel && <><dt>循环路径</dt><dd>{row.iterationLabel}</dd></>}
-      {row.blockLabel && <><dt>工作流块</dt><dd>{row.blockLabel}</dd></>}
-      {row.advancedMeta && <><dt>内部位置</dt><dd>{[row.advancedMeta.stepLabel, row.advancedMeta.cycleLabel, row.advancedMeta.valueLabel].filter(Boolean).join(' · ')}</dd></>}
-      <dt>参数</dt><dd>{row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary}</dd>
+      <div className="property-group"><dt>画布来源</dt><dd>节点 #{row.step.originalIndex + 1}</dd></div>
+      <div className="property-group"><dt>实际执行</dt><dd>{row.displayName}</dd></div>
+      {row.iterationLabel && <><div className="property-group"><dt>循环路径</dt><dd>{row.iterationLabel}</dd></div></>}
+      {row.blockLabel && <><div className="property-group"><dt>工作流块</dt><dd>{row.blockLabel}</dd></div></>}
+      {row.advancedMeta && <><div className="property-group"><dt>内部位置</dt><dd>{[row.advancedMeta.stepLabel, row.advancedMeta.cycleLabel, row.advancedMeta.valueLabel].filter(Boolean).join(' · ')}</dd></div></>}
+      <div className="property-group"><dt>参数</dt><dd>{row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary}</dd></div>
     </dl>
-    {row.isAutomaticBoundary && <p>系统自动边界不能作为手动起点。</p>}
-    <details><summary>完整步骤参数</summary><pre>{JSON.stringify(row.step.node?.config ?? {}, null, 2)}</pre></details>
   </>;
 }

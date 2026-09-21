@@ -23,6 +23,7 @@ export interface NodeConfig {
 export type NodeChartKind = 'ivt' | 'eis';
 
 export interface NodeSummaryField {
+  unit?: string;
   label: string;
   keys: string[];
 }
@@ -361,17 +362,17 @@ export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
   shutdown: { summaryFields: [] },
   change_temperature: {
     summaryFields: [
-      { label: '目标温度', keys: ['targetTemperature', 'temperature'] },
-      { label: '升温速率', keys: ['rate'] },
-      { label: '稳定时间', keys: ['stabilizationTime'] },
+      { label: '目标温度', keys: ['targetTemperature', 'temperature'], unit: '°C' },
+      { label: '升温速率', keys: ['rate'], unit: '°C/min' },
+      { label: '稳定时间', keys: ['stabilizationTime'], unit: 's' },
     ],
   },
   change_gas_flow: {
     summaryFields: [
       { label: '气体', keys: ['gasType'] },
       { label: '设备地址', keys: ['deviceAddress', 'address'] },
-      { label: '目标流量', keys: ['targetFlowRate', 'flowSccm', 'sccm'] },
-      { label: '稳定时间', keys: ['stabilizationTime'] },
+      { label: '目标流量', keys: ['targetFlowRate', 'flowSccm', 'sccm'], unit: 'sccm' },
+      { label: '稳定时间', keys: ['stabilizationTime'], unit: 's' },
     ],
   },
   eis_potentiostatic: {
@@ -379,62 +380,62 @@ export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
     chartGroup: { key: 'eis_potentiostatic', label: '恒电位EIS' },
     summaryFields: [
       { label: '直流偏置', keys: ['enableDcBias'] },
-      { label: '偏置电位', keys: ['eisPotential'] },
-      { label: '振幅', keys: ['eis_amplitude'] },
-      { label: '频率范围', keys: ['eisLowerFrequency', 'eisUpperFrequency'] },
+      { label: '偏置电位', keys: ['eisPotential'], unit: 'V' },
+      { label: '振幅', keys: ['eis_amplitude'], unit: 'V' },
+      { label: '频率范围', keys: ['eisLowerFrequency', 'eisUpperFrequency'], unit: 'Hz' },
     ],
   },
   eis_galvanostatic: {
     chartKind: 'eis',
     chartGroup: { key: 'eis_galvanostatic', label: '恒电流EIS' },
     summaryFields: [
-      { label: '偏置电流', keys: ['eisCurrent'] },
-      { label: '振幅', keys: ['eis_amplitude'] },
-      { label: '频率范围', keys: ['eisLowerFrequency', 'eisUpperFrequency'] },
+      { label: '偏置电流', keys: ['eisCurrent'], unit: 'A' },
+      { label: '振幅', keys: ['eis_amplitude'], unit: 'A' },
+      { label: '频率范围', keys: ['eisLowerFrequency', 'eisUpperFrequency'], unit: 'Hz' },
     ],
   },
   ocp_measurement: {
     chartKind: 'ivt',
     chartGroup: { key: 'ocp', label: 'OCP' },
     summaryFields: [
-      { label: '测量时长', keys: ['measurementDuration'] },
-      { label: '采样间隔', keys: ['samplingInterval'] },
+      { label: '测量时长', keys: ['measurementDuration'], unit: 's' },
+      { label: '采样间隔', keys: ['samplingInterval'], unit: 's' },
     ],
   },
   chronoamperometry: {
     chartKind: 'ivt',
     chartGroup: { key: 'chrono', label: '计时法' },
     summaryFields: [
-      { label: '极化电压', keys: ['polarizationVoltage'] },
-      { label: '测量时长', keys: ['measurementDuration'] },
-      { label: '采样间隔', keys: ['samplingInterval'] },
+      { label: '极化电压', keys: ['polarizationVoltage'], unit: 'V' },
+      { label: '测量时长', keys: ['measurementDuration'], unit: 's' },
+      { label: '采样间隔', keys: ['samplingInterval'], unit: 's' },
     ],
   },
   chronopotentiometry: {
     chartKind: 'ivt',
     chartGroup: { key: 'chrono', label: '计时法' },
     summaryFields: [
-      { label: '极化电流', keys: ['polarizationCurrent'] },
-      { label: '测量时长', keys: ['measurementDuration'] },
-      { label: '采样间隔', keys: ['samplingInterval'] },
+      { label: '极化电流', keys: ['polarizationCurrent'], unit: 'A' },
+      { label: '测量时长', keys: ['measurementDuration'], unit: 's' },
+      { label: '采样间隔', keys: ['samplingInterval'], unit: 's' },
     ],
   },
   voltage_ramp: {
     chartKind: 'ivt',
     chartGroup: { key: 'ramp', label: '斜坡' },
     summaryFields: [
-      { label: '起始电压', keys: ['start_voltage', 'startVoltage'] },
-      { label: '结束电压', keys: ['end_voltage', 'endVoltage'] },
-      { label: '测量时长', keys: ['measurementDuration'] },
+      { label: '起始电压', keys: ['start_voltage', 'startVoltage'], unit: 'V' },
+      { label: '结束电压', keys: ['end_voltage', 'endVoltage'], unit: 'V' },
+      { label: '测量时长', keys: ['measurementDuration'], unit: 's' },
     ],
   },
   current_ramp: {
     chartKind: 'ivt',
     chartGroup: { key: 'ramp', label: '斜坡' },
     summaryFields: [
-      { label: '起始电流', keys: ['startCurrent', 'start_current'] },
-      { label: '结束电流', keys: ['endCurrent', 'end_current'] },
-      { label: '测量时长', keys: ['measurementDuration'] },
+      { label: '起始电流', keys: ['startCurrent', 'start_current'], unit: 'A' },
+      { label: '结束电流', keys: ['endCurrent', 'end_current'], unit: 'A' },
+      { label: '测量时长', keys: ['measurementDuration'], unit: 's' },
     ],
   },
   loop_start: {
@@ -442,7 +443,7 @@ export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
   },
   loop_end: { summaryFields: [] },
   wait_delay: {
-    summaryFields: [{ label: '等待时长', keys: ['duration'] }],
+    summaryFields: [{ label: '等待时长', keys: ['duration'], unit: 's' }],
   },
   scheduled_start: {
     summaryFields: [
@@ -461,10 +462,10 @@ export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
     chartKind: 'ivt',
     chartGroup: { key: 'switching_step', label: '开关/阶跃' },
     summaryFields: [
-      { label: '电流1', keys: ['current_1', 'current1'] },
-      { label: '电流2', keys: ['current_2', 'current2'] },
-      { label: '保持时间1', keys: ['holdTime1'] },
-      { label: '保持时间2', keys: ['holdTime2'] },
+      { label: '电流1', keys: ['current_1', 'current1'], unit: 'A' },
+      { label: '电流2', keys: ['current_2', 'current2'], unit: 'A' },
+      { label: '保持时间1', keys: ['holdTime1'], unit: 's' },
+      { label: '保持时间2', keys: ['holdTime2'], unit: 's' },
       { label: '循环次数', keys: ['cycles'] },
     ],
   },
@@ -472,10 +473,10 @@ export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
     chartKind: 'ivt',
     chartGroup: { key: 'switching_step', label: '开关/阶跃' },
     summaryFields: [
-      { label: '电位1', keys: ['potential_1', 'potential1'] },
-      { label: '电位2', keys: ['potential_2', 'potential2'] },
-      { label: '保持时间1', keys: ['holdTime1'] },
-      { label: '保持时间2', keys: ['holdTime2'] },
+      { label: '电位1', keys: ['potential_1', 'potential1'], unit: 'V' },
+      { label: '电位2', keys: ['potential_2', 'potential2'], unit: 'V' },
+      { label: '保持时间1', keys: ['holdTime1'], unit: 's' },
+      { label: '保持时间2', keys: ['holdTime2'], unit: 's' },
       { label: '循环次数', keys: ['cycles'] },
     ],
   },
@@ -483,20 +484,20 @@ export const NODE_PRESENTATION_SPECS: Record<NodeType, NodePresentationSpec> = {
     chartKind: 'ivt',
     chartGroup: { key: 'switching_step', label: '开关/阶跃' },
     summaryFields: [
-      { label: '起始电流', keys: ['startCurrent', 'start_current'] },
-      { label: '结束电流', keys: ['endCurrent', 'end_current'] },
-      { label: '阶梯电流', keys: ['stepCurrent', 'step_current'] },
-      { label: '保持时间', keys: ['hold_time', 'holdTime'] },
+      { label: '起始电流', keys: ['startCurrent', 'start_current'], unit: 'A' },
+      { label: '结束电流', keys: ['endCurrent', 'end_current'], unit: 'A' },
+      { label: '阶梯电流', keys: ['stepCurrent', 'step_current'], unit: 'A' },
+      { label: '保持时间', keys: ['hold_time', 'holdTime'], unit: 's' },
     ],
   },
   potentiostatic_step_ramp: {
     chartKind: 'ivt',
     chartGroup: { key: 'switching_step', label: '开关/阶跃' },
     summaryFields: [
-      { label: '起始电位', keys: ['start_potential', 'startPotential'] },
-      { label: '结束电位', keys: ['end_potential', 'endPotential'] },
-      { label: '阶梯电位', keys: ['stepPotential', 'step_potential'] },
-      { label: '保持时间', keys: ['hold_time', 'holdTime'] },
+      { label: '起始电位', keys: ['start_potential', 'startPotential'], unit: 'V' },
+      { label: '结束电位', keys: ['end_potential', 'endPotential'], unit: 'V' },
+      { label: '阶梯电位', keys: ['stepPotential', 'step_potential'], unit: 'V' },
+      { label: '保持时间', keys: ['hold_time', 'holdTime'], unit: 's' },
     ],
   },
 };
@@ -545,7 +546,7 @@ export function summarizeNodeParameters(type: string, raw: unknown): string {
       .map(key => params[key])
       .filter(value => value !== undefined && value !== null && value !== '');
     if (values.length === 0) return [];
-    return [`${field.label}: ${values.map(formatPresentationValue).join('–')}`];
+    return [`${field.label}: ${values.map(formatPresentationValue).join('–')}${field.unit ? ` ${field.unit}` : ''}`];
   });
 
   return parts.length > 0 ? parts.join(' | ') : '-';

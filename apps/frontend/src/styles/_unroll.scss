@@ -173,12 +173,9 @@
     overflow-y: auto;
     padding: var(--space-5);
     h4 { margin: 0 0 var(--space-4); font-size: var(--size-lg); }
-    dt { margin-top: var(--space-4); color: var(--text-muted); font-size: var(--size-xs); }
-    dd { margin: var(--space-1) 0; overflow-wrap: anywhere; }
+    dt { margin: 0; color: var(--text-muted); font-size: var(--size-xs); }
+    dd { margin: 0; overflow-wrap: anywhere; }
     p { color: var(--text-secondary); line-height: 1.7; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--size-sm); }
-    details { margin-top: var(--space-4); }
-    summary { cursor: pointer; color: var(--text-secondary); }
   }
 
   &__preview-actions {
