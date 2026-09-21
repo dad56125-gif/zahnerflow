@@ -105,10 +105,10 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
   );
 
   return <ModalLayer open={isOpen} onClose={onClose} id="unroll-view-modal"
-    closeOnEscape={!starting} closeOnBackdrop={!starting} blur>
+    closeOnEscape={!starting} closeOnBackdrop={!starting}>
     {({ close }) => <section className="modal__content unroll-dialog" role="dialog" aria-modal="true" aria-labelledby="unroll-title">
       <header className="modal__header unroll-dialog__header">
-        <h3 id="unroll-title">执行步骤</h3>
+        <h3 id="unroll-title">执行步骤展开</h3>
         <button className="btn btn--sm btn--ghost btn--icon btn--rounded modal__close" aria-label="关闭展开步骤" onClick={close} disabled={starting}><UiIconSvg name="close" /></button>
       </header>
       <div className="modal__body unroll-dialog__body">

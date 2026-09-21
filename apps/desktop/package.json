@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-desktop",
-  "version": "2.6.2",
+  "version": "2.6.3",
   "description": "ZAHNERFLOW Electron desktop shell",
   "author": "ZAHNERFLOW Team",
   "private": true,
