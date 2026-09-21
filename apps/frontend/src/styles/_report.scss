@@ -3,6 +3,7 @@
 /* === 实验报告模块：复用全局浮层、按钮、输入和列表契约 === */
 
 .report-modal {
+  --split-modal-content-top: calc(var(--split-modal-header-h) + var(--size-2xl));
   --report-history-gap: var(--size-2xs);
   --report-definition-action-gap: var(--size-5xl);
 }
@@ -736,4 +737,16 @@
 .report__section-title--summary {
   border-bottom: 0;
   padding-bottom: 0;
+}
+
+.report-modal .split-pane-modal__title-group {
+  h2,
+  button {
+    line-height: 1;
+  }
+}
+
+.report__summary-item > strong:has(> .report__status) {
+  display: flex;
+  align-items: center;
 }
