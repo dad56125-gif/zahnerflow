@@ -10,7 +10,7 @@ export function UnrollStepDetails({ row }: { row: UnrollExplorerRow | null }) {
       {row.iterationLabel && <><div className="property-group"><dt>循环路径</dt><dd>{row.iterationLabel}</dd></div></>}
       {row.blockLabel && <><div className="property-group"><dt>工作流块</dt><dd>{row.blockLabel}</dd></div></>}
       {row.advancedMeta && <><div className="property-group"><dt>内部位置</dt><dd>{[row.advancedMeta.stepLabel, row.advancedMeta.cycleLabel, row.advancedMeta.valueLabel].filter(Boolean).join(' · ')}</dd></div></>}
-      <div className="property-group"><dt>参数</dt><dd>{row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary}</dd></div>
+      <div className="property-group"><dt>参数</dt><dd>{row.parameterSummary === '-' ? '无额外参数' : row.parameterSummary.split(' | ').map((parameter, index) => <div key={index}>{parameter}</div>)}</dd></div>
     </dl>
   </>;
 }
