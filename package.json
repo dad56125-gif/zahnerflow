@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-monorepo",
-  "version": "2.3.20",
+  "version": "2.3.21",
   "description": "ZahnerFlow 电化学工作流管理系统",
   "private": true,
   "scripts": {
