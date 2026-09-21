@@ -3,9 +3,10 @@ import type { ReportData } from './types';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
 import { StatusLabel } from './ReportStatus';
 import { statusClass } from './reportPresentation';
-import { nodeOutputText } from './reportPresentation';
+import { reportErrorDetails } from './reportPresentation';
 
 export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData }>(function ReportPreview({ reportData }, ref) {
+  const errors = reportErrorDetails(reportData);
   return (
       <div className="report__preview" ref={ref}>
         <div className="report__cover">
@@ -30,10 +31,10 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
                 </span>
               </strong>
             </div>
-            {reportData.error && (
+            {errors.length > 0 && (
               <div className="report__summary-item report__summary-item--full report__summary-item--error">
                 <span>错误信息</span>
-                <strong>{reportData.error}</strong>
+                <strong>{errors.map((error, index) => <div key={index}>{error}</div>)}</strong>
               </div>
             )}
             <div className="report__summary-item">
@@ -60,46 +61,6 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
               <span>展开步骤数</span>
               <strong>{reportData.nodes.length}</strong>
             </div>
-          </div>
-        </section>
-
-        <section className="report__section">
-          <h2 className="report__section-title">展开步骤明细</h2>
-          <div className="report__table-scroll">
-            <table className="report__nodes-table report__nodes-table--steps">
-              <thead>
-                <tr>
-                  <th>步骤</th>
-                  <th>节点</th>
-                  <th>关键参数</th>
-                  <th>状态</th>
-                  <th>耗时</th>
-                  <th>输出或错误</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.nodes.map((node) => (
-                  <tr key={`${node.index}-${node.type}-${node.iterationLabel}`} className={`indent-level-${node.indentLevel}`}>
-                    <td>
-                      <span className="report__step-index">{node.index}</span>
-                      <span className="report__step-meta">原节点 {node.originalIndex}</span>
-                      {node.blockLabel && <span className="report__step-meta">来自 {node.blockLabel}</span>}
-                      {node.iterationLabel !== '-' && <span className="report__step-meta">{node.iterationLabel}</span>}
-                    </td>
-                    <td>{node.label}</td>
-                    <td>{node.keyParams}</td>
-                    <td><span className={`report__status ${statusClass(node.status)}`}><StatusLabel status={node.status} /></span></td>
-                    <td>
-                      <span>{node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</span>
-                      {node.estimatedSeconds != null && <span className="report__step-meta">估算 {formatDuration(node.estimatedSeconds)}</span>}
-                    </td>
-                    <td className={node.error ? 'report__node-output report__node-output--error' : 'report__node-output'}>
-                      {nodeOutputText(node)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </section>
 

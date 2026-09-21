@@ -1,4 +1,4 @@
-import { getReportStatusText, nodeOutputText } from './reportPresentation';
+import { getReportStatusText, reportErrorDetails } from './reportPresentation';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
 import { STATUS_ICON_NAMES, type ReportData } from './types';
 import { UI_ICON_PATHS } from '../shared/uiIcons';
@@ -89,6 +89,7 @@ export async function exportToPdf(reportData: ReportData, containerElement: HTML
 }
 
 export function generateReportHtml(reportData: ReportData): string {
+  const errors = reportErrorDetails(reportData);
   const artifactRows = reportData.artifactDetails
     .map((artifact) => `
       <tr>
@@ -125,43 +126,13 @@ export function generateReportHtml(reportData: ReportData): string {
         <table class="report-summary-table">
           <tbody>
             <tr><td>状态</td><td>${statusLabelMarkup(reportData.status)}</td></tr>
+            ${errors.length ? `<tr><td>错误信息</td><td>${errors.map(escapeHtml).join("<br>")}</td></tr>` : ""}
             <tr><td>开始时间</td><td>${formatDateTime(reportData.startTime)}</td></tr>
             <tr><td>结束时间</td><td>${formatDateTime(reportData.endTime)}</td></tr>
             <tr><td>总耗时</td><td>${formatDuration(reportData.durationSeconds)}</td></tr>
             <tr><td>警告数</td><td>${reportData.warnings}</td></tr>
             <tr><td>产物数</td><td>${reportData.artifacts}</td></tr>
             <tr><td>展开步骤数</td><td>${reportData.nodes.length}</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="report-section">
-        <h2 class="report-section-title">展开步骤明细</h2>
-        <table class="report-nodes-table">
-          <thead>
-            <tr>
-              <th>步骤</th>
-              <th>节点</th>
-              <th>关键参数</th>
-              <th>状态</th>
-              <th>耗时</th>
-              <th>输出或错误</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${reportData.nodes
-              .map(
-                (node) => `
-                  <tr class="indent-level-${node.indentLevel}">
-                    <td>${node.index}<br><small>原节点 ${node.originalIndex}${node.iterationLabel !== '-' ? ` / ${escapeHtml(node.iterationLabel)}` : ''}</small></td>
-                    <td>${escapeHtml(node.label)}</td>
-                    <td>${escapeHtml(node.keyParams)}</td>
-                    <td>${statusLabelMarkup(node.status)}</td>
-                    <td>${node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</td>
-                    <td>${escapeHtml(nodeOutputText(node))}</td>
-                  </tr>
-                `
-              )
-              .join('')}
           </tbody>
         </table>
       </div>
@@ -239,9 +210,16 @@ export function exportToHtml(reportData: ReportData): void {
       border-radius: 999px;
     }
     .report-cover-info {
-      display: inline-block;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 24px;
       text-align: left;
       line-height: 1.9;
+      overflow-wrap: anywhere;
+    }
+    .report-cover-info p { margin: 0; }
+    @media (max-width: 600px) {
+      .report-cover-info { grid-template-columns: 1fr; }
     }
     .report-section {
       margin-top: 40px;

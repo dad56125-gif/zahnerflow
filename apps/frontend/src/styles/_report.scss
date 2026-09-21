@@ -413,13 +413,14 @@
 
 .report__cover-info {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--size-xs) var(--size-xl);
 
   p {
     margin: 0;
     display: grid;
-    grid-template-columns: 5rem minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
+    overflow-wrap: anywhere;
     gap: var(--size-sm);
     font-size: var(--size-sm);
     line-height: 1.6;
@@ -725,7 +726,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px) {
   .report__cover-info {
     grid-template-columns: 1fr;
   }
