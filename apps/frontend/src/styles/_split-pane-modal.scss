@@ -90,7 +90,7 @@
       rgba(0, 0, 0, 0) 0,
       rgba(0, 0, 0, 0.08) var(--size-xl),
       rgba(0, 0, 0, 0.42) calc(var(--split-modal-header-h) * 0.86),
-      #000 calc(var(--split-modal-header-h) + var(--size-md)),
+      #000 var(--split-modal-mask-end, calc(var(--split-modal-header-h) + var(--size-md))),
       #000 calc(100% - var(--size-2xl)),
       rgba(0, 0, 0, 0.42) calc(100% - var(--size-lg)),
       rgba(0, 0, 0, 0) 100%
@@ -101,7 +101,7 @@
       rgba(0, 0, 0, 0) 0,
       rgba(0, 0, 0, 0.08) var(--size-xl),
       rgba(0, 0, 0, 0.42) calc(var(--split-modal-header-h) * 0.86),
-      #000 calc(var(--split-modal-header-h) + var(--size-md)),
+      #000 var(--split-modal-mask-end, calc(var(--split-modal-header-h) + var(--size-md))),
       #000 calc(100% - var(--size-2xl)),
       rgba(0, 0, 0, 0.42) calc(100% - var(--size-lg)),
       rgba(0, 0, 0, 0) 100%
