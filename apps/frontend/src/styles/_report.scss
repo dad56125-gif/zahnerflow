@@ -577,6 +577,7 @@
 
 .report__summary-item--error strong {
   color: var(--color-danger);
+  white-space: pre-line;
 }
 
 .report__nodes-table {
