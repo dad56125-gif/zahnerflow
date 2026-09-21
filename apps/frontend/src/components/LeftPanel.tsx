@@ -81,6 +81,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ nodeGroups, selectedWorkst
                       return (
                         <div
                           key={nodeType}
+                          data-tutorial-library={nodeType}
                           className={`node-item glass ${disabled ? 'disabled' : ''}`}
                           role="button"
                           aria-disabled={disabled}

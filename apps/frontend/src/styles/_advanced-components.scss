@@ -41,7 +41,7 @@
   .settings,
   .workflow-manager,
   .execution-history,
-  .report-modal {
+  .split-pane-modal {
     animation: modal_scale_in var(--duration-normal) var(--ease-out);
   }
 }
@@ -54,7 +54,7 @@
   .settings,
   .workflow-manager,
   .execution-history,
-  .report-modal {
+  .split-pane-modal {
     animation: modal_scale_out var(--duration-fast) var(--ease-in) forwards;
     pointer-events: none;
   }

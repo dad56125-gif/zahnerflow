@@ -1,3 +1,4 @@
+import { registerWorkspaceParticipant } from '../tutorialEnvironment';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { WORKFLOW_MEASUREMENT, WORKFLOW_NODES_RESET } from '../eventContracts';
 import type { EnrichedStreamData, RawStreamData } from '@zahnerflow/types';
@@ -8,7 +9,12 @@ type MeasurementIterations = Map<string, RawStreamData[]>;
 type MeasurementNodes = Map<number, MeasurementIterations>;
 
 // 测量历史按 execution -> 原节点索引 -> 迭代路径分桶，避免不同执行或嵌套循环混桶。
-const globalMeasurementCache = new Map<string, MeasurementNodes>();
+let globalMeasurementCache = new Map<string, MeasurementNodes>();
+registerWorkspaceParticipant(() => {
+  const original = globalMeasurementCache;
+  globalMeasurementCache = new Map();
+  return () => { globalMeasurementCache = original; };
+});
 
 function clearMeasurementCache() {
   globalMeasurementCache.clear();
@@ -72,7 +78,7 @@ export interface BufferedMeasurementPoint {
 
 export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasurementStreamProps) => {
   const dataBufferRef = useRef<BufferedMeasurementPoint[]>([]);
-  const [, setTick] = useState(0);
+  const [dataVersion, setTick] = useState(0);
   const isReceiving = useRef(false);
   const frameIdRef = useRef<number>(0);
 
@@ -138,6 +144,7 @@ export const useMeasurementStream = ({ nodeIndex, activeExecutionId }: UseMeasur
   }, [activeExecutionId, nodeIndex]);
 
   return {
+    dataVersion,
     consumeBuffer,
     consumeIterationBuffer,
     getFullHistory,

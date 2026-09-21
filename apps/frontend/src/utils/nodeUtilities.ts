@@ -1,3 +1,4 @@
+import { appStorage } from '../tutorialEnvironment';
 // --- START OF FILE apps/frontend/src/utils/NodeUtilities.ts ---
 
 import type { NodeType, NodeCategory, WorkflowNode, WorkstationType } from '@zahnerflow/types';
@@ -12,7 +13,7 @@ const sessionNodeDefaults = new Map<NodeType, NodeParameters>();
 
 function getCurrentUserForDefaults(): string {
   if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem('currentUser') || '';
+  return appStorage.getItem('currentUser') || '';
 }
 
 function getDefaultsStorageKey(type: NodeType, user: string): string {
@@ -32,7 +33,7 @@ export function getSavedDefaultParameters(type: NodeType, user?: string): NodePa
   }
 
   try {
-    const savedDefaultsJson = window.localStorage.getItem(getDefaultsStorageKey(type, resolvedUser));
+    const savedDefaultsJson = appStorage.getItem(getDefaultsStorageKey(type, resolvedUser));
     if (!savedDefaultsJson) return null;
     const parsed: unknown = JSON.parse(savedDefaultsJson);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
@@ -54,7 +55,7 @@ export function saveDefaultParameters(type: NodeType, params: NodeParameters, us
   }
 
   try {
-    window.localStorage.setItem(
+    appStorage.setItem(
       getDefaultsStorageKey(type, resolvedUser),
       JSON.stringify(normalizedParams)
     );

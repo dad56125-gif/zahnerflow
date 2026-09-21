@@ -266,7 +266,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     stopPressTriggeredRef.current = false;
     stopPressStartedAtRef.current = performance.now();
     setStopPressProgress(0);
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (event.nativeEvent.isTrusted) event.currentTarget.setPointerCapture(event.pointerId);
 
     const updateStopPress = (now: number) => {
       const startedAt = stopPressStartedAtRef.current;
@@ -360,6 +360,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <button
               className="btn btn--md btn--icon btn--round glass btn--accent"
               onClick={onGenerateReport}
+              data-tutorial-anchor="records"
               title="查看实验记录"
               aria-label="查看实验记录"
             >
@@ -378,6 +379,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             className={`btn btn--md btn--icon btn--round glass ${buttonStates.primaryButtonVariant} ${buttonStates.primaryButtonDisabled || isRunMetadataBlocked ? 'disabled' : ''} ${buttonStates.primaryAction === 'stop' ? 'toolbar-stop-button' : ''} ${stopFeedback ? 'is-stop-feedback' : ''}`}
             onClick={handleRunButtonClick}
+            data-tutorial-anchor="run"
             onPointerDown={handleRunPointerDown}
             onPointerDownCapture={handleStopPointerDown}
             onPointerUp={handlePrimaryPointerEnd}
@@ -412,6 +414,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             className={`btn btn--md btn--icon btn--round glass ${buttonStates.workflowDisabled || nodes.length === 0 ? 'disabled' : 'btn--secondary'}`}
             onClick={() => setUnrollViewOpen(true)}
+            data-tutorial-anchor="preview"
             title="查看展开后的所有执行步骤"
             aria-label="查看展开后的所有执行步骤"
             disabled={buttonStates.workflowDisabled || nodes.length === 0}

@@ -1,10 +1,11 @@
+import { registerWorkspaceParticipant } from '../../tutorialEnvironment';
 /**
  * MFC 状态管理 Hook
  * 
  * 提供质量流量控制器的状态管理，包括连接、设备发现、流量控制等功能
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useLayoutEffect, useState, useCallback, useEffect, useRef } from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import type { DeviceError, DeviceConnectionStatus, HistoryQueryParams, LogEntry } from '@zahnerflow/types';
 import type { CommandLogEntry, DeviceDiagnostics } from '../../components/common/DeviceDiagnosticsPanel';
@@ -168,6 +169,19 @@ export function useMfc(): [MfcState, MfcControls] {
   const [state, setState] = useState<MfcState>(createInitialState);
   const scanStopRequestedRef = useRef(false);
   const lastRuntimeStateVersionRef = useRef(0);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useLayoutEffect(() => registerWorkspaceParticipant(() => {
+    const previous = stateRef.current;
+    const version = lastRuntimeStateVersionRef.current;
+    lastRuntimeStateVersionRef.current = 0;
+    setState(createInitialState());
+    return () => {
+      lastRuntimeStateVersionRef.current = version;
+      setState(previous);
+    };
+  }), []);
+
 
   // 状态更新辅助函数
   const updateState = useCallback((updates: Partial<MfcState>) => {

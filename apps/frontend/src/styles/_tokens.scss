@@ -68,6 +68,7 @@
      2. 功能色系统 (Functional Color System)
      ========================================================================== */
 
+  --tutorial-spotlight-mask: rgb(0 0 0 / 62%);
   --color-primary-rgb: 59, 130, 246;
   --color-primary: rgb(var(--color-primary-rgb));
   --color-accent-rgb: 168, 85, 247;
@@ -329,6 +330,7 @@
   --shadow-panel-hover: 0 2px 6px var(--glass-shadow-hover);
   --shadow-button: 0 1px 2px var(--glass-shadow);
   --shadow-button-hover: 0 1px 3px var(--glass-shadow-hover);
+  --tutorial-spotlight-mask: rgb(255 255 255 / 62%);
   --color-primary-rgb: 57, 127, 171;
   --color-primary: rgb(var(--color-primary-rgb));
   --color-success-rgb: 53, 185, 129;

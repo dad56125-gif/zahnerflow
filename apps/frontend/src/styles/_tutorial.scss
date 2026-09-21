@@ -1,0 +1,185 @@
+@use "./placeholders" as *;
+// 目录外壳与列表由 SplitPaneModal 提供，这里只定义教学内容的排版。
+.tutorial-dialog.split-pane-modal {
+  width: min(660px, 92vw);
+  height: min(660px, 82vh);
+}
+@media (min-width: 901px) {
+  .tutorial-dialog .split-pane-modal__body {
+    grid-template-columns: minmax(220px, 26%) minmax(0, 1fr);
+  }
+}
+.tutorial-dialog {
+  .split-pane-modal__main {
+    padding-top: calc(var(--split-modal-content-top) + var(--size-lg));
+  }
+  &__nav { display: flex; flex-direction: column; gap: var(--size-xl); }
+  &__group { display: flex; flex-direction: column; gap: var(--size-2xs); }
+  &__group {
+    h3 { margin: 0 var(--size-md); padding: 0; line-height: 1.4; color: var(--text-secondary); font-size: var(--size-sm); font-weight: 600; }
+  }
+  &__overview {
+    margin-bottom: var(--size-lg);
+    h3 { margin: 0 0 var(--size-sm); font-size: var(--size-lg); }
+    p { margin: 0; color: var(--text-secondary); font-size: var(--size-sm); }
+  }
+  &__steps {
+    --tutorial-step-size: var(--size-xl);
+    counter-reset: tutorial-step;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    li {
+      counter-increment: tutorial-step;
+      position: relative;
+      padding: 0 0 var(--size-lg) calc(var(--tutorial-step-size) + var(--size-md));
+      &::before {
+        content: counter(tutorial-step);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: var(--tutorial-step-size);
+        height: var(--tutorial-step-size);
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--color-primary);
+        border-radius: 50%;
+        color: var(--text-primary);
+        font-size: var(--size-sm);
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      &:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        top: var(--tutorial-step-size);
+        bottom: 0;
+        left: calc(var(--tutorial-step-size) / 2);
+        width: 1px;
+        transform: translateX(-50%);
+        background: var(--glass-border-hover);
+      }
+      &:last-child { padding-bottom: 0; }
+    }
+    h4 { display: flex; align-items: center; padding: 0; min-height: var(--tutorial-step-size); margin: 0 0 var(--size-xs); font-size: var(--size-sm); }
+    p { margin: 0; color: var(--text-secondary); font-size: var(--size-sm); line-height: 1.7; }
+  }
+}
+.tutorial-player {
+  position: fixed;
+  inset: var(--app-chrome-h) 0 0;
+  pointer-events: none;
+  z-index: 22000;
+  [data-tutorial-controls] { pointer-events: auto; z-index: 1; }
+}
+.tutorial-instructions {
+  color: var(--text-primary);
+  @extend %glass-panel-base;
+  background: var(--glass-bg-active);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  h3 {
+    margin: 6px 0;
+    font-size: 17px;
+  }
+  p {
+    margin: 0;
+    line-height: 1.7;
+    font-size: 13px;
+  }
+  &__controls {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 14px;
+  }
+}
+.tutorial-preview .tutorial-instructions {
+  margin-top: var(--size-lg);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none;
+}
+.tutorial-player .tutorial-instructions {
+  position: fixed;
+  left: 24px;
+  bottom: 90px;
+  width: min(460px, calc(100vw - 48px));
+  box-shadow: 0 12px 48px #12253530;
+}
+.tutorial-eyebrow {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.tutorial-player-banner {
+  position: fixed;
+  top: calc(var(--app-chrome-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  @extend %glass-panel-base;
+  background: var(--glass-bg-active);
+  border: 1px solid var(--glass-border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tutorial-annotation {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.tutorial-spotlight {
+  position: absolute;
+  border: 2px solid #469fc4;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 9999px var(--tutorial-spotlight-mask),
+    0 0 18px #469fc470;
+  // Follow the real target without leaving a trailing hole during menu transitions.
+}
+.tutorial-cursor {
+  position: absolute;
+  z-index: 2;
+  transition:
+    left 700ms ease-in-out,
+    top 700ms ease-in-out;
+  filter: drop-shadow(0 3px 4px #17243140);
+  &.is-pressed::before {
+    content: "";
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    left: -14px;
+    top: -14px;
+    border: 3px solid #469fc4;
+    border-radius: 50%;
+  }
+}
+.tutorial-drag-image {
+  position: fixed !important;
+  z-index: 20001;
+  pointer-events: none;
+  margin: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-cursor,
+  .tutorial-spotlight {
+    transition-duration: 0ms;
+  }
+}
+
+.tutorial-exit-shield {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}

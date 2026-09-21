@@ -1,0 +1,1903 @@
+{
+  "idle": {
+    "runtimeId": "8981a55073c1479f808474cb704674f3",
+    "snapshotSequence": 42,
+    "commandSource": "app",
+    "status": "idle",
+    "workflowId": null,
+    "executionId": null,
+    "workflowName": "",
+    "ownerName": "",
+    "workstationType": null,
+    "nodes": [],
+    "currentStep": null,
+    "startTime": null,
+    "endTime": null,
+    "duration": 0,
+    "eta": null,
+    "nodeTimings": [],
+    "loopProgress": [],
+    "error": null,
+    "timestamp": "2026-09-19T18:06:32.260656Z",
+    "results": []
+  },
+  "furnace": {
+    "device": "furnace",
+    "connected": false,
+    "mode": "disconnected",
+    "profile": null,
+    "timestamp": "2026-09-19T18:06:32.267740Z",
+    "payload": {},
+    "connectionState": {
+      "status": "disconnected",
+      "mode": "disconnected",
+      "profile": null,
+      "port": null,
+      "connectedAt": null
+    },
+    "diagnostics": {
+      "lastCommand": null,
+      "lastError": null
+    },
+    "capabilities": [
+      "connect",
+      "status",
+      "run",
+      "pause",
+      "stop",
+      "program_segments",
+      "presets",
+      "history"
+    ],
+    "deviceCount": 0,
+    "error": null,
+    "runtimeState": {
+      "connectionStatus": "disconnected",
+      "connectedPort": null,
+      "connectedAt": null,
+      "executionStatus": "idle",
+      "executionId": null,
+      "currentSegmentIndex": null,
+      "startedAt": null,
+      "currentRunStartedAt": null,
+      "accumulatedRunSeconds": 0,
+      "stoppedAt": null,
+      "deviceStatus": null,
+      "scannedDevices": [],
+      "lastSuccessfulCommunicationAt": null,
+      "lastError": null,
+      "stateVersion": 0,
+      "updatedAt": "2026-09-19T16:43:15.955794Z"
+    },
+    "stateVersion": 0,
+    "updatedAt": "2026-09-19T16:43:15.955794Z"
+  },
+  "mfc": {
+    "device": "mfc",
+    "connected": false,
+    "mode": "disconnected",
+    "profile": null,
+    "timestamp": "2026-09-19T18:06:32.272691Z",
+    "payload": {
+      "devices": []
+    },
+    "connectionState": {
+      "status": "disconnected",
+      "mode": "disconnected",
+      "profile": null,
+      "port": null,
+      "connectedAt": null
+    },
+    "diagnostics": {
+      "lastCommand": null,
+      "lastError": null
+    },
+    "capabilities": ["connect", "status", "scan", "setpoint", "history"],
+    "deviceCount": 0,
+    "error": null,
+    "runtimeState": {
+      "connectionStatus": "disconnected",
+      "connectedPort": null,
+      "connectedAt": null,
+      "executionStatus": null,
+      "executionId": null,
+      "currentSegmentIndex": null,
+      "startedAt": null,
+      "currentRunStartedAt": null,
+      "accumulatedRunSeconds": 0,
+      "stoppedAt": null,
+      "deviceStatus": null,
+      "scannedDevices": [],
+      "lastSuccessfulCommunicationAt": null,
+      "lastError": null,
+      "stateVersion": 0,
+      "updatedAt": "2026-09-19T16:43:15.955808Z"
+    },
+    "stateVersion": 0,
+    "updatedAt": "2026-09-19T16:43:15.955808Z"
+  },
+  "zahner-zennium": {
+    "device": "zahner",
+    "connected": false,
+    "mode": "simulator",
+    "profile": "normal",
+    "timestamp": "2026-09-19T18:06:32.288149Z",
+    "payload": {},
+    "connectionState": {
+      "status": "disconnected",
+      "mode": "simulator",
+      "profile": "normal",
+      "connectedAt": "2026-09-19T17:45:28.813674Z",
+      "port": null
+    },
+    "diagnostics": {
+      "lastCommand": null,
+      "lastError": null
+    },
+    "capabilities": ["connect", "status", "measure"],
+    "deviceCount": 0,
+    "error": null,
+    "runtimeState": {
+      "connectionStatus": "disconnected",
+      "connectedPort": null,
+      "connectedAt": null,
+      "executionStatus": null,
+      "executionId": null,
+      "currentSegmentIndex": null,
+      "startedAt": null,
+      "currentRunStartedAt": null,
+      "accumulatedRunSeconds": 0,
+      "stoppedAt": null,
+      "deviceStatus": null,
+      "scannedDevices": [],
+      "lastSuccessfulCommunicationAt": null,
+      "lastError": null,
+      "stateVersion": 0,
+      "updatedAt": "2026-09-19T16:43:15.955811Z"
+    },
+    "stateVersion": 0,
+    "updatedAt": "2026-09-19T16:43:15.955811Z"
+  },
+  "users": {
+    "users": [
+      {
+        "id": "user_1789839864530_1568",
+        "user": "教学用户",
+        "email": null,
+        "createdAt": "2026-09-19T17:44:24.530724Z",
+        "avatar": ""
+      }
+    ]
+  },
+  "settings": {
+    "success": true,
+    "settings": {
+      "filePath": {
+        "basePath": "C:\\data\\tutorial",
+        "projectName": "Tutorial",
+        "individualName": "Sample01"
+      },
+      "notification": {
+        "email": "",
+        "enabled": false,
+        "onComplete": true,
+        "onError": true,
+        "onWarning": true,
+        "smtpServer": "smtp.qq.com",
+        "smtpPort": 465,
+        "smtpUser": "",
+        "smtpPassword": "",
+        "smtpSecure": true
+      },
+      "cloud": {
+        "provider": "none",
+        "syncEnabled": false,
+        "endpoint": "",
+        "bucket": "",
+        "avatar": ""
+      }
+    }
+  },
+  "final": {
+    "runtimeId": "8981a55073c1479f808474cb704674f3",
+    "snapshotSequence": 52,
+    "commandSource": "app",
+    "status": "completed",
+    "workflowId": "wf_000003",
+    "executionId": "exec_1789841192358_671",
+    "workflowName": "教学示例：开路电位",
+    "ownerName": "教学用户",
+    "workstationType": "zahner-zennium",
+    "nodes": [
+      {
+        "id": "tutorial-ocp",
+        "type": "ocp_measurement",
+        "config": {
+          "measurementDuration": 8,
+          "samplingInterval": 1,
+          "check_battery_health": false
+        },
+        "group": null
+      }
+    ],
+    "currentStep": {
+      "nodeId": "__auto_shutdown_after_measurement",
+      "nodeType": "shutdown",
+      "index": 0,
+      "total": 1,
+      "unrolledIndex": 2,
+      "unrolledTotal": 3,
+      "iterationPath": [],
+      "blockPath": [],
+      "estimatedSeconds": 3,
+      "etaSource": "rule",
+      "etaConfidence": 0.7
+    },
+    "startTime": "2026-09-19T18:06:32.360888Z",
+    "endTime": "2026-09-19T18:06:32.575465Z",
+    "duration": 0.212,
+    "eta": {
+      "estimatedTotalSeconds": 0.196846,
+      "estimatedRemainingSeconds": 0,
+      "elapsedSeconds": 0.214577,
+      "currentStepEstimatedSeconds": 3,
+      "currentStepElapsedSeconds": 0.01003,
+      "source": "rule",
+      "confidence": 1,
+      "updatedAt": "2026-09-19T18:06:32.575465Z"
+    },
+    "nodeTimings": [
+      {
+        "nodeId": "__auto_startup_before_measurement",
+        "nodeType": "startup",
+        "index": 0,
+        "unrolledIndex": 0,
+        "iterationPath": [],
+        "status": "completed",
+        "estimatedSeconds": 3,
+        "startedAt": "2026-09-19T18:06:32.361377Z",
+        "endedAt": "2026-09-19T18:06:32.367492Z",
+        "actualSeconds": 0.004076
+      },
+      {
+        "nodeId": "tutorial-ocp",
+        "nodeType": "ocp_measurement",
+        "index": 0,
+        "unrolledIndex": 1,
+        "iterationPath": [],
+        "status": "completed",
+        "estimatedSeconds": 8,
+        "startedAt": "2026-09-19T18:06:32.367890Z",
+        "endedAt": "2026-09-19T18:06:32.563527Z",
+        "actualSeconds": 0.188024
+      },
+      {
+        "nodeId": "__auto_shutdown_after_measurement",
+        "nodeType": "shutdown",
+        "index": 0,
+        "unrolledIndex": 2,
+        "iterationPath": [],
+        "status": "completed",
+        "estimatedSeconds": 3,
+        "startedAt": "2026-09-19T18:06:32.565435Z",
+        "endedAt": "2026-09-19T18:06:32.572471Z",
+        "actualSeconds": 0.004746
+      }
+    ],
+    "loopProgress": [],
+    "error": null,
+    "timestamp": "2026-09-19T18:06:32.869423Z",
+    "results": [null]
+  },
+  "events": [
+    {
+      "at": 8,
+      "name": "connected",
+      "payload": {
+        "message": "Welcome to ZahnerFlow WebSocket Gateway",
+        "clientId": "a5oFV8KaJhqFKA4zAAAt",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "serverTime": 1789841192341,
+        "connectedClients": 1
+      }
+    },
+    {
+      "at": 8,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "idle",
+        "executionId": null,
+        "workflowId": null,
+        "workflowName": "",
+        "ownerName": "",
+        "commandSource": "app",
+        "workstationType": null,
+        "nodes": [],
+        "currentStep": null,
+        "startTime": null,
+        "endTime": null,
+        "duration": 0,
+        "eta": null,
+        "nodeTimings": [],
+        "loopProgress": [],
+        "results": [],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.341941Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 43
+      }
+    },
+    {
+      "at": 8,
+      "name": "deviceStatusUpdate",
+      "payload": {
+        "device": "furnace",
+        "connected": false,
+        "mode": "disconnected",
+        "profile": null,
+        "timestamp": "2026-09-19T18:06:32.342127Z",
+        "payload": {},
+        "connectionState": {
+          "status": "disconnected",
+          "mode": "disconnected",
+          "profile": null,
+          "port": null,
+          "connectedAt": null
+        },
+        "diagnostics": {
+          "lastCommand": null,
+          "lastError": null
+        },
+        "capabilities": [
+          "connect",
+          "status",
+          "run",
+          "pause",
+          "stop",
+          "program_segments",
+          "presets",
+          "history"
+        ],
+        "deviceCount": 0,
+        "error": null,
+        "runtimeState": {
+          "connectionStatus": "disconnected",
+          "connectedPort": null,
+          "connectedAt": null,
+          "executionStatus": "idle",
+          "executionId": null,
+          "currentSegmentIndex": null,
+          "startedAt": null,
+          "currentRunStartedAt": null,
+          "accumulatedRunSeconds": 0,
+          "stoppedAt": null,
+          "deviceStatus": null,
+          "scannedDevices": [],
+          "lastSuccessfulCommunicationAt": null,
+          "lastError": null,
+          "stateVersion": 0,
+          "updatedAt": "2026-09-19T16:43:15.955794Z"
+        },
+        "stateVersion": 0,
+        "updatedAt": "2026-09-19T16:43:15.955794Z"
+      }
+    },
+    {
+      "at": 8,
+      "name": "deviceStatusUpdate",
+      "payload": {
+        "device": "mfc",
+        "connected": false,
+        "mode": "disconnected",
+        "profile": null,
+        "timestamp": "2026-09-19T18:06:32.342290Z",
+        "payload": {
+          "devices": []
+        },
+        "connectionState": {
+          "status": "disconnected",
+          "mode": "disconnected",
+          "profile": null,
+          "port": null,
+          "connectedAt": null
+        },
+        "diagnostics": {
+          "lastCommand": null,
+          "lastError": null
+        },
+        "capabilities": ["connect", "status", "scan", "setpoint", "history"],
+        "deviceCount": 0,
+        "error": null,
+        "runtimeState": {
+          "connectionStatus": "disconnected",
+          "connectedPort": null,
+          "connectedAt": null,
+          "executionStatus": null,
+          "executionId": null,
+          "currentSegmentIndex": null,
+          "startedAt": null,
+          "currentRunStartedAt": null,
+          "accumulatedRunSeconds": 0,
+          "stoppedAt": null,
+          "deviceStatus": null,
+          "scannedDevices": [],
+          "lastSuccessfulCommunicationAt": null,
+          "lastError": null,
+          "stateVersion": 0,
+          "updatedAt": "2026-09-19T16:43:15.955808Z"
+        },
+        "stateVersion": 0,
+        "updatedAt": "2026-09-19T16:43:15.955808Z"
+      }
+    },
+    {
+      "at": 8,
+      "name": "deviceStatusUpdate",
+      "payload": {
+        "device": "zahner",
+        "connected": false,
+        "mode": "simulator",
+        "profile": "normal",
+        "timestamp": "2026-09-19T18:06:32.342430Z",
+        "payload": {},
+        "connectionState": {
+          "status": "disconnected",
+          "mode": "simulator",
+          "profile": "normal",
+          "connectedAt": "2026-09-19T17:45:28.813674Z",
+          "port": null
+        },
+        "diagnostics": {
+          "lastCommand": null,
+          "lastError": null
+        },
+        "capabilities": ["connect", "status", "measure"],
+        "deviceCount": 0,
+        "error": null,
+        "runtimeState": {
+          "connectionStatus": "disconnected",
+          "connectedPort": null,
+          "connectedAt": null,
+          "executionStatus": null,
+          "executionId": null,
+          "currentSegmentIndex": null,
+          "startedAt": null,
+          "currentRunStartedAt": null,
+          "accumulatedRunSeconds": 0,
+          "stoppedAt": null,
+          "deviceStatus": null,
+          "scannedDevices": [],
+          "lastSuccessfulCommunicationAt": null,
+          "lastError": null,
+          "stateVersion": 0,
+          "updatedAt": "2026-09-19T16:43:15.955811Z"
+        },
+        "stateVersion": 0,
+        "updatedAt": "2026-09-19T16:43:15.955811Z"
+      }
+    },
+    {
+      "at": 26,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": null,
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0,
+        "eta": {
+          "estimatedTotalSeconds": 14,
+          "estimatedRemainingSeconds": 14,
+          "elapsedSeconds": 0,
+          "currentStepEstimatedSeconds": null,
+          "currentStepElapsedSeconds": null,
+          "source": "rule",
+          "confidence": 0.6999999999999998,
+          "updatedAt": "2026-09-19T18:06:32.360888Z"
+        },
+        "nodeTimings": [],
+        "loopProgress": [],
+        "results": [],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.361045Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 44
+      }
+    },
+    {
+      "at": 30,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "__auto_startup_before_measurement",
+          "nodeType": "startup",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 0,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 3,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0.000489,
+        "eta": {
+          "estimatedTotalSeconds": 14,
+          "estimatedRemainingSeconds": 14,
+          "elapsedSeconds": 0.000489,
+          "currentStepEstimatedSeconds": 3,
+          "currentStepElapsedSeconds": 0,
+          "source": "rule",
+          "confidence": 0.6999999999999998,
+          "updatedAt": "2026-09-19T18:06:32.361377Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "running",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": null,
+            "actualSeconds": null
+          }
+        ],
+        "loopProgress": [],
+        "results": [],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.364898Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 45
+      }
+    },
+    {
+      "at": 30,
+      "name": "nodeStatusUpdate",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "__auto_startup_before_measurement",
+        "originalIndex": 0,
+        "unrolledIndex": 0,
+        "iterationPath": [],
+        "status": "running",
+        "result": null
+      }
+    },
+    {
+      "at": 32,
+      "name": "nodeStatusUpdate",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "__auto_startup_before_measurement",
+        "originalIndex": 0,
+        "unrolledIndex": 0,
+        "iterationPath": [],
+        "status": "completed",
+        "result": null
+      }
+    },
+    {
+      "at": 33,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "__auto_startup_before_measurement",
+          "nodeType": "startup",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 0,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 3,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0.006777,
+        "eta": {
+          "estimatedTotalSeconds": 11.004076,
+          "estimatedRemainingSeconds": 11,
+          "elapsedSeconds": 0.006777,
+          "currentStepEstimatedSeconds": 3,
+          "currentStepElapsedSeconds": 0.006288,
+          "source": "rule",
+          "confidence": 0.7999999999999999,
+          "updatedAt": "2026-09-19T18:06:32.367665Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": "2026-09-19T18:06:32.367492Z",
+            "actualSeconds": 0.004076
+          }
+        ],
+        "loopProgress": [],
+        "results": [null],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.367725Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 46
+      }
+    },
+    {
+      "at": 35,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "tutorial-ocp",
+          "nodeType": "ocp_measurement",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 1,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 8,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0.007002,
+        "eta": {
+          "estimatedTotalSeconds": 11.004076,
+          "estimatedRemainingSeconds": 11,
+          "elapsedSeconds": 0.007002,
+          "currentStepEstimatedSeconds": 8,
+          "currentStepElapsedSeconds": 0,
+          "source": "rule",
+          "confidence": 0.7999999999999999,
+          "updatedAt": "2026-09-19T18:06:32.367890Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": "2026-09-19T18:06:32.367492Z",
+            "actualSeconds": 0.004076
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "running",
+            "estimatedSeconds": 8,
+            "startedAt": "2026-09-19T18:06:32.367890Z",
+            "endedAt": null,
+            "actualSeconds": null
+          }
+        ],
+        "loopProgress": [],
+        "results": [null],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.370540Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 47
+      }
+    },
+    {
+      "at": 36,
+      "name": "nodeStatusUpdate",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "tutorial-ocp",
+        "originalIndex": 0,
+        "unrolledIndex": 1,
+        "iterationPath": [],
+        "status": "running",
+        "result": null
+      }
+    },
+    {
+      "at": 36,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 0,
+          "v": 0.819469,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 57,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 1,
+          "v": 0.820507,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 78,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 2,
+          "v": 0.819945,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 98,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 3,
+          "v": 0.821637,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 119,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 4,
+          "v": 0.821068,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 139,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 5,
+          "v": 0.819753,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 160,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 6,
+          "v": 0.819997,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 180,
+      "name": "measurementData",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "stepIndex": 0,
+        "nodeId": "tutorial-ocp",
+        "iterationPath": [],
+        "data": {
+          "t": 7,
+          "v": 0.819783,
+          "i": 0
+        }
+      }
+    },
+    {
+      "at": 230,
+      "name": "nodeStatusUpdate",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "tutorial-ocp",
+        "originalIndex": 0,
+        "unrolledIndex": 1,
+        "iterationPath": [],
+        "status": "completed",
+        "result": {
+          "measurementStatus": "success",
+          "outputDir": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp",
+          "outputFile": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+          "csvPath": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+          "dataPoints": 8,
+          "statistics": {
+            "avg": 0.8202697742597959,
+            "min": 0.819468758909598,
+            "max": 0.8216371268394154,
+            "count": 8
+          }
+        }
+      }
+    },
+    {
+      "at": 230,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "tutorial-ocp",
+          "nodeType": "ocp_measurement",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 1,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 8,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0.203716,
+        "eta": {
+          "estimatedTotalSeconds": 3.1921,
+          "estimatedRemainingSeconds": 3,
+          "elapsedSeconds": 0.203716,
+          "currentStepEstimatedSeconds": 8,
+          "currentStepElapsedSeconds": 0.196714,
+          "source": "rule",
+          "confidence": 0.9,
+          "updatedAt": "2026-09-19T18:06:32.564604Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": "2026-09-19T18:06:32.367492Z",
+            "actualSeconds": 0.004076
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 8,
+            "startedAt": "2026-09-19T18:06:32.367890Z",
+            "endedAt": "2026-09-19T18:06:32.563527Z",
+            "actualSeconds": 0.188024
+          }
+        ],
+        "loopProgress": [],
+        "results": [
+          {
+            "measurementStatus": "success",
+            "outputDir": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp",
+            "outputFile": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+            "csvPath": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+            "dataPoints": 8,
+            "statistics": {
+              "avg": 0.8202697742597959,
+              "min": 0.819468758909598,
+              "max": 0.8216371268394154,
+              "count": 8
+            }
+          }
+        ],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.564831Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 48
+      }
+    },
+    {
+      "at": 234,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "__auto_shutdown_after_measurement",
+          "nodeType": "shutdown",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 2,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 3,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0.204547,
+        "eta": {
+          "estimatedTotalSeconds": 3.1921,
+          "estimatedRemainingSeconds": 3,
+          "elapsedSeconds": 0.204547,
+          "currentStepEstimatedSeconds": 3,
+          "currentStepElapsedSeconds": 0,
+          "source": "rule",
+          "confidence": 0.9,
+          "updatedAt": "2026-09-19T18:06:32.565435Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": "2026-09-19T18:06:32.367492Z",
+            "actualSeconds": 0.004076
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 8,
+            "startedAt": "2026-09-19T18:06:32.367890Z",
+            "endedAt": "2026-09-19T18:06:32.563527Z",
+            "actualSeconds": 0.188024
+          },
+          {
+            "nodeId": "__auto_shutdown_after_measurement",
+            "nodeType": "shutdown",
+            "index": 0,
+            "unrolledIndex": 2,
+            "iterationPath": [],
+            "status": "running",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.565435Z",
+            "endedAt": null,
+            "actualSeconds": null
+          }
+        ],
+        "loopProgress": [],
+        "results": [
+          {
+            "measurementStatus": "success",
+            "outputDir": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp",
+            "outputFile": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+            "csvPath": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+            "dataPoints": 8,
+            "statistics": {
+              "avg": 0.8202697742597959,
+              "min": 0.819468758909598,
+              "max": 0.8216371268394154,
+              "count": 8
+            }
+          }
+        ],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.568712Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 49
+      }
+    },
+    {
+      "at": 235,
+      "name": "nodeStatusUpdate",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "__auto_shutdown_after_measurement",
+        "originalIndex": 0,
+        "unrolledIndex": 2,
+        "iterationPath": [],
+        "status": "running",
+        "result": null
+      }
+    },
+    {
+      "at": 238,
+      "name": "nodeStatusUpdate",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "__auto_shutdown_after_measurement",
+        "originalIndex": 0,
+        "unrolledIndex": 2,
+        "iterationPath": [],
+        "status": "completed",
+        "result": null
+      }
+    },
+    {
+      "at": 238,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "running",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "__auto_shutdown_after_measurement",
+          "nodeType": "shutdown",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 2,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 3,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": null,
+        "duration": 0.211915,
+        "eta": {
+          "estimatedTotalSeconds": 0.196846,
+          "estimatedRemainingSeconds": 0,
+          "elapsedSeconds": 0.211915,
+          "currentStepEstimatedSeconds": 3,
+          "currentStepElapsedSeconds": 0.007368,
+          "source": "rule",
+          "confidence": 1,
+          "updatedAt": "2026-09-19T18:06:32.572803Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": "2026-09-19T18:06:32.367492Z",
+            "actualSeconds": 0.004076
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 8,
+            "startedAt": "2026-09-19T18:06:32.367890Z",
+            "endedAt": "2026-09-19T18:06:32.563527Z",
+            "actualSeconds": 0.188024
+          },
+          {
+            "nodeId": "__auto_shutdown_after_measurement",
+            "nodeType": "shutdown",
+            "index": 0,
+            "unrolledIndex": 2,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.565435Z",
+            "endedAt": "2026-09-19T18:06:32.572471Z",
+            "actualSeconds": 0.004746
+          }
+        ],
+        "loopProgress": [],
+        "results": [null],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.572918Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 50
+      }
+    },
+    {
+      "at": 241,
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "completed",
+        "executionId": "exec_1789841192358_671",
+        "workflowId": "wf_000003",
+        "workflowName": "教学示例：开路电位",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 8,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "__auto_shutdown_after_measurement",
+          "nodeType": "shutdown",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 2,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 3,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:06:32.360888Z",
+        "endTime": "2026-09-19T18:06:32.575465Z",
+        "duration": 0.212,
+        "eta": {
+          "estimatedTotalSeconds": 0.196846,
+          "estimatedRemainingSeconds": 0,
+          "elapsedSeconds": 0.214577,
+          "currentStepEstimatedSeconds": 3,
+          "currentStepElapsedSeconds": 0.01003,
+          "source": "rule",
+          "confidence": 1,
+          "updatedAt": "2026-09-19T18:06:32.575465Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.361377Z",
+            "endedAt": "2026-09-19T18:06:32.367492Z",
+            "actualSeconds": 0.004076
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 8,
+            "startedAt": "2026-09-19T18:06:32.367890Z",
+            "endedAt": "2026-09-19T18:06:32.563527Z",
+            "actualSeconds": 0.188024
+          },
+          {
+            "nodeId": "__auto_shutdown_after_measurement",
+            "nodeType": "shutdown",
+            "index": 0,
+            "unrolledIndex": 2,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:06:32.565435Z",
+            "endedAt": "2026-09-19T18:06:32.572471Z",
+            "actualSeconds": 0.004746
+          }
+        ],
+        "loopProgress": [],
+        "results": [null],
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.575549Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 51
+      }
+    },
+    {
+      "at": 241,
+      "name": "executionFinished",
+      "payload": {
+        "executionId": "exec_1789841192358_671",
+        "status": "completed",
+        "durationMs": 212,
+        "error": null,
+        "timestamp": "2026-09-19T18:06:32.575897Z"
+      }
+    },
+    {
+      "at": 241,
+      "name": "notification",
+      "payload": {
+        "id": "notification_1789841192576",
+        "type": "success",
+        "title": "执行完成",
+        "message": "教学示例：开路电位 已完成",
+        "timestamp": "2026-09-19T18:06:32.576092Z",
+        "details": {
+          "durationMs": 212,
+          "error": null
+        }
+      }
+    }
+  ],
+  "report": {
+    "reportVersion": "3.0",
+    "executionMetadata": {
+      "executionId": "exec_1789841192358_671",
+      "workflowId": "wf_000003",
+      "workflowName": "教学示例：开路电位",
+      "ownerName": "教学用户",
+      "projectName": "Tutorial",
+      "individualName": "Sample01",
+      "status": "completed",
+      "startedAt": "2026-09-19T18:06:32.358651Z",
+      "endedAt": "2026-09-19T18:06:32.573233Z",
+      "durationMs": 212,
+      "error": null
+    },
+    "workflowSnapshot": {
+      "name": "教学示例：开路电位",
+      "nodes": [
+        {
+          "id": "tutorial-ocp",
+          "type": "ocp_measurement",
+          "config": {
+            "measurementDuration": 8,
+            "samplingInterval": 1,
+            "check_battery_health": false
+          },
+          "group": null
+        }
+      ],
+      "ownerName": "教学用户",
+      "id": "wf_000003",
+      "fingerprint": "65a206a04d1ea839a34b47abf43f5377d3461b6e5d53b6f93dd695a50e3c4fb7",
+      "createdAt": "2026-09-19T18:06:32.352654Z",
+      "updatedAt": "2026-09-19T18:06:32.352654Z",
+      "commandSource": "app"
+    },
+    "pathConfig": {
+      "basePath": "C:/data/tutorial",
+      "projectName": "Tutorial",
+      "individualName": "Sample01"
+    },
+    "unrolledSteps": [
+      {
+        "id": 6,
+        "executionId": "exec_1789841192358_671",
+        "originalIndex": 0,
+        "unrolledIndex": 0,
+        "nodeId": "__auto_startup_before_measurement",
+        "nodeType": "startup",
+        "status": "completed",
+        "params": {
+          "host": "simulator",
+          "simulatorProfile": "normal"
+        },
+        "actualSeconds": 0.004076,
+        "estimatedSeconds": 3,
+        "etaSource": "rule",
+        "iterationPath": [],
+        "blockPath": [],
+        "result": {},
+        "error": null,
+        "startedAt": "2026-09-19T18:06:32.361388Z",
+        "endedAt": "2026-09-19T18:06:32.365464Z"
+      },
+      {
+        "id": 7,
+        "executionId": "exec_1789841192358_671",
+        "originalIndex": 0,
+        "unrolledIndex": 1,
+        "nodeId": "tutorial-ocp",
+        "nodeType": "ocp_measurement",
+        "status": "completed",
+        "params": {
+          "check_battery_health": false,
+          "measurementDuration": 8,
+          "measurement_type": "ocp_measurement",
+          "samplingInterval": 1
+        },
+        "actualSeconds": 0.188024,
+        "estimatedSeconds": 8,
+        "etaSource": "rule",
+        "iterationPath": [],
+        "blockPath": [],
+        "result": {
+          "measurementStatus": "success",
+          "outputDir": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp",
+          "outputFile": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+          "csvPath": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+          "dataPoints": 8,
+          "statistics": {
+            "avg": 0.8202697742597959,
+            "min": 0.819468758909598,
+            "max": 0.8216371268394154,
+            "count": 8
+          }
+        },
+        "error": null,
+        "startedAt": "2026-09-19T18:06:32.367899Z",
+        "endedAt": "2026-09-19T18:06:32.555923Z"
+      },
+      {
+        "id": 8,
+        "executionId": "exec_1789841192358_671",
+        "originalIndex": 0,
+        "unrolledIndex": 2,
+        "nodeId": "__auto_shutdown_after_measurement",
+        "nodeType": "shutdown",
+        "status": "completed",
+        "params": {},
+        "actualSeconds": 0.004746,
+        "estimatedSeconds": 3,
+        "etaSource": "rule",
+        "iterationPath": [],
+        "blockPath": [],
+        "result": {},
+        "error": null,
+        "startedAt": "2026-09-19T18:06:32.565464Z",
+        "endedAt": "2026-09-19T18:06:32.570210Z"
+      }
+    ],
+    "artifacts": [
+      {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "tutorial-ocp",
+        "fileType": "output_file",
+        "filePath": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp\\OCP_8s_260920_020632.csv",
+        "createdAt": "2026-09-19T18:06:32.555923Z",
+        "source": "persisted",
+        "dataPoints": 8,
+        "metadata": {
+          "dataPoints": 8,
+          "measurementStatus": "success",
+          "statistics": {
+            "avg": 0.8202697742597959,
+            "count": 8,
+            "max": 0.8216371268394154,
+            "min": 0.819468758909598
+          },
+          "unrolledIndex": 1
+        }
+      },
+      {
+        "executionId": "exec_1789841192358_671",
+        "nodeId": "tutorial-ocp",
+        "fileType": "output_dir",
+        "filePath": "C:\\data\\tutorial\\Tutorial\\Sample01\\ocp",
+        "createdAt": "2026-09-19T18:06:32.555923Z",
+        "source": "persisted",
+        "dataPoints": 8,
+        "metadata": {
+          "dataPoints": 8,
+          "measurementStatus": "success",
+          "statistics": {
+            "avg": 0.8202697742597959,
+            "count": 8,
+            "max": 0.8216371268394154,
+            "min": 0.819468758909598
+          },
+          "unrolledIndex": 1
+        }
+      }
+    ],
+    "environmentSnapshot": {
+      "furnaceSamples": [],
+      "mfcSamples": []
+    },
+    "warningFlags": [],
+    "summaryMetrics": {},
+    "generatedAt": "2026-09-19T18:06:32.873734+00:00"
+  },
+  "definition": {
+    "id": "wf_000003",
+    "shortId": "WF-003",
+    "name": "教学示例：开路电位",
+    "nodes": [
+      {
+        "id": "tutorial-ocp",
+        "type": "ocp_measurement",
+        "config": {
+          "measurementDuration": 8,
+          "samplingInterval": 1,
+          "check_battery_health": false
+        },
+        "group": null
+      }
+    ],
+    "nodeCount": 1,
+    "loopCount": 0,
+    "isFavorite": false,
+    "basedOnWorkflowId": null,
+    "executionCount": 1,
+    "successCount": 1,
+    "failedCount": 0,
+    "cancelledCount": 0,
+    "latestExecution": {
+      "id": "exec_1789841192358_671",
+      "status": "completed",
+      "startedAt": "2026-09-19T18:06:32.358651Z",
+      "endedAt": "2026-09-19T18:06:32.573233Z",
+      "durationMs": 212
+    },
+    "createdAt": "2026-09-19T18:06:32.352654Z",
+    "updatedAt": "2026-09-19T18:06:32.352654Z"
+  },
+  "summaries": {
+    "items": [
+      {
+        "id": "wf_000003",
+        "shortId": "WF-003",
+        "name": "教学示例：开路电位",
+        "nodeCount": 1,
+        "loopCount": 0,
+        "isFavorite": false,
+        "basedOnWorkflowId": null,
+        "executionCount": 1,
+        "successCount": 1,
+        "failedCount": 0,
+        "cancelledCount": 0,
+        "hasFailedRecords": false,
+        "latestExecution": {
+          "id": "exec_1789841192358_671",
+          "status": "completed",
+          "startedAt": "2026-09-19T18:06:32.358651Z",
+          "endedAt": "2026-09-19T18:06:32.573233Z",
+          "durationMs": 212
+        },
+        "createdAt": "2026-09-19T18:06:32.352654Z",
+        "updatedAt": "2026-09-19T18:06:32.352654Z"
+      }
+    ],
+    "total": 1
+  },
+  "executions": {
+    "items": [
+      {
+        "id": "exec_1789841192358_671",
+        "status": "completed",
+        "startedAt": "2026-09-19T18:06:32.358651Z",
+        "endedAt": "2026-09-19T18:06:32.573233Z",
+        "durationMs": 212,
+        "error": null,
+        "warningCount": 0,
+        "artifactCount": 2
+      }
+    ],
+    "total": 1,
+    "hasMore": false
+  },
+  "cancelEvents": [
+    {
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "cancelling",
+        "executionId": "exec_1789841799487_954",
+        "workflowId": "wf_000004",
+        "workflowName": "停止演示",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 120,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "tutorial-ocp",
+          "nodeType": "ocp_measurement",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 1,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 120,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:16:39.499715Z",
+        "endTime": null,
+        "duration": 0.113446,
+        "eta": {
+          "estimatedTotalSeconds": 123.003108,
+          "estimatedRemainingSeconds": 122.892533,
+          "elapsedSeconds": 0.113446,
+          "currentStepEstimatedSeconds": 120,
+          "currentStepElapsedSeconds": 0.107467,
+          "source": "rule",
+          "confidence": 0.7999999999999999,
+          "updatedAt": "2026-09-19T18:16:39.613161Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:16:39.500064Z",
+            "endedAt": "2026-09-19T18:16:39.505257Z",
+            "actualSeconds": 0.003108
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "running",
+            "estimatedSeconds": 120,
+            "startedAt": "2026-09-19T18:16:39.505694Z",
+            "endedAt": null,
+            "actualSeconds": null
+          }
+        ],
+        "loopProgress": [],
+        "results": [null],
+        "error": null,
+        "timestamp": "2026-09-19T18:16:39.613288Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 112
+      }
+    },
+    {
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "cancelled",
+        "executionId": "exec_1789841799487_954",
+        "workflowId": "wf_000004",
+        "workflowName": "停止演示",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 120,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "tutorial-ocp",
+          "nodeType": "ocp_measurement",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 1,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 120,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:16:39.499715Z",
+        "endTime": null,
+        "duration": 0.136853,
+        "eta": {
+          "estimatedTotalSeconds": 123.003108,
+          "estimatedRemainingSeconds": 122.869126,
+          "elapsedSeconds": 0.136853,
+          "currentStepEstimatedSeconds": 120,
+          "currentStepElapsedSeconds": 0.130874,
+          "source": "rule",
+          "confidence": 0.7999999999999999,
+          "updatedAt": "2026-09-19T18:16:39.636568Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:16:39.500064Z",
+            "endedAt": "2026-09-19T18:16:39.505257Z",
+            "actualSeconds": 0.003108
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "cancelled",
+            "estimatedSeconds": 120,
+            "startedAt": "2026-09-19T18:16:39.505694Z",
+            "endedAt": "2026-09-19T18:16:39.636180Z",
+            "actualSeconds": 0.12602
+          }
+        ],
+        "loopProgress": [],
+        "results": [
+          {
+            "reason": "Measurement cancelled by user"
+          }
+        ],
+        "error": null,
+        "timestamp": "2026-09-19T18:16:39.636667Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 113
+      }
+    },
+    {
+      "name": "systemStateSnapshot",
+      "payload": {
+        "status": "cancelled",
+        "executionId": "exec_1789841799487_954",
+        "workflowId": "wf_000004",
+        "workflowName": "停止演示",
+        "ownerName": "教学用户",
+        "commandSource": "app",
+        "workstationType": "zahner-zennium",
+        "nodes": [
+          {
+            "id": "tutorial-ocp",
+            "type": "ocp_measurement",
+            "config": {
+              "measurementDuration": 120,
+              "samplingInterval": 1,
+              "check_battery_health": false
+            },
+            "group": null
+          }
+        ],
+        "currentStep": {
+          "nodeId": "tutorial-ocp",
+          "nodeType": "ocp_measurement",
+          "index": 0,
+          "total": 1,
+          "unrolledIndex": 1,
+          "unrolledTotal": 3,
+          "iterationPath": [],
+          "blockPath": [],
+          "estimatedSeconds": 120,
+          "etaSource": "rule",
+          "etaConfidence": 0.7
+        },
+        "startTime": "2026-09-19T18:16:39.499715Z",
+        "endTime": "2026-09-19T18:16:39.639128Z",
+        "duration": 0.137,
+        "eta": {
+          "estimatedTotalSeconds": 123.003108,
+          "estimatedRemainingSeconds": 0,
+          "elapsedSeconds": 0.139413,
+          "currentStepEstimatedSeconds": 120,
+          "currentStepElapsedSeconds": 0.133434,
+          "source": "rule",
+          "confidence": 0.7999999999999999,
+          "updatedAt": "2026-09-19T18:16:39.639128Z"
+        },
+        "nodeTimings": [
+          {
+            "nodeId": "__auto_startup_before_measurement",
+            "nodeType": "startup",
+            "index": 0,
+            "unrolledIndex": 0,
+            "iterationPath": [],
+            "status": "completed",
+            "estimatedSeconds": 3,
+            "startedAt": "2026-09-19T18:16:39.500064Z",
+            "endedAt": "2026-09-19T18:16:39.505257Z",
+            "actualSeconds": 0.003108
+          },
+          {
+            "nodeId": "tutorial-ocp",
+            "nodeType": "ocp_measurement",
+            "index": 0,
+            "unrolledIndex": 1,
+            "iterationPath": [],
+            "status": "cancelled",
+            "estimatedSeconds": 120,
+            "startedAt": "2026-09-19T18:16:39.505694Z",
+            "endedAt": "2026-09-19T18:16:39.636180Z",
+            "actualSeconds": 0.12602
+          }
+        ],
+        "loopProgress": [],
+        "results": [
+          {
+            "reason": "Measurement cancelled by user"
+          }
+        ],
+        "error": "Measurement cancelled by user",
+        "timestamp": "2026-09-19T18:16:39.639215Z",
+        "runtimeId": "8981a55073c1479f808474cb704674f3",
+        "snapshotSequence": 114
+      }
+    }
+  ],
+  "cancelNotifications": [
+    {
+      "name": "notification",
+      "payload": {
+        "id": "notification_1789841799639",
+        "type": "info",
+        "title": "执行已取消",
+        "message": "停止演示 已取消",
+        "timestamp": "2026-09-19T18:16:39.639745Z",
+        "details": {
+          "durationMs": 137,
+          "error": "Measurement cancelled by user"
+        }
+      }
+    }
+  ]
+}

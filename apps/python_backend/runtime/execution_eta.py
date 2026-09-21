@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timedelta
+from threading import Lock
 from typing import Any
 
 from database import db
@@ -18,6 +19,10 @@ from runtime.execution_semantics import (
     resolve_scheduled_start,
 )
 from runtime.temperature_control import estimate_temperature_wait_seconds
+
+
+# 预览请求在线程池中并行执行；同一连接的耗时语句及读改写必须串行完成。
+_duration_lock = Lock()
 
 
 VOLATILE_PARAM_KEYS = {
@@ -187,39 +192,40 @@ def learn_successful_duration(node_type: str, params: dict, actual_seconds: floa
     digest = params_hash(clean_params)
     params_json = json.dumps(clean_params, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     now = datetime.utcnow().isoformat() + "Z"
-    row = db.conn.execute(
-        """
-        SELECT sample_count, average_seconds, min_seconds, max_seconds
-        FROM node_duration_estimates
-        WHERE node_type = ? AND params_hash = ?
-        """,
-        (node_type, digest),
-    ).fetchone()
-    if row:
-        sample_count = int(row["sample_count"]) + 1
-        average = ((float(row["average_seconds"]) * int(row["sample_count"])) + actual_seconds) / sample_count
-        min_seconds = min(float(row["min_seconds"] or actual_seconds), actual_seconds)
-        max_seconds = max(float(row["max_seconds"] or actual_seconds), actual_seconds)
-        db.conn.execute(
+    with _duration_lock:
+        row = db.conn.execute(
             """
-            UPDATE node_duration_estimates
-            SET sample_count = ?, average_seconds = ?, min_seconds = ?, max_seconds = ?,
-                last_seconds = ?, updated_at = ?, params_json = ?
+            SELECT sample_count, average_seconds, min_seconds, max_seconds
+            FROM node_duration_estimates
             WHERE node_type = ? AND params_hash = ?
             """,
-            (sample_count, average, min_seconds, max_seconds, actual_seconds, now, params_json, node_type, digest),
-        )
-    else:
-        db.conn.execute(
-            """
-            INSERT INTO node_duration_estimates
-              (node_type, params_hash, params_json, sample_count, average_seconds,
-               min_seconds, max_seconds, last_seconds, updated_at)
-            VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
-            """,
-            (node_type, digest, params_json, actual_seconds, actual_seconds, actual_seconds, actual_seconds, now),
-        )
-    db.conn.commit()
+            (node_type, digest),
+        ).fetchone()
+        if row:
+            sample_count = int(row["sample_count"]) + 1
+            average = ((float(row["average_seconds"]) * int(row["sample_count"])) + actual_seconds) / sample_count
+            min_seconds = min(float(row["min_seconds"] or actual_seconds), actual_seconds)
+            max_seconds = max(float(row["max_seconds"] or actual_seconds), actual_seconds)
+            db.conn.execute(
+                """
+                UPDATE node_duration_estimates
+                SET sample_count = ?, average_seconds = ?, min_seconds = ?, max_seconds = ?,
+                    last_seconds = ?, updated_at = ?, params_json = ?
+                WHERE node_type = ? AND params_hash = ?
+                """,
+                (sample_count, average, min_seconds, max_seconds, actual_seconds, now, params_json, node_type, digest),
+            )
+        else:
+            db.conn.execute(
+                """
+                INSERT INTO node_duration_estimates
+                  (node_type, params_hash, params_json, sample_count, average_seconds,
+                   min_seconds, max_seconds, last_seconds, updated_at)
+                VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+                """,
+                (node_type, digest, params_json, actual_seconds, actual_seconds, actual_seconds, actual_seconds, now),
+            )
+        db.conn.commit()
 
 
 def _canonicalize(value: Any) -> Any:
@@ -235,14 +241,15 @@ def _canonicalize(value: Any) -> Any:
 
 
 def _lookup_historical_estimate(node_type: str, digest: str) -> dict | None:
-    row = db.conn.execute(
-        """
-        SELECT sample_count, average_seconds
-        FROM node_duration_estimates
-        WHERE node_type = ? AND params_hash = ?
-        """,
-        (node_type, digest),
-    ).fetchone()
+    with _duration_lock:
+        row = db.conn.execute(
+            """
+            SELECT sample_count, average_seconds
+            FROM node_duration_estimates
+            WHERE node_type = ? AND params_hash = ?
+            """,
+            (node_type, digest),
+        ).fetchone()
     if not row or int(row["sample_count"]) <= 0:
         return None
     sample_count = int(row["sample_count"])

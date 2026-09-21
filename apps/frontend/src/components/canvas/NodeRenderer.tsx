@@ -139,6 +139,8 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   return (
     <div
       className={nodeClassName}
+      data-tutorial-node={node.id}
+      data-node-type={nodeType}
       style={nodeStyle}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}

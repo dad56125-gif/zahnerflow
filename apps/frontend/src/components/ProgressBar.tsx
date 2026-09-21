@@ -125,6 +125,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     return (
         <div
             className="progress-bar__container glass"
+            data-tutorial-anchor="progress"
             onClick={onClick}
             title="点击查看图表"
             style={{ cursor: onClick ? 'pointer' : 'default' }}

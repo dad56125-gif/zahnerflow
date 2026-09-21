@@ -1,6 +1,7 @@
+import { registerWorkspaceParticipant } from '../../tutorialEnvironment';
 // --- START OF FILE apps/frontend/src/components/property/RightPanel.tsx ---
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { WorkflowNode, NodeType, WorkflowEtaEstimate } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
@@ -176,6 +177,11 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     const [plannedEstimate, setPlannedEstimate] = useState<WorkflowEtaEstimate | null>(null);
     const [plannedStartTime, setPlannedStartTime] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
+    useLayoutEffect(() => registerWorkspaceParticipant(() => {
+      const previous = activeTab;
+      setActiveTab('basic');
+      return () => setActiveTab(previous);
+    }), [activeTab]);
     const [workflowOptions, setWorkflowOptions] = useState<WorkflowSummaryOption[]>([]);
     const [workflowBlockDefinition, setWorkflowBlockDefinition] = useState<WorkflowDefinitionPayload | null>(null);
     const [workflowBlockLoading, setWorkflowBlockLoading] = useState(false);
@@ -978,7 +984,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
               </button>
               <button
                 className={`btn btn--sm glass ${activeTab === 'parameters' ? 'btn--primary' : 'btn--secondary'}`}
-                onClick={() => setActiveTab('parameters')}
+                data-tutorial-anchor="parameter-tab" onClick={() => setActiveTab('parameters')}
               >
                 <span className="btn-icon"><UiIconSvg name="settings" /></span><span className="btn-text">参数</span>
               </button>

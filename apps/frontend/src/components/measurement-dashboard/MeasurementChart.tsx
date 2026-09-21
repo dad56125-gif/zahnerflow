@@ -161,7 +161,7 @@ const isPending = nodePhase === 'pending';
 const isRunning = nodePhase === 'running';
 
 // IVT 流式数据 Hook
-const { consumeIterationBuffer, getIterationsForNode } = useMeasurementStream({
+const { consumeIterationBuffer, getIterationsForNode, dataVersion } = useMeasurementStream({
 nodeIndex,
 activeExecutionId
 });
@@ -523,7 +523,7 @@ if (p.i > rangeRef.current.iMax) rangeRef.current.iMax = p.i;
 
 // 更新图表
 updateChartRef.current();
-}, [consumeIterationBuffer, hasData, isEisNode]);
+}, [consumeIterationBuffer, dataVersion, hasData, isEisNode]);
 
 updateChartRef.current = updateChartWithIterations;
 

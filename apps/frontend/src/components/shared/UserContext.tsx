@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { appStorage, registerWorkspaceParticipant } from '../../tutorialEnvironment';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { runtimeClient } from '../../runtimeClient';
 import {
   UserContext,
@@ -67,12 +68,12 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const userList = response.users.map(profile => profile.user);
       setUsers(response.users);
       if (selectionVersion !== configRequestRef.current) return;
-      const savedUser = localStorage.getItem('currentUser');
+      const savedUser = appStorage.getItem('currentUser');
       if (savedUser && userList.includes(savedUser)) {
         setCurrentUserState(savedUser);
         await loadUserPathConfig(savedUser);
       } else if (savedUser) {
-        localStorage.removeItem('currentUser');
+        appStorage.removeItem('currentUser');
         setCurrentUserState('');
         setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
         setCurrentUserAvatarState('');
@@ -94,7 +95,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     setCurrentUserState(user);
     setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
     setCurrentUserAvatarState('');
-    localStorage.setItem('currentUser', user);
+    appStorage.setItem('currentUser', user);
 
     // 加载该用户的路径配置
     if (user) {
@@ -157,7 +158,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         ++configRequestRef.current;
         setCurrentUserAvatarState('');
         setCurrentUserState('');
-        localStorage.removeItem('currentUser');
+        appStorage.removeItem('currentUser');
         // 重置路径配置
         setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
       }
@@ -165,6 +166,23 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
     return false;
   };
+
+  useLayoutEffect(() => registerWorkspaceParticipant(() => {
+    ++configRequestRef.current;
+    const previous = { currentUser, users, usersLoadError, currentUserAvatar, filePathConfig };
+    setCurrentUserState('');
+    setCurrentUserAvatarState('');
+    setFilePathConfigState(DEFAULT_FILE_PATH_CONFIG);
+    void loadUsers();
+    return () => {
+      ++configRequestRef.current;
+      setCurrentUserState(previous.currentUser);
+      setUsers(previous.users);
+      setUsersLoadError(previous.usersLoadError);
+      setCurrentUserAvatarState(previous.currentUserAvatar);
+      setFilePathConfigState(previous.filePathConfig);
+    };
+  }), [currentUser, users, usersLoadError, currentUserAvatar, filePathConfig, loadUsers]);
 
   // 初始化时加载用户列表
   useEffect(() => {

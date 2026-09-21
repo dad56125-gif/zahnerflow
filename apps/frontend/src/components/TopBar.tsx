@@ -36,6 +36,8 @@ interface TopBarProps {
   hasRunMetadataWarning?: boolean;
   furnaceConnected?: boolean;
   mfcConnected?: boolean;
+  onTutorialOpen?: () => void;
+  tutorialDisabled?: boolean;
 }
 
 const DEVICE_ICON_PATHS = {
@@ -97,6 +99,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   hasRunMetadataWarning,
   furnaceConnected = false,
   mfcConnected = false,
+  onTutorialOpen,
+  tutorialDisabled = false,
 }) => {
   const { currentUser, setCurrentUser } = useUser();
   const [isWorkstationDropdownOpen, setIsWorkstationDropdownOpen] = useState(false);
@@ -215,6 +219,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             currentUser={currentUser}
             onUserChange={setCurrentUser}
             hasRunMetadataWarning={hasRunMetadataWarning}
+            tutorialControl={onTutorialOpen && <button type="button" className="btn btn--md btn--secondary btn--icon btn--round user-selector__action-btn" onClick={onTutorialOpen} disabled={tutorialDisabled} title={tutorialDisabled ? '实验结束后可打开教程' : '新手教程'} aria-label="新手教程"><svg className="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M3 4h6l3 2 3-2h6v15h-6l-3 2-3-2H3Z" /><path d="M12 6v15M6 8h3M15 8h3M6 12h3M15 12h3" /></svg></button>}
             developerControls={(
               <>
                 <span className="developer-mode-trigger-slot">
@@ -246,6 +251,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="top-bar__actions">
         <div
           className="btn btn--md btn--secondary"
+          data-tutorial-anchor="furnace"
           onClick={() => handleDeviceClick('furnace')}
         >
           <span className="btn-icon"><TopBarDeviceIcon type="furnace" /></span>
@@ -255,6 +261,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div
           className="btn btn--md btn--secondary"
+          data-tutorial-anchor="mfc"
           onClick={() => handleDeviceClick('mfc')}
         >
           <span className="btn-icon"><TopBarDeviceIcon type="mfc" /></span>
@@ -265,6 +272,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <div className="workstation-selector" ref={dropdownContainerRef}>
           <button
             ref={workstationButtonRef}
+            data-tutorial-anchor="station"
             className="btn btn--md btn--primary"
             onClick={handleToggleDropdown}
           >
@@ -299,6 +307,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             {WORKSTATIONS.map((workstation) => (
               <div
                 key={workstation.id}
+                data-tutorial-workstation={workstation.id}
                 className={`dropdown__option--workstation dropdown__option--${workstation.status}`}
                 onClick={() => handleWorkstationSelect(workstation)}
               >

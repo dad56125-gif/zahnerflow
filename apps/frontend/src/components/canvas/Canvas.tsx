@@ -1,8 +1,10 @@
+import { ConfirmDialog } from '../shared/ConfirmDialog';
+import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 // 导入新的类型
 import type { NodeType, WorkstationType } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore';
-import { useExecutionStore } from '../../state/executionStateBridge'; // 新增：读取执行状态
+import { selectCanvasEditable, useExecutionStore } from '../../state/executionStateBridge';
 import { NodeRenderer } from './NodeRenderer';
 import { ConnectionLines } from './ConnectionLines';
 import { Toolbar } from '../Toolbar';
@@ -46,12 +48,12 @@ export const Canvas: React.FC<CanvasProps> = ({
     canvasSize,
     setCanvasSize,
     selectNode,
-    setNodes, // 用于重排序
     addNode,
     reorderNode // 假设你在 Store 中实现了这个 Action
   } = useCanvasStore();
 
   const nodeStatuses = useExecutionStore(state => state.nodes.statuses);
+  const editable = useExecutionStore(selectCanvasEditable);
 
   // 2. 生成渲染视图 (View Model)
   const { layoutNodes, layoutEdges, adjustedDimensions } = useLayout(
@@ -76,6 +78,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null);
   const [layoutStable, setLayoutStable] = useState(true);
 
   // 3. 循环检测
@@ -143,12 +146,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     event.preventDefault();
     event.stopPropagation();
 
-    // 简化的删除确认
-    if (window.confirm(`确定要删除节点 "${node.name}" 吗？`)) {
-      const newNodes = nodes.filter(n => n.id !== node.id);
-      setNodes(newNodes);
-    }
-  }, [nodes, setNodes]);
+    if (editable) setDeleteNodeId(node.id);
+  }, [editable]);
 
   const handleNodeDragStartEnhanced = useCallback((node, event: React.DragEvent) => {
     event.dataTransfer.effectAllowed = 'move';
@@ -200,6 +199,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, [layoutNodes, reorderNode]);
 
   return (
+    <>
+      <ConfirmDialog open={!!deleteNodeId} title="删除节点" message={`确定要删除节点“${NODE_CONFIGS[nodes.find(node => node.id === deleteNodeId)?.type ?? '']?.name ?? ''}”吗？`} confirmText="删除" variant="danger" onOpenChange={open => { if (!open) setDeleteNodeId(null); }} onConfirm={() => { if (deleteNodeId) useCanvasStore.getState().deleteNode(deleteNodeId); }} />
     <div
       className="canvas glass-layout"
       ref={canvasRef}
@@ -270,5 +271,6 @@ export const Canvas: React.FC<CanvasProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };

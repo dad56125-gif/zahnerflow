@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
+import { appStorage } from '../tutorialEnvironment';
 import { WORKFLOW_NOTIFICATION } from '../eventContracts';
 import type { NotificationMessage } from '@zahnerflow/types';
 import { runtimeSocket } from '../runtimeClient';
@@ -83,6 +84,7 @@ export const useAppStore = create<AppState>()(
       }),
       {
         name: 'app-storage',
+        storage: createJSONStorage(() => appStorage),
         partialize: (state) => ({ theme: state.theme, backgroundPalette: state.backgroundPalette, leftPanelOpen: state.leftPanelOpen }),
       }
     ),

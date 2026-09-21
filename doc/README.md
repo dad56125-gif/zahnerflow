@@ -101,3 +101,9 @@ flowchart TD
 9. 完成前检查链接、Mermaid 语法、引用文件和符号、生成关系、设计锚点、版本策略及 Git 差异。核查工具输出放忽略目录。按项目规则提交，不混入其他任务的改动。
 
 新文档开头可使用：`状态：当前使用说明。归属：CLI 维护者。来源：apps/zahnerflow_cli/。复核日期：YYYY-MM-DD。` 自动生成文档还必须注明生成器、命令、输入和“勿手改”。
+
+## 教程文档
+
+- [教学样式](tutorial-style.md)
+- [设备教程](tutorial-devices.md)
+- [质子导体 SOP 教程](tutorial-proton-sop.md)
