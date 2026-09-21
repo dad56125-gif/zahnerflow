@@ -760,3 +760,7 @@
   padding-top: calc(var(--size-2xs) + 2px);
   padding-bottom: calc(var(--size-2xs) - 2px);
 }
+
+.report__summary-item .is-status-failed .report__status-text {
+  transform: translateY(2px);
+}

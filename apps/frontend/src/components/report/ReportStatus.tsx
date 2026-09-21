@@ -7,7 +7,7 @@ export function StatusLabel({ status }: { status: string }) {
   return (
     <>
       {iconName && <UiIconSvg name={iconName} />}
-      {getReportStatusText(status)}
+      <span className="report__status-text">{getReportStatusText(status)}</span>
     </>
   );
 }
