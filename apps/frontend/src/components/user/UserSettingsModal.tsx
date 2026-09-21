@@ -1,8 +1,8 @@
 import { useAppStore, type BackgroundPalette } from '../../state/appStore';
 
-import { workspaceGeneration, trackWorkspaceEdit } from '../../tutorialEnvironment';
+import { workspaceGeneration, trackWorkspaceEdit, registerWorkspaceParticipant } from '../../tutorialEnvironment';
 import { AvatarCropDialog } from './AvatarCropDialog';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
 import { useUser } from '../shared/userContextState';
 import { runtimeClient } from '../../runtimeClient';
@@ -133,6 +133,26 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const settingsGenerationRef = useRef(workspaceGeneration);
     const [cropImage, setCropImage] = useState<string | null>(null);
     
+    useLayoutEffect(() => registerWorkspaceParticipant(() => {
+        const previous = { activeSection, settings, projects, error, fieldErrors, cropImage };
+        setActiveSection('filePath');
+        setSettings(null);
+        setProjects([]);
+        setError('');
+        setFieldErrors({});
+        setCropImage(null);
+        return () => {
+            setActiveSection(previous.activeSection);
+            // The normal load effect reloads the real user's settings after leaving.
+            skipNextAutoSaveRef.current = true;
+            setSettings(previous.settings);
+            setProjects(previous.projects);
+            setError(previous.error);
+            setFieldErrors(previous.fieldErrors);
+            setCropImage(previous.cropImage);
+        };
+    }), [activeSection, settings, projects, error, fieldErrors, cropImage]);
+
     // 裁剪框常数
 
     // 上传头像文件处理
@@ -388,6 +408,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                     {sectionOrder.map(section => (
                                         <button
                                             key={section}
+                                            data-tutorial-anchor={`settings-tab-${section}`}
                                             className={`btn btn--secondary btn--sm tabs__trigger ${activeSection === section ? 'is-active' : ''}`}
                                             onClick={() => setActiveSection(section)}
                                         >
