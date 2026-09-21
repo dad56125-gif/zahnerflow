@@ -175,10 +175,10 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
         className="tab-secondary-item"
         style={{
           cursor: 'default',
-          color: '#fff',
+          color: 'var(--text-primary)',
           fontWeight: 500,
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderColor: 'rgba(255, 255, 255, 0.12)',
+          background: 'var(--glass-bg)',
+          borderColor: 'var(--glass-border)',
           padding: '0 0.85rem',
           display: 'flex',
           alignItems: 'center',
@@ -351,7 +351,7 @@ function renderModalHeader(props: MeasurementTabBarProps, nodeStatuses: string[]
               padding: '0 0.85rem',
               display: 'flex',
               alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: 'var(--glass-bg)',
               borderColor,
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               transform: 'translateZ(0)',

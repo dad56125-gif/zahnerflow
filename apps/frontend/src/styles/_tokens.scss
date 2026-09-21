@@ -283,8 +283,10 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --connection-stroke: #555c66;
-  --connection-arrow: #555c66;
+  --surface-dialog-glass: rgba(248, 250, 252, 0.66);
+  --surface-dialog-chrome: rgba(238, 242, 247, 0.38);
+  --connection-stroke: #858585;
+  --connection-arrow: #858585;
   --status-ready-indicator: #35b981;
   --text-path: #555c66;
   --text-notice: #89600d;
@@ -301,9 +303,9 @@
   --text-muted: #6c737d;
   --text-disabled: #989da5;
   --text-shadow-body: none;
-  --glass-bg: #f5f6f7;
-  --glass-bg-hover: #f9fafb;
-  --glass-bg-active: #eceff2;
+  --glass-bg: rgba(245, 247, 250, 0.66);
+  --glass-bg-hover: rgba(249, 250, 251, 0.78);
+  --glass-bg-active: rgba(236, 239, 242, 0.82);
   --glass-border: rgba(35, 42, 52, 0.09);
   --glass-border-hover: rgba(35, 42, 52, 0.16);
   --glass-shadow: rgba(25, 31, 40, 0.045);

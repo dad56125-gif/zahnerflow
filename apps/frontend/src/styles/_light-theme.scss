@@ -22,8 +22,8 @@
 
   .glass, .glass-layout {
     box-shadow: var(--shadow-panel);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    backdrop-filter: blur(var(--blur-4));
+    -webkit-backdrop-filter: blur(var(--blur-4));
   }
 
   .glass::before, .glass-layout::before,
@@ -156,14 +156,16 @@
   .node.glass.status-failed { border-color: var(--workflow-error); }
   .node.glass.status-paused { border-color: var(--workflow-paused); }
 
-  // 模态表面与内容层分离，去除装饰性彩色光照。
+  // 浮层共享半透明玻璃表面，透出背景并保留文字对比。
   .modal, .settings, .workspace-device-modal, .chart-modal,
   .dropdown, .notification-panel, .create-user__dialog {
-    background: var(--surface-card);
+    background: var(--surface-dialog-glass);
+    backdrop-filter: blur(var(--blur-4)) saturate(1.15);
+    -webkit-backdrop-filter: blur(var(--blur-4)) saturate(1.15);
     border-color: var(--separator);
     box-shadow: var(--shadow-dialog);
   }
-  .modal__header, .modal__footer { background: var(--surface-toolbar); }
+  .modal__header, .modal__footer, .settings__header { background: var(--surface-dialog-chrome); }
   .furnace-modal__sidebar, .mfc__sidebar { background: var(--surface-sidebar); }
   .path-preview, .current-user__badge {
     background: var(--surface-sidebar);
