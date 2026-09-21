@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-flowgram",
-  "version": "2.4.13",
+  "version": "2.4.14",
   "description": "电化学测量流程编辑器 - 具有高级玻璃态设计界面",
   "type": "module",
   "scripts": {

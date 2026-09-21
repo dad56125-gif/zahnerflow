@@ -95,7 +95,17 @@
     background: var(--control-glass-base);
     box-shadow: var(--shadow-control-glass-hover);
   }
-  .progress-bar__track { background: var(--control-white-mask); }
+  .progress-bar__track { background: var(--control-track-neutral); }
+  .tab-primary-item {
+    background: var(--control-white-mask);
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--shadow-control-glass);
+  }
+  .tab-primary-item:hover { background: var(--control-glass-base); }
+  .tab-primary-item.is-active {
+    background: var(--surface-selected);
+    border-color: var(--color-primary);
+  }
   // 普通操作使用中性表面，蓝色只在交互反馈与选中时出现。
   .btn {
     background: linear-gradient(var(--control-white-mask), var(--control-white-mask)), var(--control-glass-base);
