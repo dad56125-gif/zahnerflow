@@ -180,3 +180,5 @@ Sass 入口保留 `base → layout → components` 的 CSS 层顺序，通过 `m
 继承提交清单核查（已完成）：按 main..d70086e 的 20 个提交检查文件统计与提交说明，区分代码改动和文档研究。
 
 逐提交文件统计确认：20 个历史提交中，5 个包含产品代码（7e48c2e、47e4ed6、98dd0ac、7962539、7b8828d），15 个仅涉及文档、研究归档和代理规则。主要代码范围为前端职责拆分、数据库与报告契约、设计系统及展开步骤窗口、命令行接入、报告与运行中编辑边界；后续 Thales 研究提交未修改设备驱动。证据：git log --reverse --stat main..d70086e。
+
+教程分支合并核查（已完成）：main=279a4de，教程分支 codex/tutorial-review=da92e63（2.5.9），merge-tree 检出 19 个冲突文件：10 个版本文件、5 个日志/设计/文档文件，以及 UserSettingsModal.tsx、main.tsx、appStore.ts、_report.scss 四个源码文件。需整合主题首屏恢复与教程启动、背景偏好持久化与教程隔离存储、用户设置和报告样式；不是单纯版本冲突。未执行实际合并。已删除合并完成的 codex/unroll-finder，原工作区保留为 detached HEAD。
