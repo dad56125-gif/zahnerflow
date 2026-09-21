@@ -23,7 +23,8 @@ export function ReportMeasurementChart({ chart }: { chart: ReportChartImage }) {
       splitLine: { lineStyle: { color: theme === 'dark' ? '#374151' : '#e5e7eb' } } };
     live.current?.setOption({ backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
       textStyle: { color: foreground }, legend: { textStyle: { color: foreground } },
-      xAxis: axis, yAxis: axis,
+      xAxis: axis, yAxis: (Array.isArray(chart.option?.yAxis) ? chart.option.yAxis : [chart.option?.yAxis]).map(() => axis),
+      ...(chart.option?.graphic ? { graphic: { elements: [{ style: { fill: foreground } }] } } : {}),
       series: ((chart.option?.series || []) as Array<unknown>).map(() => ({ markPoint: { label: { color: foreground } } })),
     });
   }, [theme, chart]);
