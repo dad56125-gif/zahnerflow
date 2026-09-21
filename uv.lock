@@ -1343,7 +1343,7 @@ wheels = [
 
 [[package]]
 name = "zahnerflow-runtime"
-version = "2.3.18"
+version = "2.3.19"
 source = { editable = "." }
 dependencies = [
     { name = "aiosmtplib" },
