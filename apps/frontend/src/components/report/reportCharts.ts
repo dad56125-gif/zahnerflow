@@ -77,6 +77,15 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
     plotted.forEach((points, series) => points.forEach((point) => {
       if (point[1] > peak.value) peak = { value: point[1], point, series };
     }));
+    const extrema = { power: { magnitude: -1, value: 0, point: [0, 0], series: -1 },
+      current: { magnitude: -1, value: 0, point: [0, 0], series: -1 } };
+    if (first.name === 'LSV') plotted.forEach((points, series) => points.forEach((point) => {
+      const power = point[0] * point[1];
+      if (Math.abs(power) > extrema.power.magnitude)
+        extrema.power = { magnitude: Math.abs(power), value: power, point, series };
+      if (Math.abs(point[1]) > extrema.current.magnitude)
+        extrema.current = { magnitude: Math.abs(point[1]), value: point[1], point, series };
+    }));
     if (comparison.ocv) axisBounds[1] = { min: 0, max: peak.value > 0 ? peak.value * 1.1 : 1 };
     if (first.equalScale) {
       let minX = 0, maxX = 0, maxY = 0;
@@ -104,6 +113,14 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
             symbol: 'circle', symbolSize: 7,
             label: { show: true, position: 'top', formatter: `最大 OCV ${Number(peak.value.toPrecision(5))} V` },
             data: [{ coord: peak.point, value: peak.value }],
+          } : first.name === 'LSV' ? {
+            symbol: 'circle', symbolSize: 7,
+            data: Object.entries(extrema).filter(([, peak]) => peak.series === index).map(([kind, peak]) => ({
+              coord: peak.point, value: peak.value,
+              label: { show: true, position: kind === 'power' ? 'right' : 'bottom',
+                formatter: `${kind === 'power' ? '最大功率点' : '最大电流点'}\n${Number(peak.value.toPrecision(5))} ${kind === 'power' ? 'W' : 'A'}\n${Number(peak.point[0].toPrecision(5))} V`,
+              },
+            })),
           } : undefined,
           smooth: false, showSymbol: false, symbol: ['circle', 'triangle', 'rect', 'diamond'][entry.repeat % 4], symbolSize: 4,
           lineStyle: { width: 1.5, type: ['solid', 'dashed', 'dotted'][entry.repeat % 3] },
