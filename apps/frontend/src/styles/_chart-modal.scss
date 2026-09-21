@@ -333,7 +333,7 @@
   height: calc(100vh - var(--canvas-t) - var(--canvas-b) + var(--space));
   background: linear-gradient(135deg, rgba(var(--ui-recess-rgb), 0.2) 0%, rgba(var(--ui-recess-rgb), 0.4) 100%);
   border: 1px solid var(--text-disabled);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius);
   backdrop-filter: blur(var(--effect-xl));
   -webkit-backdrop-filter: blur(var(--effect-xl));
   box-shadow: 0 16px 64px var(--glass-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.1);

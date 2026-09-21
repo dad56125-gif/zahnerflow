@@ -10,7 +10,7 @@
   isolation: isolate;
   width: min(1180px, 94vw);
   height: min(820px, 90vh);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius);
   box-shadow: 0 8px var(--effect-2xl) var(--glass-shadow);
   display: flex;
   flex-direction: column;

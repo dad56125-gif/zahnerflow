@@ -27,7 +27,7 @@
    ========================================================================== */
 
 .modal__content {
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius);
   box-shadow: 0 16px 64px var(--glass-shadow-hover), inset 0 1px 0 var(--text-disabled), inset 0 -1px 0 var(--glass-hover);
   @include flex-col(0); overflow: hidden;
 }
@@ -76,7 +76,7 @@
   width: var(--notification-panel-width);
   max-height: var(--notification-panel-max-height);
   min-height: var(--notification-panel-min-height);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius);
   z-index: var(--notification-panel-z-index);
   @include flex-col(0); overflow: hidden;
   will-change: opacity, transform; pointer-events: auto;
@@ -365,7 +365,7 @@
    ========================================================================== */
 
 .pagination {
-  padding: var(--size-sm); border-radius: var(--radius-panel);
+  padding: var(--size-sm); border-radius: var(--radius);
   backdrop-filter: blur(var(--effect-md)); gap: var(--size-sm);
   @extend %flex-center;
 }

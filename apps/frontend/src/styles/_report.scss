@@ -345,7 +345,7 @@
 
 .report__preview {
   @extend %glass-panel-base;
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius);
   padding: var(--size-xl);
   color: var(--text-secondary);
   box-shadow: 0 4px var(--effect-xl) var(--glass-shadow);

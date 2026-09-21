@@ -8,7 +8,7 @@
   color: var(--text-primary);
   background: var(--glass-bg-active);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius);
   backdrop-filter: blur(var(--blur-overlay));
   box-shadow: var(--shadow-panel);
   h3, p { margin: 0; }
