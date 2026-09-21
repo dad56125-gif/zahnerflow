@@ -7,8 +7,8 @@
   }
 
   // 仅图标使用语义色，文字和玻璃按钮保持中性。
-  .topbar-workstation-icon__primary { fill: var(--color-info); }
-  .topbar-workstation-icon__secondary { fill: var(--node-library-icon-blue-gray); }
+  .topbar-workstation-icon__primary { fill: var(--text-primary); }
+  .topbar-workstation-icon__secondary { fill: var(--text-secondary); }
   .user-selector__container .ui-svg-icon--user,
   .user-action-icon--userSettings,
   .user-action-icon--createUser,
