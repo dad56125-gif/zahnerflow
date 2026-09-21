@@ -126,7 +126,7 @@ export function generateReportHtml(reportData: ReportData): string {
         <table class="report-summary-table">
           <tbody>
             <tr><td>状态</td><td>${statusLabelMarkup(reportData.status)}</td></tr>
-            ${errors.length ? `<tr><td>错误信息</td><td>${errors.map((error) => escapeHtml(error).replace(/\n/g, '<br>')).join('<br>')}</td></tr>` : ''}
+            ${errors.map((field) => `<tr><td>${escapeHtml(field.label)}</td><td>${escapeHtml(field.value)}</td></tr>`).join('')}
             <tr><td>开始时间</td><td>${formatDateTime(reportData.startTime)}</td></tr>
             <tr><td>结束时间</td><td>${formatDateTime(reportData.endTime)}</td></tr>
             <tr><td>总耗时</td><td>${formatDuration(reportData.durationSeconds)}</td></tr>

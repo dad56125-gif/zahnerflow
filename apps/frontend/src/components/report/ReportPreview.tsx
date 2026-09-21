@@ -31,12 +31,12 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
                 </span>
               </strong>
             </div>
-            {errors.length > 0 && (
-              <div className="report__summary-item report__summary-item--full report__summary-item--error">
-                <span>错误信息</span>
-                <strong>{errors.map((error, index) => <div key={index}>{error}</div>)}</strong>
+            {errors.map((field, index) => (
+              <div key={index} className={`report__summary-item${field.full ? ' report__summary-item--full' : ''}${field.error ? ' report__summary-item--error' : ''}`}>
+                <span>{field.label}</span>
+                <strong>{field.value}</strong>
               </div>
-            )}
+            ))}
             <div className="report__summary-item">
               <span>开始时间</span>
               <strong>{formatDateTime(reportData.startTime)}</strong>
