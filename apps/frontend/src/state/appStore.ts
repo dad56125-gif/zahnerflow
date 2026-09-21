@@ -8,7 +8,7 @@ type StoredNotification = NotificationMessage & {
   read: boolean;
 };
 
-export type BackgroundPalette = 'blue' | 'mint' | 'pink' | 'mixed';
+export type BackgroundPalette = 'blue' | 'mint' | 'pink' | 'mixed' | 'aurora';
 
 interface AppState {
   leftPanelOpen: boolean;
@@ -37,7 +37,11 @@ export const useAppStore = create<AppState>()(
         notificationPanelOpen: false,
         theme: 'light',
         backgroundPalette: 'mixed',
-        setBackgroundPalette: (backgroundPalette) => set({ backgroundPalette }),
+        setBackgroundPalette: (backgroundPalette) => {
+          const theme = backgroundPalette === 'aurora' ? 'dark' : 'light';
+          set({ backgroundPalette, theme });
+          if (typeof document !== 'undefined') document.documentElement.setAttribute('data-theme', theme);
+        },
         notifications: [],
 
         toggleLeftPanel: () => set(state => ({ leftPanelOpen: !state.leftPanelOpen })),

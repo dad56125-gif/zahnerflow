@@ -247,3 +247,5 @@
 .settings-background__pill--pink { --palette-preview: linear-gradient(105deg, var(--mesh-pink-1), var(--mesh-pink-3), var(--mesh-pink-5)); }
 .settings-background__pill--mixed { --palette-preview: linear-gradient(105deg, var(--mesh-mint), var(--mesh-apricot), var(--mesh-pink)); }
 
+
+.settings-background__pill--aurora { --palette-preview: var(--aurora-preview); color: var(--aurora-label); }

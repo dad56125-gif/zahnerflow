@@ -739,7 +739,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                             <section className="settings-background" aria-label="背景配色">
                                                 <h3>背景配色</h3>
                                                 <div className="settings-background__choices">
-                                                    {([['blue', '雾蓝'], ['mint', '薄荷'], ['pink', '樱粉'], ['mixed', '奶杏混色']] as const).map(([id, label]) => (
+                                                    {([['blue', '雾蓝'], ['mint', '薄荷'], ['pink', '樱粉'], ['mixed', '奶杏混色'], ['aurora', '经典极光']] as const).map(([id, label]) => (
                                                         <button key={id} type="button" className={"settings-background__pill settings-background__pill--" + id} aria-pressed={backgroundPalette === id} onClick={() => setBackgroundPalette(id as BackgroundPalette)}>
                                                             <span>{label}</span><span aria-hidden="true">{backgroundPalette === id ? '✓' : ''}</span>
                                                         </button>
