@@ -102,8 +102,13 @@
     box-shadow: var(--shadow-control-glass);
   }
   .tab-primary-item:hover { background: var(--control-glass-base); }
+  .tab-primary-item .tab-primary-item__badge,
+  .tab-primary-item.is-active .tab-primary-item__badge {
+    background: var(--control-white-mask);
+    color: var(--text-primary);
+  }
   .tab-primary-item.is-active {
-    background: var(--surface-selected);
+    background: var(--control-white-mask);
     border-color: var(--color-primary);
   }
   // 普通操作使用中性表面，蓝色只在交互反馈与选中时出现。
