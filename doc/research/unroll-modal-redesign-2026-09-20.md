@@ -38,3 +38,7 @@
 - 自动启动/停止边界继续可见但不可作为起点；后端展开预览仍是执行顺序和索引的唯一事实源。
 
 待核对：现有 `unrollViewModel` 的循环路径、工作流块路径和高级节点元数据能否稳定组合成唯一的分栏树；窄屏时如何保持路径可浏览而不退回旧双栏布局。
+
+## 2026-09-21 合并障碍核查
+
+已对 main=9ad1c7f 与 codex/unroll-finder=2188cf1 执行 merge-tree 模拟，未修改合并状态。功能组件和 _unroll.scss 无文本冲突；12 个冲突文件由 VERSION 及 9 个版本派生文件、CHANGELOG.md、.memory/changelog.md 构成。main 为 2.4.21，待合分支为 2.3.21，不能回退主线版本；实际合并时应保留双方日志，并由 VERSION 和 version:sync 统一版本。两工作区均干净。未执行实际合并及合并后运行验证。已删除合并完成的 codex/light-ui 分支，原预览工作区改为 detached HEAD 并保留以免影响正在使用的预览。
