@@ -161,17 +161,17 @@ const ParticleBackground: React.FC<ParticleBackgroundProps> = ({ suspended = fal
 
             if (theme === 'light') {
                 if (advance) waveTime += 1 / TARGET_FPS;
-                const boundary = (u: number) => 0.3
-                    + Math.sin(u * Math.PI * 4 + waveTime * 0.4) * 0.018
-                    + Math.sin(u * Math.PI * 10 - waveTime * 0.22) * 0.009;
+                const boundary = (u: number) => 0.35
+                    + Math.sin(u * Math.PI * 4 + waveTime * 0.4) * 0.055
+                    + Math.sin(u * Math.PI * 10 - waveTime * 0.22) * 0.016;
                 if (fieldCtx) {
                     for (let x = 0; x < colorField.width; x++) {
                         const center = boundary(x / colorField.width);
                         const wash = fieldCtx.createLinearGradient(0, 0, 0, colorField.height);
                         wash.addColorStop(0, blossomColors[0]);
-                        wash.addColorStop(center - 0.065, blossomColors[1]);
+                        wash.addColorStop(center - 0.032, blossomColors[1]);
                         wash.addColorStop(center, cascadeBlend);
-                        wash.addColorStop(center + 0.065, cascadeColors[0]);
+                        wash.addColorStop(center + 0.032, cascadeColors[0]);
                         wash.addColorStop(0.58, cascadeColors[1]);
                         wash.addColorStop(0.82, cascadeColors[2]);
                         wash.addColorStop(1, cascadeColors[3]);
