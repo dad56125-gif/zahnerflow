@@ -267,6 +267,8 @@
 /* 主题中性色通道：前景细节与凹面分别映射，阴影和遮罩不反色。 */
 :root {
   color-scheme: dark;
+  --connection-stroke: rgba(255,255,255,0.6);
+  --connection-arrow: rgba(255,255,255,0.8);
   --text-path: rgba(165, 243, 252, 0.92);
   --text-notice: #ffd666;
   --text-saving: rgba(251, 191, 36, 0.8);
@@ -281,6 +283,8 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
+  --connection-stroke: #555c66;
+  --connection-arrow: #555c66;
   --status-ready-indicator: #35b981;
   --text-path: #555c66;
   --text-notice: #89600d;

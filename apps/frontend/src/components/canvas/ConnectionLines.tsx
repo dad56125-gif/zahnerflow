@@ -38,7 +38,7 @@ export const ConnectionLines: React.FC<ComputedConnectionLinesProps> = ({
     const { sourcePosition, targetPosition, sourceDir = 1, targetDir = -1 } = edge; // 默认值防炸
     if (!sourcePosition || !targetPosition) return null;
 
-    const stroke = edge.style?.stroke || 'rgba(255,255,255,0.6)';
+    const stroke = edge.style?.stroke || 'var(--connection-stroke)';
     const baseStrokeWidth = edge.style?.strokeWidth || LINE_STROKE_WIDTH;
     const strokeWidth = Number(baseStrokeWidth);
     const sourceStart = {
@@ -186,7 +186,7 @@ export const ConnectionLines: React.FC<ComputedConnectionLinesProps> = ({
           <path
             d="M -10 -12 L 0 0 L -10 12"
             fill="none"
-            stroke="rgba(255,255,255,0.8)"
+            stroke="var(--connection-arrow)"
             strokeWidth={ARROW_STROKE_WIDTH}
             strokeLinecap="round"
             strokeLinejoin="round"
