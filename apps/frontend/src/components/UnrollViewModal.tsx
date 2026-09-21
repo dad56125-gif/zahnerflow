@@ -34,6 +34,12 @@ function groupIcon(node: Extract<UnrollColumnNode, { kind: 'group' }>) {
   return node.groupKind === 'loop' ? 'loop' : node.groupKind === 'advanced' ? 'data' : 'workflow';
 }
 
+function groupOrdinal(node: Extract<UnrollColumnNode, { kind: 'group' }>): string {
+  const first = node.firstPosition + 1;
+  const last = node.lastPosition + 1;
+  return first === last ? `#${first}` : `#${first}–#${last}`;
+}
+
 /** 只浏览后端执行计划；分栏路径和搜索不会改变执行索引。 */
 export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
   canRunFromStep = false, runMetadataWarning, onRunFromStep }: UnrollViewModalProps) {
@@ -170,6 +176,7 @@ export function UnrollViewModal({ isOpen, onClose, nodes, autoStartupConfig,
                 {items.map((node) => node.kind === 'group' ? <button key={node.key}
                   aria-pressed={selectedPath[columnIndex] === node.key}
                   className="unroll-finder__item unroll-finder__item--group" onClick={() => chooseNode(node, columnIndex)}>
+                  <span className="unroll-finder__ordinal">{groupOrdinal(node)}</span>
                   <UiIconSvg name={groupIcon(node)} />
                   <span className="unroll-finder__item-copy"><strong>{node.title}</strong><small>{node.meta}</small></span>
                   <span className="unroll-finder__disclosure" aria-hidden="true">›</span>
