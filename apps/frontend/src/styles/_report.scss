@@ -775,3 +775,9 @@
   img { display: block; width: 100%; height: auto; margin-top: var(--size-sm); }
   p { color: var(--text-muted); margin-bottom: 0; }
 }
+
+.report__interactive-chart {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  margin-top: var(--size-sm);
+}

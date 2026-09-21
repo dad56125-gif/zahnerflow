@@ -1,3 +1,4 @@
+import { ReportMeasurementChart } from './ReportMeasurementChart';
 import { groupReportCharts } from './reportCharts';
 import { forwardRef } from 'react';
 import type { ReportData } from './types';
@@ -74,7 +75,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
                 {group.charts.map((chart) => (
               <figure className="report__chart-card" key={chart.key}>
                 <figcaption>{chart.title}</figcaption>
-                {chart.image && <img src={chart.image} alt={chart.title} width="720" height="480" />}
+                {chart.option && <ReportMeasurementChart chart={chart} />}
                 {chart.error ? <p>{chart.error}</p> : <p>{chart.pointCount} 个数据点</p>}
               </figure>
                 ))}

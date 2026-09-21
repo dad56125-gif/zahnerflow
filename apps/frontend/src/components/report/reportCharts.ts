@@ -1,12 +1,12 @@
 import * as echarts from 'echarts/core';
 import { LineChart, ScatterChart } from 'echarts/charts';
-import { GridComponent, LegendComponent } from 'echarts/components';
-import { SVGRenderer } from 'echarts/renderers';
+import { GridComponent, LegendComponent, TooltipComponent, DataZoomComponent, ToolboxComponent } from 'echarts/components';
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers';
 import type { ReportCurveSeries, ReportMeasurementCurve } from '@zahnerflow/types';
 import { getNodeDisplayName } from '../../types/NodeConfiguration';
 import { formatIterationPath, toIterationPath } from '../../utils/iterationPath';
 
-echarts.use([LineChart, ScatterChart, GridComponent, LegendComponent, SVGRenderer]);
+echarts.use([LineChart, ScatterChart, GridComponent, LegendComponent, TooltipComponent, DataZoomComponent, ToolboxComponent, CanvasRenderer, SVGRenderer]);
 
 export interface ReportChartImage {
   key: string;
@@ -14,6 +14,7 @@ export interface ReportChartImage {
   group: string;
   pointCount: number;
   image?: string;
+  option?: echarts.EChartsCoreOption;
   error?: string;
 }
 
@@ -66,10 +67,9 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
   const colors = ['#2563eb', '#dc2626', '#059669', '#9333ea', '#d97706', '#0891b2'];
   const images = Array.from(comparisons, ([key, comparison]): ReportChartImage => {
     const first = comparison.entries[0].series;
-    const width = 720, height = 480;
     const grid = first.equalScale
-      ? { left: 200, right: 200, top: 100, bottom: 60 }
-      : { left: 88, right: 32, top: 100, bottom: 60 };
+      ? { left: '27.777778%', right: '27.777778%', top: '20.833333%', bottom: '12.5%' }
+      : { left: '12.222222%', right: '4.444444%', top: '20.833333%', bottom: '12.5%' };
     const axisBounds: { min?: number; max?: number }[] = [{}, {}];
     if (first.equalScale) {
       const mins = [Infinity, Infinity], maxs = [-Infinity, -Infinity];
@@ -85,12 +85,13 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
         }
       }
     }
-    const chart = echarts.init(null, undefined, { renderer: 'svg', ssr: true, width, height });
-    try {
-      chart.setOption({
+    const option: echarts.EChartsCoreOption = {
         animation: false, backgroundColor: '#ffffff', grid,
         textStyle: { fontFamily: 'sans-serif' },
-        legend: { top: 12, left: 24, right: 24, selectedMode: false, textStyle: { fontSize: 11 } },
+        tooltip: { trigger: first.equalScale ? 'item' : 'axis', confine: true },
+        toolbox: { right: 8, top: 68, feature: { restore: { title: '复位' }, dataZoom: { title: { zoom: '框选缩放', back: '撤销缩放' } } } },
+        dataZoom: [{ type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }, { type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }],
+        legend: { top: 12, left: 24, right: 24, selectedMode: true, textStyle: { fontSize: 11 } },
         xAxis: { type: 'value', name: first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
           ...axisBounds[0], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
         yAxis: { type: 'value', name: first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
@@ -101,11 +102,10 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
           lineStyle: { width: 1.5, type: ['solid', 'dashed', 'dotted'][entry.repeat % 3] },
           itemStyle: { color: colors[Math.max(0, temperatures.indexOf(entry.temperature ?? NaN)) % colors.length] },
         })),
-      });
+      };
       return { key, title: comparison.title, group: comparison.group,
         pointCount: comparison.entries.reduce((count, entry) => count + entry.series.points.length, 0),
-        image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(chart.renderToSVGString())}` };
-    } finally { chart.dispose(); }
+        option };
   });
   return [...images, ...errors];
 }
@@ -118,4 +118,22 @@ export function groupReportCharts(charts: ReportChartImage[]): Array<{ title: st
     groups.set(chart.group, items);
   }
   return Array.from(groups, ([title, items]) => ({ title, charts: items }));
+}
+
+export function reportChartImages(charts: ReportChartImage[], container?: HTMLElement): ReportChartImage[] {
+  const elements = container ? Array.from(container.querySelectorAll<HTMLElement>('[data-report-chart]')) : [];
+  return charts.map((chart) => {
+    if (!chart.option) return chart;
+    const element = elements.find((item) => item.dataset.reportChart === chart.key);
+    if (container) {
+      const live = element && echarts.getInstanceByDom(element);
+      if (!live) throw new Error('图表尚未加载完成，请稍后导出');
+      return { ...chart, image: live.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff', excludeComponents: ['toolbox', 'dataZoom'] }) };
+    }
+    const renderer = echarts.init(null, undefined, { renderer: 'svg', ssr: true, width: 720, height: 480 });
+    try {
+      renderer.setOption({ ...chart.option, toolbox: { show: false } });
+      return { ...chart, image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderer.renderToSVGString())}` };
+    } finally { renderer.dispose(); }
+  });
 }

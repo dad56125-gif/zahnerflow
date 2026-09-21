@@ -1,4 +1,4 @@
-import { groupReportCharts } from './reportCharts';
+import { groupReportCharts, reportChartImages } from './reportCharts';
 import { getReportStatusText, reportErrorDetails } from './reportPresentation';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
 import { STATUS_ICON_NAMES, type ReportData } from './types';
@@ -59,6 +59,7 @@ function statusLabelMarkup(status: string): string {
 
 export async function exportToPdf(reportData: ReportData, containerElement: HTMLElement): Promise<void> {
   const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+  const chartImages = reportChartImages(reportData.charts, containerElement);
   await document.fonts.ready;
   await Promise.all(Array.from(containerElement.querySelectorAll('img')).map((img) => img.decode()));
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -75,6 +76,16 @@ export async function exportToPdf(reportData: ReportData, containerElement: HTML
     const canvas = await html2canvas(block, {
       scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
       onclone: (document, element) => {
+        for (const target of element.querySelectorAll<HTMLElement>('[data-report-chart]')) {
+          const image = chartImages.find((chart) => chart.key === target.dataset.reportChart)?.image;
+          if (image) {
+            const img = document.createElement('img');
+            img.src = image;
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            target.replaceWith(img);
+          }
+        }
         // Export outside the modal's scroll/mask ancestors, including off-screen figures.
         document.body.appendChild(element);
         Object.assign(element.style, { position: 'absolute', top: '0', left: '0',
@@ -99,6 +110,7 @@ export async function exportToPdf(reportData: ReportData, containerElement: HTML
 }
 
 export function generateReportHtml(reportData: ReportData): string {
+  reportData = { ...reportData, charts: reportData.charts.every((chart) => chart.image || chart.error) ? reportData.charts : reportChartImages(reportData.charts) };
   const errors = reportErrorDetails(reportData);
   const warningRows = reportData.warningDetails
     .map((warning) => `
@@ -159,7 +171,8 @@ export function generateReportHtml(reportData: ReportData): string {
   `;
 }
 
-export function exportToHtml(reportData: ReportData): void {
+export function exportToHtml(reportData: ReportData, container?: HTMLElement): void {
+  reportData = { ...reportData, charts: reportChartImages(reportData.charts, container) };
   const body = generateReportHtml(reportData);
   const page = `
 <!DOCTYPE html>
