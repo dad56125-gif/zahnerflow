@@ -177,3 +177,13 @@ flowchart TD
 ### 报告测量曲线
 
 执行步骤归档的 csvPath/outputFile → report_measurements.py 只读解析 → report.py 的 measurementCurves → 生成 TypeScript → reportDataBuilder → reportCharts → 报告预览与 HTML/PDF。模式与温度来自 workflowSnapshot.nodes 的显式 group.label（发电/电解、温度及模拟条件标签），按模式和测量类型叠加不同温度；颜色区分温度，线型/点型区分重复轮次。未声明温度的工作流不推断温度，不混入温度对比组。真实测量 CSV 与模拟 CSV 按各自已知列名读取；前端不依赖实时缓存恢复历史曲线。ReportMeasurementChart 挂载交互 ECharts 并随容器缩放，关闭时释放；程序内不以图片替代图表。导出通过实例捕获当前图例/缩放状态，独立HTML生成调用使用同一图表配置离屏渲染。
+
+### 有效电极面积影响核查（2026-09-23，未实施）
+
+范围：核对样品配置、执行快照、实时曲线、历史报告及导出链；本次仅分析，不改变应用行为。当前未发现有效电极面积字段或面积归一化实现。
+
+拟议链路：用户配置中样品名称下输入可空的正数面积（cm²）→ shared/contracts/settings.py 和生成类型 → 用户配置保存与 UserContext → useWorkflowExecution 运行请求 → routers/executions.py 解析 → 执行快照冻结 → 实时图表和 report_service/reportCharts → HTML/PDF。执行路径解析当前只保留 basePath/projectName/individualName，不能只给前端加输入框。面积应作为样品元数据而非路径字符串；旧记录缺失时保持原始单位，不套用当前用户面积。
+
+显示规则提案：电流密度 I/S（A/cm²），功率密度 U×I/S（W/cm²），阻抗实部、虚部、模值及相应电阻乘 S（Ω·cm²）；相位、电压、时间、频率不变。能量面密度需另行积分功率，不能由单个 LSV 最大功率点代替。原始采样和仪器设定仍保持 A/V/Ω；密度输入控制是单独的功能边界，不能静默更改设备参数。
+
+还需覆盖图轴、最大点标注、面积展示、导出单位、示例/教学隔离以及样品切换防止沿用旧面积。当前配置是用户设置中的当前样品信息，不是独立样品档案；如要求按样品自动记忆面积，需要独立评估持久化设计与迁移。
