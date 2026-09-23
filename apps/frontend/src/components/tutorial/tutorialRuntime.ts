@@ -20,6 +20,7 @@ import deviceScenario from "./tutorialDeviceScenario.json";
 /** Recorded from the project's Python simulator; no UI or execution planner lives here. */
 export class TutorialRuntime implements TutorialTransport {
   constructor(readonly lessonId: string) {
+    this.settings.filePath.electrodeAreaCm2 = 0.5;
     if (lessonId === "prepare") {
       this.settings.filePath.projectName = "";
       this.settings.filePath.individualName = "";
@@ -119,6 +120,7 @@ export class TutorialRuntime implements TutorialTransport {
       snapshotSequence: ++this.sequence,
     };
     if (source.status !== "idle" && this.requestBody) {
+      this.snapshot.electrodeAreaCm2 = this.requestBody.pathConfig?.electrodeAreaCm2 ?? null;
       this.snapshot.nodes = this.requestBody.nodes;
       this.snapshot.workflowName = this.requestBody.workflowName;
       this.snapshot.ownerName = this.requestBody.ownerName;
@@ -314,7 +316,7 @@ export class TutorialRuntime implements TutorialTransport {
     )
       return structuredClone(scenario.executions);
     if (method === "GET" && /^\/api\/executions\/[^/]+\/report$/.test(endpoint))
-      return structuredClone(scenario.report);
+      return { ...structuredClone(scenario.report), pathConfig: { ...scenario.report.pathConfig, electrodeAreaCm2: 0.5 } };
     throw new Error(`教学数据不包含此操作：${method} ${endpoint}`);
   }
 }

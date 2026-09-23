@@ -328,7 +328,8 @@ export function buildReportData(payload: ExecutionReport): ReportData {
     warnings: warningDetails.length,
     artifacts: artifactDetails.length,
     warningDetails,
-    charts: buildReportCharts(payload.measurementCurves, workflowNodes),
+    electrodeAreaCm2: pathConfig.electrodeAreaCm2 ?? null,
+    charts: buildReportCharts(payload.measurementCurves, workflowNodes, pathConfig.electrodeAreaCm2),
     artifactDetails,
     nodes,
   };

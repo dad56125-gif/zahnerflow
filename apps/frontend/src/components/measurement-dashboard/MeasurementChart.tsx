@@ -127,6 +127,12 @@ height,
 overlayNodes,
 eisLegendScheme = 'palette'
 }) => {
+const frozenArea = systemState?.electrodeAreaCm2;
+const area = typeof frozenArea === 'number' && Number.isFinite(frozenArea) && frozenArea > 0 ? frozenArea : null;
+const currentScale = area ? 1 / area : 1;
+const impedanceScale = area ?? 1;
+const currentUnit = area ? 'A/cm²' : 'A';
+const impedanceUnit = area ? 'Ω·cm²' : 'Ω';
 const chartRef = useRef<HTMLDivElement>(null);
 const chartInstance = useRef<echarts.ECharts | null>(null);
 const theme = useAppStore(state => state.theme);
@@ -210,14 +216,15 @@ chartInstance.current = null;
 useEffect(() => {
 if (!chartInstance.current) return;
 const frameId = requestAnimationFrame(() => {
-const option = isEisNode ? getEisChartOption() : getIvtChartOption();
-chartInstance.current?.setOption(option, true);
+const option: echarts.EChartsCoreOption = isEisNode ? getEisChartOption() : getIvtChartOption();
+delete option.series;
+chartInstance.current?.setOption(option);
 if (!isEisNode) {
 updateChartRef.current();
 }
 });
 return () => cancelAnimationFrame(frameId);
-}, [theme, isEisNode]);
+}, [area, theme, isEisNode]);
 
 // 🔥 修复：IVT 历史数据恢复（支持迭代）
 useEffect(() => {
@@ -272,7 +279,7 @@ const CURRENT_HUE = 30;
 
 const r = rangeRef.current;
 const vRange = calcAxisRange(r.vMin, r.vMax);
-const iRange = calcAxisRange(r.iMin, r.iMax);
+const iRange = calcAxisRange(r.iMin * currentScale, r.iMax * currentScale);
 
 const iterations = Array.from(historyRef.current.keys()).sort(compareIterationKeys);
 const totalIterations = iterations.length;
@@ -286,7 +293,8 @@ const currentSeries: SeriesOption[] = [];
 
 // 获取设定值用于 markLine
 const vSetpoint = nodeConfig.parameters?.polarizationVoltage ?? nodeConfig.parameters?.potential;
-const iSetpoint = nodeConfig.parameters?.polarizationCurrent ?? nodeConfig.parameters?.current;
+const rawCurrentSetpoint = nodeConfig.parameters?.polarizationCurrent ?? nodeConfig.parameters?.current;
+const iSetpoint = rawCurrentSetpoint == null ? undefined : rawCurrentSetpoint * currentScale;
 
 // --- 逻辑：区分处理不变量和变量 ---
 
@@ -340,10 +348,10 @@ showSymbol: false,
 itemStyle: { color: getCssVariable('--chart-current') },
 lineStyle: { type: 'dashed', width: 1 },
 step: 'end',
-data: data.current,
+data: data.current.map(([time, current]) => [time, current * currentScale]),
 markLine: iSetpoint !== undefined ? {
 symbol: 'none',
-label: { position: 'end', formatter: `${iSetpoint}A`, color: getCssVariable('--chart-current'), fontSize: 10 },
+label: { position: 'end', formatter: `${iSetpoint}${currentUnit}`, color: getCssVariable('--chart-current'), fontSize: 10 },
 lineStyle: { type: 'dotted', color: getCssVariable('--chart-current-guide'), width: 1 },
 data: [{ yAxis: iSetpoint }]
 } : undefined,
@@ -357,7 +365,7 @@ currentSeries.push({
 name: totalIterations > 1 ? `I-Iter${index + 1}` : 'Current',
 type: 'line', yAxisIndex: 1, showSymbol: false,
 itemStyle: { color: getIterationColor(CURRENT_HUE, index, totalIterations) },
-data: data.current
+data: data.current.map(([time, current]) => [time, current * currentScale])
 });
 });
 }
@@ -400,7 +408,7 @@ if (!params.length) return '';
 const t = params[0].value[0];
 let html = `T: ${t.toFixed(2)}s<br/>`;
 params.forEach(p => {
-const unit = p.seriesName === 'Voltage' ? 'V' : 'A';
+const unit = p.seriesName.startsWith('V') ? 'V' : currentUnit;
 html += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:8px;height:8px;background-color:${p.color};"></span>`;
 html += `${p.seriesName}: ${formatPrecision(p.value[1])}${unit}<br/>`;
 });
@@ -428,7 +436,7 @@ splitLine: { show: true, lineStyle: { type: 'dashed', color: getCssVariable('--g
 },
 {
 type: 'value',
-name: 'A',
+name: currentUnit,
 position: 'right',
 scale: true,
 axisLine: { show: true, lineStyle: { color: getCssVariable('--chart-current'), width: 3 } },
@@ -451,14 +459,14 @@ textStyle: { color: getCssVariable('--text-primary', '#fff'), fontSize: 12 },
 formatter: (params: EisTooltipParam) => {
 if (!params.data) return '';
 const [zReal, zImag, freq] = params.data;
-return `f: ${freq.toExponential(2)} Hz<br/>Re: ${zReal.toExponential(3)} Ω<br/>-Im: ${(-zImag).toExponential(3)} Ω`;
+return `f: ${freq.toExponential(2)} Hz<br/>Re: ${zReal.toExponential(3)} ${impedanceUnit}<br/>-Im: ${zImag.toExponential(3)} ${impedanceUnit}<br/>|Z|: ${Math.hypot(zReal, zImag).toExponential(3)} ${impedanceUnit}`;
 }
 },
 animation: false,
 grid: { top: 45, bottom: 5, left: 45, right: 55, containLabel: true },
 xAxis: {
 type: 'value',
-name: "Re (Ω)",
+name: `Re (${impedanceUnit})`,
 nameLocation: 'end',
 nameGap: 10,
 nameTextStyle: {
@@ -474,7 +482,7 @@ axisLine: { lineStyle: { color: getCssVariable('--glass-border-hover', 'rgba(255
 },
 yAxis: {
 type: 'value',
-name: "-Im (Ω)",
+name: `-Im (${impedanceUnit})`,
 min: 0,
 nameLocation: 'end',
 nameGap: 15,
@@ -570,17 +578,17 @@ type: 'scatter',
 symbol: visual.symbol,
 symbolSize: visual.symbol === 'roundRect' ? 8 : 7,
 itemStyle: { color: visual.color },
-data: data.chartPoints
+data: data.chartPoints.map(([re, negativeIm, frequency]) => [re * impedanceScale, negativeIm * impedanceScale, frequency])
 };
 });
 });
 
 chartInstance.current.setOption({
-xAxis: calcEisAxisRange(xMin, xMax),
-yAxis: calcEisAxisRange(yMin, yMax, true),
+xAxis: calcEisAxisRange(xMin * impedanceScale, xMax * impedanceScale),
+yAxis: calcEisAxisRange(yMin * impedanceScale, yMax * impedanceScale, true),
 series
 }, { replaceMerge: ['series'] });
-}, [getEisIterationsForNodes, isEisNode, overlayKey, overlayNodes, nodeConfig.name, nodeIndex, eisLegendScheme]);
+}, [getEisIterationsForNodes, isEisNode, overlayKey, overlayNodes, nodeConfig.name, nodeIndex, eisLegendScheme, impedanceScale]);
 
 // 🔥 修改：IVT 清理逻辑（新运行时重置）
 useEffect(() => {

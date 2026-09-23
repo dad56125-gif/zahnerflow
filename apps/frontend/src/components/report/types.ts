@@ -11,6 +11,7 @@ import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 export interface ReportData {
   projectName: string;
   individualName: string;
+  electrodeAreaCm2?: number | null;
   workflowName: string;
   user: string;
   executionId: string;

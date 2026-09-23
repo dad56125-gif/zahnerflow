@@ -197,6 +197,7 @@ class WorkflowUnrollPreview(ContractModel):
 
 
 class ExecutionSnapshot(ContractModel):
+    electrodeAreaCm2: Optional[float] = Field(default=None, gt=0, allow_inf_nan=False, description="本次执行冻结的有效电极面积 cm²")
     runtimeId: str = Field(description="当前后端进程身份")
     snapshotSequence: int = Field(description="进程内快照交付序号，严格递增")
     commandSource: Literal["app", "cli", "agent"] = Field(default="app", description="执行发起入口")

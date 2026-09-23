@@ -16,6 +16,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
           <div className="report__cover-info">
             <p><strong>项目名称</strong>{reportData.projectName || '-'}</p>
             <p><strong>样品名称</strong>{reportData.individualName || '-'}</p>
+            <p><strong>有效电极面积</strong>{reportData.electrodeAreaCm2 != null ? `${reportData.electrodeAreaCm2} cm²` : '未填写'}</p>
             <p><strong>工作流</strong>{reportData.workflowName || '-'}</p>
             <p><strong>执行时间</strong>{formatDateTime(reportData.startTime)}</p>
             <p><strong>操作人员</strong>{reportData.user || '-'}</p>

@@ -8,6 +8,7 @@ class FilePathConfig(DocumentContract):
     base_path: str = "C:\\data\\archive"
     project_name: str = ""
     individual_name: str = ""
+    electrode_area_cm2: float | None = Field(default=None, gt=0, allow_inf_nan=False, strict=True)
 
 
 class NotificationSettings(DocumentContract):

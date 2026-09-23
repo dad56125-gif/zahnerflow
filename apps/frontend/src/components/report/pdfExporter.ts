@@ -129,6 +129,7 @@ export function generateReportHtml(reportData: ReportData): string {
         <div class="report-cover-info">
           <p><strong>项目名称:</strong> ${escapeHtml(reportData.projectName || '-')}</p>
           <p><strong>样品名称:</strong> ${escapeHtml(reportData.individualName || '-')}</p>
+          <p><strong>有效电极面积:</strong> ${reportData.electrodeAreaCm2 != null ? `${reportData.electrodeAreaCm2} cm²` : '未填写'}</p>
           <p><strong>工作流:</strong> ${escapeHtml(reportData.workflowName || '-')}</p>
           <p><strong>执行时间:</strong> ${formatDateTime(reportData.startTime)}</p>
           <p><strong>操作人员:</strong> ${escapeHtml(reportData.user || '-')}</p>

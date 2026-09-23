@@ -38,7 +38,13 @@ function temperatureGroup(label: string) {
   return match ? { mode: match[1], temperature: Number(match[2]), simulation: Boolean(match[3]) } : null;
 }
 
-export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array<Record<string, unknown>>): ReportChartImage[] {
+export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array<Record<string, unknown>>, electrodeAreaCm2?: number | null): ReportChartImage[] {
+  const area = typeof electrodeAreaCm2 === 'number' && Number.isFinite(electrodeAreaCm2) && electrodeAreaCm2 > 0 ? electrodeAreaCm2 : null;
+  const currentUnit = area ? 'A/cm²' : 'A';
+  const powerUnit = area ? 'W/cm²' : 'W';
+  const impedanceUnit = area ? 'Ω·cm²' : 'Ω';
+  const currentTitle = area ? '电流密度' : '电流';
+  const powerTitle = area ? '功率密度' : '功率';
   const comparisons = new Map<string, Comparison>();
   const errors: ReportChartImage[] = [];
   for (const curve of curves) {
@@ -55,7 +61,11 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
         pointCount: 0, error: curve.error });
       continue;
     }
-    for (const series of curve.series) {
+    for (const raw of curve.series) {
+      const series = area ? { ...raw,
+        points: raw.points.map(([x, y]) => raw.equalScale ? [x * area, y * area] : [x, raw.yLabel.includes('(A)') ? y / area : y]),
+        yLabel: raw.yLabel.replace('电流 (A)', '电流密度 (A/cm²)'),
+      } : raw;
       const kind = curve.nodeType === 'ocp_measurement' ? 'OCV' : series.name;
       const key = JSON.stringify([group, condition ? curve.nodeType : curve.nodeId, series.name, series.xLabel, series.yLabel]);
       const comparison = comparisons.get(key) || { group, title: `${group} · ${kind}`, ocv: curve.nodeType === 'ocp_measurement', mode: condition?.mode, entries: [] };
@@ -104,9 +114,9 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
         tooltip: { show: false },
         dataZoom: [{ type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }, { type: 'inside', yAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: 'ctrl' }],
         legend: { top: 12, left: 24, right: 24, selectedMode: true, textStyle: { fontSize: 11 } },
-        xAxis: { type: 'value', name: first.equalScale ? 'Re (Ω)' : first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
+        xAxis: { type: 'value', name: first.equalScale ? `Re (${impedanceUnit})` : first.xLabel, nameLocation: 'middle', nameGap: 36, scale: true,
           ...axisBounds[0], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
-        yAxis: { type: 'value', name: first.equalScale ? '-Im (Ω)' : first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
+        yAxis: { type: 'value', name: first.equalScale ? `-Im (${impedanceUnit})` : first.yLabel, nameLocation: 'middle', nameGap: 60, scale: true,
           ...axisBounds[1], axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } },
         series: comparison.entries.map((entry, index) => ({
           name: entry.label, type: first.equalScale ? 'scatter' : 'line', data: plotted[index], clip: true,
@@ -135,10 +145,10 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
         const powerForDisplay = (power: number) => fuelCell ? Math.abs(power) : power;
 
         option.grid = { left: '12.222222%', right: '12.222222%', top: '25%', bottom: '12.5%' };
-        option.xAxis = { type: 'value', name: '电流 (A)', nameLocation: 'middle', nameGap: 36,
+        option.xAxis = { type: 'value', name: `${currentTitle} (${currentUnit})`, nameLocation: 'middle', nameGap: 36,
           scale: true, ...(fuelCell ? { min: 0 } : electrolysis ? { max: 0 } : {}),
           axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() } };
-        option.yAxis = (electrolysis ? ['电压 (V)'] : ['电压 (V)', '功率 (W)']).map((name, index) => ({ type: 'value', name,
+        option.yAxis = (electrolysis ? ['电压 (V)'] : ['电压 (V)', `${powerTitle} (${powerUnit})`]).map((name, index) => ({ type: 'value', name,
           position: index === 0 ? 'left' : 'right', nameLocation: 'middle', nameGap: 48, scale: true,
           splitLine: { show: index === 0 },
           axisLabel: { formatter: (value: number) => Number(value.toPrecision(4)).toString() },
@@ -155,12 +165,12 @@ export function buildReportCharts(curves: ReportMeasurementCurve[], nodes: Array
             markPoint: { symbol: 'circle', symbolSize: 7, data: extreme.series === index ? [{
               coord: [currentForDisplay(extreme.point[1]), axis === 0 ? extreme.point[0] : powerForDisplay(extreme.value)],
               label: { show: true, position: axis === 0 ? 'insideTopRight' : 'insideBottomRight',
-                formatter: `${axis === 0 ? '最大电流点' : '最大功率点'}\n${Number((axis === 0 ? currentForDisplay(extreme.value) : powerForDisplay(extreme.value)).toPrecision(5))} ${axis === 0 ? 'A' : 'W'}` },
+                formatter: `${axis === 0 ? `最大${currentTitle}点` : `最大${powerTitle}点`}\n${Number((axis === 0 ? currentForDisplay(extreme.value) : powerForDisplay(extreme.value)).toPrecision(5))} ${axis === 0 ? currentUnit : powerUnit}` },
             }] : [] },
           };
         }));
         option.graphic = [{ type: 'text', left: 'center', top: '19%',
-          style: { text: electrolysis ? '电解：电压—电流' : '实线：电压（左轴）    虚线：功率（右轴）', fill: '#374151', fontSize: 11 } }];
+          style: { text: electrolysis ? `电解：电压—${currentTitle}` : `实线：电压（左轴）    虚线：${powerTitle}（右轴）`, fill: '#374151', fontSize: 11 } }];
       }
       return { key, title: comparison.title, group: comparison.group,
         pointCount: comparison.entries.reduce((count, entry) => count + entry.series.points.length, 0),

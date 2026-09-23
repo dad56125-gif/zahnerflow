@@ -101,6 +101,17 @@ def _user_path_config(owner_name: str | None) -> dict:
 def _resolve_path_config(owner_name: str | None, request_path_config: dict | None) -> dict:
     resolved = _user_path_config(owner_name)
     incoming = request_path_config if isinstance(request_path_config, dict) else {}
+    from shared.contracts.settings import FilePathConfig
+    from pydantic import ValidationError
+    changed_sample = any(key in incoming and incoming[key] != resolved.get(key) for key in ("projectName", "individualName"))
+    if changed_sample:
+        resolved["electrodeAreaCm2"] = None
+    if "electrodeAreaCm2" in incoming:
+        resolved["electrodeAreaCm2"] = incoming["electrodeAreaCm2"]
+    try:
+        area = FilePathConfig.model_validate(resolved).electrode_area_cm2
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors(include_input=False, include_context=False)) from exc
     for key in ("basePath", "projectName", "individualName"):
         value = _string_value(incoming.get(key))
         if value:
@@ -109,6 +120,7 @@ def _resolve_path_config(owner_name: str | None, request_path_config: dict | Non
         "basePath": _string_value(resolved.get("basePath")) or "C:\\data\\archive",
         "projectName": _string_value(resolved.get("projectName")),
         "individualName": _string_value(resolved.get("individualName")),
+        "electrodeAreaCm2": area,
     }
 
 
@@ -214,6 +226,7 @@ async def create_execution(request: ExecutionStartRequest):
     runtime.experiment_state["ownerName"] = owner_name or ""
     runtime.experiment_state["workstationType"] = workstation_type
     runtime.experiment_state["nodes"] = nodes or []
+    runtime.experiment_state["electrodeAreaCm2"] = path_config.get("electrodeAreaCm2")
 
     try:
         await runtime.start_execution(

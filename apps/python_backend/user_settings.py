@@ -30,6 +30,10 @@ def save_user_settings(user: str, patch: dict) -> dict:
         unknown = set(values) - set(settings[section])
         if unknown:
             raise ValueError(f"未知设置字段：{section}.{sorted(unknown)[0]}")
+        if section == "filePath" and "electrodeAreaCm2" not in values and any(
+            key in values and values[key] != settings[section].get(key) for key in ("projectName", "individualName")
+        ):
+            settings[section]["electrodeAreaCm2"] = None
         settings[section].update(values)
     normalized = normalize_user_settings(settings)
     with db.conn:

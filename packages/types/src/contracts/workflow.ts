@@ -242,6 +242,8 @@ export interface WorkflowUnrollPreview {
 }
 
 export interface ExecutionSnapshot {
+  /** 本次执行冻结的有效电极面积 cm² */
+  electrodeAreaCm2?: number | null;
   /** 当前后端进程身份 */
   runtimeId: string;
   /** 进程内快照交付序号，严格递增 */

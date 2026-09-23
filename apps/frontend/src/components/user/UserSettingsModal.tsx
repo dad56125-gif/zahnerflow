@@ -319,6 +319,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             return;
         }
 
+        const area = settings.filePath.electrodeAreaCm2;
+        if (area != null && (!Number.isFinite(area) || area <= 0)) return;
         const settingsSnapshot = settings;
         const generation = settingsGenerationRef.current;
         let settled!: () => void;
@@ -348,12 +350,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         return () => { clearTimeout(timeoutId); settled(); };
     }, [currentUser, setCurrentUserAvatar, setFilePathConfig, settings]);
 
-    const updateFilePath = (field: keyof UserSettings['filePath'], value: string) => {
+    const updateFilePath = (field: keyof UserSettings['filePath'], value: string | number | null) => {
         if (!settings) return;
-        setSettings({
-            ...settings,
-            filePath: { ...settings.filePath, [field]: value }
-        });
+        const filePath = { ...settings.filePath,
+            ...((field === 'individualName' || field === 'projectName') && settings.filePath[field] !== value ? { electrodeAreaCm2: null } : {}),
+            [field]: value };
+        setSettings({ ...settings, filePath });
+        // Run requests must use the current sample even before the debounced save completes.
+        setFilePathConfig(filePath, { persist: false });
     };
 
     const updateNotification = <K extends keyof UserSettings['notification']>(
@@ -581,6 +585,16 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                         placeholder="输入样品编号"
                                                         className={`input ${fieldErrors.individualName ? 'input--error' : ''}`}
                                                     />
+                                                </div>
+
+                                                <div className="settings__form-group">
+                                                    <label htmlFor="electrode-area">有效电极面积（cm²）</label>
+                                                    <input id="electrode-area" data-tutorial-anchor="electrode-area" type="number" step="any"
+                                                        value={settings.filePath.electrodeAreaCm2 ?? ''}
+                                                        onChange={(e) => updateFilePath('electrodeAreaCm2', e.target.value === '' ? null : Number(e.target.value))}
+                                                        placeholder="可留空，输入正数" className="input" />
+                                                    {settings.filePath.electrodeAreaCm2 != null && (!Number.isFinite(settings.filePath.electrodeAreaCm2) || settings.filePath.electrodeAreaCm2 <= 0) &&
+                                                        <span className="settings__field-error">有效电极面积必须为正数</span>}
                                                 </div>
 
                                                 <div className="path-preview">
