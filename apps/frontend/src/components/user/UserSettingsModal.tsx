@@ -105,7 +105,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     isOpen,
     onClose
 }) => {
-    const { currentUser, setFilePathConfig, setCurrentUserAvatar } = useUser();
+    const { currentUser, filePathConfig, setFilePathConfig, setCurrentUserAvatar } = useUser();
+    const sessionPathRef = useRef(filePathConfig);
+    sessionPathRef.current = filePathConfig;
 
     const backgroundPalette = useAppStore(state => state.backgroundPalette);
     const setBackgroundPalette = useAppStore(state => state.setBackgroundPalette);
@@ -231,7 +233,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 if (active && response.success && response.settings) {
                     settingsGenerationRef.current = generation;
                     skipNextAutoSaveRef.current = true;
-                    setSettings(response.settings);
+                    setSettings({ ...response.settings, filePath: { ...response.settings.filePath,
+                        individualName: sessionPathRef.current.individualName,
+                        electrodeAreaCm2: sessionPathRef.current.electrodeAreaCm2 } });
                 }
             } catch (err) {
                 console.error('Failed to load user settings:', err);
@@ -333,7 +337,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 const response = await runtimeClient.users.saveSettings<ApiResponse>(currentUser, settingsSnapshot);
                 if (response.success) {
                     // 后端整包保存已经完成；这里只同步应用内缓存，避免再次写 filePath section。
-                    setFilePathConfig(settingsSnapshot.filePath, { persist: false });
+                    // Current path state is updated on edit; a delayed save must not restore a reset sample.
                     setCurrentUserAvatar(settingsSnapshot.cloud.avatar || '');
                 } else {
                     setError(response.message || '保存失败');

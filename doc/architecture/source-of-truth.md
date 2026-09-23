@@ -180,7 +180,7 @@ flowchart TD
 
 ### 有效电极面积（2026-09-23）
 
-定义：shared/contracts/settings.py 的 FilePathConfig.electrode_area_cm2，可空且必须为有限正数。generate.py 生成跨端类型和默认值。字段沿现有 filePath 配置保存，项目或样品切换清空面积；后端对未显式给新面积的样品切换也清空。执行请求解析支持明确 null，不能回填旧面积。
+定义：shared/contracts/settings.py 的 FilePathConfig.electrode_area_cm2，可空且必须为有限正数。generate.py 生成跨端类型和默认值。字段沿现有 filePath 传输，但样品名称和面积仅保留当前前端会话，用户配置落盘清空、读取忽略旧值；程序启动和成功重置清空两项，项目或样品切换清空面积；后端对未显式给新面积的样品切换也清空。执行请求解析支持明确 null，不能回填旧面积。
 
 数据链：UserSettingsModal → UserContext → useWorkflowExecution → routers/executions.py → executions.path_config JSON。执行开始时同时冻结到 ExecutionSnapshot.electrodeAreaCm2，实时 MeasurementChart 只消费执行值；report_service 从执行归档读取，reportDataBuilder 将面积传到 reportCharts，ReportPreview 与 HTML/PDF 共用换算。配置变更不回写历史执行。既有 JSON 文档增加可选字段，表结构与 schema_version 不变，不需 SQL 迁移；旧数据按 null 读取，不假定面积为 1。
 

@@ -17,7 +17,9 @@ def load_user_settings(user: str) -> dict:
         stored = json.loads(row["settings_json"]) if row else {}
     except (TypeError, json.JSONDecodeError):
         stored = {}
-    return normalize_user_settings(stored if isinstance(stored, dict) else {})
+    normalized = normalize_user_settings(stored if isinstance(stored, dict) else {})
+    normalized["filePath"].update(individualName="", electrodeAreaCm2=None)
+    return normalized
 
 
 def save_user_settings(user: str, patch: dict) -> dict:
@@ -36,10 +38,11 @@ def save_user_settings(user: str, patch: dict) -> dict:
             settings[section]["electrodeAreaCm2"] = None
         settings[section].update(values)
     normalized = normalize_user_settings(settings)
+    persisted = {**normalized, "filePath": {**normalized["filePath"], "individualName": "", "electrodeAreaCm2": None}}
     with db.conn:
         db.conn.execute(
             "INSERT INTO user_settings (user, settings_json, updated_at) VALUES (?, ?, ?) "
             "ON CONFLICT(user) DO UPDATE SET settings_json=excluded.settings_json, updated_at=excluded.updated_at",
-            (user, json.dumps(normalized, ensure_ascii=False), datetime.now(timezone.utc).isoformat()),
+            (user, json.dumps(persisted, ensure_ascii=False), datetime.now(timezone.utc).isoformat()),
         )
     return normalized

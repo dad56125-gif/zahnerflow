@@ -55,7 +55,7 @@ interface WorkflowExecutionOptions {
 
 /** 启动校验和请求反馈；执行事实仍由后端和 execution store 持有。 */
 export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, selectedWorkstation, zahnerAutoStartupConfig }: WorkflowExecutionOptions) {
-  const { currentUser, filePathConfig } = useUser();
+  const { currentUser, filePathConfig, clearSample } = useUser();
   const startExecution = useExecutionStore(state => state.startExecution);
   const resetExecution = useExecutionStore(state => state.resetExecution);
   const setNotificationPanelOpen = useAppStore(state => state.setNotificationPanelOpen);
@@ -170,7 +170,9 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
 
   const resetRun = async () => {
     setRunMetadataWarning(null);
-    return resetExecution();
+    const reset = await resetExecution();
+    if (reset) clearSample();
+    return reset;
   };
   return { runFlow, resetRun, runMetadataWarning, workflowBlockRunBlocked };
 }
