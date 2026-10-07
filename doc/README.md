@@ -85,6 +85,7 @@ flowchart TD
 - 使用：[安装启动](../INSTALL.md)、[CLI 与 Agent](guides/cli-agent.md)。
 - 规范：[数据与命名](reference/data-contracts.md)、[视觉与样式](reference/design-system.md)。
 - 研究：[展开执行步骤 modal 改版前现状复核](research/unroll-modal-redesign-2026-09-20.md)。
+- 更新核查：[电脑版打包基线之后的更新与提交树](research/desktop-baseline-update-tree-2026-10-07.md)。
 - 历史：[1.0.0 归档](insight/1.0.0/README.md)、[2.2.1 归档](insight/2.2.1/README.md)。
 - 变化：[发布日志](../CHANGELOG.md)、[设计演进](../.memory/changelog.md)。
 
