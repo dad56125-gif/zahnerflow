@@ -122,6 +122,8 @@ Furnace 业务时间由后端生命周期事件累计：开始/恢复设置 `cur
 
 ## [设备-runtime状态契约]
 
+Furnace 工作流归属：温度节点在写设备命令前校验当前活动工作流身份，确认事件再次校验；合法的新工作流可接管仍在运行或暂停的旧 Furnace 生命周期，并以新身份建立起点和累计时间。同一工作流的重复运行确认保持幂等，恢复保留累计时间；迟到的旧工作流运行/停止事件不得改变当前状态。工作流重置只清除工作流状态，不额外停止物理炉子，后续执行不因留存旧 Furnace 身份而失败。
+
 当前规则：设备实时状态统一通过 `RuntimeDeviceStatusEnvelope` 表达，并通过 Socket.IO `deviceStatusUpdate` 与 `/api/devices/{device}/runtime/status` 暴露。每个 envelope 同时携带 `RuntimeDeviceState`、`stateVersion` 和 `updatedAt`；其中 `RuntimeDeviceState` 是后端唯一可信源，包含连接、Furnace 执行生命周期、设备快照、MFC 当前扫描快照、最近有效通信和错误。Furnace/MFC hooks 在应用挂载、Socket 重连和 modal 重新打开时水合完整快照并持续订阅，不依赖打开设备 modal。统一的是 envelope、连接事实、订阅、版本和就绪派生规则；设备业务 payload 保留设备差异。
 
 Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSeconds + (Date.now() - currentRunStartedAt) / 1000`，暂停、停止、完成或错误时只显示后端累计值。这个 `Date.now()` interval 只刷新文字，不写回运行状态。MFC 扫描结果是当前 session 的替换快照，空结果也必须清空；历史采样只用于图表和历史查询。
@@ -241,6 +243,10 @@ Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事
 禁止事项：禁止让子组件重新创建全局运行事实源；禁止在组件目录外新增平行 UI 根体系。
 
 ## [前端-派生与展示规则]
+
+参数编辑：温变速率及目标流量允许暂存未完成小数输入，失焦时必须验证有限数，不完整输入恢复该字段默认值，不能把 NaN 写入节点配置。专用温度/MFC 输入和设备选择沿用属性栏的编辑锁。
+
+Furnace 程序显示：公开程序段使用按段号递增的 DOM 顺序，在响应式网格中按行从左到右显示 C01/t01、C02/t02 等对应段；不同列数不改变段号与寄存器、保存数据的绑定。
 
 当前规则：执行 phase 的含义由 `executionPhases` 表定义，`describeExecution` 将其组织为 `is`、`can`、`keeps`、`view`、`identity`、`progress`、`result`、`command` 等可读分组；React 组件只消费这些自然语言字段，不各自解释原始状态字符串。Zustand 执行 store 只保存 `identity`、`nodes`、`progress`、完整 `snapshot` 和独立 `command` 请求状态，不维护可互相矛盾的布尔副本。设备入口是否可用由 runtime device selectors 统一派生。节点是否有 IVT/EIS 图表、属于哪个图表组、显示名称和报告参数摘要由 `NODE_PRESENTATION_SPECS`/`NODE_CONFIGS` 统一定义，RightPanel、Dashboard、DataViewer、MeasurementChart、展开浏览器和报告共同消费。测量图表面板每次打开时只对真正处于 active 执行中的当前测量节点自动聚焦；用户手动选择类型、节点或批量范围后，本次打开期间保留用户视图，不提供额外的“跟随当前测试”按钮。IVT/EIS 曲线缓存均按 execution、原节点索引和迭代路径隔离，图表实例按 execution 和节点身份重建；节点或执行切换时必须恢复对应缓存或显示空图，不得沿用前一节点的 series。终态继续保留当前 execution id，使各类曲线具有一致生命周期，显式重置时统一清空。参数摘要对有限浮点数统一去除二进制噪声并保留有效数字，不得把小量级科学参数舍入成零。展开预览的行、组、搜索文本和收起结果由 `unrollViewModel` 统一适配。定时节点的日期转换和 5 分钟至 24 小时选择边界由 `utils/scheduledStart.ts` 统一处理。通知列表和面板开关只保存在 `appStore`。
 

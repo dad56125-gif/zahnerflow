@@ -193,7 +193,7 @@
   box-shadow: 0 var(--size-sm) var(--size-3xl) var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.segments__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); grid-auto-flow: dense; gap: var(--size-3xs); padding: 0; }
+.segments__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); grid-auto-flow: row; gap: var(--size-3xs); padding: 0; }
 
 .segment__item {
   display: grid;

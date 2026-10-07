@@ -1059,6 +1059,14 @@ class AppRuntime:
             "updatedAt": state["updatedAt"],
         }
 
+    def require_furnace_execution(self, execution_id: str | None) -> None:
+        """仅允许当前活动工作流写入或确认 Furnace 命令。"""
+        if not execution_id or execution_id != self.execution.execution_id or not self.execution.is_active:
+            raise RuntimeError(
+                f"Stale Furnace execution event {execution_id or 'none'}; "
+                f"current execution is {self.execution.execution_id or 'none'}"
+            )
+
     async def _finish_furnace_action(
         self,
         action: str,
@@ -1068,15 +1076,14 @@ class AppRuntime:
     ) -> dict:
         now = now or _utc_now()
         state = self._runtime_states["furnace"]
+        new_workflow_run = False
         if execution_id:
-            current_execution_id = state.get("executionId")
-            current_execution_status = state.get("executionStatus")
-            stale_active_run = action == "run" and current_execution_status in {"running", "paused"}
-            stale_stop = action == "stop" and current_execution_id != execution_id
-            if (stale_active_run or stale_stop) and current_execution_id != execution_id:
+            self.require_furnace_execution(execution_id)
+            new_workflow_run = action == "run" and state.get("executionId") != execution_id
+            if action == "stop" and state.get("executionId") != execution_id:
                 raise RuntimeError(
                     f"Stale Furnace execution event {execution_id}; "
-                    f"current execution is {current_execution_id or 'none'}"
+                    f"current execution is {state.get('executionId') or 'none'}"
                 )
         connection_info = self.devices.device_connection_info("furnace")
         updates = {
@@ -1089,10 +1096,10 @@ class AppRuntime:
             "lastError": None,
         }
         if action == "run":
-            if state.get("executionStatus") == "paused" and state.get("executionId"):
+            if not new_workflow_run and state.get("executionStatus") == "paused" and state.get("executionId"):
                 updates.update({"executionStatus": "running", "currentRunStartedAt": now})
                 event_type = "furnace_resumed"
-            elif state.get("executionStatus") == "running":
+            elif not new_workflow_run and state.get("executionStatus") == "running":
                 updates.update(
                     {
                         "executionStatus": "running",

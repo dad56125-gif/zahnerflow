@@ -349,7 +349,15 @@ class ExecutionEngine:
             raise WorkflowCancelled("Execution cancelled by user")
 
     async def _execute_change_temperature(self, params: dict):
+        execution_id = self.execution_id
+
+        def require_current_run():
+            self.runtime.require_furnace_execution(execution_id)
+            if self._cancel_requested:
+                raise WorkflowCancelled("Temperature change cancelled by user")
+
         def do_change():
+            require_current_run()
             status = self.devices.furnace_status()
             current_temp = float(status.get("pv", 25.0))
             target_temp = validate_furnace_temperature(params.get("targetTemperature"), "targetTemperature")
@@ -371,6 +379,7 @@ class ExecutionEngine:
                 cooling_linear_floor=cooling_linear_floor,
             )
             program_duration = int(math.ceil(program_minutes))
+            require_current_run()
             # AI-518P program temperatures use raw tenths of a degree, including
             # the reserved 28-30 scratch segments used by this node.
             self.devices.furnace_write_param(0x50, int(round(current_temp * 10)))
@@ -379,10 +388,11 @@ class ExecutionEngine:
             self.devices.furnace_write_param(0x53, 5001)
             self.devices.furnace_write_param(0x54, int(round(target_temp * 10)))
             self.devices.furnace_write_param(0x00, 28)
+            require_current_run()
             self.devices.furnace_write_param(0x15, 0)
             confirm_furnace_action = getattr(self.runtime, "confirm_furnace_action_from_worker", None)
             if callable(confirm_furnace_action):
-                confirm_furnace_action("run", self.execution_id)
+                confirm_furnace_action("run", execution_id)
 
             base_wait_s = estimated_ramp_minutes * 60 + stabilization_time
             min_extension_s = float(params.get("temperatureProgressExtensionSeconds", 600) or 600)
@@ -403,10 +413,11 @@ class ExecutionEngine:
 
             while True:
                 if self._cancel_requested:
+                    self.runtime.require_furnace_execution(execution_id)
                     self.devices.furnace_write_param(0x15, 12)
                     confirm_furnace_action = getattr(self.runtime, "confirm_furnace_action_from_worker", None)
                     if callable(confirm_furnace_action):
-                        confirm_furnace_action("stop", self.execution_id)
+                        confirm_furnace_action("stop", execution_id)
                     raise WorkflowCancelled("Temperature change cancelled by user")
                 time.sleep(2.0)
                 status = self.devices.furnace_status()

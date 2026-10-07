@@ -38,55 +38,43 @@ export const SegmentEditor: React.FC<SegmentEditorProps> = ({
   return (
     <div className="segments__editor">
       <div className="segments__grid">
-        {/* 按列优先顺序生成：3列布局时，竖向显示 c01 c02 c03 ... */}
-        {(() => {
-          const COLS = 3;
-          const ROWS = Math.ceil(FURNACE_PROGRAM_SEGMENT_COUNT / COLS);
-          const elements = [];
+        {/* 段号按自然顺序排列，响应式网格从左到右、从上到下展示。 */}
+        {Array.from({ length: FURNACE_PROGRAM_SEGMENT_COUNT }, (_, index) => {
+          const id = index + 1;
+          return (
+            <div key={id} className="segment__item">
+              <div className="segment__label">
+                C{id.toString().padStart(2, '0')}
+              </div>
+              <div className="input-group">
+                <input
+                  type="number"
+                  className={`input segment__input ${validation_errors[`temp_${id}`] ? 'has-error' : ''}`}
+                  value={inputs[`temp_${id}`] ?? ''}
+                  onChange={(e) => handle_input_change(`temp_${id}`, e.target.value)}
+                  disabled={!isConnected}
+                  title={validation_errors[`temp_${id}`] || ''}
+                />
+                <span className="unit">°C</span>
+              </div>
 
-          // 按行遍历，每行从3列取元素
-          for (let row = 0; row < ROWS; row++) {
-            for (let col = 0; col < COLS; col++) {
-              const id = col * ROWS + row + 1; // 列优先索引
-              if (id > FURNACE_PROGRAM_SEGMENT_COUNT) continue;
-
-              elements.push(
-                <div key={id} className="segment__item">
-                  <div className="segment__label">
-                    C{id.toString().padStart(2, '0')}
-                  </div>
-                  <div className="input-group">
-                    <input
-                      type="number"
-                      className={`input segment__input ${validation_errors[`temp_${id}`] ? 'has-error' : ''}`}
-                      value={inputs[`temp_${id}`] ?? ''}
-                      onChange={(e) => handle_input_change(`temp_${id}`, e.target.value)}
-                      disabled={!isConnected}
-                      title={validation_errors[`temp_${id}`] || ''}
-                    />
-                    <span className="unit">°C</span>
-                  </div>
-
-                  <div className="segment__label">
-                    t{id.toString().padStart(2, '0')}
-                  </div>
-                  <div className="input-group">
-                    <input
-                      type="number"
-                      className={`input segment__input ${validation_errors[`time_${id}`] ? 'has-error' : ''}`}
-                      value={inputs[`time_${id}`] ?? ''}
-                      onChange={(e) => handle_input_change(`time_${id}`, e.target.value)}
-                      disabled={!isConnected}
-                      title={validation_errors[`time_${id}`] || ''}
-                    />
-                    <span className="unit">min</span>
-                  </div>
-                </div>
-              );
-            }
-          }
-          return elements;
-        })()}
+              <div className="segment__label">
+                t{id.toString().padStart(2, '0')}
+              </div>
+              <div className="input-group">
+                <input
+                  type="number"
+                  className={`input segment__input ${validation_errors[`time_${id}`] ? 'has-error' : ''}`}
+                  value={inputs[`time_${id}`] ?? ''}
+                  onChange={(e) => handle_input_change(`time_${id}`, e.target.value)}
+                  disabled={!isConnected}
+                  title={validation_errors[`time_${id}`] || ''}
+                />
+                <span className="unit">min</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
