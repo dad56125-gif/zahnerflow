@@ -51,6 +51,7 @@ class AppRuntime:
         self.experiment_state: dict = {
             "status": "idle",
             "executionId": None,
+            "electrodeAreaCm2": None,
             "workflowId": None,
             "workflowName": "",
             "ownerName": "",
@@ -1322,6 +1323,7 @@ class AppRuntime:
                 "status": "idle",
                 "workflowId": None,
                 "executionId": None,
+                "electrodeAreaCm2": None,
                 "workflowName": "",
                 "ownerName": "",
                 "commandSource": "app",

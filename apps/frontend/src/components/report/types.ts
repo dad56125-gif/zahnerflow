@@ -1,3 +1,4 @@
+import type { ReportChartImage } from './reportCharts';
 import type { UiIconName } from '../shared/uiIcons';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 
@@ -10,6 +11,7 @@ import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 export interface ReportData {
   projectName: string;
   individualName: string;
+  electrodeAreaCm2?: number | null;
   workflowName: string;
   user: string;
   executionId: string;
@@ -24,6 +26,7 @@ export interface ReportData {
   warningDetails: ReportWarningInfo[];
   artifactDetails: ReportArtifactInfo[];
   nodes: ReportNodeInfo[];
+  charts: ReportChartImage[];
 }
 
 export interface ReportNodeInfo {

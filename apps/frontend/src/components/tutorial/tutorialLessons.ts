@@ -122,6 +122,12 @@ export const tutorialLessons: TutorialLesson[] = [
         check: { selector: ".save-status.saved" },
       },
       {
+        title: "填写有效电极面积",
+        text: "教学样品面积设为 0.5 cm²。面积用于密度显示，不改变仪器设定；实际使用可以留空。",
+        target: anchor("electrode-area"), action: "type", value: "0.5",
+        check: { selector: ".save-status.saved" },
+      },
+      {
         title: "关闭配置",
         text: "保存完成后返回主界面。",
         target: ".settings .modal__close",

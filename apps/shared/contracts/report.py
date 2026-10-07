@@ -64,6 +64,23 @@ class ReportEnvironment(DocumentContract):
     mfc_samples: list = Field(default_factory=list)
 
 
+class ReportCurveSeries(DocumentContract):
+    name: str
+    x_label: str
+    y_label: str
+    points: list[list[float]]
+    equal_scale: bool = False
+
+
+class ReportMeasurementCurve(DocumentContract):
+    unrolled_index: int
+    node_id: str
+    node_type: str
+    iteration_path: list = Field(default_factory=list)
+    series: list[ReportCurveSeries] = Field(default_factory=list)
+    error: str | None = None
+
+
 class ExecutionReport(DocumentContract):
     report_version: str = REPORT_VERSION
     execution_metadata: ReportExecutionMetadata
@@ -71,6 +88,7 @@ class ExecutionReport(DocumentContract):
     path_config: FilePathConfig
     unrolled_steps: list[ReportStep]
     artifacts: list[ReportArtifact]
+    measurement_curves: list[ReportMeasurementCurve] = Field(default_factory=list)
     environment_snapshot: ReportEnvironment
     warning_flags: list[ReportWarning]
     summary_metrics: dict

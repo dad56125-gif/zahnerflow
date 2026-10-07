@@ -1,8 +1,8 @@
 import { useAppStore, type BackgroundPalette } from '../../state/appStore';
 
-import { workspaceGeneration, trackWorkspaceEdit } from '../../tutorialEnvironment';
+import { workspaceGeneration, trackWorkspaceEdit, registerWorkspaceParticipant } from '../../tutorialEnvironment';
 import { AvatarCropDialog } from './AvatarCropDialog';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { ModalLayer } from '../shared/OverlayLayer';
 import { useUser } from '../shared/userContextState';
 import { runtimeClient } from '../../runtimeClient';
@@ -105,7 +105,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     isOpen,
     onClose
 }) => {
-    const { currentUser, setFilePathConfig, setCurrentUserAvatar } = useUser();
+    const { currentUser, filePathConfig, setFilePathConfig, setCurrentUserAvatar } = useUser();
+    const sessionPathRef = useRef(filePathConfig);
+    sessionPathRef.current = filePathConfig;
 
     const backgroundPalette = useAppStore(state => state.backgroundPalette);
     const setBackgroundPalette = useAppStore(state => state.setBackgroundPalette);
@@ -133,6 +135,26 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const settingsGenerationRef = useRef(workspaceGeneration);
     const [cropImage, setCropImage] = useState<string | null>(null);
     
+    useLayoutEffect(() => registerWorkspaceParticipant(() => {
+        const previous = { activeSection, settings, projects, error, fieldErrors, cropImage };
+        setActiveSection('filePath');
+        setSettings(null);
+        setProjects([]);
+        setError('');
+        setFieldErrors({});
+        setCropImage(null);
+        return () => {
+            setActiveSection(previous.activeSection);
+            // The normal load effect reloads the real user's settings after leaving.
+            skipNextAutoSaveRef.current = true;
+            setSettings(previous.settings);
+            setProjects(previous.projects);
+            setError(previous.error);
+            setFieldErrors(previous.fieldErrors);
+            setCropImage(previous.cropImage);
+        };
+    }), [activeSection, settings, projects, error, fieldErrors, cropImage]);
+
     // 裁剪框常数
 
     // 上传头像文件处理
@@ -211,7 +233,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 if (active && response.success && response.settings) {
                     settingsGenerationRef.current = generation;
                     skipNextAutoSaveRef.current = true;
-                    setSettings(response.settings);
+                    setSettings({ ...response.settings, filePath: { ...response.settings.filePath,
+                        individualName: sessionPathRef.current.individualName,
+                        electrodeAreaCm2: sessionPathRef.current.electrodeAreaCm2 } });
                 }
             } catch (err) {
                 console.error('Failed to load user settings:', err);
@@ -299,6 +323,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             return;
         }
 
+        const area = settings.filePath.electrodeAreaCm2;
+        if (area != null && (!Number.isFinite(area) || area <= 0)) return;
         const settingsSnapshot = settings;
         const generation = settingsGenerationRef.current;
         let settled!: () => void;
@@ -311,7 +337,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 const response = await runtimeClient.users.saveSettings<ApiResponse>(currentUser, settingsSnapshot);
                 if (response.success) {
                     // 后端整包保存已经完成；这里只同步应用内缓存，避免再次写 filePath section。
-                    setFilePathConfig(settingsSnapshot.filePath, { persist: false });
+                    // Current path state is updated on edit; a delayed save must not restore a reset sample.
                     setCurrentUserAvatar(settingsSnapshot.cloud.avatar || '');
                 } else {
                     setError(response.message || '保存失败');
@@ -328,12 +354,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         return () => { clearTimeout(timeoutId); settled(); };
     }, [currentUser, setCurrentUserAvatar, setFilePathConfig, settings]);
 
-    const updateFilePath = (field: keyof UserSettings['filePath'], value: string) => {
+    const updateFilePath = (field: keyof UserSettings['filePath'], value: string | number | null) => {
         if (!settings) return;
-        setSettings({
-            ...settings,
-            filePath: { ...settings.filePath, [field]: value }
-        });
+        const filePath = { ...settings.filePath,
+            ...((field === 'individualName' || field === 'projectName') && settings.filePath[field] !== value ? { electrodeAreaCm2: null } : {}),
+            [field]: value };
+        setSettings({ ...settings, filePath });
+        // Run requests must use the current sample even before the debounced save completes.
+        setFilePathConfig(filePath, { persist: false });
     };
 
     const updateNotification = <K extends keyof UserSettings['notification']>(
@@ -388,6 +416,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                     {sectionOrder.map(section => (
                                         <button
                                             key={section}
+                                            data-tutorial-anchor={`settings-tab-${section}`}
                                             className={`btn btn--secondary btn--sm tabs__trigger ${activeSection === section ? 'is-active' : ''}`}
                                             onClick={() => setActiveSection(section)}
                                         >
@@ -560,6 +589,16 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                                         placeholder="输入样品编号"
                                                         className={`input ${fieldErrors.individualName ? 'input--error' : ''}`}
                                                     />
+                                                </div>
+
+                                                <div className="settings__form-group">
+                                                    <label htmlFor="electrode-area">有效电极面积（cm²）</label>
+                                                    <input id="electrode-area" data-tutorial-anchor="electrode-area" type="number" step="any"
+                                                        value={settings.filePath.electrodeAreaCm2 ?? ''}
+                                                        onChange={(e) => updateFilePath('electrodeAreaCm2', e.target.value === '' ? null : Number(e.target.value))}
+                                                        placeholder="可留空，输入正数" className="input" />
+                                                    {settings.filePath.electrodeAreaCm2 != null && (!Number.isFinite(settings.filePath.electrodeAreaCm2) || settings.filePath.electrodeAreaCm2 <= 0) &&
+                                                        <span className="settings__field-error">有效电极面积必须为正数</span>}
                                                 </div>
 
                                                 <div className="path-preview">

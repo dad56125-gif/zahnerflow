@@ -345,8 +345,8 @@ def generate():
     with open(os.path.join(output_dir, "settings.ts"), "w", encoding="utf-8") as handle:
         handle.write("\n\n".join(content) + "\n")
 
-    from contracts.report import (ReportStep, ReportArtifact, ReportWarning, ReportExecutionMetadata, ReportEnvironment, ExecutionReport)
-    report_models = [ReportStep, ReportArtifact, ReportWarning, ReportExecutionMetadata, ReportEnvironment, ExecutionReport]
+    from contracts.report import (ReportStep, ReportArtifact, ReportWarning, ReportExecutionMetadata, ReportEnvironment, ReportCurveSeries, ReportMeasurementCurve, ExecutionReport)
+    report_models = [ReportStep, ReportArtifact, ReportWarning, ReportExecutionMetadata, ReportEnvironment, ReportCurveSeries, ReportMeasurementCurve, ExecutionReport]
     content = ["/** 自动生成，来源 apps/shared/contracts/report.py；勿手动修改。 */", "import type { FilePathConfig } from './settings.js';"]
     content.extend(model_to_interface(model) for model in report_models)
     with open(os.path.join(output_dir, "report.ts"), "w", encoding="utf-8") as handle:

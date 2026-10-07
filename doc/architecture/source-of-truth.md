@@ -173,3 +173,17 @@ flowchart TD
 | 步骤规划 | Python ExecutionPlanner | 正常操作和教学请求均调用同一后端预览与 ETA 接口 |
 
 更新规则：改动真实组件后核对教学脚本定位与步骤结果；改动场景、步骤或可见行为后重新验收；录屏仅作开发证据，不随应用发布。验收脚本、截图、录屏原始文件存放忽略目录 `.codex-run/tutorial/`，不进入仓库测试目录。
+
+### 报告测量曲线
+
+执行步骤归档的 csvPath/outputFile → report_measurements.py 只读解析 → report.py 的 measurementCurves → 生成 TypeScript → reportDataBuilder → reportCharts → 报告预览与 HTML/PDF。模式与温度来自 workflowSnapshot.nodes 的显式 group.label（发电/电解、温度及模拟条件标签），按模式和测量类型叠加不同温度；颜色区分温度，线型/点型区分重复轮次。未声明温度的工作流不推断温度，不混入温度对比组。真实测量 CSV 与模拟 CSV 按各自已知列名读取；前端不依赖实时缓存恢复历史曲线。ReportMeasurementChart 挂载交互 ECharts 并随容器缩放，关闭时释放；程序内不以图片替代图表。导出通过实例捕获当前图例/缩放状态，独立HTML生成调用使用同一图表配置离屏渲染。
+
+### 有效电极面积（2026-09-23）
+
+定义：shared/contracts/settings.py 的 FilePathConfig.electrode_area_cm2，可空且必须为有限正数。generate.py 生成跨端类型和默认值。字段沿现有 filePath 传输，但样品名称和面积仅保留当前前端会话，用户配置落盘清空、读取忽略旧值；程序启动和成功重置清空两项，项目或样品切换清空面积；后端对未显式给新面积的样品切换也清空。执行请求解析支持明确 null，不能回填旧面积。
+
+数据链：UserSettingsModal → UserContext → useWorkflowExecution → routers/executions.py → executions.path_config JSON。执行开始时同时冻结到 ExecutionSnapshot.electrodeAreaCm2，实时 MeasurementChart 只消费执行值；report_service 从执行归档读取，reportDataBuilder 将面积传到 reportCharts，ReportPreview 与 HTML/PDF 共用换算。配置变更不回写历史执行。既有 JSON 文档增加可选字段，表结构与 schema_version 不变，不需 SQL 迁移；旧数据按 null 读取，不假定面积为 1。
+
+显示规则：电流 I/S（A/cm²）、功率 U×I/S（W/cm²）、阻抗实虚部与模值 Z×S（Ω·cm²），电压、频率、时间及相位不变。原始缓存、CSV、设备参数均保持原单位。报告保留模式符号显示规则并归一化最大点标注；导出固定白底且保留图例与缩放。实时 EIS 模值由归一化实虚部计算。无面积时显示 A/W/Ω。
+
+教学：独立 TutorialRuntime 配置提供 0.5 cm²，课程演示面积填写；执行快照冻结教学请求值，示例历史报告独立声明面积；退出恢复真实用户配置。当前功能不建立样品档案，不自动记忆不同样品面积，不新增密度控制参数或能量积分。

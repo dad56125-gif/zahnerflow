@@ -1,11 +1,14 @@
+import { ReportMeasurementChart } from './ReportMeasurementChart';
+import { groupReportCharts } from './reportCharts';
 import { forwardRef } from 'react';
 import type { ReportData } from './types';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
 import { StatusLabel } from './ReportStatus';
 import { statusClass } from './reportPresentation';
-import { nodeOutputText } from './reportPresentation';
+import { reportErrorDetails } from './reportPresentation';
 
 export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData }>(function ReportPreview({ reportData }, ref) {
+  const errors = reportErrorDetails(reportData);
   return (
       <div className="report__preview" ref={ref}>
         <div className="report__cover">
@@ -13,6 +16,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
           <div className="report__cover-info">
             <p><strong>项目名称</strong>{reportData.projectName || '-'}</p>
             <p><strong>样品名称</strong>{reportData.individualName || '-'}</p>
+            <p><strong>有效电极面积</strong>{reportData.electrodeAreaCm2 != null ? `${reportData.electrodeAreaCm2} cm²` : '未填写'}</p>
             <p><strong>工作流</strong>{reportData.workflowName || '-'}</p>
             <p><strong>执行时间</strong>{formatDateTime(reportData.startTime)}</p>
             <p><strong>操作人员</strong>{reportData.user || '-'}</p>
@@ -20,7 +24,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
         </div>
 
         <section className="report__section">
-          <h2 className="report__section-title">执行摘要</h2>
+          <h2 className="report__section-title report__section-title--summary">执行摘要</h2>
           <div className="report__summary-grid">
             <div className="report__summary-item report__summary-item--full">
               <span>状态</span>
@@ -30,12 +34,12 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
                 </span>
               </strong>
             </div>
-            {reportData.error && (
-              <div className="report__summary-item report__summary-item--full report__summary-item--error">
-                <span>错误信息</span>
-                <strong>{reportData.error}</strong>
+            {errors.map((field, index) => (
+              <div key={index} className={`report__summary-item${field.full ? ' report__summary-item--full' : ''}${field.error ? ' report__summary-item--error' : ''}`}>
+                <span>{field.label}</span>
+                <strong>{field.value}</strong>
               </div>
-            )}
+            ))}
             <div className="report__summary-item">
               <span>开始时间</span>
               <strong>{formatDateTime(reportData.startTime)}</strong>
@@ -63,58 +67,21 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
           </div>
         </section>
 
-        <section className="report__section">
-          <h2 className="report__section-title">展开步骤明细</h2>
-          <div className="report__table-scroll">
-            <table className="report__nodes-table report__nodes-table--steps">
-              <thead>
-                <tr>
-                  <th>步骤</th>
-                  <th>节点</th>
-                  <th>关键参数</th>
-                  <th>状态</th>
-                  <th>耗时</th>
-                  <th>输出或错误</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.nodes.map((node) => (
-                  <tr key={`${node.index}-${node.type}-${node.iterationLabel}`} className={`indent-level-${node.indentLevel}`}>
-                    <td>
-                      <span className="report__step-index">{node.index}</span>
-                      <span className="report__step-meta">原节点 {node.originalIndex}</span>
-                      {node.blockLabel && <span className="report__step-meta">来自 {node.blockLabel}</span>}
-                      {node.iterationLabel !== '-' && <span className="report__step-meta">{node.iterationLabel}</span>}
-                    </td>
-                    <td>{node.label}</td>
-                    <td>{node.keyParams}</td>
-                    <td><span className={`report__status ${statusClass(node.status)}`}><StatusLabel status={node.status} /></span></td>
-                    <td>
-                      <span>{node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</span>
-                      {node.estimatedSeconds != null && <span className="report__step-meta">估算 {formatDuration(node.estimatedSeconds)}</span>}
-                    </td>
-                    <td className={node.error ? 'report__node-output report__node-output--error' : 'report__node-output'}>
-                      {nodeOutputText(node)}
-                    </td>
-                  </tr>
+        {reportData.charts.length > 0 && (
+          <section className="report__section report__section--charts">
+            <h2 className="report__section-title">测量曲线</h2>
+            {groupReportCharts(reportData.charts).map((group) => (
+              <div className="report__chart-group" key={group.title}>
+                <h3>{group.title}</h3>
+                {group.charts.map((chart) => (
+              <figure className="report__chart-card" key={chart.key}>
+                <figcaption>{chart.title}</figcaption>
+                {chart.option && <ReportMeasurementChart chart={chart} />}
+                {chart.error ? <p>{chart.error}</p> : <p>{chart.pointCount} 个数据点</p>}
+              </figure>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {reportData.artifactDetails.length > 0 && (
-          <section className="report__section">
-            <h2 className="report__section-title">测量输出</h2>
-            <div className="report__artifact-list">
-              {reportData.artifactDetails.map((artifact) => (
-                <div className="report__artifact" key={artifact.filePath}>
-                  <span className="report__artifact-type">{artifact.fileType || 'output'}</span>
-                  <span className="report__artifact-path">{artifact.filePath}</span>
-                  {artifact.dataPoints != null && <span className="report__artifact-meta">{artifact.dataPoints} 点</span>}
-                </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </section>
         )}
 
@@ -132,9 +99,6 @@ export const ReportPreview = forwardRef<HTMLDivElement, { reportData: ReportData
           </section>
         )}
 
-        <div className="report__footer">
-          <p>生成时间: {formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
-        </div>
-      </div>
+</div>
     );
 });

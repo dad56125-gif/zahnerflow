@@ -3,6 +3,12 @@
 /* === 实验报告模块：复用全局浮层、按钮、输入和列表契约 === */
 
 .report-modal {
+  --split-modal-content-top: var(--split-modal-header-h);
+  --split-modal-mask-end: var(--split-modal-content-top);
+  &::before {
+    height: var(--split-modal-content-top);
+  }
+
   --report-history-gap: var(--size-2xs);
   --report-definition-action-gap: var(--size-5xl);
 }
@@ -413,13 +419,14 @@
 
 .report__cover-info {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--size-xs) var(--size-xl);
 
   p {
     margin: 0;
     display: grid;
-    grid-template-columns: 5rem minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
+    overflow-wrap: anywhere;
     gap: var(--size-sm);
     font-size: var(--size-sm);
     line-height: 1.6;
@@ -571,11 +578,12 @@
 
 .report__summary-item--full {
   grid-column: 1 / -1;
-  grid-template-columns: minmax(5.5rem, 16%) minmax(0, 1fr);
+  grid-template-columns: minmax(5.5rem, calc(17% - var(--size-sm) * 0.34 - 0.17px)) minmax(0, 1fr);
 }
 
 .report__summary-item--error strong {
   color: var(--color-danger);
+  white-space: pre-line;
 }
 
 .report__nodes-table {
@@ -725,8 +733,51 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px) {
   .report__cover-info {
     grid-template-columns: 1fr;
   }
+}
+
+.report__section-title--summary {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.report-modal .split-pane-modal__title-group {
+  h2,
+  button {
+    line-height: 1;
+  }
+}
+
+.report__summary-item > strong:has(> .report__status) {
+  display: flex;
+  align-items: center;
+}
+
+.report-modal .split-pane-modal__title-group .report-modal__filter-btn {
+  padding-top: calc(var(--size-2xs) + 2px);
+  padding-bottom: calc(var(--size-2xs) - 2px);
+}
+
+.report__summary-item .is-status-failed .report__status-text {
+  transform: translateY(2px);
+}
+
+.report__chart-card {
+  margin: var(--size-lg) 0;
+  padding: var(--size-md);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  break-inside: avoid;
+  figcaption { color: var(--text-primary); font-weight: 600; }
+  img { display: block; width: 100%; height: auto; margin-top: var(--size-sm); }
+  p { color: var(--text-muted); margin-bottom: 0; }
+}
+
+.report__interactive-chart {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  margin-top: var(--size-sm);
 }

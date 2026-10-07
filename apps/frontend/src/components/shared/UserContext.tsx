@@ -40,7 +40,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       if (requestId !== configRequestRef.current) return;
       if (response?.success) {
         if (response.settings?.filePath) {
-          setFilePathConfigState(response.settings.filePath);
+          setFilePathConfigState({ ...response.settings.filePath, individualName: '', electrodeAreaCm2: null });
         }
         if (response.settings?.cloud?.avatar) {
           setCurrentUserAvatarState(response.settings.cloud.avatar);
@@ -123,6 +123,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   }, [currentUser]);
 
+  const clearSample = useCallback(() => {
+    setFilePathConfigState(config => ({ ...config, individualName: '', electrodeAreaCm2: null }));
+  }, []);
+
   // 设置并联动同步当前用户的头像
   const setCurrentUserAvatar = useCallback((avatar: string) => {
     setCurrentUserAvatarState(avatar);
@@ -198,6 +202,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     deleteUser,
     filePathConfig,
     setFilePathConfig,
+    clearSample,
     currentUserAvatar,
     setCurrentUserAvatar
   };

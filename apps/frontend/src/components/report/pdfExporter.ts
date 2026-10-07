@@ -1,4 +1,5 @@
-import { getReportStatusText, nodeOutputText } from './reportPresentation';
+import { groupReportCharts, reportChartImages } from './reportCharts';
+import { getReportStatusText, reportErrorDetails } from './reportPresentation';
 import { formatDateTime, formatDuration } from './reportDataBuilder';
 import { STATUS_ICON_NAMES, type ReportData } from './types';
 import { UI_ICON_PATHS } from '../shared/uiIcons';
@@ -58,46 +59,59 @@ function statusLabelMarkup(status: string): string {
 
 export async function exportToPdf(reportData: ReportData, containerElement: HTMLElement): Promise<void> {
   const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
-  const canvas = await html2canvas(containerElement, {
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff',
-  });
-
+  const chartImages = reportChartImages(reportData.charts, containerElement);
+  await document.fonts.ready;
+  await Promise.all(Array.from(containerElement.querySelectorAll('img')).map((img) => img.decode()));
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const imgData = canvas.toDataURL('image/png');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const imageWidth = pageWidth - 20;
-  const imageHeight = (canvas.height * imageWidth) / canvas.width;
-
-  let heightLeft = imageHeight;
   let position = 10;
-
-  pdf.addImage(imgData, 'PNG', 10, position, imageWidth, imageHeight);
-  heightLeft -= pageHeight - 20;
-
-  while (heightLeft > 0) {
-    position = heightLeft - imageHeight + 10;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 10, position, imageWidth, imageHeight);
-    heightLeft -= pageHeight - 20;
+  // Render each section/figure separately to avoid browser canvas height limits on long reports.
+  const blocks = containerElement.querySelectorAll<HTMLElement>(
+    ':scope > .report__cover, :scope > .report__section:not(.report__section--charts), .report__section--charts > h2, .report__chart-card',
+  );
+  for (const block of blocks) {
+    const blockWidth = block.getBoundingClientRect().width;
+    const canvas = await html2canvas(block, {
+      scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
+      onclone: (document, element) => {
+        for (const target of element.querySelectorAll<HTMLElement>('[data-report-chart]')) {
+          const image = chartImages.find((chart) => chart.key === target.dataset.reportChart)?.image;
+          if (image) {
+            const img = document.createElement('img');
+            img.src = image;
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            target.replaceWith(img);
+          }
+        }
+        // Export outside the modal's scroll/mask ancestors, including off-screen figures.
+        document.body.appendChild(element);
+        Object.assign(element.style, { position: 'absolute', top: '0', left: '0',
+          width: `${blockWidth}px`, margin: '0', transform: 'none' });
+      },
+    });
+    let renderWidth = imageWidth;
+    let renderHeight = canvas.height * imageWidth / canvas.width;
+    if (renderHeight > pageHeight - 20) {
+      renderWidth *= (pageHeight - 20) / renderHeight;
+      renderHeight = pageHeight - 20;
+    }
+    if (position + renderHeight > pageHeight - 10 && position > 10) {
+      pdf.addPage();
+      position = 10;
+    }
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, renderWidth, renderHeight);
+    position += renderHeight + 5;
   }
 
   pdf.save(`实验报告_${cleanFilePart(reportData.workflowName)}_${formatFileDate(reportData.startTime, reportData.generatedAt)}.pdf`);
 }
 
 export function generateReportHtml(reportData: ReportData): string {
-  const artifactRows = reportData.artifactDetails
-    .map((artifact) => `
-      <tr>
-        <td>${escapeHtml(artifact.fileType || 'output')}</td>
-        <td>${escapeHtml(artifact.filePath)}</td>
-        <td>${artifact.dataPoints != null ? escapeHtml(artifact.dataPoints) : '-'}</td>
-      </tr>
-    `)
-    .join('');
+  reportData = { ...reportData, charts: reportData.charts.every((chart) => chart.image || chart.error) ? reportData.charts : reportChartImages(reportData.charts) };
+  const errors = reportErrorDetails(reportData);
   const warningRows = reportData.warningDetails
     .map((warning) => `
       <tr>
@@ -115,6 +129,7 @@ export function generateReportHtml(reportData: ReportData): string {
         <div class="report-cover-info">
           <p><strong>项目名称:</strong> ${escapeHtml(reportData.projectName || '-')}</p>
           <p><strong>样品名称:</strong> ${escapeHtml(reportData.individualName || '-')}</p>
+          <p><strong>有效电极面积:</strong> ${reportData.electrodeAreaCm2 != null ? `${reportData.electrodeAreaCm2} cm²` : '未填写'}</p>
           <p><strong>工作流:</strong> ${escapeHtml(reportData.workflowName || '-')}</p>
           <p><strong>执行时间:</strong> ${formatDateTime(reportData.startTime)}</p>
           <p><strong>操作人员:</strong> ${escapeHtml(reportData.user || '-')}</p>
@@ -125,6 +140,7 @@ export function generateReportHtml(reportData: ReportData): string {
         <table class="report-summary-table">
           <tbody>
             <tr><td>状态</td><td>${statusLabelMarkup(reportData.status)}</td></tr>
+            ${errors.map((field) => `<tr><td>${escapeHtml(field.label)}</td><td>${escapeHtml(field.value)}</td></tr>`).join('')}
             <tr><td>开始时间</td><td>${formatDateTime(reportData.startTime)}</td></tr>
             <tr><td>结束时间</td><td>${formatDateTime(reportData.endTime)}</td></tr>
             <tr><td>总耗时</td><td>${formatDuration(reportData.durationSeconds)}</td></tr>
@@ -134,46 +150,15 @@ export function generateReportHtml(reportData: ReportData): string {
           </tbody>
         </table>
       </div>
+      ${reportData.charts.length ? `
       <div class="report-section">
-        <h2 class="report-section-title">展开步骤明细</h2>
-        <table class="report-nodes-table">
-          <thead>
-            <tr>
-              <th>步骤</th>
-              <th>节点</th>
-              <th>关键参数</th>
-              <th>状态</th>
-              <th>耗时</th>
-              <th>输出或错误</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${reportData.nodes
-              .map(
-                (node) => `
-                  <tr class="indent-level-${node.indentLevel}">
-                    <td>${node.index}<br><small>原节点 ${node.originalIndex}${node.iterationLabel !== '-' ? ` / ${escapeHtml(node.iterationLabel)}` : ''}</small></td>
-                    <td>${escapeHtml(node.label)}</td>
-                    <td>${escapeHtml(node.keyParams)}</td>
-                    <td>${statusLabelMarkup(node.status)}</td>
-                    <td>${node.durationSeconds != null ? formatDuration(node.durationSeconds) : '-'}</td>
-                    <td>${escapeHtml(nodeOutputText(node))}</td>
-                  </tr>
-                `
-              )
-              .join('')}
-          </tbody>
-        </table>
-      </div>
-      ${artifactRows ? `
-      <div class="report-section">
-        <h2 class="report-section-title">测量输出</h2>
-        <table>
-          <thead><tr><th>类型</th><th>路径</th><th>数据点</th></tr></thead>
-          <tbody>${artifactRows}</tbody>
-        </table>
-      </div>
-      ` : ''}
+        <h2 class="report-section-title">测量曲线</h2>
+        ${groupReportCharts(reportData.charts).map((group) => `<section><h3>${escapeHtml(group.title)}</h3>${group.charts.map((chart) => `<figure class="report-chart">
+          <figcaption>${escapeHtml(chart.title)}</figcaption>
+          ${chart.image ? `<img src="${escapeHtml(chart.image)}" alt="${escapeHtml(chart.title)}" width="720" height="480">` : ''}
+          <p>${chart.error ? escapeHtml(chart.error) : `${chart.pointCount} 个数据点`}</p>
+        </figure>`).join('')}</section>`).join('')}
+      </div>` : ''}
       ${warningRows ? `
       <div class="report-section">
         <h2 class="report-section-title">警告记录</h2>
@@ -183,14 +168,12 @@ export function generateReportHtml(reportData: ReportData): string {
         </table>
       </div>
       ` : ''}
-      <div class="report-footer">
-        <p>生成时间: ${formatDateTime(reportData.generatedAt)} | ZAHNERFLOW 实验报告系统</p>
-      </div>
-    </div>
+</div>
   `;
 }
 
-export function exportToHtml(reportData: ReportData): void {
+export function exportToHtml(reportData: ReportData, container?: HTMLElement): void {
+  reportData = { ...reportData, charts: reportChartImages(reportData.charts, container) };
   const body = generateReportHtml(reportData);
   const page = `
 <!DOCTYPE html>
@@ -239,10 +222,19 @@ export function exportToHtml(reportData: ReportData): void {
       border-radius: 999px;
     }
     .report-cover-info {
-      display: inline-block;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 24px;
       text-align: left;
       line-height: 1.9;
+      overflow-wrap: anywhere;
     }
+    .report-cover-info p { margin: 0; }
+    @media (max-width: 600px) {
+      .report-cover-info { grid-template-columns: 1fr; }
+    }
+    .report-chart { margin: 20px 0; break-inside: avoid; }
+    .report-chart img { width: 100%; height: auto; }
     .report-section {
       margin-top: 40px;
     }

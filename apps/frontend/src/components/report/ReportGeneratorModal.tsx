@@ -490,7 +490,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
     setIsExporting(true);
     try {
       const { exportToHtml } = await import('./pdfExporter');
-      exportToHtml(reportData);
+      exportToHtml(reportData, reportRef.current || undefined);
     } catch (err) {
       console.error('HTML 导出失败:', err);
       alert('HTML 导出失败，请重试');

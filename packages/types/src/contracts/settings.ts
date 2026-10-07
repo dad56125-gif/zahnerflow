@@ -4,6 +4,7 @@ export interface FilePathConfig {
   basePath: string;
   projectName: string;
   individualName: string;
+  electrodeAreaCm2: number | null;
 }
 
 export interface NotificationSettings {
@@ -56,4 +57,4 @@ export interface CreateUserResponse {
   user: UserProfile | null;
 }
 
-export const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = {"basePath": "C:\\data\\archive", "projectName": "", "individualName": ""};
+export const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = {"basePath": "C:\\data\\archive", "projectName": "", "individualName": "", "electrodeAreaCm2": null};

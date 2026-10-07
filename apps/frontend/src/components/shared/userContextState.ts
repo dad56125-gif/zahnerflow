@@ -13,6 +13,7 @@ export interface UserContextValue {
   deleteUser: (user: string) => Promise<boolean>;
   filePathConfig: FilePathConfig;
   setFilePathConfig: (config: FilePathConfig, options?: { persist?: boolean }) => void;
+  clearSample: () => void;
   currentUserAvatar: string;
   setCurrentUserAvatar: (avatar: string) => void;
 }
