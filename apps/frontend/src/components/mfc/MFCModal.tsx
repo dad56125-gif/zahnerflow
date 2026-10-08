@@ -68,14 +68,28 @@ export const MFCModal: React.FC<MFCModalProps> = ({
     return { totalFlow, totalSetFlow, totalCapacity, activeDevices, capacityPercent, setpointPercent };
   }, [mfcState.devices]);
   const formatFlow = (value: number) => value.toFixed(1);
+  const isConnected = mfcState.connection_status === 'connected';
+  const isCommunicationError = mfcState.connection_status === 'error'
+    && (mfcState.runtime_state?.connectionStatus === 'communication_error'
+      || mfcState.runtime_state?.lastError?.code === 'DEVICE_COMMUNICATION_ERROR');
+  const isConnectionError = mfcState.connection_status === 'error' && !isCommunicationError;
   const connectionLabel = mfcState.connection_status === 'connected'
     ? '设备已连接'
     : mfcState.connection_status === 'connecting'
       ? '连接中'
-      : mfcState.connection_status === 'error'
-        ? '连接错误'
+      : isCommunicationError
+        ? '通信中断'
+        : isConnectionError
+          ? '连接错误'
         : '未连接';
-  const isConnected = mfcState.connection_status === 'connected';
+  const communicationErrorMessage = isCommunicationError
+    ? (typeof mfcState.runtime_state?.lastError?.message === 'string'
+      ? mfcState.runtime_state.lastError.message
+      : '串口通信失败，无法确认 MFC 当前状态')
+    : null;
+  const communicationRecoveryHint = '检查线缆和电源后，断开并重新连接。最后读数已过期。';
+  const hasRetainedDevices = isCommunicationError && mfcState.devices.length > 0;
+  const shouldShowDevices = isConnected || hasRetainedDevices;
 
   useEffect(() => {
     if (!isConnected) return undefined;
@@ -101,8 +115,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   const idleDevices = mfcState.devices.filter((device) => Number(device.setFlow) === 0);
   const clampPercent = (value: number) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
   // 设备指示灯只读后端设备连接状态；runtimeSocket.connected 仅代表 UI 到后端的传输连接。
-  const linkLabel = isConnected ? 'CONNECTED' : 'DISCONNECTED';
-  const linkTone = isConnected ? 'success' : 'muted';
+  const linkLabel = isConnected ? 'CONNECTED' : isCommunicationError ? 'COMM ERROR' : isConnectionError ? 'CONN ERROR' : 'DISCONNECTED';
+  const linkTone = isConnected ? 'success' : isCommunicationError ? 'danger' : 'muted';
 
   return (
       <div
@@ -122,7 +136,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
               <span className={`connection-state-indicator ${mfcState.connection_status}`}>
                 ({mfcState.connection_status === 'connected' ? <SpacedCjkText text="设备已连接" /> :
                   mfcState.connection_status === 'connecting' ? <SpacedCjkText text="连接中..." /> :
-                    mfcState.connection_status === 'error' ? <SpacedCjkText text="连接错误" /> : <SpacedCjkText text="未连接" />})
+                    isCommunicationError ? <SpacedCjkText text="通信中断" /> :
+                      isConnectionError ? <SpacedCjkText text="连接错误" /> : <SpacedCjkText text="未连接" />})
               </span>
               {isConnected && (
                 <>
@@ -171,6 +186,16 @@ export const MFCModal: React.FC<MFCModalProps> = ({
         <div className="modal__body">
           <div className={`mfc-modal ${isConnected ? 'is-connected' : 'is-disconnected'}`}>
             <div className="mfc-modal__main">
+              {isCommunicationError && communicationErrorMessage && (
+                <div className="error-banner" role="alert">
+                  <span className="error__message">
+                    <SpacedCjkText text="通信中断" />: {communicationErrorMessage}
+                    <br />
+                    <SpacedCjkText text={communicationRecoveryHint} />
+                  </span>
+                </div>
+              )}
+
               {/* 错误显示 */}
               {mfcState.error && (
                 <div className="error-banner">
@@ -187,7 +212,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
               )}
 
               {/* 条件渲染：连接面板或设备管理 */}
-              {!isConnected ? (
+              {!isConnected && (
                 <DeviceConnectionPanel
                   deviceName="MFC"
                   connectionStatus={mfcState.connection_status}
@@ -198,8 +223,13 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   onConnect={connectMfc}
                   onDisconnect={() => { void mfcControls.disconnect().catch(() => undefined); }}
                   isLoading={mfcState.isLoading}
+                  errorMessage={communicationErrorMessage}
+                  recoveryHint={communicationRecoveryHint}
+                  showCommunicationRecovery={isCommunicationError}
                 />
-              ) : (
+              )}
+
+              {shouldShowDevices && (
                 <>
                   {/* 设备列表 */}
                   {mfcState.devices.length === 0 && !mfcState.isScanning && !mfcState.error ? (
@@ -220,7 +250,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                                 device={device}
                                 onSetFlow={mfcControls.setFlowRate}
                                 loading={mfcState.isLoading}
-                                disabled={mfcState.isScanning}
+                                disabled={mfcState.isScanning || isCommunicationError}
+                                stale={isCommunicationError}
                               />
                             ))}
                           </div>
@@ -235,7 +266,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                                 device={device}
                                 onSetFlow={mfcControls.setFlowRate}
                                 loading={mfcState.isLoading}
-                                disabled={mfcState.isScanning}
+                                disabled={mfcState.isScanning || isCommunicationError}
+                                stale={isCommunicationError}
                               />
                             ))}
                           </div>

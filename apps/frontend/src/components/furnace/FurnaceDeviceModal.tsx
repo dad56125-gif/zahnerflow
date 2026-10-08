@@ -42,6 +42,15 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     history: false,
   });
   const isConnected = furnaceState.connection_status === 'connected';
+  const isCommunicationError = furnaceState.connection_status === 'error'
+    && (furnaceState.runtime_state?.connectionStatus === 'communication_error'
+      || furnaceState.runtime_state?.lastError?.code === 'DEVICE_COMMUNICATION_ERROR');
+  const communicationErrorMessage = isCommunicationError
+    ? (typeof furnaceState.runtime_state?.lastError?.message === 'string'
+      ? furnaceState.runtime_state.lastError.message
+      : '串口通信失败，无法确认炉子当前状态')
+    : null;
+  const communicationRecoveryHint = '检查线缆和电源后，断开并重新连接。最后读数已过期，物理炉可能仍在运行。';
   const developerMode = useDeveloperMode();
   const refreshFurnaceStatus = furnaceControls.refresh_status;
 
@@ -81,7 +90,14 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
     });
   };
 
-  const effectiveSelectedPort = isFurnaceSimulator ? 'COM_SIMULATOR' : selectedPort;
+  // 连接/通信错误时应以 runtime 上报的 connectedPort 为准（Modal 重开、拔线后本地状态可能为空）；
+  // 本地 selectedPort 仅用于新连接选择，断开后 runtime 清空端口时仍可回归本地选择。
+  const runtimeConnectedPort = typeof furnaceState.runtime_state?.connectedPort === 'string'
+    ? furnaceState.runtime_state.connectedPort
+    : '';
+  const effectiveSelectedPort = isFurnaceSimulator
+    ? 'COM_SIMULATOR'
+    : (runtimeConnectedPort || selectedPort);
   const effectivePorts = isFurnaceSimulator
     ? Array.from(new Set(['COM_SIMULATOR', ...ports]))
     : ports;
@@ -181,6 +197,16 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
           <div className={`furnace-modal ${isFullWidthTab ? 'furnace-modal--full' : ''}`}>
             {/* 左侧主内容区域 (2/3宽度) */}
             <div className="furnace-modal__main">
+              {isCommunicationError && communicationErrorMessage && (
+                <div className="error-banner" role="alert">
+                  <span className="error__message">
+                    <SpacedCjkText text="通信中断" />: {communicationErrorMessage}
+                    <br />
+                    <SpacedCjkText text={communicationRecoveryHint} />
+                  </span>
+                </div>
+              )}
+
               {/* 选项卡内容 */}
               <div className="tabs__content">
                 <div className={`tabs__panel ${activeTab === 'monitoring' ? 'is-active' : 'is-inactive'}`}>
@@ -243,6 +269,9 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                 onRefreshPorts={loadPorts}
                 onConnect={handleConnect}
                 onDisconnect={furnaceControls.disconnect}
+                errorMessage={communicationErrorMessage}
+                recoveryHint={communicationRecoveryHint}
+                showCommunicationRecovery={isCommunicationError}
               />
               <FurnaceLogPanel
                 logs={furnaceState.logs}

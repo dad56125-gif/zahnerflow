@@ -42,6 +42,15 @@ export interface DeviceConnectionPanelProps {
     /** 已连接时的额外信息插槽 */
     connectionInfo?: React.ReactNode;
 
+    /** 通信错误原因；仅 error 状态展示 */
+    errorMessage?: string | null;
+
+    /** 通信错误恢复提示；仅 error 状态展示 */
+    recoveryHint?: string | null;
+
+    /** 是否使用通信错误恢复面板；初次连接失败仍保留端口选择与重试 */
+    showCommunicationRecovery?: boolean;
+
     /** 自定义 CSS 类名（控制外层样式） */
     className?: string;
 }
@@ -57,6 +66,9 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
     onDisconnect,
     isLoading = false,
     connectionInfo,
+    errorMessage,
+    recoveryHint,
+    showCommunicationRecovery = false,
     className = '',
 }) => {
     const isConnecting = connectionStatus === 'connecting';
@@ -111,6 +123,45 @@ export const DeviceConnectionPanel: React.FC<DeviceConnectionPanelProps> = ({
         onPortChange(port);
         closeDropdown();
     };
+
+    // === 通信错误状态 ===
+    if (isError && showCommunicationRecovery) {
+        return (
+            <div className={`device-connection is-connected has-error ${className}`} style={{ flexWrap: 'wrap' }}>
+                <span className="device-connection__status"><SpacedCjkText text={`${deviceName}通信中断`} /></span>
+                <span className="device-connection__port"><SpacedCjkText text="端口" />: <strong>{selectedPort || '--'}</strong></span>
+                {connectionInfo}
+                {errorMessage && (
+                    <span className="error__message" role="alert" style={{ flexBasis: '100%', marginTop: 0, marginLeft: 0 }}>
+                        <SpacedCjkText text="原因" />: {errorMessage}
+                    </span>
+                )}
+                {recoveryHint && (
+                    <span className="device-connection__port" style={{ flexBasis: '100%' }}>
+                        <SpacedCjkText text={recoveryHint} />
+                    </span>
+                )}
+                <div className="device-connection__actions" style={{ marginLeft: 'auto' }}>
+                    {onRefreshPorts && (
+                        <button
+                            onClick={onRefreshPorts}
+                            className="btn btn--sm btn--secondary"
+                            disabled={isLoading}
+                        >
+                            <SpacedCjkText text="刷新端口" />
+                        </button>
+                    )}
+                    <button
+                        onClick={onDisconnect}
+                        className="btn btn--sm btn--danger"
+                        disabled={isLoading}
+                    >
+                        <SpacedCjkText text="断开连接" />
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // === 未连接状态 ===
     if (!isConnected) {

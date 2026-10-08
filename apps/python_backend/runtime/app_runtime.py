@@ -483,6 +483,12 @@ class AppRuntime:
             "deviceStatus": None,
             "lastError": _runtime_error("DEVICE_COMMUNICATION_ERROR", str(error), now),
         }
+        if device == "mfc":
+            # 保留最后一次确认的设备和读数用于定位故障，但不能继续发布绿色状态。
+            updates["scannedDevices"] = [
+                {**item, "connectionStatus": "error"}
+                for item in state.get("scannedDevices", [])
+            ]
         if device == "furnace" and state.get("executionStatus") in {"running", "paused"}:
             if state.get("executionStatus") == "running":
                 updates["accumulatedRunSeconds"] = _accumulated_seconds(state, now)
@@ -1244,12 +1250,17 @@ class AppRuntime:
                 self._mfc_scan_cancel_requested = False
 
     async def _mfc_scan_once(self, address: int, reset: bool = False) -> dict:
-        if reset and self.devices.mfc_connected:
-            await asyncio.to_thread(self.devices.reset_mfc_scan_devices)
+        generation = self.devices.connection_generation("mfc")
+        try:
+            if reset and self.devices.mfc_connected:
+                await asyncio.to_thread(self.devices.reset_mfc_scan_devices)
+                await self._publish_mfc_scan_snapshot()
+            result = await asyncio.to_thread(self.devices.mfc_scan, address)
             await self._publish_mfc_scan_snapshot()
-        result = await asyncio.to_thread(self.devices.mfc_scan, address)
-        await self._publish_mfc_scan_snapshot()
-        return result
+            return result
+        except Exception as error:
+            await self.on_device_communication_error("mfc", error, generation=generation)
+            raise
 
     async def _publish_mfc_scan_snapshot(self) -> None:
         if not self.devices.mfc_connected:

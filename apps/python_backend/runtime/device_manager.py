@@ -391,10 +391,18 @@ class DeviceManager:
                     return self.mfc.status_payload()
 
             devices = []
-            session = self.mfc.session
-            if session:
+            try:
+                session = self.mfc.ensure_session()
+                if not session.ser or not session.ser.is_open:
+                    raise RuntimeError("MFC serial port is closed")
+                # is_open 只表示句柄曾打开；查询驱动状态可发现 USB 被拔出，
+                # 即使当前尚未扫描到模块也不能继续把失效句柄报为连接成功。
+                session.ser.in_waiting
                 for address in session.devices.keys():
                     devices.append(_normalize_mfc_status(session.read_status(address), session.devices[address]))
+            except Exception as error:
+                self._record_error("mfc", "read status", error)
+                raise
             return {"connected": True, "devices": devices}
 
     def mfc_scan(self, address: int) -> dict:

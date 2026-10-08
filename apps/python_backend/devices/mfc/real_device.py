@@ -180,25 +180,19 @@ class MfcSession:
 
         cmd_flow = bytes([address, 0x02, 0x80, 0x03, 0x68, 0x01, 0xB9, 0x00])
         cmd_flow += bytes([self._checksum(cmd_flow)])
-        flow_pct = 0.0
-        try:
-            resp_flow = self._send(cmd_flow)
-            val_flow = self._parse_val(resp_flow, 8)
-            if val_flow is not None:
-                flow_pct = self._ufrac_to_pct(val_flow)
-        except MfcError:
-            pass
+        resp_flow = self._send(cmd_flow)
+        val_flow = self._parse_val(resp_flow, 8)
+        if val_flow is None:
+            raise MfcError(f"MFC {address}: invalid flow response", ErrorCategory.PROTOCOL)
+        flow_pct = self._ufrac_to_pct(val_flow)
 
         cmd_sp = bytes([address, 0x02, 0x80, 0x03, 0x69, 0x01, 0xA4, 0x00])
         cmd_sp += bytes([self._checksum(cmd_sp)])
-        sp_pct = 0.0
-        try:
-            resp_sp = self._send(cmd_sp)
-            val_sp = self._parse_val(resp_sp, 8)
-            if val_sp is not None:
-                sp_pct = self._ufrac_to_pct(val_sp)
-        except MfcError:
-            pass
+        resp_sp = self._send(cmd_sp)
+        val_sp = self._parse_val(resp_sp, 8)
+        if val_sp is None:
+            raise MfcError(f"MFC {address}: invalid setpoint response", ErrorCategory.PROTOCOL)
+        sp_pct = self._ufrac_to_pct(val_sp)
 
         return {
             "device_address": address,
@@ -249,7 +243,10 @@ class MfcSession:
             info = DeviceInfo(device_address=address, gas_type=self.read_gas_name(address), max_flow_sccm=max_flow)
             self.devices[address] = info
             return info
-        except MfcError:
+        except MfcError as error:
+            # 地址无应答允许扫描继续；串口已失效必须交给运行时处理。
+            if error.category == ErrorCategory.DEVICE:
+                raise
             return None
 
 

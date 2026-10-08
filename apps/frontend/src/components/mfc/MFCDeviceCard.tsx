@@ -13,6 +13,8 @@ interface MFCDeviceCardProps extends Omit<DeviceCardProps, 'device'> {
   onSetFlow?: (address: number, sccm: number) => Promise<void>;
   loading?: boolean;
   disabled?: boolean;
+  stale?: boolean;
+  staleMessage?: string;
 }
 
 const SET_FLOW_WAITING_DELAY_MS = 350;
@@ -25,6 +27,8 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
   onSetFlow,
   loading = false,
   disabled = false,
+  stale = false,
+  staleMessage = '通信中断，最后读数已过期',
 }) => {
   const [flowInputValue, setFlowInputValue] = useState<string>('');
   const [isSettingFlow, setIsSettingFlow] = useState(false);
@@ -68,7 +72,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
 
   // 处理流量设定
   const handleSetFlow = useCallback(async () => {
-    if (settingFlowRef.current) return;
+    if (settingFlowRef.current || disabled || stale) return;
 
     const submittedValue = flowInputValue.trim();
     const sccm = parseFloat(submittedValue);
@@ -96,7 +100,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
       settingFlowRef.current = false;
       setIsSettingFlow(false);
     }
-  }, [flowInputValue, device.address, device.maxFlowSccm, onSetFlow]);
+  }, [flowInputValue, device.address, device.maxFlowSccm, onSetFlow, disabled, stale]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSetFlow();
@@ -152,7 +156,7 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
               value={flowInputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              disabled={disabled || loading}
+              disabled={disabled || stale || loading}
               min="0"
               max={device.maxFlowSccm}
               step="0.1"
@@ -162,13 +166,14 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
             <button
               className="btn btn--sm btn--primary"
               onClick={handleSetFlow}
-              disabled={disabled || loading}
+              disabled={disabled || stale || loading}
               aria-busy={isSettingFlow}
-              aria-disabled={disabled || loading || isSettingFlow}
+              aria-disabled={disabled || stale || loading || isSettingFlow}
             >
               <SpacedCjkText text={showSetFlowWaiting ? '等待' : '设置'} />
             </button>
           </div>
+          {stale && <div className="mfc__error"><SpacedCjkText text={staleMessage} /></div>}
           {error && <div className="mfc__error"><SpacedCjkText text={error} /></div>}
         </div>
 

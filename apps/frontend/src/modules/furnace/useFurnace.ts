@@ -361,7 +361,8 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       const deviceStatus = toFurnaceStatus(envelope);
       const runtimeConnectionStatus = envelope.runtimeState?.connectionStatus
         ?? envelope.connectionState?.status;
-      const connectionStatus = (runtimeConnectionStatus === 'communication_error' ? 'error' : runtimeConnectionStatus) as DeviceConnectionStatus
+      const isCommunicationError = runtimeConnectionStatus === 'communication_error';
+      const connectionStatus = (isCommunicationError ? 'error' : runtimeConnectionStatus) as DeviceConnectionStatus
         ?? (envelope.connected ? 'connected' : 'disconnected');
       const pv = envelope.payload?.pv;
       const isValidPv = typeof pv === 'number' && Number.isFinite(pv) && pv > 0;
@@ -374,7 +375,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
       if (!isValidPv) {
         return {
           ...prev,
-          device_status: deviceStatus,
+          device_status: isCommunicationError ? prev.device_status : deviceStatus,
           connection_status: connectionStatus,
           runtime_state: envelope.runtimeState ?? prev.runtime_state,
           diagnostics,
@@ -399,7 +400,7 @@ export function useFurnace(): [FurnaceState, FurnaceControls] {
 
       return {
         ...prev,
-        device_status: deviceStatus,
+        device_status: isCommunicationError ? prev.device_status : deviceStatus,
         connection_status: connectionStatus,
         runtime_state: envelope.runtimeState ?? prev.runtime_state,
         diagnostics,

@@ -125,6 +125,10 @@ interface FurnaceDashboardPanelProps {
 export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ furnaceState }) => {
   const [displayNow, setDisplayNow] = useState(() => Date.now());
   const status = furnaceState.device_status;
+  const isCommunicationError = furnaceState.connection_status === 'error'
+    && (furnaceState.runtime_state?.connectionStatus === 'communication_error'
+      || furnaceState.runtime_state?.lastError?.code === 'DEVICE_COMMUNICATION_ERROR');
+  const isConnectionError = furnaceState.connection_status === 'error' && !isCommunicationError;
   const segmentTime = Number(status?.segmentTime ?? 0);
   const segmentTimeSet = Number(status?.segmentTimeSet ?? 0);
   const segmentProgress = segmentTimeSet > 0 ? (segmentTime / segmentTimeSet) * 100 : 0;
@@ -138,8 +142,10 @@ export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ fu
   const formatTemperature = (value?: number) => (value !== undefined ? value.toFixed(1) : '--.-');
   const formatPercent = (value?: number) => (value !== undefined ? value.toFixed(1) : '--.-');
   const formatMinutes = (value: number) => (value > 0 ? `${value.toFixed(value % 1 === 0 ? 0 : 1)} min` : '-- min');
-  const statusLabel = (status?.status || 'disconnected').toUpperCase();
-  const statusTone = status?.status === 'running'
+  const statusLabel = isCommunicationError ? '通信中断' : isConnectionError ? '连接错误' : (status?.status || 'disconnected').toUpperCase();
+  const statusTone = isCommunicationError || isConnectionError
+    ? 'danger'
+    : status?.status === 'running'
     ? 'success'
     : status?.status === 'paused'
       ? 'warning'
@@ -155,7 +161,9 @@ export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ fu
     <section className="device-dashboard device-dashboard--compact device-dashboard--furnace-strip">
       <div className="device-dashboard__furnace-layout">
         <div className="device-dashboard__pv-card">
-          <span className="device-dashboard__tile-label">PV</span>
+          <span className="device-dashboard__tile-label">
+            PV{isCommunicationError ? '（最后读数）' : ''}
+          </span>
           <span className="device-dashboard__pv-value">{formatTemperature(status?.pv)}<span>℃</span></span>
         </div>
         <div className="device-dashboard__pill-stack" aria-label="设定值和输出值">
@@ -185,7 +193,10 @@ export const FurnaceDashboardPanel: React.FC<FurnaceDashboardPanelProps> = ({ fu
             <progress value={Math.max(0, Math.min(100, segmentProgress))} max={100} />
           </div>
         </div>
-        <div className={`device-dashboard__status-badge device-dashboard__status-badge--${statusTone}`}>
+        <div
+          className={`device-dashboard__status-badge device-dashboard__status-badge--${statusTone}`}
+          style={isCommunicationError || isConnectionError ? { color: 'var(--color-danger)', borderColor: 'var(--color-danger)' } : undefined}
+        >
           <span className="device-dashboard__status-dot" />
           <span>{statusLabel}</span>
         </div>

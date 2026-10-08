@@ -54,7 +54,11 @@ const toBackendHistoryParams = (address: number, params: HistoryQueryParams): Re
   downsample: params.downsample ?? undefined,
 });
 
-const toMfcDevice = (statusData: RuntimeMfcDeviceStatus, existing?: MfcDevice): MfcDevice => {
+const toMfcDevice = (
+  statusData: RuntimeMfcDeviceStatus,
+  existing?: MfcDevice,
+  forcedStatus?: MfcDevice['status'],
+): MfcDevice => {
   const maxFlowSccm = statusData.maxFlowSccm ?? existing?.maxFlowSccm ?? 0;
   const activeSetpointPercent = statusData.activeSetpointPercent ?? existing?.activeSetpointPercent ?? 0;
   const setFlow = statusData.setpointSccm ?? existing?.setFlow ?? (maxFlowSccm * activeSetpointPercent / 100);
@@ -72,7 +76,7 @@ const toMfcDevice = (statusData: RuntimeMfcDeviceStatus, existing?: MfcDevice): 
     digitalSetpointPercent: statusData.digitalSetpointPercent ?? existing?.digitalSetpointPercent ?? activeSetpointPercent,
     activeSetpointPercent,
     mode: existing?.mode ?? 'follow',
-    status: statusData.connectionStatus ?? existing?.status ?? 'connected',
+    status: forcedStatus ?? statusData.connectionStatus ?? existing?.status ?? 'disconnected',
   };
 };
 
@@ -303,21 +307,32 @@ export function useMfc(): [MfcState, MfcControls] {
     setState((prev) => {
       const runtimeConnectionStatus = envelope.runtimeState?.connectionStatus
         ?? envelope.connectionState?.status;
-      const connectionStatus = (runtimeConnectionStatus === 'communication_error' ? 'error' : runtimeConnectionStatus) as DeviceConnectionStatus
+      const isCommunicationError = runtimeConnectionStatus === 'communication_error';
+      const connectionStatus = (isCommunicationError ? 'error' : runtimeConnectionStatus) as DeviceConnectionStatus
         ?? (envelope.connected ? 'connected' : 'disconnected');
       const connectedPort = typeof envelope.connectionState?.port === 'string'
         ? envelope.connectionState.port
         : (envelope.runtimeState?.connectedPort ?? '');
       const previousByAddress = new Map(prev.devices.map((device) => [device.address, device]));
-      const updatedDevices = statusDevices.map((device) => toMfcDevice(device, previousByAddress.get(device.address)));
-      const availableDevices = updatedDevices.map(toMfcDeviceInfo);
+      const updatedDevices = statusDevices.map((device) =>
+        toMfcDevice(device, previousByAddress.get(device.address), isCommunicationError ? 'error' : undefined)
+      );
+      // 通信错误时以 backend payload 的设备快照为准：后端会显式保留 scannedDevices 并标 error，
+      // 明确返回空快照即为当前真相，不得回退 prev.devices 复活旧设备。
+      const runtimeDevices = isCommunicationError
+        ? updatedDevices.map((device) => ({
+          ...device,
+          status: 'error' as const,
+        }))
+        : (envelope.connected ? updatedDevices : []);
+      const availableDevices = runtimeDevices.map(toMfcDeviceInfo);
       return {
         ...prev,
         connection_status: connectionStatus,
         runtime_state: envelope.runtimeState ?? prev.runtime_state,
-        selected_port: envelope.connected ? connectedPort : prev.selected_port,
-        devices: envelope.connected ? updatedDevices : [],
-        availableDevices: envelope.connected ? availableDevices : [],
+        selected_port: connectedPort || prev.selected_port,
+        devices: runtimeDevices,
+        availableDevices,
         diagnostics: {
           ...(envelope.diagnostics || {}),
           mode: envelope.mode,
