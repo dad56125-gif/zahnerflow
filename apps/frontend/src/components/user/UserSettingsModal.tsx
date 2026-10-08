@@ -131,29 +131,47 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     // 头像裁剪与预设相关状态
     const avatarInputRef = useRef<HTMLInputElement>(null);
-    const skipNextAutoSaveRef = useRef(false);
+    const skipNextAutoSaveRef = useRef<Record<string, boolean>>({});
     const settingsGenerationRef = useRef(workspaceGeneration);
+    // 身份守卫：设置状态所属用户、当前用户与加载请求号，避免旧用户异步回包写到新用户。
+    const userRef = useRef(currentUser);
+    userRef.current = currentUser;
+    const userLoadRequestRef = useRef(0);
+    const [settingsUserId, setSettingsUserId] = useState<string | null>(null);
+    const settingsUserIdRef = useRef<string | null>(null);
+    // 裁剪会话身份：裁剪开始时的用户与工作区，确认时用于丢弃跨用户/跨工作区的过期头像。
+    const cropIdentityRef = useRef<{ user: string; requestId: number } | null>(null);
     const [cropImage, setCropImage] = useState<string | null>(null);
     
     useLayoutEffect(() => registerWorkspaceParticipant(() => {
         const previous = { activeSection, settings, projects, error, fieldErrors, cropImage };
+        const previousSettingsUserId = settingsUserId;
+        const previousCropIdentity = cropIdentityRef.current;
+        ++userLoadRequestRef.current;
         setActiveSection('filePath');
         setSettings(null);
+        setSettingsUserId(null);
+        settingsUserIdRef.current = null;
+        cropIdentityRef.current = null;
         setProjects([]);
         setError('');
         setFieldErrors({});
         setCropImage(null);
         return () => {
+            const requestId = ++userLoadRequestRef.current;
             setActiveSection(previous.activeSection);
             // The normal load effect reloads the real user's settings after leaving.
-            skipNextAutoSaveRef.current = true;
+            skipNextAutoSaveRef.current = previousSettingsUserId ? { [previousSettingsUserId]: true } : {};
+            setSettingsUserId(previousSettingsUserId);
+            settingsUserIdRef.current = previousSettingsUserId;
             setSettings(previous.settings);
             setProjects(previous.projects);
             setError(previous.error);
             setFieldErrors(previous.fieldErrors);
             setCropImage(previous.cropImage);
+            cropIdentityRef.current = previousCropIdentity ? { user: previousCropIdentity.user, requestId } : null;
         };
-    }), [activeSection, settings, projects, error, fieldErrors, cropImage]);
+    }), [activeSection, settings, projects, error, fieldErrors, cropImage, settingsUserId]);
 
     // 裁剪框常数
 
@@ -161,10 +179,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        
+
+        const requestUser = currentUser;
+        const generation = workspaceGeneration;
+        const requestId = userLoadRequestRef.current;
         const reader = new FileReader();
         reader.onload = () => {
+            if (requestUser !== userRef.current || generation !== workspaceGeneration || requestId !== userLoadRequestRef.current) return;
             if (typeof reader.result === 'string') {
+                cropIdentityRef.current = { user: requestUser, requestId };
                 setCropImage(reader.result);
             }
         };
@@ -221,27 +244,56 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     // 加载用户配置
     useEffect(() => {
-        if (!isOpen || !currentUser) return;
+        if (!isOpen || !currentUser) {
+            // 关闭或无当前用户时立即失效旧身份并清空，防止旧用户配置继续渲染或回写。
+            ++userLoadRequestRef.current;
+            settingsUserIdRef.current = null;
+            setSettingsUserId(null);
+            setSettings(null);
+            setProjects([]);
+            cropIdentityRef.current = null;
+            setCropImage(null);
+            setSaving(false);
+            setLoading(false);
+            return;
+        }
 
         let active = true;
         const generation = workspaceGeneration;
+        const requestId = ++userLoadRequestRef.current;
+        const requestUser = currentUser;
         const loadSettings = async () => {
+            // 切换用户时立即清空旧用户残留，避免新用户短暂渲染旧配置，并阻断旧用户的防抖保存。
+            setSettings(null);
+            setSettingsUserId(null);
+            settingsUserIdRef.current = null;
+            cropIdentityRef.current = null;
+            setCropImage(null);
+            setProjects([]);
+            setSaving(false);
             setLoading(true);
             setError('');
             try {
                 const response = await runtimeClient.users.getSettings<UserSettingsResponse>(currentUser);
-                if (active && response.success && response.settings) {
+                if (!active || requestId !== userLoadRequestRef.current || requestUser !== userRef.current || generation !== workspaceGeneration) return;
+                if (response.success && response.settings) {
                     settingsGenerationRef.current = generation;
-                    skipNextAutoSaveRef.current = true;
+                    skipNextAutoSaveRef.current[requestUser] = true;
+                    settingsUserIdRef.current = requestUser;
+                    setSettingsUserId(requestUser);
                     setSettings({ ...response.settings, filePath: { ...response.settings.filePath,
                         individualName: sessionPathRef.current.individualName,
                         electrodeAreaCm2: sessionPathRef.current.electrodeAreaCm2 } });
                 }
             } catch (err) {
                 console.error('Failed to load user settings:', err);
-                if (active) setError('加载配置失败');
+                if (active && requestId === userLoadRequestRef.current && requestUser === userRef.current && generation === workspaceGeneration) {
+                    setError('加载配置失败');
+                }
             } finally {
-                if (active) setLoading(false);
+                if (active && requestId === userLoadRequestRef.current && requestUser === userRef.current && generation === workspaceGeneration) {
+                    setLoading(false);
+                }
             }
         };
         void loadSettings();
@@ -253,8 +305,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // 加载项目列表
     const loadProjects = async () => {
         if (!currentUser) return;
+        const requestUser = currentUser;
+        const generation = workspaceGeneration;
         try {
             const response = await runtimeClient.files.projects<ProjectListResponse>(currentUser);
+            if (requestUser !== userRef.current || generation !== workspaceGeneration) return;
             if (response?.success) {
                 const list = Array.isArray(response.projects)
                     ? response.projects
@@ -269,6 +324,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // 删除项目
     const handleDeleteProject = async (projectName: string) => {
         if (!currentUser) return;
+        const requestUser = currentUser;
+        const generation = workspaceGeneration;
 
         // 确认删除
         if (!window.confirm(`确定要删除项目 "${projectName}" 吗？`)) {
@@ -277,6 +334,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
         try {
             const response = await runtimeClient.files.deleteProject<ApiResponse>(projectName, currentUser);
+            if (requestUser !== userRef.current || generation !== workspaceGeneration) return;
             if (response?.success) {
                 // 从列表中移除
                 setProjects(prev => prev.filter(p => p !== projectName));
@@ -292,8 +350,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     // 打开系统文件夹选择器
     const handleBrowsePath = async () => {
+        if (!currentUser) return;
+        const requestUser = currentUser;
+        const generation = workspaceGeneration;
+        const currentUserStill = () => requestUser === userRef.current && generation === workspaceGeneration;
         try {
             const desktopSelection = await selectDesktopDirectory();
+            if (!currentUserStill()) return;
             if (desktopSelection?.path) {
                 updateFilePath('basePath', desktopSelection.path);
                 return;
@@ -303,6 +366,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             }
 
             const response = await runtimeClient.files.browseSystemPath();
+            if (!currentUserStill()) return;
             if (response?.success && response?.path) {
                 updateFilePath('basePath', response.path);
             } else if (response?.message === 'USER_CANCELLED') {
@@ -318,8 +382,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // 自动保存（防抖）
     useEffect(() => {
         if (!settings || !currentUser || settingsGenerationRef.current !== workspaceGeneration) return;
-        if (skipNextAutoSaveRef.current) {
-            skipNextAutoSaveRef.current = false;
+        // 身份守卫：只允许保存当前已加载用户的配置，避免旧用户设置写入新用户。
+        if (settingsUserIdRef.current !== currentUser || settingsUserId !== currentUser) return;
+        if (skipNextAutoSaveRef.current[currentUser]) {
+            skipNextAutoSaveRef.current[currentUser] = false;
             return;
         }
 
@@ -327,14 +393,19 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         if (area != null && (!Number.isFinite(area) || area <= 0)) return;
         const settingsSnapshot = settings;
         const generation = settingsGenerationRef.current;
+        const requestUser = currentUser;
+        const requestId = userLoadRequestRef.current;
+        const isCurrentSave = () => requestUser === userRef.current && generation === workspaceGeneration && requestId === userLoadRequestRef.current;
         let settled!: () => void;
         trackWorkspaceEdit(new Promise<void>(resolve => { settled = resolve; }));
         const timeoutId = setTimeout(async () => {
             if (generation !== workspaceGeneration) { settled(); return; }
+            if (!isCurrentSave()) { settled(); return; }
             setSaving(true);
             setError('');
             try {
-                const response = await runtimeClient.users.saveSettings<ApiResponse>(currentUser, settingsSnapshot);
+                const response = await runtimeClient.users.saveSettings<ApiResponse>(requestUser, settingsSnapshot);
+                if (!isCurrentSave()) return;
                 if (response.success) {
                     // 后端整包保存已经完成；这里只同步应用内缓存，避免再次写 filePath section。
                     // Current path state is updated on edit; a delayed save must not restore a reset sample.
@@ -344,15 +415,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 }
             } catch (err) {
                 console.error('Failed to save user settings:', err);
-                setError('保存配置失败');
+                if (isCurrentSave()) setError('保存配置失败');
             } finally {
-                setSaving(false);
+                if (isCurrentSave()) setSaving(false);
                 settled();
             }
         }, 800);
 
         return () => { clearTimeout(timeoutId); settled(); };
-    }, [currentUser, setCurrentUserAvatar, setFilePathConfig, settings]);
+    }, [currentUser, setCurrentUserAvatar, setFilePathConfig, settings, settingsUserId]);
 
     const updateFilePath = (field: keyof UserSettings['filePath'], value: string | number | null) => {
         if (!settings) return;
@@ -960,8 +1031,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     </div>
 
                     {/* 头像裁剪悬浮层 */}
-                    {cropImage && <AvatarCropDialog src={cropImage} onClose={() => setCropImage(null)} onConfirm={avatar => {
-                        updateCloud('avatar', avatar); setCropImage(null);
+                    {cropImage && <AvatarCropDialog src={cropImage} onClose={() => { cropIdentityRef.current = null; setCropImage(null); }} onConfirm={avatar => {
+                        const identity = cropIdentityRef.current;
+                        cropIdentityRef.current = null;
+                        // 裁剪确认必须仍属于同一用户与同一工作区，避免旧用户或退出教学后把头像写入当前用户。
+                        if (identity && identity.user === userRef.current && identity.requestId === userLoadRequestRef.current) {
+                            updateCloud('avatar', avatar);
+                        }
+                        setCropImage(null);
                     }} />}
                 </>
             )}

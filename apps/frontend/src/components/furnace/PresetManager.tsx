@@ -1,21 +1,22 @@
-import React, { memo, useState, useEffect, useCallback } from 'react';
-import type { FurnacePresetMeta, ProgramSegment } from '../../modules/furnace/furnaceTypes';
+import React, { memo, useState, useEffect, useCallback, useRef } from 'react';
+import type { DeviceError, FurnacePresetMeta, ProgramSegment } from '../../modules/furnace/furnaceTypes';
 import { runtimeClient } from '../../runtimeClient';
 import { ControlBar } from './components/ControlBar';
 import { SegmentEditor } from './components/SegmentEditor';
 import { SegmentValidator } from '../../modules/furnace/segmentValidation';
 import { FURNACE_PROGRAM_SEGMENT_COUNT } from '../../modules/furnace/temperatureLimits';
+import { toFurnaceDeviceError } from '../../modules/furnace/furnaceError';
+import { FurnaceErrorBanner } from './FurnaceErrorBanner';
 
 interface PresetManagerProps {
   presets: FurnacePresetMeta[];
-  segments: ProgramSegment[];
   isConnected: boolean;
   isLoading: boolean;
-  onSetSegments: (segments: ProgramSegment[]) => Promise<void>;
-  onGetSegments: () => Promise<void>;
-  onLoadPresets: () => Promise<void>;
-  onCreatePreset: (preset: { name: string; segments: ProgramSegment[]; summary?: string }) => Promise<void>;
-  onUpdatePreset: (name: string, segments: ProgramSegment[]) => Promise<void>;
+  onSetSegments: (segments: ProgramSegment[]) => Promise<boolean>;
+  onGetSegments: () => Promise<ProgramSegment[] | null>;
+  onLoadPresets: () => Promise<boolean>;
+  onCreatePreset: (preset: { name: string; segments: ProgramSegment[]; summary?: string }) => Promise<boolean>;
+  onUpdatePreset: (name: string, segments: ProgramSegment[]) => Promise<boolean>;
 }
 
 const createEmptyInputs = () => {
@@ -29,7 +30,6 @@ const createEmptyInputs = () => {
 
 export const PresetManager: React.FC<PresetManagerProps> = memo(({
   presets,
-  segments,
   isConnected,
   isLoading,
   onSetSegments,
@@ -43,6 +43,13 @@ export const PresetManager: React.FC<PresetManagerProps> = memo(({
   const [selectedPresetName, setSelectedPresetName] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
   const [presetSegments, setPresetSegments] = useState<ProgramSegment[]>([]);
+  const [presetError, setPresetError] = useState<DeviceError | null>(null);
+  // 预设选择/读取运行的请求代次，用于拒绝乱序旧回包
+  const presetRequestRef = useRef(0);
+
+  useEffect(() => () => {
+    presetRequestRef.current += 1;
+  }, []);
 
   // 当presetSegments变化时更新输入框
   // 重要：先清空所有输入框，再加载预设数据，避免保留之前"读取运行"获取的残留值
@@ -66,13 +73,22 @@ export const PresetManager: React.FC<PresetManagerProps> = memo(({
 
   // 预设选择处理 - 选中即加载预设数据到输入框，不影响名称输入框
   const handlePresetSelect = useCallback(async (presetName: string) => {
+    const requestId = ++presetRequestRef.current;
+    setPresetError(null);
     if (!presetName) {
       setSelectedPresetName('');
       return;
     }
-    setSelectedPresetName(presetName);
-    const preset = await runtimeClient.devices.furnace.presets.get<{ segments: ProgramSegment[] }>(presetName);
-    setPresetSegments(preset.segments);
+    try {
+      const preset = await runtimeClient.devices.furnace.presets.get<{ segments: ProgramSegment[] }>(presetName);
+      if (requestId !== presetRequestRef.current) return;
+      setSelectedPresetName(presetName);
+      setPresetSegments(preset.segments);
+    } catch (error) {
+      if (requestId !== presetRequestRef.current) return;
+      setPresetError(toFurnaceDeviceError(error, '读取预设失败'));
+      console.error('Failed to load preset:', error);
+    }
   }, []);
 
   // 写入处理 - 只有当有有效数据时才执行写入，带安全确认框
@@ -95,14 +111,17 @@ export const PresetManager: React.FC<PresetManagerProps> = memo(({
       }
     }
 
-    // 写入预设段到设备
-    await onSetSegments(segments);
+    setPresetError(null);
+    // 写入失败时停止后续读取，避免把旧数据误当成本次写入结果。
+    const writeSucceeded = await onSetSegments(segments);
+    if (!writeSucceeded) return;
     // 重新读取设备的完整程序段，确保"设置程序段"标签页能看到完整数据
     await onGetSegments();
   }, [inputs, onGetSegments, onSetSegments]);
 
   // 新建处理 - 清空数据和输入框，脱钩下拉菜单
   const handleNew = useCallback(() => {
+    presetRequestRef.current += 1;
     setInputs(createEmptyInputs());
     setCurrentPresetName('');
     setSelectedPresetName('');
@@ -145,45 +164,53 @@ export const PresetManager: React.FC<PresetManagerProps> = memo(({
     }
 
     setValidationErrors({});
+    setPresetError(null);
 
     try {
       // 检查是否为现有预设
       const existingPreset = presets.find(p => p.name === currentPresetName);
+      if (existingPreset && !confirm(`确认覆盖预设 [${currentPresetName}] 吗？`)) {
+        return;
+      }
 
-      if (existingPreset) {
-        if (!confirm(`确认覆盖预设 [${currentPresetName}] 吗？`)) {
-          return;
-        }
-        await onUpdatePreset(currentPresetName, validationResult.validated_segments);
-      } else {
-        await onCreatePreset({
+      const saved = existingPreset
+        ? await onUpdatePreset(currentPresetName, validationResult.validated_segments)
+        : await onCreatePreset({
           name: currentPresetName,
           segments: validationResult.validated_segments,
           summary: `预设程序段：${currentPresetName}`
         });
-      }
+
+      if (!saved) return;
 
       await onLoadPresets();
       alert(`预设 "${currentPresetName}" 保存成功！`);
     } catch (error) {
+      const deviceError = toFurnaceDeviceError(error, '保存失败');
+      setPresetError(deviceError);
       console.error('Failed to save preset:', error);
-      alert('保存失败，请检查网络连接！');
-      await onLoadPresets();
+      alert(`保存失败：${deviceError.message}`);
     }
   }, [currentPresetName, inputs, onCreatePreset, onLoadPresets, onUpdatePreset, presets]);
 
   // 读取运行处理 - 直接从设置程序段复制数据到预设程序段
   const handleLoadRun = useCallback(async () => {
+    const requestId = ++presetRequestRef.current;
+    setPresetError(null);
     try {
-      await onGetSegments();
-      setPresetSegments([...segments]);
+      const loadedSegments = await onGetSegments();
+      if (requestId !== presetRequestRef.current) return;
+      if (!loadedSegments) return;
+      setPresetSegments([...loadedSegments]);
       setCurrentPresetName('');
       setSelectedPresetName('');
       setValidationErrors({});
     } catch (error) {
+      if (requestId !== presetRequestRef.current) return;
+      setPresetError(toFurnaceDeviceError(error, '读取运行程序段失败'));
       console.error('Failed to load running segments:', error);
     }
-  }, [onGetSegments, segments]);
+  }, [onGetSegments]);
 
   // 输入变化处理 - 支持对象和函数两种形式
   const handleInputsChange = useCallback((
@@ -202,6 +229,13 @@ export const PresetManager: React.FC<PresetManagerProps> = memo(({
 
   return (
     <div className="presets-tab">
+      {presetError && (
+        <FurnaceErrorBanner
+          error={presetError}
+          onClear={() => setPresetError(null)}
+        />
+      )}
+
       {/* 顶部控制栏 */}
       <ControlBar
         presets={presets}

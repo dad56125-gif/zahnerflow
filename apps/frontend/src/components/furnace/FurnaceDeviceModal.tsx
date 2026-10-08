@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
+import type { DeviceError } from '../../modules/furnace/furnaceTypes';
+import { toFurnaceDeviceError } from '../../modules/furnace/furnaceError';
 import { StatusPanel } from './StatusPanel';
 import { ProgramEditor } from './ProgramEditor';
 import { PresetManager } from './PresetManager';
+import { FurnaceErrorBanner } from './FurnaceErrorBanner';
 import { FurnaceLogPanel } from './FurnaceLogPanel';
 import { TemperatureChart } from './FurnaceTemperatureChart';
 import { DeviceConnectionPanel } from '../../components/common/DeviceConnectionPanel';
@@ -188,29 +191,36 @@ export const DeviceModal: React.FC<DeviceModalProps> = ({
                 </div>
                 {mountedTabs.segments && (
                   <div className={`tabs__panel ${activeTab === 'segments' ? 'is-active' : 'is-inactive'}`}>
-                    <div className="furnace-segments-combo">
-                      <section className="furnace-segments-combo__pane">
-                        <ProgramEditor
-                          segments={furnaceState.segments}
-                          isConnected={isConnected}
-                          isLoading={furnaceState.loading}
-                          onRead={furnaceControls.get_segments}
-                          onWrite={furnaceControls.set_segments}
+                    <div className="furnace-segments-panel">
+                      {furnaceState.errors.segments && (
+                        <FurnaceErrorBanner
+                          error={furnaceState.errors.segments}
+                          onClear={() => furnaceControls.clear_error('segments')}
                         />
-                      </section>
-                      <section className="furnace-segments-combo__pane">
-                        <PresetManager
-                          presets={furnaceState.presets}
-                          segments={furnaceState.segments}
-                          isConnected={isConnected}
-                          isLoading={furnaceState.loading}
-                          onSetSegments={furnaceControls.set_segments}
-                          onGetSegments={furnaceControls.get_segments}
-                          onLoadPresets={furnaceControls.load_presets}
-                          onCreatePreset={furnaceControls.create_preset}
-                          onUpdatePreset={furnaceControls.update_preset}
-                        />
-                      </section>
+                      )}
+                      <div className="furnace-segments-combo">
+                        <section className="furnace-segments-combo__pane">
+                          <ProgramEditor
+                            segments={furnaceState.segments}
+                            isConnected={isConnected}
+                            isLoading={furnaceState.loading}
+                            onRead={furnaceControls.get_segments}
+                            onWrite={furnaceControls.set_segments}
+                          />
+                        </section>
+                        <section className="furnace-segments-combo__pane">
+                          <PresetManager
+                            presets={furnaceState.presets}
+                            isConnected={isConnected}
+                            isLoading={furnaceState.loading}
+                            onSetSegments={furnaceControls.set_segments}
+                            onGetSegments={furnaceControls.get_segments}
+                            onLoadPresets={furnaceControls.load_presets}
+                            onCreatePreset={furnaceControls.create_preset}
+                            onUpdatePreset={furnaceControls.update_preset}
+                          />
+                        </section>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -445,11 +455,13 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
   const [hoveredSlot, setHoveredSlot] = useState<ActivityHoverState | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<DeviceError | null>(null);
   const [hasLoadedSummary, setHasLoadedSummary] = useState(false);
   const [visibleDayCount, setVisibleDayCount] = useState(30);
   const chartSectionRef = useRef<HTMLDivElement>(null);
   const activityMapRef = useRef<HTMLElement>(null);
   const activityCanvasRef = useRef<HTMLDivElement>(null);
+  const daySamplesRequestRef = useRef(0);
 
   const queryActivityDays = useMemo(() => buildRecentActivityDays(rangeEnd, MAX_ACTIVITY_DAYS), [rangeEnd]);
   const activityDays = useMemo(
@@ -465,6 +477,7 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
 
   const loadActivitySummary = async () => {
     setSummaryLoading(true);
+    setHistoryError(null);
     const now = new Date();
     const days = buildRecentActivityDays(now, MAX_ACTIVITY_DAYS);
     const start = days[0]?.date ?? new Date(now.getTime() - (MAX_ACTIVITY_DAYS - 1) * DAY_MS);
@@ -482,6 +495,7 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
       setSummaryRows(rows);
       setHasLoadedSummary(true);
     } catch (error) {
+      setHistoryError(toFurnaceDeviceError(error, '读取炉温活动汇总失败'));
       console.error('Failed to query furnace activity summary:', error);
       setSummaryRows([]);
       setSelectedDay(null);
@@ -543,6 +557,11 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isActive]);
 
+  // 卸载后使在途的日曲线请求失效，避免旧回包写回已卸载组件。
+  useEffect(() => () => {
+    daySamplesRequestRef.current += 1;
+  }, []);
+
   const { summaries, slots } = useMemo(
     () => buildActivitySummaries(activityDays, summaryRows),
     [activityDays, summaryRows]
@@ -588,10 +607,12 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
   const loadDaySamples = async (dayKey: string) => {
     const day = activityDays.find(item => item.key === dayKey);
     if (!day) return;
+    const requestId = ++daySamplesRequestRef.current;
     const start = startOfDay(day.date);
     const end = new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate() + 1);
 
     setChartLoading(true);
+    setHistoryError(null);
     try {
       const sampleData = await runtimeClient.devices.furnace.samples<Array<{
         timestamp: string;
@@ -609,6 +630,7 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
         limit: 10000,
       });
 
+      if (requestId !== daySamplesRequestRef.current) return;
       setChartSamples(sampleData.map(sample => ({
         timestamp: sample.timestamp,
         temperature: Number(sample.pv ?? 0),
@@ -621,10 +643,12 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
         segmentTimeSet: sample.segmentTimeSet,
       })));
     } catch (error) {
+      if (requestId !== daySamplesRequestRef.current) return;
+      setHistoryError(toFurnaceDeviceError(error, '读取炉温曲线样本失败'));
       console.error('Failed to query furnace daily samples:', error);
       setChartSamples([]);
     } finally {
-      setChartLoading(false);
+      if (requestId === daySamplesRequestRef.current) setChartLoading(false);
     }
   };
 
@@ -665,6 +689,12 @@ function HistoryTab({ isActive, shouldLoadSummary }: { isActive: boolean; should
 
   return (
     <div className="history__tab">
+      {historyError && (
+        <FurnaceErrorBanner
+          error={historyError}
+          onClear={() => setHistoryError(null)}
+        />
+      )}
       <div className="recording__body">
         {summaryLoading || !hasLoadedSummary ? (
           <div className="recording__empty"><SpacedCjkText text={'\u6b63\u5728\u52a0\u8f7d\u6700\u8fd1\u6700\u591a60\u5929\u91c7\u6837\u6d3b\u52a8...'} /></div>

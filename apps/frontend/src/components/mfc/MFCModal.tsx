@@ -43,7 +43,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
 
   // 在MFC模态框打开时才确保WebSocket连接（仅执行一次）
   useEffect(() => {
-    mfcControls.ensureConnection();
+    void mfcControls.ensureConnection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -56,7 +56,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
   const connectMfc = () => {
     const port = isMfcSimulator ? 'COM_SIMULATOR' : mfcState.selected_port;
     const simulatorProfile = isMfcSimulator ? simulatorProfileFor('mfc', simulatorSettings) : undefined;
-    mfcControls.connect(port, 19200, 1.0, simulatorProfile);
+    void mfcControls.connect(port, 19200, 1.0, simulatorProfile).catch(() => undefined);
   };
   const flowSummary = useMemo(() => {
     const totalFlow = mfcState.devices.reduce((sum, item) => sum + (Number(item.flowSccm) || 0), 0);
@@ -129,7 +129,7 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   {mfcState.isScanning && (
                     <button
                       className="btn btn--sm btn--danger"
-                      onClick={() => mfcControls.stopScan()}
+                      onClick={() => { void mfcControls.stopScan().catch(() => undefined); }}
                       disabled={mfcState.isScanStopping}
                     >
                       {mfcState.isScanStopping ? <SpacedCjkText text="停止中" /> : <SpacedCjkText text="停止扫描" />}
@@ -137,14 +137,14 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   )}
                   <button
                     className={`btn btn--sm btn--secondary mfc__header-scan ${mfcState.isScanning ? 'is-loading' : ''}`}
-                    onClick={() => mfcControls.scanDevices({ port: effectiveSelectedPort })}
+                    onClick={() => { void mfcControls.scanDevices({ port: effectiveSelectedPort }).catch(() => undefined); }}
                     disabled={mfcState.isLoading || mfcState.isScanning}
                   >
                     {mfcState.isScanning ? <SpacedCjkText text="扫描中" /> : <SpacedCjkText text="重新扫描" />}
                   </button>
                   <button
                     className="btn btn--sm btn--danger"
-                    onClick={() => mfcControls.disconnect()}
+                    onClick={() => { void mfcControls.disconnect().catch(() => undefined); }}
                     disabled={mfcState.isLoading || mfcState.isScanning}
                   >
                     <SpacedCjkText text="断开" />
@@ -194,9 +194,10 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                   availablePorts={effectivePorts}
                   selectedPort={effectiveSelectedPort}
                   onPortChange={mfcControls.selectPort}
-                  onRefreshPorts={() => mfcControls.get_available_ports()}
+                  onRefreshPorts={() => { void mfcControls.get_available_ports().catch(() => undefined); }}
                   onConnect={connectMfc}
-                  onDisconnect={() => mfcControls.disconnect()}
+                  onDisconnect={() => { void mfcControls.disconnect().catch(() => undefined); }}
+                  isLoading={mfcState.isLoading}
                 />
               ) : (
                 <>
@@ -294,8 +295,8 @@ export const MFCModal: React.FC<MFCModalProps> = ({
                     <DeviceDiagnosticsPanel
                       diagnostics={mfcState.diagnostics}
                       commandLogs={mfcState.commandLogs}
-                      onRefreshLogs={mfcControls.loadCommandLogs}
-                      onClearLogs={mfcControls.clearCommandLogs}
+                      onRefreshLogs={() => { void mfcControls.loadCommandLogs().catch(() => undefined); }}
+                      onClearLogs={() => { void mfcControls.clearCommandLogs().catch(() => undefined); }}
                     />
 
                     <FurnaceLogPanel

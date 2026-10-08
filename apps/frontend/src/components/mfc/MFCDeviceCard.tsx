@@ -91,12 +91,12 @@ export const MFCDeviceCard: React.FC<MFCDeviceCardProps> = ({
       setFlowInputValue((current) => current.trim() === submittedValue ? '' : current);
     } catch (err) {
       setError(`失败: ${err instanceof Error ? err.message : '未知'}`);
-      setFlowInputValue(device.setFlow.toString());
+      // 写入失败保留用户提交的值，便于检查并重试。
     } finally {
       settingFlowRef.current = false;
       setIsSettingFlow(false);
     }
-  }, [flowInputValue, device.address, device.maxFlowSccm, device.setFlow, onSetFlow]);
+  }, [flowInputValue, device.address, device.maxFlowSccm, onSetFlow]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSetFlow();

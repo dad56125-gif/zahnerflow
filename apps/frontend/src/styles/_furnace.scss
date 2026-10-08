@@ -637,6 +637,23 @@
   grid-template-columns: minmax(0, 1fr) 0;
 }
 
+.furnace-segments-panel {
+  @include flex-col(var(--size-md));
+  min-height: 0;
+  height: 100%;
+
+  > .error-banner {
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
+
+  > .furnace-segments-combo {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+}
+
 .furnace-segments-combo {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

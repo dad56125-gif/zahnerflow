@@ -169,18 +169,41 @@ export function useMfc(): [MfcState, MfcControls] {
   const [state, setState] = useState<MfcState>(createInitialState);
   const scanStopRequestedRef = useRef(false);
   const lastRuntimeStateVersionRef = useRef(0);
+  const connectionAttemptIdRef = useRef(0);
+  const connectInFlightRef = useRef(false);
+  const scanRunIdRef = useRef(0);
+  const commandLogsRequestIdRef = useRef(0);
+  const loadingOwnerIdRef = useRef(0);
+  const loadingOwnersRef = useRef<Set<number>>(new Set());
   const stateRef = useRef(state);
   stateRef.current = state;
+  const invalidateAsyncRequests = useCallback(() => {
+    connectionAttemptIdRef.current += 1;
+    connectInFlightRef.current = false;
+    scanRunIdRef.current += 1;
+    commandLogsRequestIdRef.current += 1;
+    scanStopRequestedRef.current = false;
+    loadingOwnersRef.current.clear();
+  }, []);
   useLayoutEffect(() => registerWorkspaceParticipant(() => {
     const previous = stateRef.current;
     const version = lastRuntimeStateVersionRef.current;
     lastRuntimeStateVersionRef.current = 0;
+    invalidateAsyncRequests();
     setState(createInitialState());
     return () => {
       lastRuntimeStateVersionRef.current = version;
-      setState(previous);
+      invalidateAsyncRequests();
+      setState({
+        ...previous,
+        loading: false,
+        isLoading: false,
+        isScanning: false,
+        isScanStopping: false,
+        scanProgress: null,
+      });
     };
-  }), []);
+  }), [invalidateAsyncRequests]);
 
 
   // 状态更新辅助函数
@@ -188,7 +211,22 @@ export function useMfc(): [MfcState, MfcControls] {
     setState((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const setLoading = useCallback((loading: boolean) => updateState({ loading, isLoading: loading }), [updateState]);
+  const beginLoading = useCallback(() => {
+    const ownerId = loadingOwnerIdRef.current + 1;
+    loadingOwnerIdRef.current = ownerId;
+    loadingOwnersRef.current.add(ownerId);
+    updateState({ loading: true, isLoading: true });
+    return ownerId;
+  }, [updateState]);
+
+  const endLoading = useCallback((ownerId: number) => {
+    if (!loadingOwnersRef.current.has(ownerId)) return;
+    loadingOwnersRef.current.delete(ownerId);
+    if (loadingOwnersRef.current.size === 0) {
+      updateState({ loading: false, isLoading: false });
+    }
+  }, [updateState]);
+
   const clearError = useCallback(() => updateState({ error: null }), [updateState]);
 
   const addLog = useCallback((type: LogEntry['type'], message: string) => {
@@ -209,12 +247,18 @@ export function useMfc(): [MfcState, MfcControls] {
   const clearLogs = useCallback(() => updateState({ logs: [] }), [updateState]);
 
   const loadCommandLogs = useCallback(async () => {
+    const requestId = commandLogsRequestIdRef.current + 1;
+    commandLogsRequestIdRef.current = requestId;
     const response = await runtimeClient.devices.mfc.commandLogs<{ logs: CommandLogEntry[] }>();
+    if (requestId !== commandLogsRequestIdRef.current) return;
     updateState({ commandLogs: response.logs || [] });
   }, [updateState]);
 
   const clearCommandLogs = useCallback(async () => {
+    const requestId = commandLogsRequestIdRef.current + 1;
+    commandLogsRequestIdRef.current = requestId;
     await runtimeClient.devices.mfc.clearCommandLogs();
+    if (requestId !== commandLogsRequestIdRef.current) return;
     updateState({ commandLogs: [] });
   }, [updateState]);
 
@@ -224,8 +268,7 @@ export function useMfc(): [MfcState, MfcControls] {
         error && typeof error === 'object' && 'message' in error
           ? (error as DeviceError)
           : { code: 'UNKNOWN', message: String(error), status: 0 };
-      scanStopRequestedRef.current = false;
-      updateState({ error: deviceError, loading: false, isLoading: false, isScanning: false, isScanStopping: false, scanProgress: null });
+      updateState({ error: deviceError });
       addLog('error', deviceError.message);
     },
     [updateState, addLog]
@@ -234,11 +277,14 @@ export function useMfc(): [MfcState, MfcControls] {
   // ==================== 端口与设备发现 ====================
 
   const get_available_ports = useCallback(async (): Promise<string[]> => {
+    const lifecycleToken = connectionAttemptIdRef.current;
     try {
       const ports = await runtimeClient.devices.mfc.ports();
+      if (lifecycleToken !== connectionAttemptIdRef.current) return ports;
       updateState({ available_ports: ports });
       return ports;
     } catch (error) {
+      if (lifecycleToken !== connectionAttemptIdRef.current) return [];
       handleError(error);
       return [];
     }
@@ -283,23 +329,26 @@ export function useMfc(): [MfcState, MfcControls] {
   }, []);
 
   const refreshDevices = useCallback(async (options?: { silent?: boolean }): Promise<void> => {
+    const lifecycleToken = connectionAttemptIdRef.current;
+    const loadingOwner = options?.silent ? null : beginLoading();
     try {
-      if (!options?.silent) {
-        setLoading(true);
-      }
-      handleRuntimeStatusUpdate(await runtimeClient.devices.mfc.runtimeStatus());
+      const status = await runtimeClient.devices.mfc.runtimeStatus();
+      if (lifecycleToken !== connectionAttemptIdRef.current) return;
+      handleRuntimeStatusUpdate(status);
     } catch (error) {
+      if (lifecycleToken !== connectionAttemptIdRef.current) return;
       handleError(error);
     } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
+      if (loadingOwner !== null) endLoading(loadingOwner);
     }
-  }, [setLoading, handleError, handleRuntimeStatusUpdate]);
+  }, [beginLoading, endLoading, handleError, handleRuntimeStatusUpdate]);
 
   const reloadRuntimeStatus = useCallback(async () => {
+    const lifecycleToken = connectionAttemptIdRef.current;
     try {
-      handleRuntimeStatusUpdate(await runtimeClient.devices.mfc.runtimeStatus());
+      const status = await runtimeClient.devices.mfc.runtimeStatus();
+      if (lifecycleToken !== connectionAttemptIdRef.current) return;
+      handleRuntimeStatusUpdate(status);
     } catch {
       // Socket 重连期间没有完整快照时，不由前端猜测设备已经断开。
     }
@@ -320,9 +369,11 @@ export function useMfc(): [MfcState, MfcControls] {
 
   const ensureConnection = useCallback(async () => {
     ensureRuntimeStatusSubscription();
+    const lifecycleToken = connectionAttemptIdRef.current;
 
     try {
       const statusData = await runtimeClient.devices.mfc.runtimeStatus();
+      if (lifecycleToken !== connectionAttemptIdRef.current) return;
       handleRuntimeStatusUpdate(statusData);
 
       if (statusData.connected) {
@@ -346,9 +397,14 @@ export function useMfc(): [MfcState, MfcControls] {
   }, [updateState]);
 
   const runDeviceScan = useCallback(
-    async (params: MfcScanRequest = {}): Promise<{ devices: MfcDeviceInfo[]; cancelled: boolean } | null> => {
+    async (
+      params: MfcScanRequest = {},
+      lifecycleToken: number = connectionAttemptIdRef.current,
+    ): Promise<{ devices: MfcDeviceInfo[]; cancelled: boolean } | null> => {
       if (state.isScanning) return null;
 
+      const scanRunId = scanRunIdRef.current + 1;
+      scanRunIdRef.current = scanRunId;
       const scanParams = params as MfcScanParams;
       const requestedAddress = scanParams.address;
       const rawStart = requestedAddress ?? scanParams.startAddress ?? 32;
@@ -368,9 +424,14 @@ export function useMfc(): [MfcState, MfcControls] {
         scanProgress: { current: start, start, end, percent: 0, foundCount: 0 },
       });
 
+      const isCurrentScan = () => (
+        scanRunId === scanRunIdRef.current
+        && lifecycleToken === connectionAttemptIdRef.current
+      );
+
       try {
         for (let address = start; address <= end; address += 1) {
-          if (scanStopRequestedRef.current) break;
+          if (!isCurrentScan() || scanStopRequestedRef.current) break;
 
           const completedBefore = address - start;
           updateState({
@@ -390,6 +451,7 @@ export function useMfc(): [MfcState, MfcControls] {
             scanStartAddress: start,
             scanEndAddress: end,
           });
+          if (!isCurrentScan()) break;
           // 后端路由返回的是当前扫描 session 的完整快照；前端只镜像本次返回，
           // 不再把多个响应重新累加成第二份设备集合。
           currentDevices = Array.isArray(scannedDevices) ? scannedDevices : [];
@@ -406,10 +468,12 @@ export function useMfc(): [MfcState, MfcControls] {
           });
         }
 
-        return { devices: currentDevices, cancelled: scanStopRequestedRef.current };
+        return { devices: currentDevices, cancelled: !isCurrentScan() || scanStopRequestedRef.current };
       } finally {
-        scanStopRequestedRef.current = false;
-        updateState({ isScanning: false, isScanStopping: false, scanProgress: null });
+        if (isCurrentScan()) {
+          scanStopRequestedRef.current = false;
+          updateState({ isScanning: false, isScanStopping: false, scanProgress: null });
+        }
       }
     },
     [state.isScanning, state.selected_port, updateState]
@@ -417,20 +481,26 @@ export function useMfc(): [MfcState, MfcControls] {
 
   const connect = useCallback(
     async (port: string = 'COM1', baudrate: number = 19200, timeout: number = 1.0, simulatorProfile?: string): Promise<void> => {
+      if (connectInFlightRef.current) return;
+      const requestId = connectionAttemptIdRef.current + 1;
+      connectionAttemptIdRef.current = requestId;
+      connectInFlightRef.current = true;
+      const loadingOwner = beginLoading();
       try {
-        setLoading(true);
         clearError();
-        updateState({ selected_port: port });
+        updateState({ selected_port: port, connection_status: 'connecting' });
         ensureRuntimeStatusSubscription();
 
         const response = await runtimeClient.devices.mfc.connect<{
           runtimeStatus?: RuntimeDeviceStatusEnvelope;
         }>({ port, baudrate, timeout, ...(simulatorProfile && { simulatorProfile }) });
+        if (requestId !== connectionAttemptIdRef.current) return;
         if (response?.runtimeStatus) handleRuntimeStatusUpdate(response.runtimeStatus);
         addLog('success', `Connected to ${port}`);
 
         // 连接成功后自动扫描设备
-        const scanResult = await runDeviceScan({ port });
+        const scanResult = await runDeviceScan({ port }, requestId);
+        if (requestId !== connectionAttemptIdRef.current) return;
         if (scanResult) {
           addLog(
             scanResult.cancelled ? 'warning' : (scanResult.devices.length > 0 ? 'success' : 'warning'),
@@ -441,49 +511,61 @@ export function useMfc(): [MfcState, MfcControls] {
         }
         await loadCommandLogs().catch(() => undefined);
       } catch (error) {
+        if (requestId !== connectionAttemptIdRef.current) return;
         handleError(error);
         // 连接状态由后端 runtime 快照决定；错误路径只保留错误提示，并重新
         // hydrate 一次，避免这里生成第二个“前端连接状态”。
         await reloadRuntimeStatus().catch(() => undefined);
-        updateState({ selected_port: '', isScanning: false });
-        get_available_ports();
+        if (requestId !== connectionAttemptIdRef.current) return;
+        updateState({ isScanning: false });
+        void get_available_ports();
         throw error;
       } finally {
-        setLoading(false);
+        if (requestId === connectionAttemptIdRef.current) connectInFlightRef.current = false;
+        endLoading(loadingOwner);
       }
     },
-    [setLoading, clearError, handleError, updateState, get_available_ports, ensureRuntimeStatusSubscription, addLog, loadCommandLogs, runDeviceScan, handleRuntimeStatusUpdate, reloadRuntimeStatus]
+    [beginLoading, endLoading, clearError, handleError, updateState, get_available_ports, ensureRuntimeStatusSubscription, addLog, loadCommandLogs, runDeviceScan, handleRuntimeStatusUpdate, reloadRuntimeStatus]
   );
 
   const disconnect = useCallback(async (): Promise<void> => {
+    invalidateAsyncRequests();
+    const requestId = connectionAttemptIdRef.current;
+    updateState({ isScanning: false, isScanStopping: false, scanProgress: null });
+    const loadingOwner = beginLoading();
     try {
-      setLoading(true);
       const response = await runtimeClient.devices.mfc.disconnectDevice<{
         runtimeStatus?: RuntimeDeviceStatusEnvelope;
       }>();
+      if (requestId !== connectionAttemptIdRef.current) return;
       if (response?.runtimeStatus) handleRuntimeStatusUpdate(response.runtimeStatus);
       addLog('info', 'Disconnected');
       await get_available_ports();
       await loadCommandLogs().catch(() => undefined);
     } catch (error) {
+      if (requestId !== connectionAttemptIdRef.current) return;
       handleError(error);
       throw error;
     } finally {
-      setLoading(false);
+      endLoading(loadingOwner);
     }
-  }, [setLoading, handleError, get_available_ports, addLog, loadCommandLogs, handleRuntimeStatusUpdate]);
+  }, [invalidateAsyncRequests, updateState, beginLoading, endLoading, handleError, get_available_ports, addLog, loadCommandLogs, handleRuntimeStatusUpdate]);
 
   // ==================== 扫描与控制 ====================
 
   const scanDevices = useCallback(
     async (params: MfcScanRequest = {}): Promise<void> => {
       if (state.isScanning) return;
+      const lifecycleToken = connectionAttemptIdRef.current;
 
       try {
         clearError();
 
-        const scanResult = await runDeviceScan({ ...params, port: params.port || state.selected_port });
-        if (!scanResult) return;
+        const scanResult = await runDeviceScan(
+          { ...params, port: params.port || state.selected_port },
+          lifecycleToken,
+        );
+        if (!scanResult || lifecycleToken !== connectionAttemptIdRef.current) return;
         addLog(
           scanResult.cancelled ? 'warning' : (scanResult.devices.length > 0 ? 'success' : 'warning'),
           scanResult.cancelled
@@ -492,6 +574,7 @@ export function useMfc(): [MfcState, MfcControls] {
         );
         await loadCommandLogs().catch(() => undefined);
       } catch (error) {
+        if (lifecycleToken !== connectionAttemptIdRef.current) return;
         handleError(error);
       }
     },
@@ -500,42 +583,46 @@ export function useMfc(): [MfcState, MfcControls] {
 
   const stopScan = useCallback(async (): Promise<void> => {
     if (!state.isScanning || state.isScanStopping) return;
+    const lifecycleToken = connectionAttemptIdRef.current;
 
     scanStopRequestedRef.current = true;
     updateState({ isScanStopping: true });
     addLog('warning', 'Stopping MFC scan after the current address');
 
     await runtimeClient.devices.mfc.stopScan().catch(() => undefined);
-    await loadCommandLogs().catch(() => undefined);
+    if (lifecycleToken === connectionAttemptIdRef.current) {
+      await loadCommandLogs().catch(() => undefined);
+    }
   }, [state.isScanning, state.isScanStopping, updateState, addLog, loadCommandLogs]);
 
   const setFlowRate = useCallback(
     async (address: number, sccm: number): Promise<void> => {
-      try {
-        await runtimeClient.devices.mfc.setpoint({ address, sccm });
-        addLog('success', `Set MFC ${address} to ${sccm} sccm`);
-        await loadCommandLogs().catch(() => undefined);
-      } catch (error) {
-        handleError(error);
-      }
+      const lifecycleToken = connectionAttemptIdRef.current;
+      await runtimeClient.devices.mfc.setpoint({ address, sccm });
+      if (lifecycleToken !== connectionAttemptIdRef.current) return;
+      addLog('success', `Set MFC ${address} to ${sccm} sccm`);
+      await loadCommandLogs().catch(() => undefined);
     },
-    [handleError, addLog, loadCommandLogs]
+    [addLog, loadCommandLogs]
   );
 
   const setAllFlowRates = useCallback(
     async (settings: { address: number; sccm: number }[]): Promise<void> => {
+      const lifecycleToken = connectionAttemptIdRef.current;
+      const loadingOwner = beginLoading();
       try {
-        setLoading(true);
         await Promise.all(settings.map((s) => runtimeClient.devices.mfc.setpoint({ address: s.address, sccm: s.sccm })));
+        if (lifecycleToken !== connectionAttemptIdRef.current) return;
         addLog('success', `Set ${settings.length} MFC flow rates`);
         await loadCommandLogs().catch(() => undefined);
       } catch (error) {
+        if (lifecycleToken !== connectionAttemptIdRef.current) return;
         handleError(error);
       } finally {
-        setLoading(false);
+        endLoading(loadingOwner);
       }
     },
-    [setLoading, handleError, addLog, loadCommandLogs]
+    [beginLoading, endLoading, handleError, addLog, loadCommandLogs]
   );
 
   // ==================== 历史数据 ====================
@@ -612,7 +699,10 @@ export function useMfc(): [MfcState, MfcControls] {
 
   // ==================== 工具方法 ====================
 
-  const reset = useCallback(() => setState(createInitialState()), []);
+  const reset = useCallback(() => {
+    invalidateAsyncRequests();
+    setState(createInitialState());
+  }, [invalidateAsyncRequests]);
   const refresh = useCallback(async () => refreshDevices(), [refreshDevices]);
 
   // 占位符函数（兼容性）

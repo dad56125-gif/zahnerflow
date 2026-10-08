@@ -8,8 +8,8 @@ interface ProgramEditorProps {
   segments: ProgramSegment[];
   isConnected: boolean;
   isLoading: boolean;
-  onRead: () => Promise<void>;
-  onWrite: (segments: ProgramSegment[]) => Promise<void>;
+  onRead: () => Promise<ProgramSegment[] | null>;
+  onWrite: (segments: ProgramSegment[]) => Promise<boolean>;
 }
 
 export const ProgramEditor: React.FC<ProgramEditorProps> = memo(({

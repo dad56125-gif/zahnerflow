@@ -3,6 +3,7 @@ import { TemperatureChart } from './FurnaceTemperatureChart';
 import type { FurnaceState, FurnaceControls } from '../../modules/furnace/useFurnace';
 import { calculateDisplayedRuntimeSeconds } from '../../modules/furnace/runtimeDisplay';
 import { SpacedCjkText } from '../common/SpacedCjkText';
+import { FurnaceErrorBanner } from './FurnaceErrorBanner';
 import {
   FURNACE_PROGRAM_SEGMENT_COUNT,
   isFurnaceTransientSegment,
@@ -14,21 +15,16 @@ interface StatusPanelProps {
 }
 
 export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceControls }) => {
+  const monitoringError = furnaceState.errors.monitoring;
+
   return (
     <div className="monitoring__tab">
       {/* 错误显示 */}
-      {furnaceState.error && (
-        <div className="error-banner">
-          <span className="error__message">
-            <SpacedCjkText text="错误" />: {furnaceState.error?.message || <SpacedCjkText text="未知错误" />}
-          </span>
-          <button
-            className="btn btn--sm btn--secondary"
-            onClick={furnaceControls.clear_error}
-          >
-            <SpacedCjkText text="关闭" />
-          </button>
-        </div>
+      {monitoringError && (
+        <FurnaceErrorBanner
+          error={monitoringError}
+          onClear={() => furnaceControls.clear_error('monitoring')}
+        />
       )}
 
       <FurnaceDashboardPanel furnaceState={furnaceState} />
@@ -88,7 +84,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ furnaceState, furnaceC
             const segment = parseInt(input.value);
             if (segment >= 1 && segment <= FURNACE_PROGRAM_SEGMENT_COUNT) {
               try {
-                await furnaceControls.set_segment(segment);
+                const succeeded = await furnaceControls.set_segment(segment);
+                if (!succeeded) return;
               } catch (error) {
                 alert(`设置程序段失败: ${error instanceof Error ? error.message : '未知错误'}`);
               }
