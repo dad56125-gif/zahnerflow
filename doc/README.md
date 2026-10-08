@@ -88,7 +88,7 @@ flowchart TD
 - 规范：[数据与命名](reference/data-contracts.md)、[视觉与样式](reference/design-system.md)。
 - 研究：[展开执行步骤 modal 改版前现状复核](research/unroll-modal-redesign-2026-09-20.md)。
 - 更新核查：[电脑版打包基线之后的更新与提交树](research/desktop-baseline-update-tree-2026-10-07.md)。
-- 发布分析：[发布基线与更新图流程](guides/release-analysis.md)、[发布基线登记](reference/release-baselines.json)、[2.12.0 阶段清单](research/release-tree-2.12.0.json)。阶段清单为人工复核输入，图与提交数据由 `scripts/release-update-tree.mjs` 生成，保留每轮快照。
+- 演进记录：[事实迁移与证据](research/release-evolution/README.md)、[用户指定基线](reference/release-baselines.json)、[逐提交账本](research/release-evolution/commit-facts.json)、[2.12.0 展示输入](research/release-tree-2.12.0.json)、[版本快照](research/release-evolution/snapshots/2.12.0/snapshot.json)。行为与绘图实现由个人技能 `git-release-evolution` 提供，项目只保存具体记录与派生产物。
 - 历史：[1.0.0 归档](insight/1.0.0/README.md)、[2.2.1 归档](insight/2.2.1/README.md)。
 - 变化：[发布日志](../CHANGELOG.md)、[设计演进](../.memory/changelog.md)。
 

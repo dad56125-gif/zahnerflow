@@ -5,26 +5,405 @@
   "baselineVersion": "1.0.6",
   "targetVersion": "2.12.0",
   "baselineNote": "历史源码基线为高置信推断；安装包未内嵌 SHA",
-  "targetNote": "已验收安装包；下一轮分析从此处开始",
+  "targetNote": "",
   "recentBaseline": "60c2f9f",
   "recentVersion": "2.11.2",
   "reviewedAt": "2026-10-08",
-  "excludedBranch": "codex/simu",
   "stages": [
-    {"id":"state","from":"32f4614","to":"0d4c8d3","firstParent":true,"title":"停止交互与执行状态","types":["UI","Bug","数据／契约"],"effects":["修复停止进度环、曲线切换隔离、循环序号","统一执行状态和曲线生命周期"],"data":"执行状态语义／生命周期；不是 SQL 迁移"},
-    {"id":"core","from":"0d4c8d3","to":"bd63b09","firstParent":true,"title":"运行时与整体优化 · 至 2.2.1","types":["UI","Bug","功能","数据／契约","工程"],"effects":["新增 CLI／代理接入，重做执行步骤浏览","修复配置竞态；统一报告契约和数据库迁移"],"data":"SQL 迁移 user_version=1；共享报告与执行契约"},
-    {"id":"docs","from":"bd63b09","to":"d70086e","firstParent":true,"title":"研究与文档治理","types":["文档"],"effects":["核查厂商材料、来源链和文档归属","材料迁出；不代表增加真机能力"],"data":"无应用数据结构变化"},
-    {"id":"theme","from":"d70086e","to":"c016b6e","firstParent":true,"title":"亮色主题与背景偏好","types":["UI","Bug","功能","数据／契约","文档"],"effects":["玻璃层次、语义配色、动态背景与主题联动","新增背景配色偏好；修复文字／浮层显示"],"data":"偏好配置扩展；不是 SQL 迁移"},
-    {"id":"unroll","from":"3918e35","to":"2188cf1","firstParent":true,"title":"展开步骤分栏支线","types":["UI","功能","文档"],"effects":["Finder 分栏、子工作流和步骤号范围","精简窗口、去搜索、悬浮块"],"data":"展示派生变化；执行计划仍由后端定义","branchFrom":"3918e35","forkStage":"theme"},
-    {"id":"tutorial","from":"3fbf1ae","to":"da92e63","firstParent":true,"title":"真实组件教程支线","types":["UI","功能","Bug","文档"],"effects":["SOP 四章、Furnace／MFC 真实组件教学","隔离教程状态、保存恢复；删除提示修复"],"data":"教程隔离存储／恢复；不是生产 SQL 迁移","branchFrom":"3fbf1ae","forkStage":"docs"},
-    {"id":"merge-unroll","from":"c016b6e","to":"0946155","firstParent":true,"title":"分栏合并 · 2.5.0","types":["合并","文档"],"effects":["279a4de 汇入分栏；随后记录教程冲突"],"data":"汇入既有支线，不能重复计算功能","mergeFrom":"unroll","mergeCommit":"279a4de"},
-    {"id":"merge-tutorial","from":"0946155","to":"980a7c7","firstParent":true,"title":"教程合并 · 2.6.0","types":["合并"],"effects":["980a7c7 汇入教程，与主题及分栏统一"],"data":"汇入既有支线；包括删除节点提示修复","mergeFrom":"tutorial","mergeCommit":"980a7c7"},
-    {"id":"finish","from":"980a7c7","to":"84e48e2","firstParent":true,"title":"展开详情与视觉收尾 · 2.6.4","types":["UI","文档"],"effects":["参数分块／单位、逐行显示、隐藏系统边界","统一标题、背景模糊和圆角"],"data":"仅隐藏展示，后端真实步骤索引仍保留"},
-    {"id":"audit","from":"84e48e2","to":"8ae4d89","firstParent":true,"title":"缺陷与分支核查","types":["文档"],"effects":["核查 114 更新、炉温重跑、段序、参数和删除提示","记录 report 合并范围与 simu 独立边界"],"data":"研究证据；不是修复提交"},
-    {"id":"report","from":"84e48e2","to":"e0dc80b","firstParent":true,"title":"报告与电极面积支线","types":["UI","Bug","功能","数据／契约","文档"],"effects":["交互曲线、按温度／模式分组、LSV 电压功率展示","新增有效面积归一化；报告摘要和失败参数"],"data":"面积／报告契约；样品与面积为会话状态，原始曲线保留","branchFrom":"84e48e2","forkStage":"finish"},
-    {"id":"merge-report","from":"8ae4d89","to":"f9cc5bd","firstParent":true,"title":"报告合并 · 2.11.1","types":["合并"],"effects":["f9cc5bd 无冲突合并 report，随后删除该分支名"],"data":"支线提交仍在主线历史中；simu 不合并","mergeFrom":"report","mergeCommit":"f9cc5bd"},
-    {"id":"fix","from":"f9cc5bd","to":"60c2f9f","firstParent":true,"title":"电脑版缺陷修复 · 2.11.2","types":["Bug","UI"],"effects":["修复温度节点重置后重跑身份校验报错","修复 C01／C02 段序与数值输入卡住"],"data":"执行身份接管／输入校验；硬件寄存器映射不变"},
-    {"id":"release-docs","from":"60c2f9f","to":"a1104a0","firstParent":true,"title":"打包验收与优化建议","types":["文档"],"effects":["记录 2.11.2 安装包回归与后续建议"],"data":"建议不计为已实现功能"},
-    {"id":"diagnostics","from":"a1104a0","to":"9751988","firstParent":true,"title":"分阶段错误与诊断导出 · 2.12.0","types":["功能","UI","Bug","数据／契约"],"effects":["区分下发失败／状态确认失败／等待温度超时","新增本地诊断 JSON 导出，支持历史执行"],"data":"ExecutionFailure／诊断契约＋步骤 JSON；无 SQL 迁移"}
-  ]
+    {
+      "id": "state",
+      "title": "停止交互与执行状态",
+      "types": [
+        "UI",
+        "Bug",
+        "数据／契约"
+      ],
+      "effects": [
+        "修复停止进度环、曲线切换隔离、循环序号",
+        "统一执行状态和曲线生命周期"
+      ],
+      "data": "执行状态语义／生命周期；不是 SQL 迁移",
+      "commits": [
+        "8090adf059785ea0df423f3eb51da61be46b7e69",
+        "f87651b3e94b721ace75525bec9ecb9bfa178cb1",
+        "0ef2a325e7b05ccc6d8abbaab0ac999862486d03",
+        "c78c745f99874c0daad9c3a2656cf981173a2a4d",
+        "0d4c8d3344d58ab8a309735b7ebf44a01be04ec2"
+      ]
+    },
+    {
+      "id": "core",
+      "title": "运行时与整体优化 · 至 2.2.1",
+      "types": [
+        "UI",
+        "Bug",
+        "功能",
+        "数据／契约",
+        "工程"
+      ],
+      "effects": [
+        "新增 CLI／代理接入，重做执行步骤浏览",
+        "修复配置竞态；统一报告契约和数据库迁移"
+      ],
+      "data": "SQL 迁移 user_version=1；共享报告与执行契约",
+      "commits": [
+        "cbd8f585697a995f915b9f0fbe612690b10e2448",
+        "27a51773638a3cab94cf4b0e86e869e7f0d7e0cb",
+        "7e48c2e52623ea016db301e4f17c1470df1e3ec9",
+        "47e4ed6189701219516ca7377f61b04d2660c03c",
+        "98dd0ac94b8cd204ab0264a28dcc53f914aaa936",
+        "79625395d26efd12cba73c6ed96d07cec5158b55",
+        "7b8828d547c88119650867d0c12877c58fb578af",
+        "bd63b0950e126f24ba829d83c61deb3af7ae672e"
+      ]
+    },
+    {
+      "id": "docs",
+      "title": "研究与文档治理",
+      "types": [
+        "文档"
+      ],
+      "effects": [
+        "核查厂商材料、来源链和文档归属",
+        "材料迁出；不代表增加真机能力"
+      ],
+      "data": "无应用数据结构变化",
+      "commits": [
+        "a68d0f655e11ffbb5159378aae366b9d4ae97366",
+        "9ab9a8dd94ddd4dada297362c8da6745a22c660a",
+        "837724f0146520f10775f8289f1cf1bf9d60df6f",
+        "9391309a9206527f12f1eb3c8d0a787f60434bfe",
+        "b732befdb9c74dd4df3d6b4515758aade2b47fab",
+        "3fbf1aec2554d9ecffeee4417d8baf5984c1ca2b",
+        "b084759e2c8e7558cad55f0731f649c7133d95c9",
+        "4efc9bbe9931bf660613cef1de4ee0c7fa511616",
+        "7dd9cdaf093b666e87d021c610b23d60f7e457a2",
+        "284bdaa4232df8b50f835d8c544dcc18247e5f2a",
+        "4aa39eefc3990c91457ff9d0b1d106b8bcf63337",
+        "e926d0f569bb8227938aa76afe904f6e83903da2",
+        "d70086e3c659bbaa081d64043091d47c4e05a897"
+      ]
+    },
+    {
+      "id": "theme",
+      "title": "亮色主题与背景偏好",
+      "types": [
+        "UI",
+        "Bug",
+        "功能",
+        "数据／契约",
+        "文档"
+      ],
+      "effects": [
+        "玻璃层次、语义配色、动态背景与主题联动",
+        "新增背景配色偏好；修复文字／浮层显示"
+      ],
+      "data": "偏好配置扩展；不是 SQL 迁移",
+      "commits": [
+        "28826d795007e6eb53458b591cd0ba300574d401",
+        "df228f08248eba3f2a1ec6edc245cbc85fdf6f19",
+        "9747a58febd3baa792c7005efcf66c0e1d885265",
+        "068a07b238ea8d0622a31da3d0aa69023b3bccba",
+        "f8c7c74ccc3117a956cb1150449dffdc584c4bfe",
+        "31fcbf77a02dbf74862283533fac28a1ca4757f9",
+        "418cced3582a050654ee04564b54e97b80291193",
+        "3ce2d3ddcf8d64db69b1e91dc6fbc6cc2affae54",
+        "1d336f478cbeccf78723b2cf788552401313ab6d",
+        "ab1d6a34dae82cd90a4e52dfe8e14bab1deed46b",
+        "4b881019c5341604be70796eaf7fd743ea2c78af",
+        "94a30e190015580f3c2a42d427af80051f04cdd0",
+        "726506ea97b4183ea701b834a40bd326d004d3af",
+        "c3e81839962702722dcd4d60f903b0235c6458e2",
+        "2f977e002cb40e0a4334351a75a41a7f8f95f08c",
+        "d8002ddb6669fb3ee0119702d45c0ac19943d6af",
+        "3918e357062d9b62015ec7d8afdf027279ea8a9a",
+        "5b016f182a0b28a7182d78efeb025595afd5e2cc",
+        "d8395ae81f3e4bc9a6820b5b55060e0f26fa77b2",
+        "c11e6298d6f3136e4989dc3be261e5296f952a97",
+        "23300e8d7a096932fd125082adfa97d11b630354",
+        "ef574d0a7ece1469a480e3e624aec541870d1e31",
+        "be9b5d003a66a3226ccf6bcd46052636d9e87198",
+        "485b88e7c6c7274ad95b79b6a85c485c3d9b28eb",
+        "0632fb5873703ed40c01bf734833ebebc2c8b3ef",
+        "d3431b0c1870a03235351319cd17dbad9b7ef528",
+        "413f54934443bdbd3cb3fe99cc1087fe3a94b91e",
+        "ced09a32e5800f84eb89f5a0e81d6cc03721d3b8",
+        "c243c9984577e8ad52c25f21189c7a39317673b4",
+        "8db3c23872748d05842cb15bc285bdd38a0676dd",
+        "732d292c75bec940e5486ad12ccb228806259ed9",
+        "7ada40a0c70b8972883de1c058addf747a588b99",
+        "8ffee13b8c9f269a360733ad8b74756149bcfcfb",
+        "eaa291cafa8c8a8b9a80c6664f180c9222d85d26",
+        "18208aa2de5cc04f13bc5f63c3199a317b9b1ab5",
+        "4cd959738619349d68ad8eabf783b6f17b68f22b",
+        "d56ecbb8a7951dce53723eea4368ccb047ee4c2d",
+        "1cc4708ef0cca72a5cbb92c38e1333f03dc8f843",
+        "db5f56ac5e0031fb3ba3e57fd3466c6fafad11ec",
+        "15130695e65f4dc2bf4773d599dae328cb30d22c",
+        "e41a7b88a4afb637e7a603b3a1012010e11b1995",
+        "80c3cc7ae486465152f1949ed9f6997ca1284bac",
+        "a61ab6aee87908cc4a28f717fd71fba8c459c465",
+        "6be662ee8261ea56c3c51c33a0821f964e01ee3a",
+        "bc0f5f7293bc8cbfd36288f43cd4421e9ecfb84b",
+        "aebaf4c5887b8d843ab87976e0b6b9765a662843",
+        "23492b654f75a423d8f5a148367d9577999135a8",
+        "138b43a76879e38cdbcc61a74f77fb8e63978d32",
+        "22331f910907269dc2ac8163181495c13f546c2e",
+        "af19c16b6f2bb4b21b4a27c1108546f9fe341888",
+        "9ad1c7fe0d30fb8803907c4794206a42715c7b99",
+        "c016b6e604e97fd523daec586f5fe7a4e173723c"
+      ]
+    },
+    {
+      "id": "unroll",
+      "title": "展开步骤分栏支线",
+      "types": [
+        "UI",
+        "功能",
+        "文档"
+      ],
+      "effects": [
+        "Finder 分栏、子工作流和步骤号范围",
+        "精简窗口、去搜索、悬浮块"
+      ],
+      "data": "展示派生变化；执行计划仍由后端定义",
+      "branchFrom": "3918e35",
+      "forkStage": "theme",
+      "commits": [
+        "e45c76a27c70553851b35fa28002a37c99cafdd7",
+        "97bcfd7e1c6707b11573f0e64a14191ae1af0f30",
+        "78c6436bfebc0bde2d156eb9259fc6b2c0e4ff80",
+        "c672e207a66ee4f31920118ade77e1fc16a08b8f",
+        "f46ca49282a408afd6478182feb86d86051b568a",
+        "dfc6440a10d76d25ca21ca5c1cbacf9e4637ddf0",
+        "8cbe50fd1ec2f204214d19294b20ab67dbbb09cc",
+        "1e06f832da7500b9316dab7d7fde7040e45838b1",
+        "bf0bb9953e6af09a57c7974d5f1b9e5f7809b69b",
+        "2188cf19b957bda915d361e398a2ce7b9ed5b8f7"
+      ]
+    },
+    {
+      "id": "tutorial",
+      "title": "真实组件教程支线",
+      "types": [
+        "UI",
+        "功能",
+        "Bug",
+        "文档"
+      ],
+      "effects": [
+        "SOP 四章、Furnace／MFC 真实组件教学",
+        "隔离教程状态、保存恢复；删除提示修复"
+      ],
+      "data": "教程隔离存储／恢复；不是生产 SQL 迁移",
+      "branchFrom": "3fbf1ae",
+      "forkStage": "docs",
+      "commits": [
+        "bfe0b365acbcc27be4961c7590e199621b1fcf19",
+        "ae1ae0c9de550ac3b414593197a543024596c3d0",
+        "1934ce955fb7bb22e988bea396888f41afe26da9",
+        "e311dc9f52be780596ff9167ad4d8d64147b2ac3",
+        "2cda4bedc944bf1c5eb1207c9340306fca37ae45",
+        "594f83851db11750c4259037616cd8860617cb0e",
+        "1389d07d23acec54152c1b1a6b7f86a04c9a210c",
+        "5d15ce0351a36ca3038ba9e43ceaace9d3d085af",
+        "2b0da0747e1ee9a9310103b86f18c9f21c1dd924",
+        "dbce6965e60992bee04c8c09e7ac7418663730eb",
+        "1757a870da61b3fcc2b3a796b0c3d9bfa95d59e6",
+        "0bc938d5587b9f5d91288b0892de6c473aa323c3",
+        "c47140cc38bc8a22257b850e5a04166db6003a32",
+        "208d55d56095f15de2ec8bf5a94beb6df7bcc334",
+        "7faca99412e8840af9ce61f9970f8021bd33ace5",
+        "ebac6c9bbb61601a6cf575862d17db1b4a70dc93",
+        "da92e632385df4f8b0a44a3bcece38d51d96e44c"
+      ]
+    },
+    {
+      "id": "merge-unroll",
+      "title": "分栏合并 · 2.5.0",
+      "types": [
+        "合并",
+        "文档"
+      ],
+      "effects": [
+        "279a4de 汇入分栏；随后记录教程冲突"
+      ],
+      "data": "汇入既有支线，不能重复计算功能",
+      "mergeFrom": "unroll",
+      "mergeCommit": "279a4de",
+      "commits": [
+        "279a4de78e5b2c5f573a3840b3eba51d57903e2a",
+        "09461550ba2ee8cda2fdc6335eee1c9e11313b77"
+      ]
+    },
+    {
+      "id": "merge-tutorial",
+      "title": "教程合并 · 2.6.0",
+      "types": [
+        "合并"
+      ],
+      "effects": [
+        "980a7c7 汇入教程，与主题及分栏统一"
+      ],
+      "data": "汇入既有支线；包括删除节点提示修复",
+      "mergeFrom": "tutorial",
+      "mergeCommit": "980a7c7",
+      "commits": [
+        "980a7c71472a057522261dbf09df037954f991c9"
+      ]
+    },
+    {
+      "id": "finish",
+      "title": "展开详情与视觉收尾 · 2.6.4",
+      "types": [
+        "UI",
+        "文档"
+      ],
+      "effects": [
+        "参数分块／单位、逐行显示、隐藏系统边界",
+        "统一标题、背景模糊和圆角"
+      ],
+      "data": "仅隐藏展示，后端真实步骤索引仍保留",
+      "commits": [
+        "3cc1d6822f4d08f23bf1d72f3b825101658ed1be",
+        "f72db5020a2a39c0734c6ce313f21ae46952da67",
+        "12cca6c7ac94d30305580608b10995a03d44aa77",
+        "bdf85be24e5dd61143d1cc618ca735475d1f20d1",
+        "d2ce312892a0924ca5d008eceea19213edf7517c",
+        "84e48e2da5957283889e7de04562f88edac84226"
+      ]
+    },
+    {
+      "id": "audit",
+      "title": "缺陷与分支核查",
+      "types": [
+        "文档"
+      ],
+      "effects": [
+        "核查 114 更新、炉温重跑、段序、参数和删除提示",
+        "记录 report 合并范围与 simu 独立边界"
+      ],
+      "data": "研究证据；不是修复提交",
+      "commits": [
+        "a020f7890fe65957ff671dd5e174e9698dd61222",
+        "c2db63f91daf72c5233a7b30f9d2503f4107a849",
+        "399ac64e9a11ba9cb1201ae17160cc769a10ce7d",
+        "c9003a549a915cf56558bc9334463aed0ff4e106",
+        "8ae4d89132dada7f0c92947cf0ff1a9201c90464"
+      ]
+    },
+    {
+      "id": "report",
+      "title": "报告与电极面积支线",
+      "types": [
+        "UI",
+        "Bug",
+        "功能",
+        "数据／契约",
+        "文档"
+      ],
+      "effects": [
+        "交互曲线、按温度／模式分组、LSV 电压功率展示",
+        "新增有效面积归一化；报告摘要和失败参数"
+      ],
+      "data": "面积／报告契约；样品与面积为会话状态，原始曲线保留",
+      "branchFrom": "84e48e2",
+      "forkStage": "finish",
+      "commits": [
+        "5e08fb7275be54b06a7c95c4486390d2a2126816",
+        "837557ded94d81fa9c357b7a4f5dcbec69c043c9",
+        "519c5bf565b4292ee27bff0f2177197a2e3ec639",
+        "3ef727aa6780498f0f2918c2a5a35083c324bee8",
+        "3cfe8c7deb7620d23876a07e56bcc76c11d34b3b",
+        "2eed4206ea1659845d2a7e4324e1078b41bc256a",
+        "4bb6fc79c79ccb7668dbe0d7b45aecf3d0805dd1",
+        "2612b198d0c0387a05acbef2ab84df0ede0cf0af",
+        "15d309d8325778bf3d6e504d7b611ee2361efcd1",
+        "a76495d43dda67e2cbd6c2f77b46d79e96d21a24",
+        "8bc3797a63d22e84028234eda8e101d8a2365b67",
+        "23edd6f5492853317528af13ef647397129c2ca2",
+        "b2b5f5ab4e210c63e22e8847b5cfcfaa3bb2dda1",
+        "08e097b453b614bd50a4601eb21af997cd14e6b8",
+        "aa35193bad193a6bf98a83319b6c856ea492f560",
+        "c8deee65a86fc21e6f4cb650cb6a82e107e51c1a",
+        "5ecf0e043fbadd80f73de6ece62b21f1f80d8c8a",
+        "ffcf8701ba72b2fe57c96325a1b5eaab1b2cf614",
+        "e45851c1bd298176f15cfba921d18a9bbef76ab8",
+        "73d75ec8a1a2a23f29a698487c9306f69c32ef66",
+        "0fd09516f14a39202b6d0c99eed6cb7ebb7391e0",
+        "d5c89fcb8686186bd04bc7f4bfe6403cae992e98",
+        "aa1518394ac3d06debce4466c9c398fcba5490da",
+        "e0dc80b93fbf4a1fd26ca972c849562f63a7a528"
+      ]
+    },
+    {
+      "id": "merge-report",
+      "title": "报告合并 · 2.11.1",
+      "types": [
+        "合并"
+      ],
+      "effects": [
+        "f9cc5bd 无冲突合并 report，随后删除该分支名"
+      ],
+      "data": "支线提交仍在主线历史中；simu 不合并",
+      "mergeFrom": "report",
+      "mergeCommit": "f9cc5bd",
+      "commits": [
+        "f9cc5bd62fab471408ef9f1984a43cb128dd8b6c"
+      ]
+    },
+    {
+      "id": "fix",
+      "title": "电脑版缺陷修复 · 2.11.2",
+      "types": [
+        "Bug",
+        "UI"
+      ],
+      "effects": [
+        "修复温度节点重置后重跑身份校验报错",
+        "修复 C01／C02 段序与数值输入卡住"
+      ],
+      "data": "执行身份接管／输入校验；硬件寄存器映射不变",
+      "commits": [
+        "60c2f9f4b81e096e3bd3b2408c639abfa28fe249"
+      ]
+    },
+    {
+      "id": "release-docs",
+      "title": "打包验收与优化建议",
+      "types": [
+        "文档"
+      ],
+      "effects": [
+        "记录 2.11.2 安装包回归与后续建议"
+      ],
+      "data": "建议不计为已实现功能",
+      "commits": [
+        "a1f638ece0baae1d959bca81a4a97f503c8c2ea6",
+        "a1104a0ac77997331393e779ce30a37c14a7d59e"
+      ]
+    },
+    {
+      "id": "diagnostics",
+      "title": "分阶段错误与诊断导出 · 2.12.0",
+      "types": [
+        "功能",
+        "UI",
+        "Bug",
+        "数据／契约"
+      ],
+      "effects": [
+        "区分下发失败／状态确认失败／等待温度超时",
+        "新增本地诊断 JSON 导出，支持历史执行"
+      ],
+      "data": "ExecutionFailure／诊断契约＋步骤 JSON；无 SQL 迁移",
+      "commits": [
+        "9751988183db7ee7b430cf3c6675bda03fcef5dd"
+      ]
+    }
+  ],
+  "baselineAuthority": "user",
+  "baselineEvidence": "doc/research/desktop-baseline-update-tree-2026-10-07.md：用户指定从上次电脑版安装包基线扩展检查至新发布版本",
+  "versionPath": "VERSION",
+  "targetLabel": "正式发布"
 }

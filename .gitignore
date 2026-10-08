@@ -162,3 +162,6 @@ __pycache__/
 # Gemini / Antigravity 本地数据与缓存
 .gemini/
 .antigravity/
+
+# 版本演进图由个人技能生成，仓库只保存事实与快照数据
+doc/research/release-evolution/snapshots/*/release-update-tree.html
