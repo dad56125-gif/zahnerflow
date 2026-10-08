@@ -5,7 +5,7 @@
 """
 
 from pydantic import Field
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 from ._base import ContractModel
 
 
@@ -51,6 +51,31 @@ class ChartDataPoint(ContractModel):
     label: Optional[str] = Field(default=None, description="标签")
 
 
+class ExecutionFailure(ContractModel):
+    """执行失败的阶段和已确认命令事实。"""
+    code: str = Field(description="可定位错误类型的稳定错误码")
+    device: str = Field(default="furnace", description="关联设备")
+    stage: Literal["preflight", "command", "confirmation", "waiting"] = Field(description="失败阶段")
+    title: str = Field(description="中文失败标题")
+    message: str = Field(description="已确认事实的中文说明")
+    suggestion: str = Field(description="下一步检查建议，不自动重试")
+    commandOutcome: Literal["not_sent", "partial", "acknowledged", "unknown"] = Field(description="启动命令事实：未发送、部分配置已写入、已确认或结果未知")
+    originalError: str = Field(description="保留的原始异常原因")
+    details: dict = Field(default_factory=dict, description="故障发生时的参数与测量事实，不含用户设置")
+
+
+class RuntimeDiagnosticBundle(ContractModel):
+    schemaVersion: Literal[1] = Field(default=1, description="诊断导出格式版本")
+    appVersion: str = Field(description="导出时应用版本")
+    exportedAt: str = Field(description="导出时间")
+    runtimeId: str = Field(description="导出时后端进程身份")
+    system: dict = Field(description="操作系统及运行环境")
+    execution: Optional[dict] = Field(default=None, description="选定执行的持久化步骤及故障事实")
+    deviceSnapshots: list[dict] = Field(default_factory=list, description="导出时的设备快照，不能当成故障发生时状态")
+    runtimeEvents: list[dict] = Field(default_factory=list, description="限定范围的设备生命周期记录")
+    commandLogs: dict = Field(default_factory=dict, description="当前进程有限条设备命令日志；重启后可能为空")
+
+
 class NotificationMessage(ContractModel):
     """
     通知消息
@@ -64,6 +89,8 @@ class NotificationMessage(ContractModel):
     timestamp: str = Field(description="时间")
     duration: Optional[int] = Field(default=None, description="显示时长 (毫秒)")
     details: Optional[Any] = Field(default=None, description="额外错误详情")
+    executionId: Optional[str] = Field(default=None, description="关联执行，供重置后导出历史诊断")
+    failure: Optional[ExecutionFailure] = Field(default=None, description="结构化失败事实；普通通知可为空")
 
 
 class HistoryQueryParams(ContractModel):

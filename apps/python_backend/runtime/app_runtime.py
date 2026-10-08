@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import math
 import time
 import uuid
 from datetime import datetime, timezone
@@ -67,6 +68,7 @@ class AppRuntime:
             "loopProgress": [],
             "results": [],
             "error": None,
+            "failure": None,
         }
         self._execution_started_at: str | None = None
         self._execution_timeline: dict | None = None
@@ -513,6 +515,7 @@ class AppRuntime:
                 "loopProgress": payload.get("loopProgress", self.experiment_state.get("loopProgress", [])),
                 "results": payload.get("results", self.experiment_state.get("results", [])),
                 "error": payload.get("error", self.experiment_state.get("error")),
+                "failure": payload.get("failure", self.experiment_state.get("failure")),
                 "timestamp": now,
             }
         )
@@ -540,6 +543,7 @@ class AppRuntime:
         self.experiment_state["nodeTimings"] = []
         self.experiment_state["loopProgress"] = []
         self.experiment_state["results"] = []
+        self.experiment_state["failure"] = None
         await self.on_experiment_state(
             {
                 "executionId": payload.get("executionId"),
@@ -555,6 +559,7 @@ class AppRuntime:
                 "duration": 0,
                 "eta": self._eta_snapshot(now),
                 "error": None,
+                "failure": None,
             }
         )
 
@@ -773,6 +778,7 @@ class AppRuntime:
                 "nodeTimings": node_timings,
                 "results": results,
                 "error": (data.get("error") or data.get("reason")) if data and status == "failed" else None,
+                "failure": data.get("failure") if data and status == "failed" else None,
             }
         )
 
@@ -781,6 +787,7 @@ class AppRuntime:
         status = payload.get("status")
         duration_ms = payload.get("durationMs")
         error = payload.get("error")
+        failure = payload.get("failure") if status == "failed" else None
         if not is_terminal_execution_status(status):
             raise ValueError(f"Execution finished with non-terminal status: {status}")
         if exec_id:
@@ -797,6 +804,7 @@ class AppRuntime:
                 "loopProgress": self.experiment_state.get("loopProgress", []),
                 "results": self.experiment_state.get("results", []),
                 "error": error,
+                "failure": failure,
                 "timestamp": now,
             }
         )
@@ -808,6 +816,7 @@ class AppRuntime:
                 "status": status,
                 "durationMs": duration_ms,
                 "error": error,
+                "failure": failure,
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             },
         )
@@ -835,11 +844,15 @@ class AppRuntime:
                 "message": f"{self.experiment_state.get('workflowName') or exec_id} 状态：{status}",
             },
         )
+        if failure:
+            notification_copy.update({"title": failure["title"], "message": failure["message"]})
         await self.emit(
             WORKFLOW_NOTIFICATION,
             {
                 "id": f"notification_{int(time.time() * 1000)}",
                 **notification_copy,
+                "executionId": exec_id,
+                "failure": failure,
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "details": {
                     "durationMs": duration_ms,
@@ -1166,12 +1179,14 @@ class AppRuntime:
         status = await asyncio.to_thread(self.devices.furnace_status)
         if not status.get("connected"):
             raise RuntimeError("Furnace status confirmation reported disconnected")
+        if type(status.get("pv")) not in (int, float) or not math.isfinite(status["pv"]):
+            raise RuntimeError("Furnace status confirmation missing or invalid pv")
         return await self._finish_furnace_action("run" if action == "run" else "stop", status, execution_id=execution_id)
 
     def confirm_furnace_action_from_worker(self, action: str, execution_id: str | None = None) -> dict | None:
         """在执行器工作线程中同步等待 AppRuntime 确认业务状态。"""
         if not self.loop or self.loop.is_closed():
-            return None
+            raise RuntimeError("Furnace runtime confirmation loop unavailable")
         future = asyncio.run_coroutine_threadsafe(
             self.furnace_external_action(action, execution_id=execution_id),
             self.loop,
@@ -1345,6 +1360,7 @@ class AppRuntime:
                 "loopProgress": [],
                 "results": [],
                 "error": None,
+                "failure": None,
             }
         )
         self._execution_started_at = None

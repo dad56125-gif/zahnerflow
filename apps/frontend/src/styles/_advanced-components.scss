@@ -117,6 +117,18 @@
   overflow: hidden; text-overflow: ellipsis;
 }
 
+.notification__message--failure { display: block; overflow: visible; -webkit-line-clamp: unset; }
+.notification__diagnostics { margin-bottom: var(--size-sm); }
+.notification__failure { display: flex; flex-direction: column; align-items: flex-start; gap: var(--size-xs); margin-top: var(--size-xs); }
+.notification__command-fact { font-size: var(--size-xs); color: var(--text-primary); font-weight: 600; }
+.notification__suggestion { font-size: var(--size-xs); color: var(--text-secondary); line-height: 1.5; }
+.notification__technical { margin-top: var(--size-xs); max-width: 100%; font-size: var(--size-xs); color: var(--text-secondary); }
+.notification__technical summary { cursor: pointer; }
+.notification__details { overflow-wrap: anywhere; }
+.diagnostic-export { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--size-xs); }
+.diagnostic-export__feedback { font-size: var(--size-xs); color: var(--text-secondary); }
+.diagnostic-export__feedback--error { color: var(--color-error); }
+
 .notification__details {
   margin: var(--size-xs) 0 0;
   padding: var(--size-xs);

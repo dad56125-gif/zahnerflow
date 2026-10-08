@@ -102,6 +102,8 @@ if (typeof window !== 'undefined') {
       message: data.message,
       timestamp: data.timestamp,
       details: data.details,
+      executionId: data.executionId,
+      failure: data.failure,
     });
   });
 }

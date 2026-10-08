@@ -176,7 +176,7 @@ def generate():
     )
     from contracts.common import (
         DeviceConnectionStatus, DeviceError, LogEntry, LogEntryType,
-        ChartDataPoint, NotificationMessage, HistoryQueryParams,
+        ChartDataPoint, ExecutionFailure, RuntimeDiagnosticBundle, NotificationMessage, HistoryQueryParams,
     )
     from contracts.runtime_device import (
         RuntimeDeviceState, RuntimeDeviceStatusEnvelope,
@@ -233,6 +233,7 @@ def generate():
         " * 自动生成 — 勿手动修改",
         f" * 来源: apps/shared/contracts/workflow.py",
         " */",
+        "import type { ExecutionFailure } from './common.js';",
         "",
     ]
     for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming, LoopProgress,
@@ -284,7 +285,7 @@ def generate():
         " */",
         "",
     ]
-    for model in [DeviceError, LogEntry, ChartDataPoint, NotificationMessage, HistoryQueryParams]:
+    for model in [DeviceError, LogEntry, ChartDataPoint, ExecutionFailure, RuntimeDiagnosticBundle, NotificationMessage, HistoryQueryParams]:
         common_content.append(model_to_interface(model))
         common_content.append("")
 

@@ -2,14 +2,16 @@
 
 import asyncio
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 
 from runtime.app_runtime import DEVICE_CAPABILITIES, runtime
+from runtime.diagnostics import build_runtime_diagnostics
 from runtime.execution_semantics import (
     ADVANCED_MEASUREMENT_TYPES, STRUCTURAL_NODE_TYPES, NODE_EXECUTION_SPECS,
     EXECUTION_PHASES,
 )
 from shared.contracts.events import WORKFLOW_SNAPSHOT
+from shared.contracts.common import RuntimeDiagnosticBundle
 from shared.contracts.protocol import API_VERSION, REPORT_VERSION
 from shared.contracts.workflow import ExecutionSnapshot, ExecutionStartRequest, ExecutionPreviewRequest
 from version import APP_VERSION
@@ -20,6 +22,14 @@ router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 @router.get("/snapshot", response_model=ExecutionSnapshot)
 async def get_runtime_snapshot():
     return runtime.execution_snapshot()
+
+
+@router.get("/diagnostics", response_model=RuntimeDiagnosticBundle)
+def get_runtime_diagnostics(executionId: str | None = Query(default=None, max_length=256)):
+    try:
+        return build_runtime_diagnostics(runtime, executionId)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Execution not found") from exc
 
 
 @router.get("/devices")

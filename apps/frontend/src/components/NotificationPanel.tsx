@@ -3,6 +3,7 @@ import { ModalLayer } from './shared/OverlayLayer';
 import { useAppStore } from '../state/appStore';
 import { UiIconSvg } from './shared/UiIconSvg';
 import type { UiIconName } from './shared/uiIcons';
+import { DiagnosticExportButton } from './diagnostics/DiagnosticExportButton';
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -48,6 +49,16 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
     return typeof details === 'string' ? details : JSON.stringify(details, null, 2);
   };
 
+  const temperatureFacts = (details: Record<string, unknown>) => {
+    const parameters = details.parameters && typeof details.parameters === 'object'
+      ? details.parameters as Record<string, unknown> : {};
+    const facts: string[] = [];
+    if (typeof parameters.targetTemperature === 'number' && Number.isFinite(parameters.targetTemperature)) facts.push(`目标 ${parameters.targetTemperature} °C`);
+    if (typeof details.pv === 'number' && Number.isFinite(details.pv)) facts.push(`最近温度 ${details.pv} °C`);
+    if (typeof details.elapsedSeconds === 'number' && Number.isFinite(details.elapsedSeconds)) facts.push(`已等待 ${Math.round(details.elapsedSeconds)} 秒`);
+    return facts.join(' · ');
+  };
+
   return (
     <ModalLayer
       open={isOpen}
@@ -89,6 +100,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
           </div>
 
           <div className="notification__content">
+            <div className="notification__diagnostics"><DiagnosticExportButton label="导出当前诊断日志" /></div>
             {notifications.length === 0 ? (
               <div className="notification__empty">
                 <div className="notification__empty-icon"><UiIconSvg name="inbox" /></div>
@@ -105,10 +117,27 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, on
                   </div>
                     <div className="notification__body">
                       <div className="notification__item-title">{notification.title}</div>
-                      <div className="notification__message">{notification.message}</div>
-                      {notification.details != null && (
-                        <pre className="notification__details">{formatDetails(notification.details)}</pre>
+                      <div className={`notification__message${notification.failure ? ' notification__message--failure' : ''}`}>{notification.message}</div>
+                      {notification.failure ? (
+                        <div className="notification__failure">
+                          <div className="notification__command-fact">
+                            {({ not_sent: '启动命令尚未发送', partial: '部分参数已写入，启动命令尚未确认', acknowledged: '启动命令已收到设备回执', unknown: '启动命令结果未知，炉子可能已运行' } as const)[notification.failure.commandOutcome]}
+                          </div>
+                          {temperatureFacts(notification.failure.details) && <div className="notification__suggestion">{temperatureFacts(notification.failure.details)}</div>}
+                          <div className="notification__suggestion">{notification.failure.suggestion}</div>
+                          <DiagnosticExportButton executionId={notification.executionId} />
+                          <details className="notification__technical">
+                            <summary>查看技术详情</summary>
+                            <pre className="notification__details">{formatDetails({ code: notification.failure.code, stage: notification.failure.stage, originalError: notification.failure.originalError, ...notification.failure.details })}</pre>
+                          </details>
+                        </div>
+                      ) : notification.details != null && (
+                        <details className="notification__technical">
+                          <summary>查看详情</summary>
+                          <pre className="notification__details">{formatDetails(notification.details)}</pre>
+                        </details>
                       )}
+                      {!notification.failure && notification.type === 'error' && notification.executionId && <DiagnosticExportButton executionId={notification.executionId} />}
                       <div className="notification__time">
                         {formatTimestamp(notification.timestamp)}
                       </div>

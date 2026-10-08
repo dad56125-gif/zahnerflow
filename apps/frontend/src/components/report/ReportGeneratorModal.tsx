@@ -9,6 +9,7 @@ import type { ExecutionReport } from '@zahnerflow/types';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SplitPaneModal, SplitPaneModalItem } from '../shared/SplitPaneModal';
+import { DiagnosticExportButton } from '../diagnostics/DiagnosticExportButton';
 import { runtimeClient } from '../../runtimeClient';
 import { useCanvasStore } from '../../state/canvasStore';
 import { useWorkflowStore } from '../../state/currentWorkflowStore';
@@ -846,6 +847,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                 </>
               )}
 
+              {selectedRunId && <DiagnosticExportButton key={selectedRunId} executionId={selectedRunId} />}
       </>}
       sidebar={renderSidebar()}
     >

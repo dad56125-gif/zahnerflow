@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Optional
 
 from devices.furnace.limits import validate_furnace_temperature
+from runtime.execution_failure import ExecutionFailureError, TemperatureTargetTimeout, temperature_failure
 from runtime.execution_eta import params_for_eta
 from runtime.execution_planner import ExecutionPlan
 from runtime.execution_semantics import (
@@ -255,6 +256,9 @@ class ExecutionEngine:
                     raise
                 except Exception as e:
                     if not step_finished:
+                        failure_data = {"error": str(e)}
+                        if isinstance(e, ExecutionFailureError):
+                            failure_data["failure"] = e.failure
                         await self.runtime.on_execution_step_finished(
                             {
                                 "executionId": execution_id,
@@ -263,7 +267,7 @@ class ExecutionEngine:
                                 "nodeId": node.get("id"),
                                 "iterationPath": step.get("iterationPath", []),
                                 "status": "failed",
-                                "data": {"error": str(e)},
+                                "data": failure_data,
                             }
                         )
                     raise
@@ -276,6 +280,7 @@ class ExecutionEngine:
                     "status": "completed",
                     "durationMs": duration_ms,
                     "error": None,
+                    "failure": None,
                     "summary": {"total_steps": total_steps},
                 }
             )
@@ -283,7 +288,10 @@ class ExecutionEngine:
             duration_ms = int((time.time() - start_time) * 1000)
             final_status = (
                 "cancelled"
-                if isinstance(e, WorkflowCancelled) or self._cancel_requested or self.status in ("cancelled", "cancelling")
+                if isinstance(e, WorkflowCancelled) or (
+                    not isinstance(e, ExecutionFailureError)
+                    and (self._cancel_requested or self.status in ("cancelled", "cancelling"))
+                )
                 else "failed"
             )
             self.status = final_status
@@ -293,6 +301,7 @@ class ExecutionEngine:
                     "status": final_status,
                     "durationMs": duration_ms,
                     "error": str(e),
+                    "failure": e.failure if final_status == "failed" and isinstance(e, ExecutionFailureError) else None,
                     "summary": {},
                 }
             )
@@ -357,106 +366,179 @@ class ExecutionEngine:
                 raise WorkflowCancelled("Temperature change cancelled by user")
 
         def do_change():
-            require_current_run()
-            status = self.devices.furnace_status()
-            current_temp = float(status.get("pv", 25.0))
-            target_temp = validate_furnace_temperature(params.get("targetTemperature"), "targetTemperature")
-            rate = float(params.get("rate", 5))
-            tolerance = max(0.0, float(params.get("tolerance", 0.5)))
-            stabilization_time = max(0.0, float(params.get("stabilizationTime", 30)))
-            cooling_linear_floor = float(params.get("coolingLinearFloor", 500) or 500)
-
-            program_minutes = estimate_temperature_program_minutes(
-                current_temp=current_temp,
-                target_temp=target_temp,
-                rate=rate,
+            stage = "preflight"
+            parameter_keys = (
+                "targetTemperature", "rate", "tolerance", "stabilizationTime", "coolingLinearFloor",
+                "temperatureProgressExtensionSeconds", "temperatureStallTimeoutSeconds", "maxTemperatureWaitSeconds",
             )
-            estimated_ramp_minutes = estimate_temperature_ramp_minutes(
-                current_temp=current_temp,
-                target_temp=target_temp,
-                rate=rate,
-                tolerance=tolerance,
-                cooling_linear_floor=cooling_linear_floor,
-            )
-            program_duration = int(math.ceil(program_minutes))
-            require_current_run()
-            # AI-518P program temperatures use raw tenths of a degree, including
-            # the reserved 28-30 scratch segments used by this node.
-            self.devices.furnace_write_param(0x50, int(round(current_temp * 10)))
-            self.devices.furnace_write_param(0x51, program_duration)
-            self.devices.furnace_write_param(0x52, int(round(target_temp * 10)))
-            self.devices.furnace_write_param(0x53, 5001)
-            self.devices.furnace_write_param(0x54, int(round(target_temp * 10)))
-            self.devices.furnace_write_param(0x00, 28)
-            require_current_run()
-            self.devices.furnace_write_param(0x15, 0)
-            confirm_furnace_action = getattr(self.runtime, "confirm_furnace_action_from_worker", None)
-            if callable(confirm_furnace_action):
-                confirm_furnace_action("run", execution_id)
+            details = {
+                "executionId": execution_id,
+                "parameters": {key: params[key] for key in parameter_keys if key in params},
+                "pv": None,
+                "writeAttemptCount": 0,
+                "acknowledgedWriteCount": 0,
+                "runCommandAttempted": False,
+                "runCommandAcknowledged": False,
+                "runStateConfirmed": False,
+                "confirmedWrites": [],
+            }
 
-            base_wait_s = estimated_ramp_minutes * 60 + stabilization_time
-            min_extension_s = float(params.get("temperatureProgressExtensionSeconds", 600) or 600)
-            stall_timeout_s = float(params.get("temperatureStallTimeoutSeconds", 1800) or 1800)
-            hard_cap_s = float(
-                params.get(
-                    "maxTemperatureWaitSeconds",
-                    max(base_wait_s * 4.0, base_wait_s + 3600.0, 21600.0),
-                )
-            )
-            start = time.monotonic()
-            deadline = start + base_wait_s
-            hard_deadline = start + hard_cap_s
-            best_distance = abs(current_temp - target_temp)
-            last_progress_at = start
-            progress_epsilon = max(0.25, tolerance * 0.25)
-            samples: list[tuple[float, float]] = [(start, current_temp)]
+            def command_outcome():
+                if details["runCommandAcknowledged"]:
+                    return "acknowledged"
+                if details["runCommandAttempted"]:
+                    return "unknown"
+                if details["acknowledgedWriteCount"]:
+                    return "partial"
+                return "not_sent"
 
-            while True:
-                if self._cancel_requested:
+            def write_param(code, value, *, allow_cancelled=False):
+                if allow_cancelled:
                     self.runtime.require_furnace_execution(execution_id)
-                    self.devices.furnace_write_param(0x15, 12)
-                    confirm_furnace_action = getattr(self.runtime, "confirm_furnace_action_from_worker", None)
-                    if callable(confirm_furnace_action):
-                        confirm_furnace_action("stop", execution_id)
-                    raise WorkflowCancelled("Temperature change cancelled by user")
-                time.sleep(2.0)
+                else:
+                    require_current_run()
+                details["lastCommand"] = {"code": code, "register": f"0x{code:02X}", "value": value, "acknowledged": False}
+                details["writeAttemptCount"] += 1
+                is_run = code == 0x15 and value == 0
+                if is_run:
+                    details["runCommandAttempted"] = True
+                receipt = self.devices.furnace_write_param(code, value)
+                details["lastWriteResponse"] = receipt
+                # 驱动在写命令响应后读取寄存器；value 是回读值，瞬态运行指令
+                # 不要求回读值等于写入值。只确认取得了驱动定义的有效响应。
+                if not isinstance(receipt, dict) or any(
+                    type(receipt.get(key)) not in (int, float) or not math.isfinite(receipt[key])
+                    for key in ("value", "pv")
+                ):
+                    raise RuntimeError("Furnace write response missing or invalid")
+                details["acknowledgedWriteCount"] += 1
+                details["confirmedWrites"].append({"code": code, "value": value})
+                details["lastWriteAcknowledgement"] = receipt
+                details["lastCommand"]["acknowledged"] = True
+                if "pv" in receipt:
+                    details["pv"] = receipt["pv"]
+                if is_run:
+                    details["runCommandAcknowledged"] = True
+
+            def finite_number(value, name):
+                number = float(value)
+                if not math.isfinite(number):
+                    raise ValueError(f"{name} must be finite")
+                return number
+
+            try:
+                require_current_run()
                 status = self.devices.furnace_status()
-                now = time.monotonic()
-                pv = float(status.get("pv", current_temp))
-                distance = abs(pv - target_temp)
-                samples.append((now, pv))
-                samples = [sample for sample in samples if now - sample[0] <= 300.0]
-
-                if distance <= tolerance:
-                    return {
-                        "reached": True,
-                        "targetTemperature": target_temp,
-                        "finalTemperature": pv,
-                        "tolerance": tolerance,
-                        "elapsedSeconds": now - start,
-                    }
-
-                if distance < best_distance - progress_epsilon:
-                    best_distance = distance
-                    last_progress_at = now
-
-                remaining_s = estimate_remaining_temperature_seconds(samples, target_temp, tolerance)
-                if remaining_s is not None and remaining_s > 0:
-                    adaptive_deadline = now + remaining_s * 1.5 + stabilization_time
-                    deadline = min(hard_deadline, max(deadline, adaptive_deadline))
-
-                if now < deadline:
-                    continue
-
-                if now - last_progress_at <= stall_timeout_s and now < hard_deadline:
-                    deadline = min(hard_deadline, now + min_extension_s)
-                    continue
-
-                raise RuntimeError(
-                    "Furnace temperature did not approach target "
-                    f"{target_temp:.1f}C within the adaptive wait window; "
-                    f"last pv={pv:.1f}C, tolerance={tolerance:.1f}C"
+                details["lastDeviceStatus"] = status
+                if not status.get("connected"):
+                    raise RuntimeError("Furnace not connected")
+                if "pv" not in status:
+                    raise RuntimeError("Furnace status response missing pv before temperature command")
+                current_temp = finite_number(status["pv"], "pv")
+                details["pv"] = current_temp
+                target_temp = validate_furnace_temperature(params.get("targetTemperature"), "targetTemperature")
+                rate = finite_number(params.get("rate", 5), "rate")
+                tolerance = max(0.0, finite_number(params.get("tolerance", 0.5), "tolerance"))
+                stabilization_time = max(0.0, finite_number(params.get("stabilizationTime", 30), "stabilizationTime"))
+                cooling_linear_floor = finite_number(params.get("coolingLinearFloor", 500) or 500, "coolingLinearFloor")
+                program_minutes = estimate_temperature_program_minutes(current_temp, target_temp, rate)
+                estimated_ramp_minutes = estimate_temperature_ramp_minutes(
+                    current_temp, target_temp, rate, tolerance, cooling_linear_floor,
                 )
+                program_duration = int(math.ceil(program_minutes))
+                base_wait_s = estimated_ramp_minutes * 60 + stabilization_time
+                min_extension_s = finite_number(params.get("temperatureProgressExtensionSeconds", 600) or 600, "temperatureProgressExtensionSeconds")
+                stall_timeout_s = finite_number(params.get("temperatureStallTimeoutSeconds", 1800) or 1800, "temperatureStallTimeoutSeconds")
+                hard_cap_s = finite_number(params.get("maxTemperatureWaitSeconds", max(base_wait_s * 4.0, base_wait_s + 3600.0, 21600.0)), "maxTemperatureWaitSeconds")
+                details["parameters"].update({
+                    "targetTemperature": target_temp, "rate": rate, "tolerance": tolerance,
+                    "stabilizationTime": stabilization_time, "coolingLinearFloor": cooling_linear_floor,
+                    "temperatureProgressExtensionSeconds": min_extension_s,
+                    "temperatureStallTimeoutSeconds": stall_timeout_s, "maxTemperatureWaitSeconds": hard_cap_s,
+                })
+                details.update({"initialPv": current_temp, "programDurationMinutes": program_duration, "estimatedRampMinutes": estimated_ramp_minutes})
+                require_current_run()
+                stage = "command"
+                # scratch 温度寄存器保持 0.1℃ 编码，程序时间仅取设定速率。
+                for code, value in (
+                    (0x50, int(round(current_temp * 10))), (0x51, program_duration),
+                    (0x52, int(round(target_temp * 10))), (0x53, 5001),
+                    (0x54, int(round(target_temp * 10))), (0x00, 28), (0x15, 0),
+                ):
+                    write_param(code, value)
+                stage = "confirmation"
+                self.runtime.confirm_furnace_action_from_worker("run", execution_id)
+                details["runStateConfirmed"] = True
+                stage = "waiting"
+                start = time.monotonic()
+                deadline = start + base_wait_s
+                hard_deadline = start + hard_cap_s
+                best_distance = abs(current_temp - target_temp)
+                last_progress_at = start
+                progress_epsilon = max(0.25, tolerance * 0.25)
+                samples: list[tuple[float, float]] = [(start, current_temp)]
+
+                while True:
+                    details["elapsedSeconds"] = time.monotonic() - start
+                    if self._cancel_requested:
+                        stage = "command"
+                        # 取消时仍允许当前 execution 停止炉子；不重新发送 run。
+                        write_param(0x15, 12, allow_cancelled=True)
+                        stage = "confirmation"
+                        self.runtime.confirm_furnace_action_from_worker("stop", execution_id)
+                        raise WorkflowCancelled("Temperature change cancelled by user")
+                    time.sleep(2.0)
+                    details["elapsedSeconds"] = time.monotonic() - start
+                    try:
+                        status = self.devices.furnace_status()
+                        details["lastDeviceStatus"] = status
+                        if not status.get("connected"):
+                            raise RuntimeError("Furnace status reported disconnected while waiting")
+                        if "pv" not in status:
+                            raise RuntimeError("Furnace status response missing pv while waiting")
+                        pv = finite_number(status["pv"], "pv")
+                    except WorkflowCancelled:
+                        raise
+                    except Exception as error:
+                        raise temperature_failure(
+                            error, stage, command_outcome(), details,
+                            code="FURNACE_TEMPERATURE_STATUS_READ_FAILED",
+                        ) from error
+                    now = time.monotonic()
+                    details.update({"pv": pv, "elapsedSeconds": now - start})
+                    distance = abs(pv - target_temp)
+                    samples.append((now, pv))
+                    samples = [sample for sample in samples if now - sample[0] <= 300.0]
+                    if distance <= tolerance:
+                        return {
+                            "reached": True, "targetTemperature": target_temp, "finalTemperature": pv,
+                            "tolerance": tolerance, "elapsedSeconds": now - start,
+                        }
+                    if distance < best_distance - progress_epsilon:
+                        best_distance = distance
+                        last_progress_at = now
+                    remaining_s = estimate_remaining_temperature_seconds(samples, target_temp, tolerance)
+                    if remaining_s is not None and remaining_s > 0:
+                        adaptive_deadline = now + remaining_s * 1.5 + stabilization_time
+                        deadline = min(hard_deadline, max(deadline, adaptive_deadline))
+                    details.update({"waitDeadlineSeconds": deadline - start, "hardDeadlineSeconds": hard_cap_s, "lastProgressSeconds": last_progress_at - start})
+                    if now < deadline:
+                        continue
+                    if now - last_progress_at <= stall_timeout_s and now < hard_deadline:
+                        deadline = min(hard_deadline, now + min_extension_s)
+                        continue
+                    raise TemperatureTargetTimeout(
+                        "Furnace temperature did not approach target "
+                        f"{target_temp:.1f}C within the adaptive wait window; "
+                        f"last pv={pv:.1f}C, tolerance={tolerance:.1f}C"
+                    )
+            except (WorkflowCancelled, ExecutionFailureError):
+                raise
+            except Exception as error:
+                raise temperature_failure(
+                    error, stage, command_outcome(), details,
+                    code="FURNACE_TEMPERATURE_TARGET_TIMEOUT" if isinstance(error, TemperatureTargetTimeout) else None,
+                ) from error
 
         return await asyncio.to_thread(do_change)
 

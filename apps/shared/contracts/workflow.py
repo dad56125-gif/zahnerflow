@@ -8,6 +8,7 @@
 from pydantic import Field, ConfigDict, StrictInt
 from typing import Optional, List, Any, Literal
 from ._base import ContractModel
+from .common import ExecutionFailure
 
 
 # ==================== 基础枚举 ====================
@@ -221,6 +222,7 @@ class ExecutionSnapshot(ContractModel):
     nodeTimings: List[NodeTiming] = Field(default_factory=list, description="本次执行的节点级计时记录")
     loopProgress: List[LoopProgress] = Field(default_factory=list, description="本次执行的循环进度")
     error: Optional[str] = Field(default=None, description="错误信息")
+    failure: Optional[ExecutionFailure] = Field(default=None, description="当前执行结构化失败事实")
     timestamp: str = Field(description="快照时间")
     results: Optional[List[Any]] = Field(default=None, description="节点执行结果")
 

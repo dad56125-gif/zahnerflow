@@ -3,6 +3,7 @@
  * 自动生成 — 勿手动修改
  * 来源: apps/shared/contracts/workflow.py
  */
+import type { ExecutionFailure } from './common.js';
 
 export interface WorkflowNode {
   /** 唯一标识 (如 node-1) */
@@ -280,6 +281,8 @@ export interface ExecutionSnapshot {
   loopProgress?: LoopProgress[];
   /** 错误信息 */
   error?: string | null;
+  /** 当前执行结构化失败事实 */
+  failure?: ExecutionFailure | null;
   /** 快照时间 */
   timestamp: string;
   /** 节点执行结果 */
