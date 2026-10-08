@@ -19,7 +19,7 @@
 
 ## 最终电脑版
 
-远端发布（2026-10-08）：用户已授权推送主线与发布电脑版。当前正在核验已有最终安装包、推送主线和 `release/v2.12.0` 标签并创建 GitHub Release；远端发布尚未完成。发布源码固定为 `9751988`，后续主线文档提交不改变该安装包身份。
+远端发布（2026-10-08）：用户授权后已推送主线与 `release/v2.12.0` 标签，并公开发布 [ZahnerFlow 2.12.0 电脑版](https://github.com/dad56125-gif/zahnerflow/releases/tag/release/v2.12.0)，设为最新正式 Release，附安装包与 SHA256 文件。GitHub 安装包资产为 `uploaded`，169,564,792 字节，其服务端 SHA256 与本地最终产物一致；远端标签解引用与 Release 目标均为 `9751988183db7ee7b430cf3c6675bda03fcef5dd`。应用版本保持 2.12.0，本次发布已有验收产物，未重新编译；后续主线文档提交不改变该安装包身份。
 
 - `apps/desktop/release/ZAHNERFLOW Setup 2.12.0.exe`：169,564,792 字节，元数据版本 2.12.0。
 - SHA256：`0d5fa12006ee4e29e8ee6037685ae08944276344f84215c9bdcd23ed79188f89`；同目录保存 `.exe.sha256`。
