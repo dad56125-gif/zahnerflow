@@ -28,6 +28,7 @@
 | 功能 / 事实 | 定义或事实源头 | 中间文件与关系 | 最终体现 / 更新触发 |
 | --- | --- | --- | --- |
 | 应用版本 | [VERSION](../../VERSION) | `scripts/sync-version.mjs:6–45` 同步四个 package、pyproject、uv.lock 根版本，生成后端 `version.py` 及两份 `generated/appVersion.ts` | 后端健康与能力响应、包元数据；改版本运行 `pnpm version:sync`、人工写 CHANGELOG，再 `pnpm version:check` |
+| 发布分析基线 | `doc/reference/release-baselines.json` 登记已验收版本、固定源码 SHA、产物哈希与证据 | `doc/research/release-tree-版本.json` 人工复核阶段、类型和数据影响；`scripts/release-update-tree.mjs` 读取真实 Git 对象及 `scripts/release-update-tree.html`，校验完整覆盖与合并父提交后生成图／节点 JSON | `doc/guides/release-analysis.md` 规定每轮流程；发布验收后人工登记新基线，不自动推断功能／迁移，不替代 VERSION，不覆盖旧轮次 |
 | API / 报告版本 | [protocol.py](../../apps/shared/contracts/protocol.py) 的 `API_VERSION` / `REPORT_VERSION` | `main.py` 构造 FastAPI 元数据；`runtime_api.py` 生成能力响应；`report.py` 定义报告版本字段 | OpenAPI、能力发现、报告载荷；与应用版本和迁移版本独立 |
 | 跨端类型 | [共享契约目录](../../apps/shared/contracts) 与 `generate.py` 的手写模板 | `generate.py:98–128` 读取模型字段、alias 和输出要求；生成 `packages/types/src/contracts/`，`src/index.ts` 导出，tsc 编译为 dist | 前端通过 `@zahnerflow/types` 消费；修改契约须显式生成，普通 build 不执行 Python 生成器 |
 | 执行失败诊断 | `common.py` 的 `ExecutionFailure`、`RuntimeDiagnosticBundle`；`execution_failure.py` 与执行器阶段捕获 | `AppRuntime` 发布与步骤 JSON 持久化；`diagnostics.py` 白名单投影历史、当前缓存及日志 → `runtime_api.py` 只读接口 → `runtimeClient` | 通知中心分类提示、历史执行本地 JSON 下载；快照不冒充故障当时状态，旧错误不猜测分类 |

@@ -1,0 +1,30 @@
+{
+  "title": "ZahnerFlow · 发布演进与变化类型",
+  "baseline": "32f4614",
+  "target": "9751988183db7ee7b430cf3c6675bda03fcef5dd",
+  "baselineVersion": "1.0.6",
+  "targetVersion": "2.12.0",
+  "baselineNote": "历史源码基线为高置信推断；安装包未内嵌 SHA",
+  "targetNote": "已验收安装包；下一轮分析从此处开始",
+  "recentBaseline": "60c2f9f",
+  "recentVersion": "2.11.2",
+  "reviewedAt": "2026-10-08",
+  "excludedBranch": "codex/simu",
+  "stages": [
+    {"id":"state","from":"32f4614","to":"0d4c8d3","firstParent":true,"title":"停止交互与执行状态","types":["UI","Bug","数据／契约"],"effects":["修复停止进度环、曲线切换隔离、循环序号","统一执行状态和曲线生命周期"],"data":"执行状态语义／生命周期；不是 SQL 迁移"},
+    {"id":"core","from":"0d4c8d3","to":"bd63b09","firstParent":true,"title":"运行时与整体优化 · 至 2.2.1","types":["UI","Bug","功能","数据／契约","工程"],"effects":["新增 CLI／代理接入，重做执行步骤浏览","修复配置竞态；统一报告契约和数据库迁移"],"data":"SQL 迁移 user_version=1；共享报告与执行契约"},
+    {"id":"docs","from":"bd63b09","to":"d70086e","firstParent":true,"title":"研究与文档治理","types":["文档"],"effects":["核查厂商材料、来源链和文档归属","材料迁出；不代表增加真机能力"],"data":"无应用数据结构变化"},
+    {"id":"theme","from":"d70086e","to":"c016b6e","firstParent":true,"title":"亮色主题与背景偏好","types":["UI","Bug","功能","数据／契约","文档"],"effects":["玻璃层次、语义配色、动态背景与主题联动","新增背景配色偏好；修复文字／浮层显示"],"data":"偏好配置扩展；不是 SQL 迁移"},
+    {"id":"unroll","from":"3918e35","to":"2188cf1","firstParent":true,"title":"展开步骤分栏支线","types":["UI","功能","文档"],"effects":["Finder 分栏、子工作流和步骤号范围","精简窗口、去搜索、悬浮块"],"data":"展示派生变化；执行计划仍由后端定义","branchFrom":"3918e35","forkStage":"theme"},
+    {"id":"tutorial","from":"3fbf1ae","to":"da92e63","firstParent":true,"title":"真实组件教程支线","types":["UI","功能","Bug","文档"],"effects":["SOP 四章、Furnace／MFC 真实组件教学","隔离教程状态、保存恢复；删除提示修复"],"data":"教程隔离存储／恢复；不是生产 SQL 迁移","branchFrom":"3fbf1ae","forkStage":"docs"},
+    {"id":"merge-unroll","from":"c016b6e","to":"0946155","firstParent":true,"title":"分栏合并 · 2.5.0","types":["合并","文档"],"effects":["279a4de 汇入分栏；随后记录教程冲突"],"data":"汇入既有支线，不能重复计算功能","mergeFrom":"unroll","mergeCommit":"279a4de"},
+    {"id":"merge-tutorial","from":"0946155","to":"980a7c7","firstParent":true,"title":"教程合并 · 2.6.0","types":["合并"],"effects":["980a7c7 汇入教程，与主题及分栏统一"],"data":"汇入既有支线；包括删除节点提示修复","mergeFrom":"tutorial","mergeCommit":"980a7c7"},
+    {"id":"finish","from":"980a7c7","to":"84e48e2","firstParent":true,"title":"展开详情与视觉收尾 · 2.6.4","types":["UI","文档"],"effects":["参数分块／单位、逐行显示、隐藏系统边界","统一标题、背景模糊和圆角"],"data":"仅隐藏展示，后端真实步骤索引仍保留"},
+    {"id":"audit","from":"84e48e2","to":"8ae4d89","firstParent":true,"title":"缺陷与分支核查","types":["文档"],"effects":["核查 114 更新、炉温重跑、段序、参数和删除提示","记录 report 合并范围与 simu 独立边界"],"data":"研究证据；不是修复提交"},
+    {"id":"report","from":"84e48e2","to":"e0dc80b","firstParent":true,"title":"报告与电极面积支线","types":["UI","Bug","功能","数据／契约","文档"],"effects":["交互曲线、按温度／模式分组、LSV 电压功率展示","新增有效面积归一化；报告摘要和失败参数"],"data":"面积／报告契约；样品与面积为会话状态，原始曲线保留","branchFrom":"84e48e2","forkStage":"finish"},
+    {"id":"merge-report","from":"8ae4d89","to":"f9cc5bd","firstParent":true,"title":"报告合并 · 2.11.1","types":["合并"],"effects":["f9cc5bd 无冲突合并 report，随后删除该分支名"],"data":"支线提交仍在主线历史中；simu 不合并","mergeFrom":"report","mergeCommit":"f9cc5bd"},
+    {"id":"fix","from":"f9cc5bd","to":"60c2f9f","firstParent":true,"title":"电脑版缺陷修复 · 2.11.2","types":["Bug","UI"],"effects":["修复温度节点重置后重跑身份校验报错","修复 C01／C02 段序与数值输入卡住"],"data":"执行身份接管／输入校验；硬件寄存器映射不变"},
+    {"id":"release-docs","from":"60c2f9f","to":"a1104a0","firstParent":true,"title":"打包验收与优化建议","types":["文档"],"effects":["记录 2.11.2 安装包回归与后续建议"],"data":"建议不计为已实现功能"},
+    {"id":"diagnostics","from":"a1104a0","to":"9751988","firstParent":true,"title":"分阶段错误与诊断导出 · 2.12.0","types":["功能","UI","Bug","数据／契约"],"effects":["区分下发失败／状态确认失败／等待温度超时","新增本地诊断 JSON 导出，支持历史执行"],"data":"ExecutionFailure／诊断契约＋步骤 JSON；无 SQL 迁移"}
+  ]
+}

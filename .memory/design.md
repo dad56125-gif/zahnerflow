@@ -337,6 +337,8 @@ Furnace 程序显示：公开程序段使用按段号递增的 DOM 顺序，在�
 
 ## [文档-架构与来源]
 
+发布分析（2026-10-08）：每次电脑版发布固定上一验收基线和新发布源码提交，按 UI、缺陷修复、新增功能、数据结构／契约、文档、合并及工程维护复核阶段；另写 SQL 迁移与既有 JSON／契约扩展。`doc/reference/release-baselines.json` 登记源码身份、产物哈希与证据，当前为 2.12.0／9751988；该登记不是应用版本定义。人工阶段清单与 Git 对象由 `scripts/release-update-tree.mjs` 校验并生成图，验收后人工推进基线；保留旧轮次，独立 simu 分支不汇入。流程见 `doc/guides/release-analysis.md`，生成图为派生产物。
+
 当前规则：`doc/README.md` 是项目文档架构、类别归属、目录和新增流程的唯一入口；`doc/architecture/source-of-truth.md` 登记定义、生成、人工同步、运行事实与展示之间的关系。根 README 负责导航，INSTALL 负责当前操作说明，`.memory/design.md` 负责现行设计，专题正文归入 guides、reference、research 或 insight。目录使用文本 tree，架构与来源图使用 Mermaid，并标明箭头含义。历史报告和未落地研究不作为当前实现事实。
 
 归属文件：`doc/README.md`、`doc/architecture/source-of-truth.md`、各分类目录入口、`README.md`、`INSTALL.md`、`AGENTS.md`、`.memory/rules.md`。

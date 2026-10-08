@@ -1,0 +1,116 @@
+<div id="zahner-release-tree">
+  <h2>ZahnerFlow · 发布演进与变化类型</h2>
+  <div id="zrt-range" class="text-muted"></div>
+  <div id="zrt-legend" class="viz-row"></div>
+  <div class="text-small text-muted">类型标记属于阶段，可同时出现；点击阶段查看提交证据。</div>
+  <div id="zrt-graph" role="group" aria-label="发布阶段演进与分支合并"></div>
+  <details id="zrt-details"><summary id="zrt-selected">逐提交证据</summary><div id="zrt-evidence"></div></details>
+  <hr>
+  <div id="zrt-recent"></div>
+  <div id="zrt-next"></div>
+  <div id="zrt-excluded" class="text-muted"></div>
+</div>
+<style>
+  #zahner-release-tree { color:var(--foreground); }
+  #zahner-release-tree #zrt-legend { margin-block:12px; justify-content:flex-start; }
+  #zahner-release-tree .zrt-label { display:inline-flex; align-items:center; gap:5px; margin-inline-end:10px; }
+  #zahner-release-tree .zrt-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--zrt-color); flex:none; }
+  #zahner-release-tree .zrt-types { display:flex; flex-wrap:wrap; gap:4px; margin-block:6px; }
+  #zahner-release-tree #zrt-graph { position:relative; display:grid; grid-template-columns:minmax(0,1.25fr) 40px minmax(0,1fr); row-gap:24px; margin-block:18px; }
+  #zahner-release-tree .zrt-main { grid-column:1; }
+  #zahner-release-tree .zrt-branch { grid-column:3; }
+  #zahner-release-tree .zrt-node { position:relative; min-width:0; padding:12px 14px; align-self:start; z-index:1; }
+  #zahner-release-tree .zrt-node p { margin-block:3px; overflow-wrap:anywhere; }
+  #zahner-release-tree .zrt-heading { display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+  #zahner-release-tree .zrt-lines { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  #zahner-release-tree .zrt-lines path { fill:none; stroke:var(--muted-foreground); stroke-width:1.2; }
+  #zahner-release-tree .zrt-lines polygon { fill:var(--muted-foreground); }
+  #zahner-release-tree .zrt-lines .zrt-box { stroke:var(--border); stroke-width:1; fill:color-mix(in srgb,var(--zrt-color) 5%,var(--background)); }
+  #zahner-release-tree .zrt-baseline { grid-column:1 / -1; }
+  #zahner-release-tree .zrt-baseline { --zrt-color:var(--green); }
+  #zahner-release-tree #zrt-evidence { overflow-wrap:anywhere; }
+  #zahner-release-tree .zrt-commit { padding-block:10px; }
+  #zahner-release-tree .zrt-files { margin-block:4px; }
+  #zahner-release-tree #zrt-next { margin-block:12px; }
+  @media(max-width:540px) {
+    #zahner-release-tree #zrt-graph { grid-template-columns:minmax(0,1fr); row-gap:20px; }
+    #zahner-release-tree .zrt-node { grid-column:1; grid-row:auto!important; }
+    #zahner-release-tree .zrt-branch { margin-inline-start:24px; }
+    #zahner-release-tree .zrt-lines path,#zahner-release-tree .zrt-lines polygon { display:none; }
+  }
+</style>
+<script>
+(() => {
+  const data = RELEASE_TREE_DATA;
+  const root = document.getElementById('zahner-release-tree');
+  const el = id => root.querySelector('#' + id);
+  const colors = {'UI':'var(--blue)','Bug':'var(--red)','功能':'var(--green)','数据／契约':'var(--purple)','文档':'var(--muted-foreground)','合并':'var(--orange)','工程':'var(--yellow)'};
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const tags = types => types.map(t => `<span class="zrt-label text-small"><span class="zrt-dot" style="--zrt-color:${colors[t]}"></span>${escape(t)}</span>`).join('');
+  const graph = el('zrt-graph');
+  el('zrt-range').textContent = `${data.baselineVersion} → ${data.targetVersion} · ${data.count} 个更新提交 · ${data.mergeCount} 次合并 · ${data.reviewedAt} 核验`;
+  el('zrt-legend').innerHTML = tags(Object.keys(colors));
+  graph.innerHTML = `<svg class="zrt-lines" aria-hidden="true"></svg><div class="zrt-node zrt-baseline" style="grid-row:1"><strong>起点：电脑版 ${escape(data.baselineVersion)} · ${data.baseline.slice(0,7)}</strong><p class="text-small text-muted">${escape(data.baselineNote)}</p></div>`;
+  const main = data.stages.filter(s => !s.branchFrom);
+  const rows = new Map(main.map((s,i) => [s.id,i+2]));
+  for (const s of data.stages) {
+    const merge = data.stages.find(m => m.mergeFrom === s.id);
+    const node = document.createElement('article');
+    node.className = 'zrt-node ' + (s.branchFrom ? 'zrt-branch' : 'zrt-main');
+    node.dataset.stage = s.id;
+    node.style.gridRow = String(s.branchFrom ? rows.get(s.forkStage) : rows.get(s.id));
+    node.style.setProperty('--zrt-color', colors[s.types[0]]);
+    node.innerHTML = `<div class="zrt-heading"><strong>${escape(s.title)}</strong><button type="button" class="btn btn-ghost" aria-label="${escape(s.title)} · ${s.count} 提交" data-stage="${escape(s.id)}" aria-pressed="false">${s.count} 提交 ↗</button></div><div class="zrt-types">${tags(s.types)}</div>${s.effects.map(e=>`<p>${escape(e)}</p>`).join('')}<p class="text-small text-muted">数据影响：${escape(s.data)}</p>${s.branchFrom?`<p class="text-small">分出 ${escape(s.branchFrom)} → 汇入 ${escape(merge.mergeCommit)}</p>`:''}`;
+    graph.append(node);
+  }
+  const end = document.createElement('div');
+  end.className = 'zrt-node zrt-baseline'; end.style.gridRow = String(main.length+2);
+  end.innerHTML = `<strong>正式发布 ${escape(data.targetVersion)} · ${data.target.slice(0,7)}</strong><p>${escape(data.targetNote)}</p><p class="text-small text-muted">总览箭头表示阶段演进／支线汇入；精确父子关系见逐提交证据。</p>`;
+  graph.append(end);
+  function select(id) {
+    const s = data.stages.find(s=>s.id===id);
+    root.querySelectorAll('button[data-stage]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.stage===id)));
+    el('zrt-selected').textContent = `${s.title} · ${s.count} 提交 · 逐提交证据`;
+    el('zrt-evidence').innerHTML = s.commits.map(sha => {
+      const n = data.nodes.find(n=>n.hash===sha);
+      return `<div class="zrt-commit"><div><code>${n.short}</code> · ${escape(n.title)}</div><div class="text-small text-muted">版本 ${escape(n.version)} · 父提交 ${n.parents.map(p=>p.slice(0,7)).join(' / ')}</div><details class="zrt-files"><summary class="text-small">${n.files.length} 个变更路径</summary>${n.files.map(f=>`<div class="text-small">${escape(f)}</div>`).join('')}</details></div>`;
+    }).join('');
+    el('zrt-details').open = true;
+    el('zrt-details').scrollIntoView({block:'nearest',behavior:'instant'});
+  }
+  root.querySelectorAll('button[data-stage]').forEach(b => b.addEventListener('click',()=>select(b.dataset.stage)));
+  el('zrt-recent').innerHTML = `<strong>最近一次发布：${escape(data.recentVersion || data.baselineVersion)} → ${escape(data.targetVersion)}</strong><div>${data.recentCommits.length} 个提交：${data.recentCommits.map(h => {const n=data.nodes.find(n=>n.hash===h);return n ? escape(n.title) : h.slice(0,7);}).join('；')}</div>`;
+  el('zrt-next').innerHTML = `<strong>下一轮：${escape(data.targetVersion)} → 新发布版本</strong><div class="text-small">固定基线 → 子代理检查差异 → 分类与数据影响 → 绘图核验 → 打包验收 → 登记新基线</div>`;
+  el('zrt-excluded').textContent = data.excluded ? `${data.excluded.name} · ${data.excluded.hash.slice(0,7)} 独立，未合并、未计入 ${data.count} 个提交。源码与打包回归已验；真机和另一台电脑安装未验。` : '';
+  function draw() {
+    const svg = graph.querySelector('.zrt-lines');
+    svg.replaceChildren();
+    const rect = graph.getBoundingClientRect();
+    svg.setAttribute('viewBox',`0 0 ${rect.width} ${rect.height}`);
+    const box = node => {const r=node.getBoundingClientRect();return {x:r.left-rect.left,y:r.top-rect.top,w:r.width,h:r.height};};
+    graph.querySelectorAll('.zrt-node').forEach(node=>{
+      const b=box(node), mark=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      mark.setAttribute('class','zrt-box');mark.setAttribute('x',b.x+1);mark.setAttribute('y',b.y+1);mark.setAttribute('width',Math.max(0,b.w-2));mark.setAttribute('height',Math.max(0,b.h-2));mark.setAttribute('rx','6');mark.style.setProperty('--zrt-color',getComputedStyle(node).getPropertyValue('--zrt-color'));
+      svg.append(mark);
+      const stripe=document.createElementNS('http://www.w3.org/2000/svg','rect');stripe.setAttribute('x',b.x+1);stripe.setAttribute('y',b.y+12);stripe.setAttribute('width','3');stripe.setAttribute('height','22');stripe.style.fill=getComputedStyle(node).getPropertyValue('--zrt-color');svg.append(stripe);
+    });
+    function path(points) {
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d',points.map((v,i)=>`${i?'L':'M'}${v[0]},${v[1]}`).join(' '));svg.append(p);
+      const [x,y]=points.at(-1), [px,py]=points.at(-2), a=Math.atan2(y-py,x-px), arrow=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      arrow.setAttribute('points',`${x},${y} ${x-7*Math.cos(a-.4)},${y-7*Math.sin(a-.4)} ${x-7*Math.cos(a+.4)},${y-7*Math.sin(a+.4)}`);svg.append(arrow);
+    }
+    const mains = [graph.querySelector('.zrt-baseline'),...main.map(s=>graph.querySelector(`[data-stage="${s.id}"]`)),end];
+    const spine=box(mains[1]).w/2;
+    for(let i=1;i<mains.length;i++){const a=box(mains[i-1]),b=box(mains[i]);path([[spine,a.y+a.h],[spine,b.y]]);}
+    for (const [i,s] of data.stages.filter(s=>s.branchFrom).entries()) {
+      const source=box(graph.querySelector(`[data-stage="${s.forkStage}"]`)),branch=box(graph.querySelector(`[data-stage="${s.id}"]`)),merge=box(graph.querySelector(`[data-stage="${data.stages.find(m=>m.mergeFrom===s.id).id}"]`));
+      const gutter=source.x+source.w+10+i*8;
+      path([[source.x+source.w,source.y+27],[gutter,source.y+27],[gutter,branch.y+27],[branch.x,branch.y+27]]);
+      const returnGutter=source.x+source.w+6+i*10;
+      path([[branch.x,branch.y+branch.h-18],[returnGutter,branch.y+branch.h-18],[returnGutter,merge.y+27],[merge.x+merge.w,merge.y+27]]);
+    }
+  }
+  new ResizeObserver(draw).observe(graph);
+})();
+</script>

@@ -1,0 +1,8 @@
+{
+  "current": "2.12.0",
+  "releases": [
+    {"version":"1.0.6","commit":"32f46148a0c74e0f629c74eb307e73e3d156268d","confidence":"高置信推断，安装包未内嵌源码 SHA","evidence":"../research/desktop-baseline-update-tree-2026-10-07.md"},
+    {"version":"2.11.2","commit":"60c2f9f4b81e096e3bd3b2408c639abfa28fe249","confidence":"源码与打包回归记录","evidence":"../research/desktop-baseline-update-tree-2026-10-07.md"},
+    {"version":"2.12.0","commit":"9751988183db7ee7b430cf3c6675bda03fcef5dd","tag":"release/v2.12.0","installer":"apps/desktop/release/ZAHNERFLOW Setup 2.12.0.exe","sha256":"0d5fa12006ee4e29e8ee6037685ae08944276344f84215c9bdcd23ed79188f89","confidence":"构建载荷与打包后端回归核验；未做另一台电脑安装或真机测试","evidence":"../research/execution-diagnostics-2026-10-07.md","analysis":"../research/release-tree-2.12.0.json"}
+  ]
+}
