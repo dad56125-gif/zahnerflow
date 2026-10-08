@@ -1,0 +1,2049 @@
+{
+  "baselineSha": "29c5170fd223f783193d3021a6d18f2e3aeefe6f",
+  "files": [
+    {
+      "path": "apps/desktop/src/generated/appVersion.ts",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3cadb03009ed62e0d0396557bd624fd9f0a4412ccca1fb1ed063a198c04274bd"
+    },
+    {
+      "path": "apps/desktop/src/main.ts",
+      "category": "证据引用",
+      "modules": [
+        "storage",
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "28f74f92571741f5a21b8d5480d5db4dbd9a34b2dec94f099e3d2e9d2a5a9843"
+    },
+    {
+      "path": "apps/desktop/src/preload.cts",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "5d3b75f5a09bfee978ce4b8fbd55308c7c1bcb3940533608e0363bfb73d19388"
+    },
+    {
+      "path": "apps/frontend/src/App.tsx",
+      "category": "证据引用",
+      "modules": [
+        "station",
+        "canvas",
+        "start",
+        "progress",
+        "simulation",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "219bc886122abc733adbd022dc8288dd09b30121a1b17e0677e8aba038882545"
+    },
+    {
+      "path": "apps/frontend/src/components/BottomBar.tsx",
+      "category": "证据引用",
+      "modules": [
+        "progress"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "6c52a79a248db9b2ff4240827e83ab40edaf2458ebe8c36b0f4a442ea5df887b"
+    },
+    {
+      "path": "apps/frontend/src/components/DataViewer.tsx",
+      "category": "证据引用",
+      "modules": [
+        "data"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "98a6ac3076643bf1b395351bdb692e87910b7fa64c594aa61dd274972ea6830b"
+    },
+    {
+      "path": "apps/frontend/src/components/LeftPanel.tsx",
+      "category": "证据引用",
+      "modules": [
+        "canvas",
+        "progress",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "246e9c2f2fd5169231d99e34f6cdb2f1ae4249cc69996018a21496b650d1889b"
+    },
+    {
+      "path": "apps/frontend/src/components/NodeIconSvg.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "75cb895cfdaee22492d7bf924d1586ca54091b737b9886c9189d83e7eff524c2"
+    },
+    {
+      "path": "apps/frontend/src/components/NotificationPanel.tsx",
+      "category": "证据引用",
+      "modules": [
+        "notifications"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "eb83fc0118c64662b8728cbe6fb1e7f634aef692c6483d696c554ab81702d643"
+    },
+    {
+      "path": "apps/frontend/src/components/ParticleBackground.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "c805f58754a563d0f478052e7eb7316b68db2194d9597fd574937e25965e97f1"
+    },
+    {
+      "path": "apps/frontend/src/components/ProgressBar.tsx",
+      "category": "证据引用",
+      "modules": [
+        "progress"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "0ab0f8d670c070fe3cfec6fdfeaab30710ccda0dd599cf27bab42e261fc635da"
+    },
+    {
+      "path": "apps/frontend/src/components/ScheduleRunner.tsx",
+      "category": "源码调查覆盖",
+      "modules": [],
+      "reason": "本轮代理覆盖记录",
+      "sha256": "4a923ed8737be0fb0f09c3501e28c6bf50df0aefb92021021b558012d816583f"
+    },
+    {
+      "path": "apps/frontend/src/components/Toolbar.tsx",
+      "category": "证据引用",
+      "modules": [
+        "canvas",
+        "preview",
+        "start",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "5eae1eca3d8b509e9956df6475613202625cece91a0535bc31216341893dc8ab"
+    },
+    {
+      "path": "apps/frontend/src/components/TopBar.tsx",
+      "category": "证据引用",
+      "modules": [
+        "station",
+        "simulation",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "eb836d78814f6573f7179c6238fb00502e7ca29c61d5fc541f0a2c1702b9b29a"
+    },
+    {
+      "path": "apps/frontend/src/components/UnrollStepDetails.tsx",
+      "category": "证据引用",
+      "modules": [
+        "preview"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "32e661ea29cdd0a915c59d1a71fa575d31d2cfc01d033b9d6fb27ce9f4efa3a8"
+    },
+    {
+      "path": "apps/frontend/src/components/UnrollViewModal.tsx",
+      "category": "证据引用",
+      "modules": [
+        "preview"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "6813c260c29bf5986a963bafcb0e73180eaf4c12cfa4716eb13a58fa942372c9"
+    },
+    {
+      "path": "apps/frontend/src/components/WindowControls.tsx",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "1e266eeaeae66a5354ed4996e2d02fae44a32cc023fe4a7c11307c2b88eed65b"
+    },
+    {
+      "path": "apps/frontend/src/components/_execution-history.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "0338c051998dd4a60d7277da8851d5011dc38097d2d90b5469d76ed508e1c909"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/Canvas.tsx",
+      "category": "证据引用",
+      "modules": [
+        "canvas",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "ca8ec743954338e3238cf6381f2c3ae357813cdab4f828be318a391a0b6c1cfe"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/ConnectionLines.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "1530e68fb132ffa21da0e89c233986a16559f71b918b102e0a6c4e6c0cbcfdf6"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/LayoutConfig.ts",
+      "category": "证据引用",
+      "modules": [
+        "canvas"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "7eb67e6d5f8ca27d9ce02e3276604e142e2df0227162d9e0a251bd51b345e8e8"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/LoopBoundary.tsx",
+      "category": "证据引用",
+      "modules": [
+        "canvas"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "a798a0fceba1928769d4fc8eff8c35c1eb6c6e9b544a5c8ee1ede3948d1b97f5"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/NodeParameterDisplay.tsx",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "175882202c7fd780e0427d2d723f8e86289e8f5648a0d7505546badadc8ebdef"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/NodeRenderer.tsx",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "db9273dfbd22315fdbfc0a96b40cb4340f8934377cc752079858e214e68fdc35"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/useLayout.ts",
+      "category": "证据引用",
+      "modules": [
+        "canvas"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "90b86f053684e759bd6e628fa595607cabdf571a6d3d0e8a09a0f8a1ffe21fee"
+    },
+    {
+      "path": "apps/frontend/src/components/canvas/useLoopDetection.ts",
+      "category": "证据引用",
+      "modules": [
+        "canvas"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "e5443bd5ff098b8a8f8ffc555efc4f186b5e69de1c0fc042b6e3e9b881eb7d99"
+    },
+    {
+      "path": "apps/frontend/src/components/common/DeviceConnectionPanel.tsx",
+      "category": "证据引用",
+      "modules": [
+        "device-connect"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "522be0e4c78cbb869425aa17f7811c62dd3b075e56c9c19640303778d0fea137"
+    },
+    {
+      "path": "apps/frontend/src/components/common/DeviceDiagnosticsPanel.tsx",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "03373a355164cb78b45daad574f396e23df6f7bb91173a92a7fb4aa38a4b8fa8"
+    },
+    {
+      "path": "apps/frontend/src/components/common/SpacedCjkText.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "53546d979631460b98afcc1b4421fc1797d51143e84f49cb762d61b1f3c000f0"
+    },
+    {
+      "path": "apps/frontend/src/components/common/cjkText.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "ae7255b244f40d3bd8201be7e7fba412f4267901a33203f22fb2cb2e2ff79a97"
+    },
+    {
+      "path": "apps/frontend/src/components/device-dashboard/DeviceDashboard.tsx",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d73e48d04c6d0990fa2a8c12bc1c22f8ed7546cf7b746e85c06689540c1f7e71"
+    },
+    {
+      "path": "apps/frontend/src/components/diagnostics/DiagnosticExportButton.tsx",
+      "category": "证据引用",
+      "modules": [
+        "report",
+        "diagnostics"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "25735f7d6773007099f1473b2e0acc9d37cf51e766a629b2a0e10b98a9c4e41c"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/FurnaceDeviceModal.tsx",
+      "category": "证据引用",
+      "modules": [
+        "device-connect",
+        "furnace-control"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "81d055d6395285e2be71381acee9ce1376f397778d93435d46a37e750058b194"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/FurnaceLogPanel.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "bab2cacef3053e75969abf38c4cd14f51213a73b62dccede468e5b6e3b053bf4"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/FurnaceTemperatureChart.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "fdb4acd37861892ac19528096c0232fef7782b7b901e95dfd81ff182e9c8d697"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/PresetManager.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "d294161722d09a0a41a0eedaa86dcbdca1ab3a0c2b84f3c6c09024ed8f1435d4"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/ProgramEditor.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "f3f35fe688632e3249ae37a1e5eaf839cbf75cec8fd6e8699008f0035d8eed88"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/StatusPanel.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "65aa963be0aa2c1967f6a941e6e87a4b21345fea75a8d210c1163ff9b1462734"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/components/ControlBar.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "e17285660bf82652c2eeb2d100163e78c2a5f78c3060a13db3eeed4afc37d35b"
+    },
+    {
+      "path": "apps/frontend/src/components/furnace/components/SegmentEditor.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "8393708b4129403638e5296e685d3e293d03a06a470a2cdeb7ca92c02cf9a638"
+    },
+    {
+      "path": "apps/frontend/src/components/measurement-dashboard/MeasurementChart.tsx",
+      "category": "证据引用",
+      "modules": [
+        "live-charts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "b1df4479ebb0ce3f01355398c6f337a15da31469992cbeb59d005f97222763c4"
+    },
+    {
+      "path": "apps/frontend/src/components/measurement-dashboard/MeasurementDashboard.tsx",
+      "category": "证据引用",
+      "modules": [
+        "live-charts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "0f0ba3bb91deeef0834ef432ef9c591a9a4fb293322a83db0f428f4fa22df62d"
+    },
+    {
+      "path": "apps/frontend/src/components/measurement-dashboard/MeasurementTabBar.tsx",
+      "category": "证据引用",
+      "modules": [
+        "live-charts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "995167828287b5417bdebb207ee9711240828e21f003e045dabdb77e764cc5b0"
+    },
+    {
+      "path": "apps/frontend/src/components/measurement-dashboard/useBulkSelection.ts",
+      "category": "证据引用",
+      "modules": [
+        "live-charts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "a37d542e8a5a20148e9727229295c736138ee60311c67681ccd944e4975dcffd"
+    },
+    {
+      "path": "apps/frontend/src/components/mfc/MFCDeviceCard.tsx",
+      "category": "证据引用",
+      "modules": [
+        "mfc-control"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "551d8c503cb9153a72242c18ca79c36e99a10078da2b9b8580543f70a36399c5"
+    },
+    {
+      "path": "apps/frontend/src/components/mfc/MFCModal.tsx",
+      "category": "证据引用",
+      "modules": [
+        "device-connect",
+        "mfc-control"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3240e374a1cc4d55dea97c0801a9374c84f8916cf665504383bb536ec299e2be"
+    },
+    {
+      "path": "apps/frontend/src/components/property/PropertyInputs.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "123a8091ad8ba60386d333b402188af00da7ac29d7a6ac1d7bfbe2d1291f8ad7"
+    },
+    {
+      "path": "apps/frontend/src/components/property/RightPanel.tsx",
+      "category": "证据引用",
+      "modules": [
+        "parameters",
+        "flow-nodes",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d8869daee01602b61d1c19e6bd9c501d9fcf2c3eb4d8330935fe52c0086bbebe"
+    },
+    {
+      "path": "apps/frontend/src/components/property/propertyConfig.ts",
+      "category": "证据引用",
+      "modules": [
+        "parameters"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "5699410184bfce7221cc7ed443e9f04f91c2fcc60b4b8f0add5b68947f97e078"
+    },
+    {
+      "path": "apps/frontend/src/components/report/ReportGeneratorModal.tsx",
+      "category": "证据引用",
+      "modules": [
+        "records",
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2e103a64f1aef29f293f722ff7bb22ad72942231a8bfa529f15aa8a454688649"
+    },
+    {
+      "path": "apps/frontend/src/components/report/ReportMeasurementChart.tsx",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "c65f2b09874b5628f69a2bf2f30bf7d0a8cb9138099448b522b05353d88882d7"
+    },
+    {
+      "path": "apps/frontend/src/components/report/ReportPreview.tsx",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "e85c548db1a59b6790dd0195be6737ebc0eedf249ead42e3239923a41f73131b"
+    },
+    {
+      "path": "apps/frontend/src/components/report/ReportStatus.tsx",
+      "category": "源码调查覆盖",
+      "modules": [],
+      "reason": "本轮代理覆盖记录",
+      "sha256": "28f06437e0f3cc506db0ace2cdba4503eb32bd7337792392dc57711dedd6c9c0"
+    },
+    {
+      "path": "apps/frontend/src/components/report/WorkflowMapView.tsx",
+      "category": "证据引用",
+      "modules": [
+        "experiment-map"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "8c53dadba52019d7e6a40eab69d44934c8f07d2ef61830fa0207f30393d71aa8"
+    },
+    {
+      "path": "apps/frontend/src/components/report/pdfExporter.ts",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "f88a7c99d021dd434c700d352e179beca9ceb56df19275ac836f2b56436e4d27"
+    },
+    {
+      "path": "apps/frontend/src/components/report/reportCharts.ts",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "756c836ad99d5865884ed296bd802ca82a9b1bc81b258e3f9b903db5031465a6"
+    },
+    {
+      "path": "apps/frontend/src/components/report/reportDataBuilder.ts",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "252f9c987f26c457cdd9afeedbb7235e43fe2e21f393eb6dd994f5ce0155d8cd"
+    },
+    {
+      "path": "apps/frontend/src/components/report/reportPresentation.ts",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "20f85d3d112633aac84d04a63bf81d2cdd053ad3785b0735562f3f6616048331"
+    },
+    {
+      "path": "apps/frontend/src/components/report/types.ts",
+      "category": "证据引用",
+      "modules": [
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "894855ab1bf7ced66199dc67f304d2e2afa113a56d4bc8e64512aac2854d2c56"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/ConfirmDialog.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "531d08a51b77ec77400205bcabfb24c62bffd1c60dc18e38518eb0283e8df468"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/DataTable.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "05a83c6cc57c0ba33d71a7e6e3d2b274bd03d4cb960fcc44f4a206e66f58a718"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/Dropdown.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "ed23763291c88805d20e6d8fa6874dcbdc0ae1f3e4ff50fab0d228aee1d6ec6e"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/OverlayLayer.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "2ce99e8cab3bf43756971df9c7732dfa81b5ac8b05193566b0164c10fc8b7827"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/SplitPaneModal.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "8f113cab0f98f09c929757512519a39330771eed6be5e0f2ca17137cde5616ab"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/UiIconSvg.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "466ab14094dafe4c83fa12b41c91f420ad4e65125aa9602fdd781a1ae454f779"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/UserContext.tsx",
+      "category": "证据引用",
+      "modules": [
+        "identity"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "a2063124ac3fe2ec8f6d093f3729f4671a2154f514af1ec218071fe79e52c555"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/dropdownPosition.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "1ee8a9929a3202d2225e5fb929b6ad5e2d47284410fe1166f55b4de076f9acaf"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/uiIcons.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "49202e2c2e089b1e773ae3861d1e2c66d97af16d40cef3fb418a62ef1549adea"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/useDropdownPosition.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "33c229c6950bfec79c2e520cd4eaec9dab8567ac408ef7b7d31a38e9c0acdda3"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/useOnClickOutside.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "9dfd921ae390798cf87775d83194209f98d40bf722205db7903309d26859a850"
+    },
+    {
+      "path": "apps/frontend/src/components/shared/userContextState.ts",
+      "category": "证据引用",
+      "modules": [
+        "identity"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "71490e3b8e7bf93140d733e7c70964fae36305e9852c72ed182251ba50bcd018"
+    },
+    {
+      "path": "apps/frontend/src/components/simulator/SimulatorControlPanel.tsx",
+      "category": "证据引用",
+      "modules": [
+        "simulation"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "80d12968b6278534901c7ed8e7e31770c7d9939aadfd7d1435b0637811ec19e5"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/TutorialModal.tsx",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2f34e047b06680cd99b2d2ea7cfb702503530b9d20f80c90802e66432042a38b"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/TutorialPlayer.tsx",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3f3022f0576d4b265f7196c03c233b6bccdeac52fddfe7c23d70d1194ca83a74"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/TutorialRunner.tsx",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "99fe13bb899ef6eb6440eb0634ab6730c81ddc3e42741324afe9f95815d62647"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/deviceLessons.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3b56b12bc7c55c2516f63f851f21c63b026f9777df3d63397640b7ab3c25cb3d"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/protonSopLessons.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d493884c6366e5f534f9d26b9dfb71ee8d7a186befd85089333c35c6bcfe7043"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/tutorialDeviceScenario.json",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "eef25068d9a4fdccb287610a84d25255a12a3acadc1df2cde3e7ec02a4e4e13f"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/tutorialLessons.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "f513a9a21b5ff551f6ed27146e9451135ba4f698fffe4e217e34eeef77de394b"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/tutorialOutlines.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "ee4ad9e94110dd26f5df8be767565435d6bf9c03e4f7e1735a9d945ad96f323c"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/tutorialRuntime.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "a47c743c1a9e86357e75c0091665fd4b4c4a7871e1128c5dba3272df5b10b4ff"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/tutorialScenario.json",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "a783b772e3751b0c4050206bdf7a744198c78226de2399d5eb3d5d4af95b615a"
+    },
+    {
+      "path": "apps/frontend/src/components/tutorial/tutorialSession.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "cf2140638dd2f24c5b0d8d9189b6c45012172f10f9f4752233762043ed9705f9"
+    },
+    {
+      "path": "apps/frontend/src/components/unrollViewModel.ts",
+      "category": "证据引用",
+      "modules": [
+        "preview",
+        "read-model"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "016f271fdf71a2aa5452b6100a05d75e567d4b1aef8d52d2da3cde26d39faf70"
+    },
+    {
+      "path": "apps/frontend/src/components/user/AvatarCropDialog.tsx",
+      "category": "证据引用",
+      "modules": [
+        "identity"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "75ccabc015abe5186e09ab25636a7cf150c112aaa24d8b78889ccf827db422ea"
+    },
+    {
+      "path": "apps/frontend/src/components/user/UserSelector.tsx",
+      "category": "证据引用",
+      "modules": [
+        "identity"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "085a28e1752bf78447c08e9aff58749b67ec63ce7f8295e8b7a8cfa761410c56"
+    },
+    {
+      "path": "apps/frontend/src/components/user/UserSettingsModal.tsx",
+      "category": "证据引用",
+      "modules": [
+        "identity"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "b072e4a8975ec4a6bd41464099e0553a6294a30f8dd5afb62817d05b8a44163f"
+    },
+    {
+      "path": "apps/frontend/src/config/env.config.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "5e3020b1ccedfae70a2b3f00222e0d3517a583db572326e0d74926e6aa22709a"
+    },
+    {
+      "path": "apps/frontend/src/desktopBridge.ts",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "f803df39b71ce6004568d998f1230438c6738df14d7513e226db80ef7e88fc8f"
+    },
+    {
+      "path": "apps/frontend/src/eventContracts.ts",
+      "category": "证据引用",
+      "modules": [
+        "runtime"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "512da24417cfe72882e02005a92288663e49bf4233c3a779880411d4ef4aa98e"
+    },
+    {
+      "path": "apps/frontend/src/generated/appVersion.ts",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3cadb03009ed62e0d0396557bd624fd9f0a4412ccca1fb1ed063a198c04274bd"
+    },
+    {
+      "path": "apps/frontend/src/hooks/useDesktopWindow.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "049e16776e847b20c55f4487ea96935f26f44e12d06677758c767d8fe27b6c6a"
+    },
+    {
+      "path": "apps/frontend/src/hooks/useEisData.ts",
+      "category": "证据引用",
+      "modules": [
+        "live-charts",
+        "data"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "72c84a1db3afd80406086b945186a24cbb517b969c9c428f0f7752262289dcfc"
+    },
+    {
+      "path": "apps/frontend/src/hooks/useMeasurementStream.ts",
+      "category": "证据引用",
+      "modules": [
+        "live-charts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "791ec24e5ee70a9707973503ed3bdfb943fbc7cd72697097d6f3cd334a75382d"
+    },
+    {
+      "path": "apps/frontend/src/hooks/useRafWindowEvent.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "9cb47ef58a8adefeeefbc3b077946b511848ebda98f482da635a8d21f6f26f0d"
+    },
+    {
+      "path": "apps/frontend/src/hooks/useUnrollPreview.ts",
+      "category": "证据引用",
+      "modules": [
+        "preview"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "8a7ccad0b476df8166aefab885677b500ea378ef2a1148c7d7fb60fe93328dea"
+    },
+    {
+      "path": "apps/frontend/src/hooks/useWorkflowExecution.ts",
+      "category": "证据引用",
+      "modules": [
+        "start",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "9e7e4f95a6db8d0cdfa7ad3af4fa020ab4fdd2d5d3e8344c3059ccd9380e1aba"
+    },
+    {
+      "path": "apps/frontend/src/main.tsx",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "c2d02f19f9bcfe7cb9c5d63397c7b2430d3d80a4a786393603b6be2450de1ebd"
+    },
+    {
+      "path": "apps/frontend/src/modules/common/runtimeDeviceSelectors.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "bae873d9733afaedc19eecb300d65811a91f7641b8ac40bcdebc39e6436ddcbf"
+    },
+    {
+      "path": "apps/frontend/src/modules/common/useRuntimeDeviceStatusSubscription.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "bf39cc31b5744ad57587f5c16ca7c3ca80641bb64ed0c2b077c7ce29ed9056fe"
+    },
+    {
+      "path": "apps/frontend/src/modules/furnace/furnaceTypes.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "72b537138ce1a758048883fcfb94590fd996876978855315dca945f08cac7157"
+    },
+    {
+      "path": "apps/frontend/src/modules/furnace/runtimeDisplay.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "422d340212fadb2f9cf3ea2f0436eefcf49420d61cdfe5ed5b794dfa2f383902"
+    },
+    {
+      "path": "apps/frontend/src/modules/furnace/segmentValidation.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "0165299ec98d99ad17ee34ea95329bbd184b62a0a6bbb35d2ef88eade5fbb917"
+    },
+    {
+      "path": "apps/frontend/src/modules/furnace/temperatureLimits.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "88be5bd4052ab5c6283d339a7b2e91e5a3acd7496a846fa3d708a6c560d28a63"
+    },
+    {
+      "path": "apps/frontend/src/modules/furnace/useFurnace.ts",
+      "category": "源码调查覆盖",
+      "modules": [],
+      "reason": "本轮代理覆盖记录",
+      "sha256": "bc0d04d3f7c620f1a1b43913cd2532bfff4cca3f8d565bad7ab8314acca44b61"
+    },
+    {
+      "path": "apps/frontend/src/modules/mfc/mfcTypes.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "e58b8b089bbd374511201467df40171cc07ecc017f2763d4691953a6a69018bf"
+    },
+    {
+      "path": "apps/frontend/src/modules/mfc/useMfc.ts",
+      "category": "证据引用",
+      "modules": [
+        "device-connect",
+        "mfc-control"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d948e1dfcb5d0ec6c1f8a3356b6f41001e129f7ec292f967902f6282112237c8"
+    },
+    {
+      "path": "apps/frontend/src/modules/simulator/developerMode.ts",
+      "category": "证据引用",
+      "modules": [
+        "simulation",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "62cd425e6e659e624f565c9258693c66e02c691bdd50e1e2dec83e866703e391"
+    },
+    {
+      "path": "apps/frontend/src/modules/simulator/simulatorSettings.ts",
+      "category": "证据引用",
+      "modules": [
+        "simulation"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "32f603cf263edd631cdc001af18c207c6232a6f4db0e9fd6660468ebc1319819"
+    },
+    {
+      "path": "apps/frontend/src/modules/simulator/useDeveloperMode.ts",
+      "category": "证据引用",
+      "modules": [
+        "simulation",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "deb5563f6dd61562fb17d80266bfdf7be6dd793663a78cd6bbbda9817e6656bd"
+    },
+    {
+      "path": "apps/frontend/src/modules/simulator/useSimulatorSettings.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "7904c9452b5eb0bedbeecfe1e817ddacc236a41d6a0fe13d304e4e4da2fadb0b"
+    },
+    {
+      "path": "apps/frontend/src/runtimeClient.ts",
+      "category": "证据引用",
+      "modules": [
+        "preview",
+        "records",
+        "contracts",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "c194c6dd0f716a51ae11c6eba114fab8eee48203f5656344eeda6c6f92e42800"
+    },
+    {
+      "path": "apps/frontend/src/state/appStore.ts",
+      "category": "证据引用",
+      "modules": [
+        "notifications"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "ad90423f01b9b3f3c1bd7ec1f5f81be9cfbca961bead4df8c50d52a963681ff0"
+    },
+    {
+      "path": "apps/frontend/src/state/canvasStore.ts",
+      "category": "证据引用",
+      "modules": [
+        "canvas",
+        "progress",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "f89ac62935ea66c2d187b95d9f5cdcee94ab9ec4361f371aa824676abb95da28"
+    },
+    {
+      "path": "apps/frontend/src/state/currentWorkflowStore.ts",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "4bdce9a05ffe8ec0f379c40a72510e26ae8c0644dc48a3633aa3cf884fab91e2"
+    },
+    {
+      "path": "apps/frontend/src/state/executionStateBridge.ts",
+      "category": "证据引用",
+      "modules": [
+        "canvas",
+        "progress",
+        "runtime",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d669390963956aa82a840e11b6bb2ed70c7027964b677141cbcf3eb6fb50102a"
+    },
+    {
+      "path": "apps/frontend/src/state/executionStateModel.ts",
+      "category": "证据引用",
+      "modules": [
+        "progress",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "9f11e00a602c9de404aa427767634c4206e93c5ab4de5e41d3d5396746cd5afe"
+    },
+    {
+      "path": "apps/frontend/src/styles/_advanced-components.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "474e8e1361ec7e1337d67d795195a2a3f986a705e363e03434da3a60e6957eba"
+    },
+    {
+      "path": "apps/frontend/src/styles/_animations.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "56789639d72f88f794e12d10364e8840e0547f203cd6b161ca44237e5c6b4846"
+    },
+    {
+      "path": "apps/frontend/src/styles/_avatar-crop.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "7ea7ef0f1b42c3070c31336dcd95f130eef151ef15f0ba0a2ad151f8e4c2ad9e"
+    },
+    {
+      "path": "apps/frontend/src/styles/_base.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "a8bcd4859fb3b0dfe34af67f64f47d7b9a20ef355986e0bac75d9749de9ad890"
+    },
+    {
+      "path": "apps/frontend/src/styles/_buttons.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "727de16c122978d9dad3e861c0a70b367dd2ad9ffc57c27ed31cc5f4ef0b8406"
+    },
+    {
+      "path": "apps/frontend/src/styles/_canvas.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "226a40269083c14a2715408fac43b239d961b73d5e2e50b3d457e1bc34d97115"
+    },
+    {
+      "path": "apps/frontend/src/styles/_chart-modal.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "323a6d16ebffc2609aed7ddbbb48dc6b6241108dd3d1b7d9549f31ac9ef3745f"
+    },
+    {
+      "path": "apps/frontend/src/styles/_chart.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "cbfd6b30675ea29288ac397920f340468fde62ddc67db6fc184ac6605189c828"
+    },
+    {
+      "path": "apps/frontend/src/styles/_datatable.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "97ca46c2313bd28c6aab083c814dee7d25357082aae5588604788a0bc22db698"
+    },
+    {
+      "path": "apps/frontend/src/styles/_device-dashboard.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "4e327f8b111cd8b6eb16b7297de5a73e4e272e1639300380f2b66f064dc68e69"
+    },
+    {
+      "path": "apps/frontend/src/styles/_dropdown.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "874a267f00f84bd69ad9c6b01afc0dc4a37609ce03c90d4792c9b21ecfdd479a"
+    },
+    {
+      "path": "apps/frontend/src/styles/_furnace.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "dbc60f16e295fa08ec0ecef7973f68b97a756c0a960c005dcbfcc13c063fdbf8"
+    },
+    {
+      "path": "apps/frontend/src/styles/_layout.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "38120eed7c1cb9a6463d4b5858cd1686a835c75d20687b30fbd190487aee2991"
+    },
+    {
+      "path": "apps/frontend/src/styles/_light-theme.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "195922380f21f7a4d96243798977f13b56c42084362d4268c166f4c0e9880c0d"
+    },
+    {
+      "path": "apps/frontend/src/styles/_mfc.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "0b183f832fc6a2cbc19b8868bf7944d8d630719612e7bccc777b025749a052e9"
+    },
+    {
+      "path": "apps/frontend/src/styles/_node-icons.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "7b28fa70e7fe570b8580c68b3a91eacd7159410052c4e7a927f91e9cfe5f8375"
+    },
+    {
+      "path": "apps/frontend/src/styles/_overlay-layer.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "40b6a64bc45c729865abe0d17d328b2f7decde96a7d7c3891125b9c26525e325"
+    },
+    {
+      "path": "apps/frontend/src/styles/_placeholders.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "567fe32015f3051c90dc189ba84accb88d2c7d8d293ffa077df0086325da7672"
+    },
+    {
+      "path": "apps/frontend/src/styles/_report.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "0b165ecc8a3456ab4cc36cf605557948579c9dfb8553fac3d4ba4b8fc0d69c5c"
+    },
+    {
+      "path": "apps/frontend/src/styles/_schedule-runner.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "925f71d944ca7323ccddfb8bb36b1273169316e02bea43f65bf00a75381017ab"
+    },
+    {
+      "path": "apps/frontend/src/styles/_scroll-rendering.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "341881d1982f87182330703dd44e18426c9833334a2fcce285d1bc9f0d39244c"
+    },
+    {
+      "path": "apps/frontend/src/styles/_simulator.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "e227792b3cf8ab03412d4478fc97a7d10c573ba0cea84c24fccc99ca30640652"
+    },
+    {
+      "path": "apps/frontend/src/styles/_split-pane-modal.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "2c457aa6d25facfca03c4cea6c237411af07d017d5d5df8fb7293956de42a59c"
+    },
+    {
+      "path": "apps/frontend/src/styles/_tokens.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "5e980c1d4af983b9cd2b5d0242f42aaedf9ab33eb0d6c3964af2874c0f616151"
+    },
+    {
+      "path": "apps/frontend/src/styles/_tutorial.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "e2487a89b03f3cc42efa2130485d652554233df290d96e4f88d73124486bbb09"
+    },
+    {
+      "path": "apps/frontend/src/styles/_ui-kit.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "799305870ae19c0715a7450a9190fc7d2140ec2063ce5a85fdb31ee40dd007c0"
+    },
+    {
+      "path": "apps/frontend/src/styles/_unroll.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "2741a3738d851dee4d15ab50a37be231d793f79de7157a708b3dfc2a3223fd89"
+    },
+    {
+      "path": "apps/frontend/src/styles/_user-settings.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "03016650e861757506b10b8780db5139ec0d4c45f613ad8671000e964a1c9ddd"
+    },
+    {
+      "path": "apps/frontend/src/styles/_workflow-controls.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "9eb51faf9117a9c7f82271484bc7c3a662679d3fbf29cb6041152d43dd37f985"
+    },
+    {
+      "path": "apps/frontend/src/styles/main.scss",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "cc8df2cabc450afc9d2b99dda1df82ba5aa796ecf9bb431133220044224eee59"
+    },
+    {
+      "path": "apps/frontend/src/tutorialEnvironment.ts",
+      "category": "证据引用",
+      "modules": [
+        "tutorial"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "102409ab3bfd848acb69eece5532f65c46e46ae0b6800badf5408fca2d7fbd3e"
+    },
+    {
+      "path": "apps/frontend/src/types/NodeConfiguration.ts",
+      "category": "证据引用",
+      "modules": [
+        "basic-nodes",
+        "advanced-nodes",
+        "flow-nodes",
+        "environment-nodes",
+        "read-model",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "e05d1ee540e931459017e4c25f012e418b4033bb37f03e2afe5e9083f61a2269"
+    },
+    {
+      "path": "apps/frontend/src/types/executionControl.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "f853ff75d9bfe7777fcf317d122d4a464a3bd9f78a5bfc8e0eb739ebed8b9e14"
+    },
+    {
+      "path": "apps/frontend/src/utils/avatarAssets.ts",
+      "category": "证据引用",
+      "modules": [
+        "identity"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2090547789f77ad9549cdaa46fd3ec75eb0570a997c824804af34a2edbba6344"
+    },
+    {
+      "path": "apps/frontend/src/utils/colorUtils.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "bff6bf2feca71e836ff9122397856cc6f82f10b6e9c86183d41d50cf3475ff1e"
+    },
+    {
+      "path": "apps/frontend/src/utils/glassEffect.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "abbe3d5fad21aef194aba945f7d480cfe7d7a2f9592b098bb8bf26c0a71a7b00"
+    },
+    {
+      "path": "apps/frontend/src/utils/iterationPath.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "8f6bdbe4ee60bef2efa7f0e81ba3d3ef9e08e243a9e8a876d7969f1b3c98c617"
+    },
+    {
+      "path": "apps/frontend/src/utils/nodeUtilities.ts",
+      "category": "证据引用",
+      "modules": [
+        "parameters",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "ecc9c52bce8041632856d1539fc43872a81a76b8c790697e8b84d0c209c2822b"
+    },
+    {
+      "path": "apps/frontend/src/utils/scheduledStart.ts",
+      "category": "证据引用",
+      "modules": [
+        "flow-nodes",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2a281023dcc995d17567442f6fa92f02cfa39dbef2e153b8d7fae66cb2ec077c"
+    },
+    {
+      "path": "apps/frontend/src/utils/scrollRenderingSafety.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "c9ca7c802ddba7b9b20117d413a5ee9f1c0d8d20555566ac9305e3312004f7d7"
+    },
+    {
+      "path": "apps/frontend/src/utils/timeFormat.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "b773dcf50cff185c3f9da3d47ddf9dbb797b969f37e1cbc608eb49edc8d1031b"
+    },
+    {
+      "path": "apps/python_backend/database.py",
+      "category": "证据引用",
+      "modules": [
+        "storage",
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "21dc3e4a17e933340489519d383ceb726917d27e39dbd515b4c438b4b02b6c73"
+    },
+    {
+      "path": "apps/python_backend/database_schema.py",
+      "category": "证据引用",
+      "modules": [
+        "storage"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "02ccab6315e357161a5ee23192cc1d61b6594c927e879710b774a12814c4e8ae"
+    },
+    {
+      "path": "apps/python_backend/device_data_service.py",
+      "category": "证据引用",
+      "modules": [
+        "furnace-control",
+        "mfc-control",
+        "storage"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "c680b64432aa0e7b9deeb9b64fb2b2c808ebe2c553c83313806fbfd432d2ab12"
+    },
+    {
+      "path": "apps/python_backend/devices/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "f0e2b5298de2d105cacd8e4b11f90b752dbfb5bd7758f61cfaf5b7e9b13790de"
+    },
+    {
+      "path": "apps/python_backend/devices/furnace/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "5b836a74ebf8fd1eee46b6aa5a67ecb2d1c0fb4ce1b467486486bf81048edcee"
+    },
+    {
+      "path": "apps/python_backend/devices/furnace/limits.py",
+      "category": "证据引用",
+      "modules": [
+        "furnace-control",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d0488567cacbbbe451c0ef3ce84b3a6b75b8b380723e0ae736d2bbbbde795ff2"
+    },
+    {
+      "path": "apps/python_backend/devices/furnace/real_device.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d4b7c22c3ed5c330786cc0bf24990d9d4b888ef87b2500be6c37c28d39a365ef"
+    },
+    {
+      "path": "apps/python_backend/devices/furnace/simulator_device.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "43e16f0b156cf55c22406b74c6d226b2b150d76b3366202ffc249dc9364b320d"
+    },
+    {
+      "path": "apps/python_backend/devices/mfc/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "61448bce249a7d933458a0af7deed5f2f171d9af920554a3bfafe20b9a64d704"
+    },
+    {
+      "path": "apps/python_backend/devices/mfc/real_device.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "e013a6dd8468c82d15b148514cf46ff39de349083ee666b800b9ee90e9492d87"
+    },
+    {
+      "path": "apps/python_backend/devices/mfc/simulator_device.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "896dbb33f8acfcfca030bba35c77bd2785b07dee92fe05970c87b056f26560bc"
+    },
+    {
+      "path": "apps/python_backend/devices/zahner/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "1620ecaf8a22d3d5a2cf5870ceb404d073e62b43feaa78ad9faf0e71955d93be"
+    },
+    {
+      "path": "apps/python_backend/devices/zahner/ism_parser.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "6e8f8fdeabbaf901ab28c8cc19eee7f2efdf24a842aeed1a6d5705ad1b843d9d"
+    },
+    {
+      "path": "apps/python_backend/devices/zahner/logic.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "1c6bd3615ee752b15e1eee2446a437cb3b0771077ee899fb168a390b8106ea4e"
+    },
+    {
+      "path": "apps/python_backend/devices/zahner/real_device.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "b3a1c4a1454352aecb6f39c16c68794e65586dd0f6c387daa587d7a3653f7750"
+    },
+    {
+      "path": "apps/python_backend/devices/zahner/simulator_device.py",
+      "category": "证据引用",
+      "modules": [
+        "drivers"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "c6b87643bb19e4ba6639676ce362296fd83e0ea291a456b8e56684c74932b1b9"
+    },
+    {
+      "path": "apps/python_backend/email_service.py",
+      "category": "证据引用",
+      "modules": [
+        "mail",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "831613dda672a4c52797675105e095282541494d0fbf8b620f226785d3f0d49e"
+    },
+    {
+      "path": "apps/python_backend/experiment_worker.py",
+      "category": "证据引用",
+      "modules": [
+        "planning",
+        "drivers",
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "25e64b1bd4666cfbc1b12d6085e13b2e95f20fb4bd26b0157c291b0e6d508250"
+    },
+    {
+      "path": "apps/python_backend/loop_unroller.py",
+      "category": "证据引用",
+      "modules": [
+        "planning",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "e44ab2d393284eea9e10e513470892f1519487547891470eb69b8e0ffb522435"
+    },
+    {
+      "path": "apps/python_backend/main.py",
+      "category": "证据引用",
+      "modules": [
+        "storage",
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "aa2cfb8318434f080cecb4f5ad48c2ad311d4792e5160973b5cf71ec67b97176"
+    },
+    {
+      "path": "apps/python_backend/report_measurements.py",
+      "category": "证据引用",
+      "modules": [
+        "report"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "6dab9f5c732e518da99d1a8c49205dc1271dd1232880b3498b2675e24f7c7662"
+    },
+    {
+      "path": "apps/python_backend/report_service.py",
+      "category": "证据引用",
+      "modules": [
+        "read-model"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "05ca1d390ddf45f4486e325442f46290de02f5f26964f868433df8438ca25eb9"
+    },
+    {
+      "path": "apps/python_backend/routers/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "0609c71919278dbd599acb2a5a5ce19e051d36ac05f80deb97b41d6560a099a0"
+    },
+    {
+      "path": "apps/python_backend/routers/devices.py",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "c1d11f089c4f892ca1e285797b3cc107dc125801d3b405b0334af72572a8fcff"
+    },
+    {
+      "path": "apps/python_backend/routers/executions.py",
+      "category": "证据引用",
+      "modules": [
+        "preview",
+        "start",
+        "records",
+        "report",
+        "read-model",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "067d0b0f3b35e71e930b1173d81678b53d51a1ace5d0b49197229c2dee0d4983"
+    },
+    {
+      "path": "apps/python_backend/routers/files.py",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2a2a11cd120d564ce8de0648aa5aef33cf91ef7a1a1931d35374437d55624cf8"
+    },
+    {
+      "path": "apps/python_backend/routers/runtime_api.py",
+      "category": "证据引用",
+      "modules": [
+        "diagnostics",
+        "cli",
+        "runtime",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "cd41ea41088476230b9445da3fabfe520b0fe12fa0901171872606e40cea0003"
+    },
+    {
+      "path": "apps/python_backend/routers/users.py",
+      "category": "证据引用",
+      "modules": [
+        "mail",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "6a2ad8d84318300a2f4b1f17d9b6d8545eaa4cb6b147711e928aa12815cea70b"
+    },
+    {
+      "path": "apps/python_backend/routers/workflows.py",
+      "category": "证据引用",
+      "modules": [
+        "records",
+        "experiment-map"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "1e936187c713ec890ca277a16f051fc1eeb30134f70fc8da860016f38aa64016"
+    },
+    {
+      "path": "apps/python_backend/runtime/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "771ed18d442b8024f09d70e83eae150a964ccb5233faeb11242fcd0f1289cfea"
+    },
+    {
+      "path": "apps/python_backend/runtime/app_runtime.py",
+      "category": "证据引用",
+      "modules": [
+        "furnace-control",
+        "mail",
+        "runtime",
+        "planning",
+        "storage",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "751288d13d0c954cab0823bb32218188abc9019fb9941fdbfda005583e45f90c"
+    },
+    {
+      "path": "apps/python_backend/runtime/device_manager.py",
+      "category": "证据引用",
+      "modules": [
+        "device-connect",
+        "furnace-control",
+        "mfc-control",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d3784410319b5dd48acccb883f97fd5c0c5280c7408149530609fd4ff6362387"
+    },
+    {
+      "path": "apps/python_backend/runtime/diagnostics.py",
+      "category": "证据引用",
+      "modules": [
+        "diagnostics",
+        "read-model"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2d00f03457daa5dfca98e0c90c3a24dc0d9576ee152c917452de0819ea9b6d50"
+    },
+    {
+      "path": "apps/python_backend/runtime/execution_engine.py",
+      "category": "证据引用",
+      "modules": [
+        "planning",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "66b3837cf8553f0b138a63d20b8ffb0ce4f58a86b7f6454c3499b00c4e36a7e4"
+    },
+    {
+      "path": "apps/python_backend/runtime/execution_eta.py",
+      "category": "证据引用",
+      "modules": [
+        "preview",
+        "storage",
+        "read-model"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "c0c8fce783b2162d64973fd64dafd5fc7657b0f6c4ebc856441e206d41b56ced"
+    },
+    {
+      "path": "apps/python_backend/runtime/execution_failure.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "3a1be3bd8e3e9bdd993ba260a9e4243126d85d61080d2ea4827fe4e56ade3f9d"
+    },
+    {
+      "path": "apps/python_backend/runtime/execution_planner.py",
+      "category": "证据引用",
+      "modules": [
+        "planning",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "eb05ff2063d59c80464b62da280c64e4d50322ab41c4b4753a79e372f57e30f6"
+    },
+    {
+      "path": "apps/python_backend/runtime/execution_recorder.py",
+      "category": "证据引用",
+      "modules": [
+        "storage",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "5aa258a570697c555494d690f6a080d57676ec76827ec2707d68c5a9f7cb54b9"
+    },
+    {
+      "path": "apps/python_backend/runtime/execution_semantics.py",
+      "category": "证据引用",
+      "modules": [
+        "flow-nodes",
+        "cli",
+        "planning",
+        "read-model",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2719ab652b9aaafa0a9bacfdad1ab9bafe41f65f68a6b3c9d26213ed9bdb8a9b"
+    },
+    {
+      "path": "apps/python_backend/runtime/temperature_control.py",
+      "category": "证据引用",
+      "modules": [
+        "planning"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "52185c6684666f8755a1c76f63516579ff8bf17ddd0f5d6cfdb47da5b155a152"
+    },
+    {
+      "path": "apps/python_backend/user_settings.py",
+      "category": "证据引用",
+      "modules": [
+        "read-model",
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "85f5b2ed94c0e6175776f2c2b0cea108f46614c918acf9e00113938e67cd82f5"
+    },
+    {
+      "path": "apps/python_backend/version.py",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "0ccd184e56e0f8cb68d4e6322fbdf5f5d13bbe0f4385e35c7c1b04de0f0eab90"
+    },
+    {
+      "path": "apps/python_backend/workflow_features.py",
+      "category": "证据引用",
+      "modules": [
+        "storage"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "31fdd5552ca04611b707c38c387961c952e9d8e6b6efa9e384d40e314b4f200b"
+    },
+    {
+      "path": "apps/python_backend/workflow_identity.py",
+      "category": "证据引用",
+      "modules": [
+        "records",
+        "storage"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "9cf4c4d3dbab042712c210ef33d36d25df41873326fef12e797693c6211a1e64"
+    },
+    {
+      "path": "apps/shared/contracts/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "c2804984693f08452d9d2e99f74f5452056988e7cd192a35506c9d57ea1d124e"
+    },
+    {
+      "path": "apps/shared/contracts/_base.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "547c89e4ad4308d7b76a3ddab20bd1897454519ae67c0043523e92062c3f28a9"
+    },
+    {
+      "path": "apps/shared/contracts/common.py",
+      "category": "证据引用",
+      "modules": [
+        "notifications",
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "f6c84cd79d5300031036bcfca735ed86f03c7b4958cd3d3c62996f87906381ad"
+    },
+    {
+      "path": "apps/shared/contracts/events.py",
+      "category": "证据引用",
+      "modules": [
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3f9d3afe59846b7a3a3f5d0aa0d54c22c86247768d6bf5758fdca135f5a29afb"
+    },
+    {
+      "path": "apps/shared/contracts/furnace.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "bc7e7ce44725d4ba1aa8ab2834ebd5ecacb9fd0b92fbeca4f1222f31c6c52def"
+    },
+    {
+      "path": "apps/shared/contracts/generate.py",
+      "category": "证据引用",
+      "modules": [
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "d386d853ad2b26ce7cb6a59f2e141229cfbb57d5d5b96b18b3af43324b99ad2a"
+    },
+    {
+      "path": "apps/shared/contracts/mfc.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "c96cd37cd094e32d23b8c99dde0d33d21b4b9cab1b6751cb8c8063209db465a6"
+    },
+    {
+      "path": "apps/shared/contracts/protocol.py",
+      "category": "证据引用",
+      "modules": [
+        "cli",
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "2cbb71967b488f71ba9d558be9aa45b531ba7dd1cc8df8d98975e7782d3b2a1f"
+    },
+    {
+      "path": "apps/shared/contracts/report.py",
+      "category": "证据引用",
+      "modules": [
+        "contracts",
+        "read-model"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "85d294db07742e63dde9be4faf5af344403985bd53cb1bab5c4f42b492f96919"
+    },
+    {
+      "path": "apps/shared/contracts/runtime_device.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "ebe78e14e7bf24316d98a1c04057787cc5e6b8a55e18da52c5afd90575f052d6"
+    },
+    {
+      "path": "apps/shared/contracts/settings.py",
+      "category": "证据引用",
+      "modules": [
+        "contracts",
+        "read-model"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "a4480fcaf1883ac464214359afa7be30a46b105b88b7c5a83f0e63d006bac8b7"
+    },
+    {
+      "path": "apps/shared/contracts/workflow.py",
+      "category": "证据引用",
+      "modules": [
+        "planning"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "5d7c7db855f1b3fc22a60b768e7a28e67c2f8b4c48ffa1e5ccca357da825aeca"
+    },
+    {
+      "path": "apps/zahnerflow_cli/__init__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "3bf19e43b0393e3aaafb7cf62c11d23bfbfd97691b00a7e2291b3f9414e6189d"
+    },
+    {
+      "path": "apps/zahnerflow_cli/__main__.py",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "3c3a5aea5e70eb01aca02a97c1c3db4a9292527d8a1aa4229de0b2b67f0d7320"
+    },
+    {
+      "path": "apps/zahnerflow_cli/client.py",
+      "category": "证据引用",
+      "modules": [
+        "cli"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "f2ac4756d364ab9fa11f073eab1969bd208a970472754a3221c1fb242b311680"
+    },
+    {
+      "path": "apps/zahnerflow_cli/main.py",
+      "category": "证据引用",
+      "modules": [
+        "cli"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "9446a5ce58f481a6e25d8176bfbd85f5d4245dad3bc8e42102abda5583da56e5"
+    },
+    {
+      "path": "packages/types/src/contracts/common.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "d8623c706e3ae03ae428bc900b7f42879f8dd58b1a724b7d8483329353e59da0"
+    },
+    {
+      "path": "packages/types/src/contracts/events.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "ddc95e6b7631831c9615c825d9eb8c9ec49feab2225551acedd57241a3df93eb"
+    },
+    {
+      "path": "packages/types/src/contracts/furnace.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "d11656dde013f7c5354f2f937c7327e3fcf67cdb25ba18fa66733c179eeee7d1"
+    },
+    {
+      "path": "packages/types/src/contracts/index.ts",
+      "category": "证据引用",
+      "modules": [
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "479910e1fc94c743a9df79158d28e334186e28acee6b73aae4ba1429184e912c"
+    },
+    {
+      "path": "packages/types/src/contracts/mfc.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "91c166b320e8dede1f0866df5b4e97540e4c7e19aa8d2b1999a2552c40598783"
+    },
+    {
+      "path": "packages/types/src/contracts/report.ts",
+      "category": "证据引用",
+      "modules": [
+        "contracts"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "aec9ab64c030fff8ba8e943cd343955b426ff5a2635a183b5b8f755a505ebeff"
+    },
+    {
+      "path": "packages/types/src/contracts/runtimeDevice.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "098169439c89a331e23e8ad8a0825da904a2fa84bb999d7388b45cedd59fbded"
+    },
+    {
+      "path": "packages/types/src/contracts/settings.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "de462e77c71659fc118372c9c2b65e9fa2e939aa34558122307e21ac86a71ddc"
+    },
+    {
+      "path": "packages/types/src/contracts/workflow.ts",
+      "category": "证据引用",
+      "modules": [
+        "other-internal"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "78c02cad0b282bc7e1fec1e3bcb134c174a1f299ba0f9725ac89da17d336dd30"
+    },
+    {
+      "path": "packages/types/src/index.ts",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "f2590de2e62a5c7537be3af00f6caa0173120c7e484e83b95550328ac2c34106"
+    },
+    {
+      "path": "scripts/check-design.mjs",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "fa87394c12f78f7f06a128350e214c268b1dd625c83045931cb32831bd7acc23"
+    },
+    {
+      "path": "scripts/check-release-policy.mjs",
+      "category": "辅助文件",
+      "modules": [],
+      "reason": "样式/资产/生成/支撑代码，不作为独立用户入口；不宣称逐行验证",
+      "sha256": "98fed3487c8f35bd31d08668262190135d3398b08d5e02625b064e0061f5a488"
+    },
+    {
+      "path": "scripts/check-version.mjs",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "3cc66d16cb6e3f1014a7bd7c44741df4ec605c2ae1b8f7fedf28fe5890274968"
+    },
+    {
+      "path": "scripts/sync-version.mjs",
+      "category": "证据引用",
+      "modules": [
+        "desktop"
+      ],
+      "reason": "功能证据见关联模块",
+      "sha256": "51cb868afc14676bef8ca7049b2f731cd4baa8efc6bec4868c1d082a9e116ed1"
+    }
+  ],
+  "userEntryRoots": [
+    "App.tsx",
+    "TopBar.tsx",
+    "LeftPanel.tsx",
+    "Canvas.tsx",
+    "RightPanel.tsx",
+    "Toolbar.tsx",
+    "BottomBar.tsx"
+  ],
+  "nodeTypes": [
+    "startup",
+    "shutdown",
+    "change_temperature",
+    "change_gas_flow",
+    "eis_potentiostatic",
+    "eis_galvanostatic",
+    "ocp_measurement",
+    "chronoamperometry",
+    "chronopotentiometry",
+    "voltage_ramp",
+    "current_ramp",
+    "loop_start",
+    "loop_end",
+    "wait_delay",
+    "scheduled_start",
+    "workflow_block",
+    "galvanostatic_switching",
+    "potentiostatic_switching",
+    "galvanostatic_step_ramp",
+    "potentiostatic_step_ramp"
+  ],
+  "visibleNodeTypes": [
+    "change_temperature",
+    "change_gas_flow",
+    "eis_potentiostatic",
+    "eis_galvanostatic",
+    "ocp_measurement",
+    "chronoamperometry",
+    "chronopotentiometry",
+    "voltage_ramp",
+    "current_ramp",
+    "loop_start",
+    "loop_end",
+    "wait_delay",
+    "scheduled_start",
+    "workflow_block",
+    "galvanostatic_switching",
+    "potentiostatic_switching",
+    "galvanostatic_step_ramp",
+    "potentiostatic_step_ramp"
+  ],
+  "lessons": [
+    "prepare",
+    "add",
+    "reorder",
+    "parameters",
+    "delete",
+    "loop",
+    "preview",
+    "run",
+    "chart",
+    "stop",
+    "records",
+    "furnace-control",
+    "mfc-control",
+    "sop-heating",
+    "sop-preparation",
+    "sop-fc",
+    "sop-ec"
+  ]
+}

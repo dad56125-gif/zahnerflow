@@ -337,6 +337,8 @@ Furnace 程序显示：公开程序段使用按段号递增的 DOM 顺序，在�
 
 ## [文档-架构与来源]
 
+功能全景研究（2026-10-08）：`doc/research/feature-network/` 独立保存当前 main 的功能覆盖、源码证据、验证边界和交互图；图以用户实验流程为主干，内部能力默认隐藏。分析基线 SHA 与文档提交分开记录，不复用版本演进账本作为当前功能验收证据；不改变应用版本或产品行为。
+
 发布分析数据（2026-10-08）：项目保存 `doc/reference/release-baselines.json` 的用户指定身份与产物证据、`doc/research/release-evolution/commit-facts.json` 的逐提交记录和版本快照。行为流程及绘图实现已迁至个人技能 `git-release-evolution`，原强制发布分析流程已移除。迁移来源与字段缺口见 `doc/research/release-evolution/README.md`；应用版本定义仍为 `VERSION`。
 
 当前规则：`doc/README.md` 是项目文档架构、类别归属、目录和新增流程的唯一入口；`doc/architecture/source-of-truth.md` 登记定义、生成、人工同步、运行事实与展示之间的关系。根 README 负责导航，INSTALL 负责当前操作说明，`.memory/design.md` 负责现行设计，专题正文归入 guides、reference、research 或 insight。目录使用文本 tree，架构与来源图使用 Mermaid，并标明箭头含义。历史报告和未落地研究不作为当前实现事实。

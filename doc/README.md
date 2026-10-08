@@ -83,6 +83,7 @@ flowchart TD
 
 ## 当前目录
 
+- 功能全景：[当前主线功能网络调查](research/feature-network/README.md)（独立研究，不复用版本演进账本）。
 - 当前设计：[设计锚点](../.memory/design.md)、[维护纪律](../.memory/rules.md)、[来源登记与核查](architecture/source-of-truth.md)。
 - 使用：[安装启动](../INSTALL.md)、[CLI 与 Agent](guides/cli-agent.md)。
 - 规范：[数据与命名](reference/data-contracts.md)、[视觉与样式](reference/design-system.md)。

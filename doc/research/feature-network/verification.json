@@ -1,0 +1,741 @@
+{
+  "baseline": {
+    "branch": "main",
+    "sha": "29c5170fd223f783193d3021a6d18f2e3aeefe6f",
+    "version": "2.12.0",
+    "date": "2026-10-08",
+    "initialClean": true
+  },
+  "scope": "当前 main 源码 + 隔离内置模拟；无真机、无实际邮件、无桌面打包",
+  "build": {
+    "versionCheck": "通过，2.12.0",
+    "pnpmBuild": "通过；chunk >500 kB 提醒",
+    "desktopBuild": "未执行"
+  },
+  "sourceReferenceCheck": {
+    "count": 744,
+    "missingFileOrInvalidLine": 0,
+    "limit": "检查文件和行号存在；符号语义由三组代理源码复核，不代表每行运行验证"
+  },
+  "apiCalls": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/capabilities",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/devices",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "status": 201,
+      "nodeTypes": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/功能调查用户/settings",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/devices/furnace/connect",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/furnace/runtime/status",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/devices/mfc/connect",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/mfc/runtime/status",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/devices/zahner/connect",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/zahner/runtime/status",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/furnace/program/segments",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/devices/furnace/segment/set",
+      "status": 400,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/devices/mfc/scan",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/devices/mfc/setpoint",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "ocp_measurement",
+        "eis_potentiostatic"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/estimate",
+      "status": 200,
+      "nodeTypes": [
+        "ocp_measurement",
+        "eis_potentiostatic"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 400,
+      "nodeTypes": [
+        "loop_start"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions",
+      "status": 201,
+      "nodeTypes": [
+        "ocp_measurement",
+        "eis_potentiostatic"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/snapshot",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/executions/exec_1791427751644_928/report",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/diagnostics?executionId=exec_1791427751644_928",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/executions",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflows/summaries",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflows/map",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/furnace/samples",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/mfc/logs/flow",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/reset",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions",
+      "status": 201,
+      "nodeTypes": [
+        "wait_delay",
+        "wait_delay"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/snapshot",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/executions/exec_1791436156554_973/pause",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/snapshot",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/reset",
+      "status": 400,
+      "nodeTypes": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/executions/exec_1791436156554_973/resume",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/executions/exec_1791436156554_973",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/snapshot",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/diagnostics?executionId=exec_1791436156554_973",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/reset",
+      "status": 200,
+      "nodeTypes": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "change_temperature"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "change_gas_flow"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "eis_potentiostatic"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "eis_galvanostatic"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "ocp_measurement"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "chronoamperometry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "chronopotentiometry"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "voltage_ramp"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "current_ramp"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "wait_delay"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 400,
+      "nodeTypes": [
+        "scheduled_start"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "galvanostatic_switching"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "potentiostatic_switching"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "galvanostatic_step_ramp"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "potentiostatic_step_ramp"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "loop_start",
+        "wait_delay",
+        "loop_end"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "workflow_block"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/executions/unroll-preview",
+      "status": 200,
+      "nodeTypes": [
+        "scheduled_start"
+      ]
+    }
+  ],
+  "ui": {
+    "diagram": {
+      "expanded": [
+        "basic-nodes"
+      ],
+      "features": 7,
+      "detail": "基础测量 · 7 种"
+    },
+    "responsive": {
+      "overflow": false,
+      "width": 390
+    },
+    "keyboardSelected": "identity",
+    "exports": {
+      "diagnosticJsonBytes": 9628,
+      "htmlBytes": 39090,
+      "htmlContainsSvg": true,
+      "pdf": {
+        "size": 13100736,
+        "type": "application/pdf",
+        "header": "%PDF-1.3"
+      },
+      "limit": "生成 Blob 实测；浏览器下载事件超时未计为通过，未验落盘及 PDF 每页排版"
+    },
+    "liveOcv": {
+      "points": 4,
+      "lastTimeSeconds": 1.5,
+      "evidence": "browser-livepdf 实测文本和 live-dashboard 截图；打开页签首帧为0，随后状态刷新显示4点"
+    },
+    "tutorial": {
+      "catalogCount": 17,
+      "played": [
+        "添加节点"
+      ],
+      "otherLessons": "源码和目录核对，未逐课播放"
+    },
+    "actualRun": {
+      "id": "exec_1791436675592_862",
+      "nodes": [
+        "ocp_measurement",
+        "eis_potentiostatic"
+      ],
+      "status": "completed",
+      "entry": "实际画布按钮"
+    },
+    "visited": [
+      "用户配置及个人偏好",
+      "设备模拟设置",
+      "管式炉监控、27程序段、历史",
+      "MFC三通道",
+      "展开预览入口",
+      "记录、执行报告、实验地图",
+      "测量面板和数据页"
+    ],
+    "finalRender": {
+      "features": 228,
+      "reloadPageErrors": [],
+      "searchHits": 11,
+      "fileNavigation": "Playwright 扩展拒绝 file 协议，未绕过；通过本地 HTTP 验证最终 HTML",
+      "transientError": "从被拒绝的 file 导航返回时出现无栈 Object 错误；重新加载及模块操作未复现"
+    }
+  },
+  "screenshots": [
+    {
+      "id": "network-overview",
+      "path": "screenshots/network-overview.png",
+      "sha256": "64bbdadc6defda63fc1c135a29f2937a7a9d9952a0bc7487ad2c291e182f1a37"
+    },
+    {
+      "id": "network-expanded",
+      "path": "screenshots/network-expanded.png",
+      "sha256": "89b647e0110394c03bd23b668790849643a2f2e1056a5ba8c6e24364ee88dc5d"
+    },
+    {
+      "id": "network-mobile",
+      "path": "screenshots/network-mobile.png",
+      "sha256": "dc6666166358139ebacd23bbd8a7d73c89005dca01302fe7202669fec86a1bef"
+    },
+    {
+      "id": "tutorial-catalog",
+      "path": "screenshots/tutorial-catalog.png",
+      "sha256": "352a410a425dab7ea34e7430f7996b3d0a64a67b5ca379451ad1fd176e95c762"
+    },
+    {
+      "id": "tutorial-playing",
+      "path": "screenshots/tutorial-playing.png",
+      "sha256": "75eeb67bd1ba9fa6d088a7f02080e1411d729f299e916331e105cb788eadfb7a"
+    },
+    {
+      "id": "furnace-program",
+      "path": "screenshots/furnace-program.png",
+      "sha256": "235fc9651680dbe4d56d5965ddb90a547025c6b6179178e1026c1c5de64d7415"
+    },
+    {
+      "id": "mfc-panel",
+      "path": "screenshots/mfc-panel.png",
+      "sha256": "cbd61fb97030ebb0d3365e2f62dfa33cad56ff261daf5770186979e00b741af8"
+    },
+    {
+      "id": "report-preview",
+      "path": "screenshots/report-preview.png",
+      "sha256": "373cb9dbd11fa0951fa22448f8b3a2701ac71285943df5a7df542d28057fc3f1"
+    },
+    {
+      "id": "live-dashboard",
+      "path": "screenshots/live-dashboard.png",
+      "sha256": "b4d81c2eb01d7a66464db76dd371f24d1a2664c26d8e30b6cb00bb1bb060c3e1"
+    },
+    {
+      "id": "user-preferences",
+      "path": "screenshots/user-preferences.png",
+      "sha256": "71d4b2e8fdaa8e6a6cc47dada20a6ee67f71bff60b6f0e92d1a2ef99b06e0624"
+    },
+    {
+      "id": "simulator-panel",
+      "path": "screenshots/simulator-panel.png",
+      "sha256": "e24a9537902482078790d20ea3aeee492d2c3280453faa5241f98a565bd28ac7"
+    }
+  ],
+  "notVerified": [
+    "真机测量与控制、热/流量稳定性",
+    "真实 ISM 二进制兼容",
+    "SMTP测试与实际发送",
+    "Electron安装包和目录选择对话框",
+    "全部教程全程播放",
+    "全部图表批量叠加及所有参数组合",
+    "头像上传裁剪",
+    "定时到点真实等待和长期 ETA 学习"
+  ],
+  "evidenceIds": {
+    "api-capabilities": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-controls": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-device-connect": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-diagnostics": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-estimate": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-mfc-scan": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-mfc-setpoint": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-preview": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-records": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-report": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-reserved-segment": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-run": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-snapshot": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "api-user": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "app-loaded": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "data-panel": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "diagnostics-generated": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "furnace-program": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "html-generated": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "live-ocv-data": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "loop-preview": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "measurement-dashboard": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "mfc-panel": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-change_gas_flow": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-change_temperature": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-chronoamperometry": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-chronopotentiometry": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-current_ramp": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-eis_galvanostatic": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-eis_potentiostatic": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-galvanostatic_step_ramp": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-galvanostatic_switching": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-ocp_measurement": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-potentiostatic_step_ramp": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-potentiostatic_switching": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-scheduled_start": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-voltage_ramp": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-wait_delay": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "node-preview-workflow_block": {
+      "kind": "isolated-api",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "pdf-generated": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "records": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "report-preview": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "simulator-panel": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "tutorial-catalog": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "tutorial-playing": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "ui-edit": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "ui-run-completed": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "user-preferences": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "user-settings": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    },
+    "workflow-map": {
+      "kind": "ui",
+      "lookup": "apiCalls / ui / screenshots；验证仅限相关入口与场景"
+    }
+  }
+}
