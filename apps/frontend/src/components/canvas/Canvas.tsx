@@ -20,7 +20,7 @@ interface CanvasProps {
   hasError: boolean;
   workflowBlockRunBlocked?: boolean;
   onRunFlow?: RunFlowHandler;
-  onResetFlow?: () => void;
+  onResetFlow?: () => Promise<boolean>;
   onLoopDetected?: (loops: SimpleLoopInfo[]) => void;
   onGenerateReport?: () => void;
   onUnrollViewOpenChange?: (open: boolean) => void;

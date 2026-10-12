@@ -44,6 +44,8 @@
 | 普通测量参数 | [zahner/logic.py](../../apps/python_backend/devices/zahner/logic.py) 的别名表、缺省及 `normalize_measurement_parameters` | worker、真机、模拟器调用同一归一化；真机分派到 measure 方法，调用 thales_remote | 仪器测量及结果文件；与 UI 预设分开维护，真机路径转换只在调用边界 |
 | 高级节点参数 | [loop_unroller.py](../../apps/python_backend/loop_unroller.py) 的高级展开和 `_float_config` | 先读原始 config 的别名/默认，再生成 chrono 子节点，之后进入测量归一化 | switching / step ramp 的实际子步骤；目前这部分没有自动复用 logic 的全部规则 |
 | 活跃执行 / 设备连接 | [app_runtime.py](../../apps/python_backend/runtime/app_runtime.py)、`device_manager.py` 和实际设备对象 | AppRuntime 推进状态版本、记录并广播；DeviceManager 管理连接代次，直接导入真机/模拟类 | HTTP/Socket 快照 → runtimeClient → bridge / 设备 hooks → UI；重启前的 DB 快照不能证明当前物理连接 |
+
+执行命令收口（2026-10-12）：`executionStateBridge.ts` 的 `receiveSnapshot` 统一接收 Socket 和既有 `GET /api/runtime/snapshot` 结果；启动、暂停、恢复、取消及重置完成后读取后端状态，停止中持续复核至终态。`runtimeId/snapshotSequence` 由 AppRuntime 生成；请求 pending 与后端 phase 分开，不能用 HTTP 命令回执伪造 phase。工具栏清空通过 App 的重置回调复用样品清理，确认空闲后再修改草稿。字段定义、共享契约和数据库来源链不变。
 | 数据库结构与迁移 | [database_schema.py](../../apps/python_backend/database_schema.py) 的 `TABLES`、`SCHEMA_OBJECTS`、`SCHEMA_VERSION` 和迁移函数 | `database.py` 开库调用迁移；事务写入 schema，`PRAGMA user_version` 记录已应用版本 | SQLite 表、索引和健康响应；改结构必须有迁移，不能仅修改 TABLES 后指望已升级库自动补齐 |
 | 已执行事实 / 报告 | SQLite 执行、步骤、警告、产物关联与实际测量文件；`report.py` 定义报告形状 | `execution_recorder.py` 存储 → `report_service.py` 查询并在历史读取边界归一化 → `ExecutionReport` → runtimeClient → `reportDataBuilder.ts` | 实验记录、预览和 PDF；前端按物理路径去重展示，后端保留不同节点的来源关联 |
 | 实时曲线 | 仪器返回的 measurementData / eisDataReady，`workflow.py` 描述载荷 | AppRuntime 丰富执行身份 → `useMeasurementStream.ts` / `useEisData.ts` 内存缓存 → `MeasurementChart.tsx` | IVT / EIS 图；Nyquist 显示 `(z_real, -z_imag)`，nodesReset 清缓存；图表缓存不是永久归档 |

@@ -213,7 +213,9 @@ const AppContent: React.FC = () => {
   }, []);
 
   const resetFlow = async () => {
-    if (await resetRun()) setSuppressedEtaNodeFingerprint(nodeFingerprint);
+    const reset = await resetRun();
+    if (reset) setSuppressedEtaNodeFingerprint(nodeFingerprint);
+    return reset;
   };
 
   // 包装回调
