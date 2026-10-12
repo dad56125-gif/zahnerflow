@@ -7,19 +7,20 @@ import type { ExecutionSnapshot } from '@zahnerflow/types';
 import type { SimpleLoopInfo } from './canvas/useLoopDetection';
 import { useAppStore } from '../state/appStore';
 import { describeExecution } from '../state/executionStateModel';
+import type { WorkflowTimeState } from '../state/workflowTimeModel';
 
 interface BottomBarProps {
   detectedLoops?: SimpleLoopInfo[];
   systemState?: ExecutionSnapshot | null;
   onProgressBarClick?: () => void;
-  suppressPlannedEstimate?: boolean;
+  workflowTime: WorkflowTimeState;
 }
 
 export const BottomBar: React.FC<BottomBarProps> = ({
   detectedLoops = [],
   systemState = null,
   onProgressBarClick,
-  suppressPlannedEstimate = false
+  workflowTime
 }) => {
   const { nodes, selectedNodeId } = useCanvasStore();
   const notificationPanelOpen = useAppStore(state => state.notificationPanelOpen);
@@ -80,9 +81,8 @@ export const BottomBar: React.FC<BottomBarProps> = ({
       <div className="bottom-bar__center">
         <ProgressBar
           systemState={systemState}
-          nodes={nodes}
           onClick={onProgressBarClick}
-          suppressPlannedEstimate={suppressPlannedEstimate}
+          workflowTime={workflowTime}
         />
       </div>
 

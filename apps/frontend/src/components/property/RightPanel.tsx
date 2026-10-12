@@ -3,13 +3,14 @@ import { MEASUREMENT_PARAMETER_ALIASES } from '@zahnerflow/types';
 // --- START OF FILE apps/frontend/src/components/property/RightPanel.tsx ---
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { WorkflowNode, NodeType, WorkflowEtaEstimate } from '@zahnerflow/types';
+import type { WorkflowNode, NodeType } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore'; // 修正 store 路径
 import type { MfcState } from '../../modules/mfc/useMfc';
 import { DataViewer } from '../DataViewer';
 import { useUser } from '../shared/userContextState';
 import { selectCanvasEditable, useExecutionStore, useExecutionSnapshot } from '../../state/executionStateBridge';
 import { describeExecution } from '../../state/executionStateModel';
+import { nodeTimeView, type WorkflowTimeState } from '../../state/workflowTimeModel';
 
 // 导入工具函数
 import {
@@ -150,10 +151,11 @@ function formatDateTime(value: string | Date | null | undefined): string {
 
 interface RightPanelProps {
   mfcState: MfcState;
+  workflowTime: WorkflowTimeState;
 }
 
 export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
-  ({ mfcState }, ref) => {
+  ({ mfcState, workflowTime }, ref) => {
     // 1. 从 Store 获取选中节点
     // 使用 selectedNodeId 从 nodes 数组中查找，确保数据是最新的
     const { nodes, selectedNodeId, updateNodeConfig, setNodes, selectNode } = useCanvasStore();
@@ -173,10 +175,6 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     const systemState = useExecutionSnapshot();
     const canvasEditable = useExecutionStore(selectCanvasEditable);
     const execution = useMemo(() => describeExecution(systemState), [systemState]);
-    const [nodeRemainingSeconds, setNodeRemainingSeconds] = useState<number | null>(null);
-    const [nodeElapsedSeconds, setNodeElapsedSeconds] = useState(0);
-    const [plannedEstimate, setPlannedEstimate] = useState<WorkflowEtaEstimate | null>(null);
-    const [plannedStartTime, setPlannedStartTime] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'basic' | 'parameters' | 'chart'>('basic');
     useLayoutEffect(() => registerWorkspaceParticipant(() => {
       const previous = activeTab;
@@ -348,89 +346,6 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     useEffect(() => clearDropdownCloseTimer, [clearDropdownCloseTimer]);
 
-    useEffect(() => {
-      if (execution.phase !== 'idle' || nodes.length === 0) {
-        setPlannedEstimate(null);
-        setPlannedStartTime(null);
-        return;
-      }
-
-      let cancelled = false;
-      const start = new Date().toISOString();
-      const timer = window.setTimeout(async () => {
-        try {
-          const estimate = await runtimeClient.executions.estimate<WorkflowEtaEstimate>({ nodes });
-          if (!cancelled) {
-            setPlannedEstimate(estimate);
-            setPlannedStartTime(start);
-          }
-        } catch {
-          if (!cancelled) {
-            setPlannedEstimate(null);
-            setPlannedStartTime(start);
-          }
-        }
-      }, 350);
-
-      return () => {
-        cancelled = true;
-        window.clearTimeout(timer);
-      };
-    }, [execution.phase, nodes]);
-
-    useEffect(() => {
-      const currentStep = systemState?.currentStep;
-      const eta = systemState?.eta;
-      const timingNodeId = node?.id ?? null;
-      const nodeIndex = timingNodeId ? nodes.findIndex(canvasNode => canvasNode.id === timingNodeId) : -1;
-      const isCurrentNode = Boolean(
-        timingNodeId && currentStep && (
-          currentStep.nodeId
-            ? currentStep.nodeId === timingNodeId
-            : (nodeIndex >= 0 && currentStep.index === nodeIndex)
-        )
-      );
-      const currentTiming = systemState?.nodeTimings?.find(
-        timing => timing.unrolledIndex !== null && timing.unrolledIndex === currentStep?.unrolledIndex
-      );
-      const estimatedSeconds = currentTiming?.estimatedSeconds
-        ?? eta?.currentStepEstimatedSeconds
-        ?? currentStep?.estimatedSeconds;
-      const timingStartedAt = currentTiming?.startedAt;
-
-      if (!isCurrentNode || estimatedSeconds === null || estimatedSeconds === undefined) {
-        setNodeRemainingSeconds(null);
-        setNodeElapsedSeconds(0);
-        return;
-      }
-
-      const updatedAtMs = new Date(
-        timingStartedAt || eta?.updatedAt || systemState?.timestamp || new Date().toISOString()
-      ).getTime();
-      const updateDisplay = () => {
-        const shouldTick = execution.is.running || execution.is.cancelling;
-        const elapsedSeconds = shouldTick
-          ? Math.max(0, (Date.now() - updatedAtMs) / 1000)
-          : (eta?.currentStepElapsedSeconds ?? 0);
-        setNodeElapsedSeconds(elapsedSeconds);
-        setNodeRemainingSeconds(Math.max(0, Number(estimatedSeconds) - elapsedSeconds));
-      };
-
-      updateDisplay();
-      if (!execution.is.running && !execution.is.cancelling) return;
-      const timer = window.setInterval(updateDisplay, 1000);
-      return () => window.clearInterval(timer);
-    }, [
-      execution.is.cancelling,
-      execution.is.running,
-      nodes,
-      node?.id,
-      systemState?.currentStep,
-      systemState?.eta,
-      systemState?.nodeTimings,
-      systemState?.timestamp,
-    ]);
-
     const dropdownContext = useMemo(() => ({
       isOpen: (id: string) => dropdownState.activeId === id,
       isHiding: (id: string) => dropdownState.hidingId === id,
@@ -464,92 +379,58 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 获取静态配置名称
     const nodeName = NODE_CONFIGS[node.type]?.name || node.type;
-    const currentStep = systemState?.currentStep;
-    const nodeIndex = nodes.findIndex(canvasNode => canvasNode.id === node.id);
-    const isCurrentNode = Boolean(
-      currentStep && (
-        currentStep.nodeId
-          ? currentStep.nodeId === node.id
-          : (nodeIndex >= 0 && currentStep.index === nodeIndex)
-      )
-    );
-    const selectedNodeTiming = [...(systemState?.nodeTimings || [])]
-      .reverse()
-      .find(timing => timing.nodeId === node.id || (!timing.nodeId && timing.index === nodeIndex));
-    const runningNodeTiming = currentStep?.unrolledIndex !== undefined
-      ? systemState?.nodeTimings?.find(timing => timing.unrolledIndex === currentStep.unrolledIndex)
-      : undefined;
-    const activeNodeTiming = runningNodeTiming || (selectedNodeTiming?.status === 'running' ? selectedNodeTiming : undefined);
-    const isNodeRunning = Boolean(activeNodeTiming && activeNodeTiming.status === 'running') || (isCurrentNode && execution.is.active);
-    const isNodeTerminal = Boolean(selectedNodeTiming && selectedNodeTiming.status !== 'running');
-    const plannedNodeStep = (plannedEstimate?.steps || []).find(step => step.nodeId === node.id)
-      || (plannedEstimate?.steps || []).find(step => step.index === nodeIndex);
-    const plannedNodeStartOffset = plannedNodeStep
-      ? (plannedEstimate?.steps || [])
-        .filter(step => step.unrolledIndex < plannedNodeStep.unrolledIndex)
-        .reduce((total, step) => total + Number(step.estimatedSeconds || 0), 0)
-      : 0;
-    const plannedNodeStartTime = plannedStartTime && plannedNodeStep
-      ? new Date(new Date(plannedStartTime).getTime() + plannedNodeStartOffset * 1000)
-      : plannedStartTime;
+    const timing = nodeTimeView(workflowTime, node.id);
 
     const renderNodeExecutionCountdown = () => {
-      if (!isNodeRunning || !isCurrentNode) return null;
+      if (timing.mode !== 'running') return null;
       return (
         <div className="property-group">
-          <label className="property-label">当前节点剩余时间</label>
+          <label className="property-label">节点剩余时间</label>
           <div className="property-value-static">
-            {nodeRemainingSeconds === null
+            {timing.remainingSeconds === null
               ? '预计时长不可用'
-              : execution.is.paused
-                ? `已暂停 · ${formatCountdown(nodeRemainingSeconds)}`
-                : execution.is.cancelling
-                  ? `停止中 · ${formatCountdown(nodeRemainingSeconds)}`
-                  : formatCountdown(nodeRemainingSeconds)}
+              : workflowTime.currentStepOverdue && timing.remainingSeconds === 0
+                ? '已超出预估'
+              : execution.is.cancelling
+                ? `停止中 · ${formatCountdown(timing.remainingSeconds)}`
+                : formatCountdown(timing.remainingSeconds)}
           </div>
         </div>
       );
     };
 
     const renderExecutionTime = () => {
-      if (isNodeRunning) {
-        const startedAt = activeNodeTiming?.startedAt || (isCurrentNode ? systemState?.timestamp : null);
-        const estimatedSeconds = activeNodeTiming?.estimatedSeconds
-          ?? currentStep?.estimatedSeconds
-          ?? null;
-        const estimatedFinishTime = startedAt && estimatedSeconds !== null
-          ? new Date(new Date(startedAt).getTime() + Number(estimatedSeconds) * 1000)
-          : null;
+      if (timing.mode === 'running') {
         return (
           <>
             <div className="property-group">
               <label className="property-label">开始时间</label>
-              <div className="property-value-static">{formatDateTime(startedAt)}</div>
+              <div className="property-value-static">{formatDateTime(timing.startedAt)}</div>
             </div>
             <div className="property-group">
               <label className="property-label">运行时间</label>
-              <div className="property-value-static">{formatDuration(nodeElapsedSeconds)}</div>
+              <div className="property-value-static">{formatDuration(timing.elapsedSeconds)}</div>
             </div>
             <div className="property-group">
               <label className="property-label">预计完成时间</label>
-              <div className="property-value-static">{formatDateTime(estimatedFinishTime)}</div>
+              <div className="property-value-static">{formatDateTime(timing.estimatedFinishTime)}</div>
             </div>
             {renderNodeExecutionCountdown()}
           </>
         );
       }
 
-      if (isNodeTerminal) {
+      if (timing.mode === 'terminal') {
         return (
           <>
             <div className="property-group">
               <label className="property-label">结束时间</label>
-              <div className="property-value-static">{formatDateTime(selectedNodeTiming?.endedAt)}</div>
+              <div className="property-value-static">{formatDateTime(timing.endedAt)}</div>
             </div>
             <div className="property-group">
               <label className="property-label">总耗时</label>
               <div className="property-value-static">
-                {formatDuration(Number(selectedNodeTiming?.actualSeconds || 0))}
+                {formatDuration(timing.elapsedSeconds)}
               </div>
             </div>
           </>
@@ -560,13 +441,20 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         <>
           <div className="property-group">
             <label className="property-label">预计开始时间</label>
-            <div className="property-value-static">{formatDateTime(plannedNodeStartTime)}</div>
+            <div className="property-value-static">
+              {timing.mode === 'unavailable' ? '预估不可用'
+                : timing.mode === 'skipped' ? (execution.phase === 'idle' ? '无执行步骤' : '未执行')
+                : timing.mode === 'pending' && execution.is.paused ? '恢复后开始'
+                : timing.mode === 'pending' && execution.is.cancelling ? '停止中，不再启动'
+                : timing.mode === 'pending' && !timing.startedAt ? '等待前置节点完成'
+                : formatDateTime(timing.startedAt)}
+            </div>
           </div>
           <div className="property-group">
             <label className="property-label">预计总时间</label>
             <div className="property-value-static">
-              {plannedNodeStep?.estimatedSeconds !== undefined
-                ? formatDuration(plannedNodeStep.estimatedSeconds)
+              {timing.estimatedSeconds !== null
+                ? formatDuration(timing.estimatedSeconds)
                 : '预估不可用'}
             </div>
           </div>

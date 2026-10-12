@@ -3,95 +3,28 @@
  * 显示工作流执行进度，点击唤起图表 Modal
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import type { ExecutionSnapshot, WorkflowEtaEstimate, WorkflowNode } from '@zahnerflow/types';
-import { runtimeClient } from '../runtimeClient';
+import React from 'react';
+import type { ExecutionSnapshot } from '@zahnerflow/types';
+import type { WorkflowTimeState } from '../state/workflowTimeModel';
 import { formatCountdown, formatDuration } from '../utils/timeFormat';
 import { describeExecution } from '../state/executionStateModel';
 
 interface ProgressBarProps {
     systemState: ExecutionSnapshot | null;
-    nodes?: WorkflowNode[];
     onClick?: () => void;
-    suppressPlannedEstimate?: boolean;
+    workflowTime: WorkflowTimeState;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
     systemState,
-    nodes = [],
     onClick,
-    suppressPlannedEstimate = false
+    workflowTime
 }) => {
-    const [displayRemainingSeconds, setDisplayRemainingSeconds] = useState(0);
-    const [displayElapsedSeconds, setDisplayElapsedSeconds] = useState(0);
-    const [plannedEstimate, setPlannedEstimate] = useState<WorkflowEtaEstimate | null>(null);
-    const [estimateFailed, setEstimateFailed] = useState(false);
+    const { remainingSeconds: displayRemainingSeconds, elapsedSeconds: displayElapsedSeconds, plannedEstimate, estimateFailed } = workflowTime;
     const execution = describeExecution(systemState);
     const { running, paused, cancelling, completed } = execution.is;
-    const canShowPlan = !suppressPlannedEstimate && execution.phase === 'idle';
+    const canShowPlan = execution.phase === 'idle';
     const hasPlannedEstimate = Boolean(canShowPlan && plannedEstimate && plannedEstimate.eta.estimatedTotalSeconds > 0);
-    const nodeFingerprint = useMemo(
-        () => JSON.stringify(nodes.map(node => ({ id: node.id, type: node.type, config: node.config }))),
-        [nodes]
-    );
-
-    useEffect(() => {
-        const eta = systemState?.eta;
-        if (!eta) {
-            setDisplayRemainingSeconds(0);
-            setDisplayElapsedSeconds(systemState?.duration ?? 0);
-            return;
-        }
-
-        const updatedAtMs = new Date(eta.updatedAt || systemState?.timestamp || new Date().toISOString()).getTime();
-        const updateDisplay = () => {
-            const shouldTick = running || cancelling;
-            const deltaSeconds = shouldTick ? Math.max(0, (Date.now() - updatedAtMs) / 1000) : 0;
-            setDisplayRemainingSeconds(Math.max(0, (eta.estimatedRemainingSeconds ?? 0) - deltaSeconds));
-            setDisplayElapsedSeconds(Math.max(0, (eta.elapsedSeconds ?? systemState?.duration ?? 0) + deltaSeconds));
-        };
-
-        updateDisplay();
-        if (!running && !cancelling) return;
-
-        const timer = setInterval(updateDisplay, 1000);
-        return () => clearInterval(timer);
-    }, [
-        cancelling,
-        running,
-        systemState?.duration,
-        systemState?.eta,
-        systemState?.timestamp,
-    ]);
-
-    useEffect(() => {
-        if (!canShowPlan || nodes.length === 0) {
-            setPlannedEstimate(null);
-            setEstimateFailed(false);
-            return;
-        }
-
-        let cancelled = false;
-        const timer = window.setTimeout(async () => {
-            try {
-                const estimate = await runtimeClient.executions.estimate<WorkflowEtaEstimate>({ nodes });
-                if (!cancelled) {
-                    setPlannedEstimate(estimate);
-                    setEstimateFailed(false);
-                }
-            } catch {
-                if (!cancelled) {
-                    setPlannedEstimate(null);
-                    setEstimateFailed(true);
-                }
-            }
-        }, 350);
-
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timer);
-        };
-    }, [canShowPlan, nodeFingerprint, nodes]);
 
     // ✅ 优先使用展开后的索引 (准确反映循环执行进度)
     const currentStep = systemState?.currentStep;
@@ -161,7 +94,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
                         {cancelling
                             ? '等待当前节点结束'
                             : running || paused
-                            ? `剩余 ${formatCountdown(displayRemainingSeconds)}`
+                            ? workflowTime.currentStepOverdue
+                              ? `已超出预估${displayRemainingSeconds > 0 ? ` · 后续约 ${formatCountdown(displayRemainingSeconds)}` : ''}`
+                              : `剩余 ${formatCountdown(displayRemainingSeconds)}`
                             : formatDuration(systemState?.duration ?? displayElapsedSeconds)
                         }
                     </span>
@@ -173,7 +108,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
                     </span>
                 )}
 
-                {canShowPlan && estimateFailed && nodes.length > 0 && (
+                {canShowPlan && estimateFailed && (
                     <span className="progress-bar__time">
                         预估不可用
                     </span>

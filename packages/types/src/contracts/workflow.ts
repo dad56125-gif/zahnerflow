@@ -100,10 +100,12 @@ export interface ExecutionEtaSnapshot {
   currentStepElapsedSeconds?: number | null;
   /** ETA 综合来源 */
   source?: string;
-  /** ETA 综合置信度 (0-1) */
+  /** ETA 置信度 (0-1) */
   confidence?: number;
   /** ETA 生成时间 (ISO) */
   updatedAt: string;
+  /** 同一次计划的步骤，运行中包含完成和跳过事实 */
+  steps?: ExecutionEtaStep[];
 }
 
 export interface ExecutionEtaStep {
@@ -111,6 +113,20 @@ export interface ExecutionEtaStep {
   nodeId?: string | null;
   /** 节点类型 */
   nodeType?: string | null;
+  /** 所属画布节点 ID，包含高级节点和工作流块 */
+  sourceNodeId?: string | null;
+  /** 自动测量边界，不计入画布节点自身耗时 */
+  autoBoundary?: boolean;
+  /** 相对计划起点的开始偏移 (秒) */
+  startOffsetSeconds?: number;
+  /** 从中途开始时跳过的步骤 */
+  skipped?: boolean;
+  /** 步骤已执行完成 */
+  completed?: boolean;
+  /** 完成后的实际耗时 (秒) */
+  actualSeconds?: number | null;
+  /** 计划解析后的绝对定时时刻，显示不得重新解析配置 */
+  scheduledAt?: string | null;
   /** 原始节点索引 */
   index: number;
   /** 原始节点总数 */

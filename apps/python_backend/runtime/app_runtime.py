@@ -1451,12 +1451,12 @@ class AppRuntime:
             for step in self._execution_timeline.get("steps", []):
                 if step.get("completed"):
                     continue
-                seconds = float(step.get("actualSeconds") or step.get("estimatedSeconds") or 0)
+                seconds = float(step.get("actualSeconds") if step.get("actualSeconds") is not None else step.get("estimatedSeconds") or 0)
                 if step.get("unrolledIndex") == self._current_unrolled_index and self._current_step_started_at:
                     seconds = max(0.0, seconds - _seconds_between(self._current_step_started_at, now))
                 remaining += seconds
         estimates = self._execution_timeline.get("steps", [])
-        total = sum(float(step.get("actualSeconds") or step.get("estimatedSeconds") or 0) for step in estimates)
+        total = sum(float(step.get("actualSeconds") if step.get("actualSeconds") is not None else step.get("estimatedSeconds") or 0) for step in estimates)
         current = self._timeline_step(self._current_unrolled_index)
         confidences = [float(step.get("etaConfidence") or 0) for step in estimates]
         sources = {step.get("etaSource") for step in estimates}
@@ -1473,6 +1473,7 @@ class AppRuntime:
             "source": "history" if sources == {"history"} else ("rule" if sources <= {"rule", "actual"} else "mixed"),
             "confidence": sum(confidences) / len(confidences) if confidences else 0,
             "updatedAt": now,
+            "steps": copy.deepcopy(estimates),
         }
 
 

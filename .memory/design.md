@@ -186,11 +186,15 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-展开与ETA]
 
-显示一致性复核（2026-10-12）：底部栏的 `ProgressBar` 与节点属性 `RightPanel` 均调用既有 `/api/executions/estimate`，后端规则只有 `execution_eta` 一处；前端仍分别防抖请求并保存结果，隔离浏览器确认每次草稿更新发出两次请求。底部栏显示全部展开步骤总量，包括循环和自动测量边界；节点属性通过 `find` 取首个匹配步骤。循环内节点因此只显示第一次耗时而标题仍为“预计总时间”；高级节点和工作流块按源索引回退，可能取首个子步骤或自动启动步骤。已复现三个各 10 秒的阶梯步骤总量为 36 秒，而属性误取启动的 3 秒。共同的 `formatDuration` 对分钟向上取整，120 秒测量加 6 秒边界可分别显示为 2 分钟和 3 分钟，属于同源数值的显示差异。
+显示统一（2026-10-12）：后端 `execution_eta` 是时长规则与学习的唯一实现，测量预估和学习入口复用 `normalize_measurement_parameters`，历史规范字段与界面别名遵守执行的相同优先级。时间线保存每步画布来源 `sourceNodeId`、自动边界 `autoBoundary`、开始偏移 `startOffsetSeconds` 和已解析的绝对定时时刻；`eta.steps` 在预览和执行快照中携带同一份计划，运行时补充完成、跳过及实际耗时，不重新规划。
 
-现有缺陷：`RightPanel` 不以所选节点身份约束 `runningNodeTiming`，查看尚未执行的其他节点时也会显示当前步骤的开始及预计完成时间；高级子步骤 ID 又不同于画布父节点 ID，当前节点剩余显示无法按父节点正确识别。`execution_eta` 未调用测量参数归一化，时长规则优先取 `measurementDuration`，实际执行优先使用规范字段 `measurement_duration`；隔离验证确认历史配置两者为 99 与 7 时，界面参数和执行为 7，预估为 99。以上产品代码本次未修改。
+前端 `useWorkflowTime` 仅由 `App` 调用一次，通过既有 `runtimeClient` 防抖请求；底部栏和属性栏消费同一结果与公共 `workflowTimeModel`，不自行请求或计时。输入、自动启动配置或影响温度计划的当前炉温变化使旧结果失效，过期响应不回填。草稿预计开始时间以公共显示时钟为起点，按计划步骤累计前置等待和系统边界；绝对定时只对后端已解析的时刻作时间插值，不重新解析配置或自行改为明天。已过定时或估算失败显示不可用，禁止用当前时间填补缺失的时间线。
 
-复核边界：工作流运行期总量由 `AppRuntime._eta_snapshot` 更新，前端两处分别作时间插值。暂停只阻止进入后续步骤，当前等待和设备动作未必暂停，不能将暂停期间经过的墙钟时间直接认定为估算缺陷。温度计划对每个温度步骤读取当前炉温，不投影前序目标温度；隔离固定 500℃ 状态下，600℃ 与 700℃ 两个目标都以 500℃ 为起点估算。实测斜率只影响节点执行的等待窗口，未回写界面 ETA；真机准确性未验证。后续修复尚未实施：保留后端唯一估算器，统一前端请求和显示派生，复用既有测量归一化，并依据计划的真实归属区分单次耗时、节点累计耗时及系统边界。
+节点显示汇总源节点全部真实步骤，循环开始节点依据后端结构化迭代路径覆盖循环体；自动测量边界只进入工作流总量，不计入节点自身耗时。高级节点和工作流块不再按源索引取首个步骤。分钟显示保留剩余秒数，不把 126 秒向上显示为 3 分钟。无执行步骤或中途开始跳过的节点明确显示不执行；运行中使用所选节点自身时间线和实际计时，未来节点预计开始时间累计尚未完成的前置步骤，刷新后仍可恢复；终态只显示已发生的结束及耗时。
+
+运行期计时规则：当前步骤未完成时，公共插值同时用于节点与工作流剩余时间。当前步骤超出预估后不继续扣减尚未执行步骤的时长，标明“已超出预估”；后续节点显示“等待前置节点完成”，不以当前时间假定尚未发生的启动。暂停仅阻止进入后续步骤，当前等待和设备动作未必暂停；已有运行计时继续按后端事实推进，未来节点显示“恢复后开始”，不预测未知恢复时间。停止期间不预测未来节点启动时间。连续温度计划首次读取当前炉温，后续起点承接前序目标温度；实测斜率仍只修正执行等待窗口，不回写界面 ETA。预估不保证真机精确耗时，未连接真机验证。
+
+最近复核：2026-10-12，六组隔离后端与公共时间模型回归、十四项开发界面场景及四项生产界面路径通过；生产界面从实验记录实际加载工作流，验证前置等待的 60 秒开始偏移、单次估算请求、高级节点累计、真实等待顺序和中途开始的跳过事实。验证包含估算失败、乱序响应、暂停、超出预估、刷新恢复及窄屏；跨包类型、修改文件 ESLint、设计规范、版本检查与最终生产构建通过，仅既有构建包大小提示。脚本、数据库和截图在忽略或临时目录，不提交验证文件；2.12.6 → 2.12.7（PATCH），修复时间取值和显示逻辑。
 
 当前规则：`loop_unroller` 负责展开机制，`ExecutionPlanner` 负责把节点解析、展开、自动测量边界、ETA、时间线和起点校验组合成唯一后端计划。循环上下文统一为结构化 `IterationPathEntry[]`，循环展开路径和 `loopiteration_start` 事件中的 `iteration` 均是从 1 开始的业务序号，前端必须直接显示，不得再次加一。执行快照持久携带当前 `loopProgress`，节点计时携带对应 `iterationPath`，因此刷新或错过增量事件后仍能恢复当前循环的节点状态。流数据和 EIS 缓存使用 `executionId -> 原节点索引 -> 结构化 iteration key`，不能用可截断字符串或当前快照猜测数据所属迭代。进度、ETA 和报告明细都以该计划及其后续执行事实为准。ETA 只用于显示，不控制执行。
 
@@ -200,7 +204,7 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 Furnace ETA 规则：点变温的程序段时间与节点 ETA 是两个独立事实。程序段时间只服从设定速率；ETA 加热按线性速率估算，降温在 500℃ 以下按保守的分温区可实现速率估算，并以进入目标容差带为结束点，禁止在环境温度端点使用趋于无穷的对数外推。运行时可用最近实测温降斜率修正剩余等待；由于起始温度不在节点参数 hash 中，`change_temperature` 不使用整节点的精确参数历史耗时覆盖这套规则。
 
-归属文件：`apps/python_backend/loop_unroller.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/runtime/execution_eta.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/frontend/src/components/UnrollViewModal.tsx`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/types/executionControl.ts`、`apps/frontend/src/components/ProgressBar.tsx`。
+归属文件：`apps/python_backend/loop_unroller.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/runtime/execution_eta.py`、`apps/python_backend/runtime/execution_recorder.py`、`apps/python_backend/routers/executions.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/shared/contracts/workflow.py`、`apps/frontend/src/hooks/useWorkflowTime.ts`、`apps/frontend/src/state/workflowTimeModel.ts`、`apps/frontend/src/components/property/RightPanel.tsx`、`apps/frontend/src/components/UnrollViewModal.tsx`、`apps/frontend/src/components/unrollViewModel.ts`、`apps/frontend/src/types/executionControl.ts`、`apps/frontend/src/components/ProgressBar.tsx`。
 
 允许变化：可以扩展估算规则、节点类型和报告字段。
 

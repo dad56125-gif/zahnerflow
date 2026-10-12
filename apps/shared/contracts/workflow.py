@@ -103,22 +103,17 @@ class CurrentStep(ContractModel):
     etaConfidence: Optional[float] = Field(default=None, description="当前节点 ETA 置信度 (0-1)")
 
 
-class ExecutionEtaSnapshot(ContractModel):
-    """执行 ETA 快照"""
-    estimatedTotalSeconds: float = Field(default=0, description="预计总时长 (秒)")
-    estimatedRemainingSeconds: float = Field(default=0, description="预计剩余时长 (秒)")
-    elapsedSeconds: float = Field(default=0, description="已运行时长 (秒)")
-    currentStepEstimatedSeconds: Optional[float] = Field(default=None, description="当前步骤预计时长 (秒)")
-    currentStepElapsedSeconds: Optional[float] = Field(default=None, description="当前步骤已运行时长 (秒)")
-    source: str = Field(default="fallback", description="ETA 综合来源")
-    confidence: float = Field(default=0, description="ETA 综合置信度 (0-1)")
-    updatedAt: str = Field(description="ETA 生成时间 (ISO)")
-
-
 class ExecutionEtaStep(ContractModel):
     """展开后步骤的 ETA 明细"""
     nodeId: Optional[str] = Field(default=None, description="节点 ID")
     nodeType: Optional[str] = Field(default=None, description="节点类型")
+    sourceNodeId: Optional[str] = Field(default=None, description="所属画布节点 ID，包含高级节点和工作流块")
+    autoBoundary: bool = Field(default=False, description="自动测量边界，不计入画布节点自身耗时")
+    startOffsetSeconds: float = Field(default=0, description="相对计划起点的开始偏移 (秒)")
+    skipped: bool = Field(default=False, description="从中途开始时跳过的步骤")
+    completed: bool = Field(default=False, description="步骤已执行完成")
+    actualSeconds: Optional[float] = Field(default=None, description="完成后的实际耗时 (秒)")
+    scheduledAt: Optional[str] = Field(default=None, description="计划解析后的绝对定时时刻，显示不得重新解析配置")
     index: int = Field(description="原始节点索引")
     total: int = Field(description="原始节点总数")
     unrolledIndex: int = Field(description="循环展开后的步骤索引")
@@ -130,6 +125,19 @@ class ExecutionEtaStep(ContractModel):
     etaConfidence: float = Field(default=0, description="ETA 置信度 (0-1)")
     etaSampleCount: int = Field(default=0, description="历史样本数")
     paramsHash: str = Field(description="持续时间相关参数指纹")
+
+
+class ExecutionEtaSnapshot(ContractModel):
+    """执行 ETA 快照，预览与运行共用同一份步骤时间线。"""
+    estimatedTotalSeconds: float = Field(default=0, description="预计总时长 (秒)")
+    estimatedRemainingSeconds: float = Field(default=0, description="预计剩余时长 (秒)")
+    elapsedSeconds: float = Field(default=0, description="已运行时长 (秒)")
+    currentStepEstimatedSeconds: Optional[float] = Field(default=None, description="当前步骤预计时长 (秒)")
+    currentStepElapsedSeconds: Optional[float] = Field(default=None, description="当前步骤已运行时长 (秒)")
+    source: str = Field(default="fallback", description="ETA 综合来源")
+    confidence: float = Field(default=0, description="ETA 置信度 (0-1)")
+    updatedAt: str = Field(description="ETA 生成时间 (ISO)")
+    steps: List[ExecutionEtaStep] = Field(default_factory=list, description="同一次计划的步骤，运行中包含完成和跳过事实")
 
 
 class NodeTiming(ContractModel):

@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Any
 
 from database import db
+from devices.zahner.logic import normalize_measurement_parameters
 from runtime.execution_semantics import (
     node_execution_spec,
     parse_scheduled_at,
@@ -53,7 +54,9 @@ def params_for_eta(node_type: str | None, params: dict | None) -> dict:
     if node_type == "measurement":
         eta_params["measurement_type"] = eta_params.get("measurement_type", "measurement")
     elif spec and spec.dispatch_kind == "measurement":
-        eta_params.setdefault("measurement_type", spec.measurement_type or node_type)
+        eta_params["measurement_type"] = spec.measurement_type or node_type
+    if spec and spec.dispatch_kind == "measurement":
+        eta_params = normalize_measurement_parameters(eta_params["measurement_type"], eta_params)
     return eta_params
 
 
@@ -69,9 +72,10 @@ def estimate_node_seconds(
     *,
     scheduled_at: datetime | None = None,
     now: datetime | None = None,
+    current_temperature: float | None = None,
 ) -> dict:
     node_type = node_type or "unknown"
-    clean_params = canonical_params(params)
+    clean_params = canonical_params(params_for_eta(node_type, params))
     digest = params_hash(clean_params)
     spec = node_execution_spec(node_type)
     historical = _lookup_historical_estimate(node_type, digest) if not spec or spec.learn_duration else None
@@ -84,6 +88,7 @@ def estimate_node_seconds(
         devices,
         scheduled_at=scheduled_at,
         now=now,
+        current_temperature=current_temperature,
     )
     if rule_seconds is not None:
         return {
@@ -95,7 +100,7 @@ def estimate_node_seconds(
         }
 
     return {
-        "seconds": _fallback_seconds(node_type),
+        "seconds": _fallback_seconds(clean_params.get("measurement_type", node_type)),
         "source": "fallback",
         "confidence": 0.2,
         "sampleCount": 0,
@@ -108,6 +113,7 @@ def build_timeline(nodes: list[dict], steps: list[dict], devices=None, *, now: d
     total_seconds = 0.0
     planned_at = now or datetime.now()
     projected_at = planned_at
+    projected_temperature = None
     eta_nodes = [node_for_eta(node) for node in nodes]
     for unrolled_index, step in enumerate(steps):
         node = node_for_eta(step.get("node") or eta_nodes[step["originalIndex"]])
@@ -121,20 +127,29 @@ def build_timeline(nodes: list[dict], steps: list[dict], devices=None, *, now: d
                 if scheduled_value
                 else resolve_scheduled_start(params, planned_at)
             )
+        if node_type == "change_temperature" and projected_temperature is None:
+            projected_temperature = _current_temperature(devices)
         estimate = estimate_node_seconds(
             node_type,
             params,
             devices,
             scheduled_at=scheduled_at,
             now=projected_at,
+            current_temperature=projected_temperature,
         )
         seconds = float(estimate["seconds"])
+        start_offset_seconds = total_seconds
         total_seconds += seconds
         projected_at += timedelta(seconds=seconds)
+        if node_type == "change_temperature":
+            projected_temperature = float(params["targetTemperature"])
         timeline_steps.append(
             {
                 "nodeId": node.get("id"),
                 "nodeType": node_type,
+                "sourceNodeId": nodes[step["originalIndex"]].get("id"),
+                "autoBoundary": bool(step.get("autoBoundary")),
+                "startOffsetSeconds": start_offset_seconds,
                 "index": step["originalIndex"],
                 "total": len(nodes),
                 "unrolledIndex": unrolled_index,
@@ -167,6 +182,7 @@ def build_eta_snapshot(timeline: dict, updated_at: str | None = None) -> dict:
         "source": _combined_source(sources),
         "confidence": sum(confidences) / len(confidences) if confidences else 0,
         "updatedAt": updated_at,
+        "steps": steps,
     }
 
 
@@ -177,9 +193,10 @@ def estimate_workflow(
     *,
     now: datetime | None = None,
 ) -> dict:
-    timeline = build_timeline(nodes, steps, devices, now=now)
+    planned_at = now or datetime.now()
+    timeline = build_timeline(nodes, steps, devices, now=planned_at)
     return {
-        "eta": build_eta_snapshot(timeline),
+        "eta": build_eta_snapshot(timeline, planned_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")),
         "steps": timeline["steps"],
     }
 
@@ -188,7 +205,7 @@ def learn_successful_duration(node_type: str, params: dict, actual_seconds: floa
     if actual_seconds <= 0:
         return
 
-    clean_params = canonical_params(params)
+    clean_params = canonical_params(params_for_eta(node_type, params))
     digest = params_hash(clean_params)
     params_json = json.dumps(clean_params, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     now = datetime.utcnow().isoformat() + "Z"
@@ -273,6 +290,17 @@ def _combined_source(sources: set[str | None]) -> str:
     return "mixed"
 
 
+def _current_temperature(devices=None) -> float:
+    if devices is not None:
+        try:
+            status = devices.furnace_status()
+            if status.get("pv") is not None:
+                return float(status["pv"])
+        except Exception:
+            pass
+    return 25.0
+
+
 def _rule_estimate_seconds(
     node_type: str,
     params: dict,
@@ -280,6 +308,7 @@ def _rule_estimate_seconds(
     *,
     scheduled_at: datetime | None = None,
     now: datetime | None = None,
+    current_temperature: float | None = None,
 ) -> float | None:
     spec = node_execution_spec(node_type)
     eta_kind = spec.eta_kind if spec else node_type
@@ -302,14 +331,7 @@ def _rule_estimate_seconds(
         tolerance = max(0.0, float(params.get("tolerance", 0.5)))
         if target is None or rate <= 0:
             return stabilization
-        current = 25.0
-        if devices is not None:
-            try:
-                status = devices.furnace_status()
-                if status.get("pv") is not None:
-                    current = float(status["pv"])
-            except Exception:
-                pass
+        current = _current_temperature(devices) if current_temperature is None else current_temperature
         return estimate_temperature_wait_seconds(
             current_temp=current,
             target_temp=float(target),
@@ -320,12 +342,12 @@ def _rule_estimate_seconds(
         )
 
     duration = (
-        params.get("measurementDuration")
-        or params.get("measurement_duration")
+        params.get("measurement_duration")
         or params.get("duration")
         or params.get("step_duration")
     )
-    if duration is not None and node_type not in ("eis_potentiostatic", "eis_galvanostatic"):
+    measurement_type = params.get("measurement_type", node_type)
+    if duration is not None and measurement_type not in ("eis_potentiostatic", "eis_galvanostatic"):
         return float(duration)
     return None
 

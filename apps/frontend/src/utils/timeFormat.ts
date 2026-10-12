@@ -13,14 +13,16 @@ export function formatDuration(totalSeconds: number, totalWorkflowSeconds?: numb
     return `${seconds} 秒`;
   }
 
-  const minutes = Math.ceil(seconds / 60);
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  const secondsText = remainingSeconds > 0 ? ` ${remainingSeconds} 秒` : '';
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    return remainingMinutes > 0 ? `${hours} 小时 ${remainingMinutes} 分钟` : `${hours} 小时`;
+    return `${remainingMinutes > 0 ? `${hours} 小时 ${remainingMinutes} 分钟` : `${hours} 小时`}${secondsText}`;
   }
 
-  return `${minutes} 分钟`;
+  return `${minutes} 分钟${secondsText}`;
 }
 
 export function formatCountdown(totalSeconds: number): string {

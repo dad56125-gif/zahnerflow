@@ -21,6 +21,7 @@ import { useAppStore } from './state/appStore';
 import { useWorkflowStore } from './state/currentWorkflowStore';
 import { useExecutionSnapshot, useExecutionStore } from './state/executionStateBridge';
 import { describeExecution } from './state/executionStateModel';
+import { useWorkflowTime } from './hooks/useWorkflowTime';
 
 import { MFCModal } from './components/mfc/MFCModal';
 import { useMfc } from './modules/mfc/useMfc';
@@ -121,6 +122,8 @@ const AppContent: React.FC = () => {
       }
       : { host: 'localhost' };
   }, [simulatorActive, simulatorSettings]);
+  const workflowTime = useWorkflowTime(nodes, systemState, suppressPlannedEstimate, zahnerAutoStartupConfig,
+    JSON.stringify([furnaceState.connection_status, furnaceState.device_status?.pv]));
   const { runFlow, resetRun, runMetadataWarning, runValidationWarning, workflowBlockRunBlocked } = useWorkflowExecution({ nodes, nodeFingerprint, executionActive, selectedWorkstation, zahnerAutoStartupConfig });
 
   useEffect(() => {
@@ -276,7 +279,7 @@ const AppContent: React.FC = () => {
       </div>
 
       <div className="right-area">
-        <RightPanel mfcState={mfcState} />
+        <RightPanel mfcState={mfcState} workflowTime={workflowTime} />
       </div>
 
       <ModalLayer
@@ -321,7 +324,7 @@ const AppContent: React.FC = () => {
         detectedLoops={detectedLoops}
         systemState={systemState}
         onProgressBarClick={() => setShowMeasurementDashboard(true)}
-        suppressPlannedEstimate={suppressPlannedEstimate}
+        workflowTime={workflowTime}
       />
 
       {/* 图表 Modal */}
