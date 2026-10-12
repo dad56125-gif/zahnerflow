@@ -4,6 +4,8 @@ import type {
   UserSettings,
   RuntimeDeviceStatusEnvelope,
 } from "@zahnerflow/types";
+import { DEFAULT_FILE_PATH_CONFIG } from "@zahnerflow/types";
+import { runtimeClient } from "../../runtimeClient";
 import {
   type TutorialTransport,
 } from "../../tutorialEnvironment";
@@ -166,10 +168,10 @@ export class TutorialRuntime implements TutorialTransport {
     body: unknown,
     livePlan: () => Promise<unknown>,
   ): Promise<unknown> {
-    // These two endpoints only compile/read a plan. They do not execute, save, or connect devices.
+    // Read-only planning and metadata validation reuse the live backend; no execution, save, or device commands.
     if (
       method === "POST" &&
-      ["/api/executions/unroll-preview", "/api/executions/estimate"].includes(
+      ["/api/executions/unroll-preview", "/api/executions/estimate", "/api/files/validate-run-metadata"].includes(
         endpoint,
       )
     )
@@ -238,16 +240,15 @@ export class TutorialRuntime implements TutorialTransport {
     }
     if (method === "POST" && endpoint === "/api/executions") {
       this.requestBody = structuredClone(body) as ExecutionStartRequest;
-      const missing = [
-        !this.requestBody.ownerName?.trim() && "ownerName",
-        !this.requestBody.pathConfig?.projectName?.trim() && "projectName",
-        !this.requestBody.pathConfig?.individualName?.trim() && "individualName",
-      ].filter(Boolean);
-      if (missing.length && !this.requestBody.forceStartWithMissingRunMetadata) {
-        const detail = Object.values(deviceScenario.metadata).find(item =>
-          JSON.stringify(item.missingFields) === JSON.stringify(missing));
-        if (!detail) throw new Error("未采集的教学信息缺失组合");
-        throw Object.assign(new Error(detail.message), { code: "HTTP_409", status: 409, details: structuredClone(detail) });
+      const validation = await runtimeClient.files.validateRunMetadata({
+        ownerName: this.requestBody.ownerName || null,
+        pathConfig: { ...DEFAULT_FILE_PATH_CONFIG, ...this.requestBody.pathConfig },
+      });
+      if (!validation.canForceStart) {
+        throw Object.assign(new Error(validation.message), { code: "HTTP_422", status: 422, details: { code: "INVALID_RUN_METADATA", ...validation } });
+      }
+      if (validation.missingFields.length && !this.requestBody.forceStartWithMissingRunMetadata) {
+        throw Object.assign(new Error(validation.message), { code: "HTTP_409", status: 409, details: { code: "MISSING_RUN_METADATA", ...validation } });
       }
       if (
         this.requestBody.nodes?.length !== 1 ||

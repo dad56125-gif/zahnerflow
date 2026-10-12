@@ -26,6 +26,7 @@ interface CanvasProps {
   onUnrollViewOpenChange?: (open: boolean) => void;
   autoStartupConfig?: NodeParameters;
   runMetadataWarning?: string | null;
+  runMetadataConfirmAllowed?: boolean;
   runValidationWarning?: WorkflowValidationDetails | null;
 }
 
@@ -41,6 +42,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onUnrollViewOpenChange,
   autoStartupConfig,
   runMetadataWarning,
+  runMetadataConfirmAllowed,
   runValidationWarning,
 }) => {
   // 1. 从 Store 获取纯数据和 Actions
@@ -90,7 +92,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     observer.observe(warning);
     updateInset();
     return () => observer.disconnect();
-  }, [runValidationWarning]);
+  }, [runValidationWarning, runMetadataWarning, runMetadataConfirmAllowed]);
   useEffect(() => {
     if (!runValidationWarning?.issues.some(issue => issue.nodeId === selectedNodeId)) return;
     const selectedElement = Array.from(viewportRef.current?.querySelectorAll<HTMLElement>('[data-tutorial-node]') || [])
@@ -250,6 +252,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           onUnrollViewOpenChange={onUnrollViewOpenChange}
           autoStartupConfig={autoStartupConfig}
           runMetadataWarning={runMetadataWarning}
+          runMetadataConfirmAllowed={runMetadataConfirmAllowed}
           runValidationWarning={runValidationWarning}
         />
       )}

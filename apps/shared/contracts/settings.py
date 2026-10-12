@@ -11,6 +11,25 @@ class FilePathConfig(DocumentContract):
     electrode_area_cm2: float | None = Field(default=None, gt=0, allow_inf_nan=False, strict=True)
 
 
+class RunMetadataValidationRequest(DocumentContract):
+    owner_name: str | None = None
+    path_config: FilePathConfig
+
+
+class RunMetadataFieldErrors(DocumentContract):
+    owner_name: str = ""
+    base_path: str = ""
+    project_name: str = ""
+    individual_name: str = ""
+
+
+class RunMetadataValidationResult(DocumentContract):
+    missing_fields: list[str]
+    field_errors: RunMetadataFieldErrors
+    message: str
+    can_force_start: bool
+
+
 class NotificationSettings(DocumentContract):
     email: str = ""
     enabled: bool = False

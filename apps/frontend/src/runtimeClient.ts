@@ -9,6 +9,7 @@ import type {
   ExecutionSnapshot,
   WorkflowNode,
   WorkflowUnrollPreview,
+  RunMetadataValidationRequest, RunMetadataValidationResult,
 } from '@zahnerflow/types';
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -322,6 +323,8 @@ export const runtimeClient = {
   },
 
   files: {
+    validateRunMetadata: (body: RunMetadataValidationRequest) =>
+      post<RunMetadataValidationResult>('/api/files/validate-run-metadata', body),
     projects: <T = { success: boolean; projects: string[] }>(user: string) => get<T>('/api/files/projects', { user }),
     deleteProject: <T = { success: boolean; message: string }>(projectName: string, user: string) =>
       del<T>(`/api/files/projects/${encodeURIComponent(projectName)}`, { user }),

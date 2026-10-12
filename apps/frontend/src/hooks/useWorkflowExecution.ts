@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { WorkflowNode, WorkstationType, WorkflowValidationDetails } from '@zahnerflow/types';
+import type { WorkflowNode, WorkstationType, WorkflowValidationDetails, RunMetadataValidationResult } from '@zahnerflow/types';
 import { runtimeClient, type RuntimeError } from '../runtimeClient';
 import { useUser } from '../components/shared/userContextState';
 import { useAppStore } from '../state/appStore';
@@ -18,13 +18,7 @@ type MissingRunMetadataDetails = {
 
 type RunMetadataWarning = {
   message: string;
-  expiresAt: number;
-};
-
-const RUN_METADATA_FIELD_LABELS: Record<string, string> = {
-  ownerName: '用户',
-  projectName: '项目名称',
-  individualName: '样品名称',
+  expiresAt: number | null;
 };
 
 function isMissingRunMetadataError(error: unknown): error is RuntimeError & { details: MissingRunMetadataDetails } {
@@ -33,18 +27,6 @@ function isMissingRunMetadataError(error: unknown): error is RuntimeError & { de
     : undefined;
   return Boolean(details && typeof details === 'object' && (details as MissingRunMetadataDetails).code === 'MISSING_RUN_METADATA');
 }
-
-function runMetadataWarningMessage(details: MissingRunMetadataDetails): string {
-  const fields = Array.isArray(details.missingFields) ? details.missingFields : [];
-  const missingText = fields
-    .map((field) => RUN_METADATA_FIELD_LABELS[field])
-    .filter(Boolean)
-    .join('、');
-  return missingText
-    ? `缺少${missingText}，请填写后再运行。`
-    : details.message || '运行信息不完整，请填写后再运行。';
-}
-
 
 interface WorkflowExecutionOptions {
   nodes: WorkflowNode[];
@@ -63,8 +45,8 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
   const [blockedWorkflowBlockIds, setBlockedWorkflowBlockIds] = useState<string[]>([]);
   const [runMetadataWarning, setRunMetadataWarning] = useState<RunMetadataWarning | null>(null);
   const [runValidationWarning, setRunValidationWarning] = useState<WorkflowValidationDetails | null>(null);
-  const scopeRef = useRef(currentUser);
-  scopeRef.current = currentUser;
+  const scopeRef = useRef({ currentUser, filePathConfig });
+  scopeRef.current = { currentUser, filePathConfig };
   const workflowBlockRunBlocked = blockedWorkflowBlockIds.length > 0 || nodes.some(node =>
     node.type === 'workflow_block' && !String(node.config?.workflowId || '').trim()
   );
@@ -104,7 +86,7 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
   }, [nodeFingerprint, nodes]);
 
   useEffect(() => {
-    if (!runMetadataWarning) return;
+    if (!runMetadataWarning || runMetadataWarning.expiresAt === null) return;
     const timeout = window.setTimeout(() => {
       setRunMetadataWarning(null);
     }, Math.max(0, runMetadataWarning.expiresAt - Date.now()));
@@ -114,7 +96,7 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
   useEffect(() => {
     setRunMetadataWarning(null);
     setRunValidationWarning(null);
-  }, [nodeFingerprint, currentUser, filePathConfig.projectName, filePathConfig.individualName]);
+  }, [nodeFingerprint, currentUser, filePathConfig]);
 
   // --- 执行控制逻辑 ---
   const runFlow = useCallback(async (options: RunFlowOptions = {}): Promise<RunFlowOutcome> => {
@@ -137,7 +119,7 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
         workflowStore.setDraftWorkflowName(workflowName);
       }
 
-      const forceStartWithMissingRunMetadata = !!runMetadataWarning && Date.now() < runMetadataWarning.expiresAt;
+      const forceStartWithMissingRunMetadata = !!runMetadataWarning && runMetadataWarning.expiresAt !== null && Date.now() < runMetadataWarning.expiresAt;
 
       await startExecution({
         nodes: executionNodes,
@@ -154,9 +136,9 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
       return 'started';
     } catch (error) {
       const liveFingerprint = JSON.stringify(useCanvasStore.getState().nodes.map(node => ({ id: node.id, type: node.type, config: node.config })));
-      if (scopeRef.current !== currentUser || liveFingerprint !== requestFingerprint) return 'blocked';
+      if (scopeRef.current.currentUser !== currentUser || scopeRef.current.filePathConfig !== filePathConfig || liveFingerprint !== requestFingerprint) return 'blocked';
       const details = error && typeof error === 'object' && 'details' in error
-        ? (error as RuntimeError).details as WorkflowValidationDetails | undefined : undefined;
+        ? (error as RuntimeError).details as WorkflowValidationDetails | (RunMetadataValidationResult & { code: 'INVALID_RUN_METADATA' }) | undefined : undefined;
       if (details?.code === 'WORKFLOW_VALIDATION_FAILED' && Array.isArray(details.issues)) {
         setRunMetadataWarning(null);
         setRunValidationWarning(details);
@@ -166,10 +148,15 @@ export function useWorkflowExecution({ nodes, nodeFingerprint, executionActive, 
       }
       if (isMissingRunMetadataError(error)) {
         setRunMetadataWarning({
-          message: runMetadataWarningMessage(error.details),
+          message: error.details.message || '运行信息不完整，请填写后再运行。',
           expiresAt: Date.now() + RUN_METADATA_CONFIRM_MS,
         });
         return 'confirmation-required';
+      }
+      if (details?.code === 'INVALID_RUN_METADATA') {
+        setRunValidationWarning(null);
+        setRunMetadataWarning({ message: details.message || '运行信息有误，请修正后再运行。', expiresAt: null });
+        return 'blocked';
       }
       console.error('工作流执行失败:', error);
       setNotificationPanelOpen(true);

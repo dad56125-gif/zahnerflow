@@ -4,6 +4,7 @@ Executions — /api/executions routes.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import random
 import time
@@ -33,6 +34,7 @@ from report_service import load_execution_report
 from shared.contracts.report import ExecutionReport
 from shared.contracts.workflow import ExecutionStartRequest, ExecutionPreviewRequest
 from runtime.node_validation import WorkflowValidationError
+from run_metadata import validate_run_metadata
 
 router = APIRouter(prefix="/api/executions", tags=["executions"])
 sio = None
@@ -116,36 +118,14 @@ def _resolve_path_config(owner_name: str | None, request_path_config: dict | Non
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors(include_input=False, include_context=False)) from exc
     for key in ("basePath", "projectName", "individualName"):
-        value = _string_value(incoming.get(key))
-        if value:
-            resolved[key] = value
+        if key in incoming:
+            resolved[key] = _string_value(incoming[key])
     return {
-        "basePath": _string_value(resolved.get("basePath")) or "C:\\data\\archive",
+        "basePath": _string_value(resolved.get("basePath", FilePathConfig().base_path)),
         "projectName": _string_value(resolved.get("projectName")),
         "individualName": _string_value(resolved.get("individualName")),
         "electrodeAreaCm2": area,
     }
-
-
-def _missing_run_metadata(owner_name: str | None, path_config: dict) -> list[str]:
-    missing = []
-    if not _string_value(owner_name):
-        missing.append("ownerName")
-    if not _string_value(path_config.get("projectName")):
-        missing.append("projectName")
-    if not _string_value(path_config.get("individualName")):
-        missing.append("individualName")
-    return missing
-
-
-def _run_metadata_message(missing_fields: list[str]) -> str:
-    labels = {
-        "ownerName": "用户",
-        "projectName": "项目名称",
-        "individualName": "样品名称",
-    }
-    missing_text = "、".join(labels[field] for field in missing_fields)
-    return f"缺少{missing_text}，请填写后再运行。"
 
 
 def set_sio(sio_instance):
@@ -165,7 +145,7 @@ async def create_execution(request: ExecutionStartRequest):
     auto_startup_config = body.get("autoStartupConfig") or {}
     force_missing_metadata = bool(body.get("forceStartWithMissingRunMetadata"))
     path_config = _resolve_path_config(owner_name, body.get("pathConfig"))
-    missing_metadata = _missing_run_metadata(owner_name, path_config)
+    metadata_validation = await asyncio.to_thread(validate_run_metadata, owner_name, path_config)
     start_from_unrolled_index = 0
 
     if _runtime_has_active_execution():
@@ -174,13 +154,16 @@ async def create_execution(request: ExecutionStartRequest):
     if not _runtime_can_start_execution():
         raise HTTPException(status_code=409, detail="Reset the completed execution before starting another one")
 
-    if missing_metadata and not force_missing_metadata:
+    if not metadata_validation.can_force_start:
+        raise HTTPException(status_code=422, detail={"code": "INVALID_RUN_METADATA", **metadata_validation.model_dump(by_alias=True)})
+
+    if metadata_validation.missing_fields and not force_missing_metadata:
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "MISSING_RUN_METADATA",
-                "missingFields": missing_metadata,
-                "message": _run_metadata_message(missing_metadata),
+                "missingFields": metadata_validation.missing_fields,
+                "message": metadata_validation.message,
             },
         )
 

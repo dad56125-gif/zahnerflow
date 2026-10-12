@@ -356,8 +356,8 @@ def generate():
     print(f"  Generated: contracts/events.ts")
 
     # 完整设置响应和报告文档共用与运行时相同的模型。
-    from contracts.settings import (FilePathConfig, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse)
-    settings_models = [FilePathConfig, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse]
+    from contracts.settings import (FilePathConfig, RunMetadataValidationRequest, RunMetadataFieldErrors, RunMetadataValidationResult, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse)
+    settings_models = [FilePathConfig, RunMetadataValidationRequest, RunMetadataFieldErrors, RunMetadataValidationResult, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse]
     content = ["/** 自动生成，来源 apps/shared/contracts/settings.py；勿手动修改。 */"]
     content.extend(model_to_interface(model) for model in settings_models)
     content.append("export const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = " + json.dumps(FilePathConfig().model_dump(by_alias=True), ensure_ascii=False) + ";")

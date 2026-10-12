@@ -204,43 +204,25 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         minWidth: 220,
     });
 
-    // 验证函数
-    const validateBasePath = (path: string): boolean => {
-        const validPattern = /^[a-zA-Z0-9\\/:_-]*$/;
-        const hasInvalidChars = /[<>"|?*]/.test(path);
-        return validPattern.test(path) && !hasInvalidChars;
-    };
-
-    const validateProjectName = (name: string): boolean => {
-        const validPattern = /^[a-zA-Z0-9_]*$/;
-        return validPattern.test(name);
-    };
-
-    const validateIndividualName = (name: string): boolean => {
-        const validPattern = /^[a-zA-Z0-9_]*$/;
-        return validPattern.test(name);
-    };
-
-    // 实时验证
+    // 面板只消费后端统一校验结果，不维护另一套规则。
+    const validationPathConfig = settings?.filePath;
     useEffect(() => {
-        if (!settings) return;
-
-        const realTimeErrors: typeof fieldErrors = {};
-
-        if (settings.filePath.basePath && !validateBasePath(settings.filePath.basePath)) {
-            realTimeErrors.basePath = '路径包含无效字符（<>"|?*）';
-        }
-
-        if (settings.filePath.projectName && !validateProjectName(settings.filePath.projectName)) {
-            realTimeErrors.projectName = '只能包含英文、数字和下划线';
-        }
-
-        if (settings.filePath.individualName && !validateIndividualName(settings.filePath.individualName)) {
-            realTimeErrors.individualName = '只能包含英文、数字和下划线';
-        }
-
-        setFieldErrors(realTimeErrors);
-    }, [settings]);
+        if (!isOpen || !validationPathConfig || settingsUserId !== currentUser) { setFieldErrors({}); return; }
+        let active = true;
+        const generation = workspaceGeneration;
+        const requestUser = currentUser;
+        setFieldErrors({});
+        const timeoutId = window.setTimeout(() => {
+            void runtimeClient.files.validateRunMetadata({ ownerName: currentUser, pathConfig: validationPathConfig })
+                .then(result => {
+                    if (active && generation === workspaceGeneration && requestUser === userRef.current) setFieldErrors(result.fieldErrors);
+                })
+                .catch(() => {
+                    if (active && generation === workspaceGeneration && requestUser === userRef.current) setFieldErrors({ basePath: '校验失败，请确认后端连接正常后重试' });
+                });
+        }, 200);
+        return () => { active = false; window.clearTimeout(timeoutId); };
+    }, [isOpen, validationPathConfig, settingsUserId, currentUser]);
 
     // 加载用户配置
     useEffect(() => {

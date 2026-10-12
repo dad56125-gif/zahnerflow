@@ -270,6 +270,7 @@ const AppContent: React.FC = () => {
           onUnrollViewOpenChange={setShowUnrollView}
           autoStartupConfig={zahnerAutoStartupConfig}
           runMetadataWarning={runMetadataWarning?.message || null}
+          runMetadataConfirmAllowed={runMetadataWarning?.expiresAt != null}
           runValidationWarning={runValidationWarning}
         />
       </div>

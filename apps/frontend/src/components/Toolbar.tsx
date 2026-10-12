@@ -20,6 +20,7 @@ interface ToolbarProps {
   onUnrollViewOpenChange?: (open: boolean) => void;
   autoStartupConfig?: NodeParameters;
   runMetadataWarning?: string | null;
+  runMetadataConfirmAllowed?: boolean;
   runValidationWarning?: WorkflowValidationDetails | null;
 }
 
@@ -96,6 +97,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onUnrollViewOpenChange,
   autoStartupConfig,
   runMetadataWarning,
+  runMetadataConfirmAllowed,
   runValidationWarning,
 }) => {
   const { clearCanvas, nodes, selectNode } = useCanvasStore();
@@ -323,7 +325,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const handleRunPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     longPressTriggeredRef.current = false;
     if (buttonStates.primaryAction !== 'stop') stopPressTriggeredRef.current = false;
-    if (!isRunMetadataBlocked) return;
+    if (!isRunMetadataBlocked || !runMetadataConfirmAllowed) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
     clearLongPressTimer();
@@ -391,7 +393,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         <div className="toolbar__group toolbar__group--top-right">
           {(runMetadataWarning || runValidationWarning) && buttonStates.primaryAction === 'run' && (
-            <div className={`toolbar-run-warning ${runValidationWarning ? 'toolbar-run-warning--validation' : ''}`} role="status" aria-live="polite">
+            <div className={`toolbar-run-warning ${runValidationWarning || !runMetadataConfirmAllowed ? 'toolbar-run-warning--validation' : ''}`} role="status" aria-live="polite">
               <span className="toolbar-run-warning__marker">!</span>
               <div className="toolbar-run-warning__message">
                 {runValidationWarning ? <>
@@ -420,7 +422,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             title={buttonStates.primaryAction === 'stop' ? '长按 1 秒停止流程' : workflowBlockRunBlocked ? '工作流块未选择子工作流，或子工作流包含嵌套工作流块' : buttonStates.primaryButtonText === '运行' ? '运行流程 (F5)' : buttonStates.primaryButtonText}
             aria-label={buttonStates.primaryButtonText}
             aria-disabled={isRunMetadataBlocked ? true : undefined}
-            disabled={buttonStates.primaryButtonDisabled && !isRunMetadataBlocked}
+            disabled={buttonStates.primaryButtonDisabled || (isRunMetadataBlocked && !runMetadataConfirmAllowed)}
           >
             {buttonStates.primaryAction === 'stop' && stopPressProgress > 0 && (
               <svg className="toolbar-stop-progress" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

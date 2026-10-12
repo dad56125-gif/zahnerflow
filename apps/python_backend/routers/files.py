@@ -13,8 +13,15 @@ from fastapi import APIRouter
 
 from database import db
 from experiment_worker import build_output_path
+from run_metadata import validate_run_metadata
+from shared.contracts.settings import RunMetadataValidationRequest, RunMetadataValidationResult
 
 router = APIRouter(prefix="/api/files", tags=["files"])
+
+
+@router.post("/validate-run-metadata", response_model=RunMetadataValidationResult)
+def validate_run_metadata_config(request: RunMetadataValidationRequest):
+    return validate_run_metadata(request.owner_name, request.path_config.model_dump(by_alias=True))
 
 
 @router.post("/register", status_code=201)

@@ -7,6 +7,25 @@ export interface FilePathConfig {
   electrodeAreaCm2: number | null;
 }
 
+export interface RunMetadataValidationRequest {
+  ownerName: string | null;
+  pathConfig: FilePathConfig;
+}
+
+export interface RunMetadataFieldErrors {
+  ownerName: string;
+  basePath: string;
+  projectName: string;
+  individualName: string;
+}
+
+export interface RunMetadataValidationResult {
+  missingFields: string[];
+  fieldErrors: RunMetadataFieldErrors;
+  message: string;
+  canForceStart: boolean;
+}
+
 export interface NotificationSettings {
   email: string;
   enabled: boolean;
