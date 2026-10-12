@@ -11,6 +11,7 @@ from typing import Callable
 from database import db
 from loop_unroller import WorkflowBlockError, unroll_loops
 from runtime.execution_eta import estimate_workflow
+from runtime.node_executors import validate_node_executor
 from runtime.execution_semantics import (
     MEASUREMENT_NODE_TYPES,
     resolve_scheduled_start,
@@ -112,9 +113,13 @@ class ExecutionPlanner:
 
         planned_at = now or datetime.now()
         for step in steps:
+            node = step.get("node") or nodes_snapshot[step["originalIndex"]]
+            try:
+                validate_node_executor(node)
+            except (TypeError, ValueError) as exc:
+                raise ExecutionPlanningError(f"Invalid node execution contract: {exc}") from exc
             if step.get("nodeType") != "scheduled_start":
                 continue
-            node = step.get("node") or nodes_snapshot[step["originalIndex"]]
             try:
                 scheduled_at = resolve_scheduled_start(node.get("config") or {}, planned_at)
             except (TypeError, ValueError) as exc:

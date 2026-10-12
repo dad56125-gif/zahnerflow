@@ -330,10 +330,14 @@ def accurate_timer(duration: float, interval: float):
             time.sleep(sleep_duration)
 
 
-def _raise_if_cancel_requested(params: dict):
+class MeasurementCancelled(RuntimeError):
+    """The measurement acknowledged a workflow stop after device cleanup."""
+
+
+def check_measurement_cancelled(params: dict):
     cancel_requested = params.get("_cancel_requested")
     if callable(cancel_requested) and cancel_requested():
-        raise RuntimeError("Measurement cancelled by workflow stop")
+        raise MeasurementCancelled("Measurement cancelled by workflow stop")
 
 def _save_data_chunk(filename: str, data: list, mode='a'):
     """
@@ -522,7 +526,7 @@ def measure_ocp(device: ThalesRemoteScriptWrapper, params: dict, callback: Optio
 
     try:
         for _ in accurate_timer(duration, interval):
-            _raise_if_cancel_requested(params)
+            check_measurement_cancelled(params)
             now = time.monotonic()
             t = now - start_time
 
@@ -598,7 +602,7 @@ def measure_chrono(device: ThalesRemoteScriptWrapper, params: dict, mode: str, c
     
     try:
         for _ in accurate_timer(duration, interval):
-            _raise_if_cancel_requested(params)
+            check_measurement_cancelled(params)
             now = time.monotonic()
             t = now - start_time
             
@@ -709,7 +713,7 @@ def measure_ramp(device: ThalesRemoteScriptWrapper, params: dict, mode: str, cal
     
     try:
         for _ in accurate_timer(duration, interval):
-            _raise_if_cancel_requested(params)
+            check_measurement_cancelled(params)
             now = time.monotonic()
             t = now - start_time
             

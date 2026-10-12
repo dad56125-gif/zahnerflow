@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
-from typing import Iterable
+from typing import Iterable, Literal
 
 from shared.contracts.workflow import EXECUTION_PHASE_VALUES
 
@@ -85,42 +85,50 @@ class NodeExecutionSpec:
 
     dispatch_kind: str
     eta_kind: str
+    stop_policy: Literal["cooperative", "finish_current"]
     measurement_type: str | None = None
     measurement_boundary: bool = False
-    interruptible: bool = True
     learn_duration: bool = True
 
+    def __post_init__(self):
+        if self.stop_policy not in ("cooperative", "finish_current"):
+            raise ValueError(f"Invalid node stop policy: {self.stop_policy}")
 
-def _measurement_spec(measurement_type: str | None, *, interruptible: bool = True) -> NodeExecutionSpec:
+    @property
+    def interruptible(self) -> bool:
+        return self.stop_policy == "cooperative"
+
+
+def _measurement_spec(measurement_type: str | None, *, stop_policy: Literal["cooperative", "finish_current"]) -> NodeExecutionSpec:
     return NodeExecutionSpec(
         dispatch_kind="measurement",
         eta_kind="measurement",
         measurement_type=measurement_type,
         measurement_boundary=True,
-        interruptible=interruptible,
+        stop_policy=stop_policy,
     )
 
 
 NODE_EXECUTION_SPECS: dict[str, NodeExecutionSpec] = {
-    "startup": NodeExecutionSpec("zahner_startup", "startup", learn_duration=False),
-    "shutdown": NodeExecutionSpec("zahner_shutdown", "shutdown", learn_duration=False),
-    "delay": NodeExecutionSpec("wait", "delay", learn_duration=False),
-    "wait_delay": NodeExecutionSpec("wait", "delay", learn_duration=False),
-    "scheduled_start": NodeExecutionSpec("scheduled_wait", "scheduled_start", learn_duration=False),
+    "startup": NodeExecutionSpec("zahner_startup", "startup", "finish_current", learn_duration=False),
+    "shutdown": NodeExecutionSpec("zahner_shutdown", "shutdown", "finish_current", learn_duration=False),
+    "delay": NodeExecutionSpec("wait", "delay", "cooperative", learn_duration=False),
+    "wait_delay": NodeExecutionSpec("wait", "delay", "cooperative", learn_duration=False),
+    "scheduled_start": NodeExecutionSpec("scheduled_wait", "scheduled_start", "cooperative", learn_duration=False),
     # Temperature duration depends on the live starting temperature, which is
     # not part of the node parameter hash.  Exact-parameter duration learning
     # would therefore reuse unrelated runs and override the physical ETA rule.
-    "change_temperature": NodeExecutionSpec("change_temperature", "change_temperature", learn_duration=False),
-    "change_gas_flow": NodeExecutionSpec("change_gas_flow", "change_gas_flow"),
-    "measurement": _measurement_spec(None),
-    "ocp": _measurement_spec("ocp"),
-    "ocp_measurement": _measurement_spec("ocp_measurement"),
-    "voltage_ramp": _measurement_spec("voltage_ramp"),
-    "current_ramp": _measurement_spec("current_ramp"),
-    "chronoamperometry": _measurement_spec("chronoamperometry"),
-    "chronopotentiometry": _measurement_spec("chronopotentiometry"),
-    "eis_potentiostatic": _measurement_spec("eis_potentiostatic", interruptible=False),
-    "eis_galvanostatic": _measurement_spec("eis_galvanostatic", interruptible=False),
+    "change_temperature": NodeExecutionSpec("change_temperature", "change_temperature", "cooperative", learn_duration=False),
+    "change_gas_flow": NodeExecutionSpec("change_gas_flow", "change_gas_flow", "cooperative"),
+    "measurement": _measurement_spec(None, stop_policy="cooperative"),
+    "ocp": _measurement_spec("ocp", stop_policy="cooperative"),
+    "ocp_measurement": _measurement_spec("ocp_measurement", stop_policy="cooperative"),
+    "voltage_ramp": _measurement_spec("voltage_ramp", stop_policy="cooperative"),
+    "current_ramp": _measurement_spec("current_ramp", stop_policy="cooperative"),
+    "chronoamperometry": _measurement_spec("chronoamperometry", stop_policy="cooperative"),
+    "chronopotentiometry": _measurement_spec("chronopotentiometry", stop_policy="cooperative"),
+    "eis_potentiostatic": _measurement_spec("eis_potentiostatic", stop_policy="finish_current"),
+    "eis_galvanostatic": _measurement_spec("eis_galvanostatic", stop_policy="finish_current"),
 }
 
 ADVANCED_MEASUREMENT_TYPES = frozenset(
@@ -146,6 +154,19 @@ def require_node_execution_spec(node_type: str | None) -> NodeExecutionSpec:
     spec = node_execution_spec(node_type)
     if spec is None:
         raise ValueError(f"Unsupported executable node type: {node_type or '<missing>'}")
+    return spec
+
+
+def resolve_node_execution_spec(node_type: str | None, params: dict) -> NodeExecutionSpec:
+    spec = require_node_execution_spec(node_type)
+    if node_type == "measurement":
+        measurement_type = params.get("measurement_type")
+        if measurement_type == "open_circuit_potential":
+            measurement_type = "ocp"
+        actual = require_node_execution_spec(measurement_type)
+        if actual.dispatch_kind != "measurement" or not actual.measurement_type:
+            raise ValueError(f"Unsupported measurement type: {measurement_type}")
+        spec = replace(spec, measurement_type=actual.measurement_type, stop_policy=actual.stop_policy)
     return spec
 
 

@@ -142,15 +142,21 @@ Furnace 总时间显示只做前端派生：运行中显示 `accumulatedRunSecon
 
 ## [执行-状态机]
 
-停止交互（2026-10-12）：长按停止的 1 秒计时与动画绘制解耦，终态、输入取消、失去捕获或焦点时清理长按。停止后切换为重置/运行时，松手产生的点击不得执行新动作；进度环仅在停止按钮显示。终态可以查看展开步骤；清空先显式请求后端重置，确认空闲后才清空草稿与样品，失败保留画布。启动、暂停、恢复、取消和重置通过既有 runtimeClient 读取后端快照，与 Socket 共用运行时身份/序号检查；同一运行时重连不清除已接收序号。停止中的快照每 500ms 复核至终态，Socket 与 HTTP 均不得让旧响应复活执行；终态解除待决控制命令，迟到请求错误不得覆盖后续命令。开发和生产前端配合隔离后端验证等待节点的停止、清空、重置与再次执行，16 项浏览器注入回归通过。原动画在隔离浏览器可以播放，用户现场不播放的直接原因尚未复现；未验证真机，EIS 仍按现有设备边界等待当前扫描结束。
+停止机制（2026-10-12）：每次执行创建独立 `ExecutionControl`，取消令牌只置位、不复用；冻结的 `NodeExecutionContext` 固定执行身份与配置。`ExecutionEngine` 只调度、检查步骤边界和统一判定终态，不分支设备节点。`NodeExecutionSpec.stop_policy` 必须声明 `cooperative` 或 `finish_current`；`node_executors.py` 注册异步处理器，规划阶段校验声明与处理器，缺失时拒绝启动。节点仅维护本地中断和设备清理，不写公共 phase；循环和工作流块展开后沿用相同边界。等待、气路、温度和直流测量协作停止；连接、断开和 EIS 等待当前调用结束，停止后不得进入后续步骤。通用 measurement 节点按实际测量类型解析策略，不能把 EIS 当作可中断直流测量。
 
-温度失败诊断（2026-10-08）：`ExecutionEngine` 按启动前检查、命令写入、运行状态确认、目标等待划分失败。目标温度等待窗口耗尽与串口状态读取失败分别分类；取消保留取消语义，取消时停止命令失败仍记录真实命令或确认失败。`ExecutionFailure` 共享契约携带中文标题、说明、建议、启动命令回执结果、原始原因及故障当时事实。命令结果描述启动命令：首条参数写入失败仍是启动未发送，只有启动已尝试而无有效回执才是启动结果未知；不要求瞬态运行寄存器回读等于写入值。结构化失败写入现有步骤 `result` JSON，`AppRuntime` 将同一事实发布到执行快照、结束事件及通知；新执行和重置清空当前失败。设备收到启动回执不等于工作流成功，也不意味着炉子因工作流失败而停止；不自动重复设备命令。
+停止收口：取消解除步骤边界暂停；重复取消同一活动执行幂等。`run_in_thread` 等待设备线程真正退出，即使其 asyncio 等待者被取消也先发停止令牌并排空线程，禁止提前释放设备给新执行。只有明确取消异常归为 cancelled，停止期间通信或清理失败仍归为 failed。步骤完成事件只更新步骤事实，公共执行终态仅由引擎结束回调发布。后端关闭先请求停止并等待节点退出，再断开设备；执行保留 RUNTIME_SHUTDOWN 失败语义。步骤回调失败时仍关闭活动步骤的快照与数据库记录，旧执行结束回调不能清除新执行任务，通知和邮件使用已冻结的结束事实。无法强制终止的驱动调用仍可能长时间处于 cancelling，不伪造已停止；真机时限由驱动协议、超时和新增节点能力决定。
+
+节点扩展规范见 `doc/reference/workflow-stop.md`。公共机制不包含节点名称特判；新增节点声明自身策略、注册处理器、实现局部停止清理，并验证正常结束、取消和清理失败。现有前端命令通过公共协调器处理请求身份、错误和快照收敛，命令成功与后续同步失败分别处理；失败命令也先复核后端快照，已到终态不写过期停止错误，仍活动时清除待决命令、展示错误并允许重试；轮询读失败继续重试，同一工作区不并发重复刷新，跨工作区/运行时旧响应失效。
+
+停止交互（2026-10-12）：长按停止的 1 秒计时与动画绘制解耦，终态、输入取消、失去捕获或焦点时清理长按。停止后切换为重置/运行时，松手产生的点击不得执行新动作；进度环仅在停止按钮显示。终态可以查看展开步骤；清空先显式请求后端重置，确认空闲后才清空草稿与样品，失败保留画布。启动、暂停、恢复、取消和重置通过既有 runtimeClient 读取后端快照，与 Socket 共用运行时身份/序号检查；同一运行时重连不清除已接收序号。停止中的快照每 500ms 复核至终态，暂时读失败退避至最多 4 秒后继续复核，Socket 与 HTTP 均不得让旧响应复活执行；终态解除待决控制命令，迟到请求错误不得覆盖后续命令。开发和生产前端配合隔离后端验证等待节点的停止、清空、重置与再次执行，16 项浏览器注入回归通过。原动画在隔离浏览器可以播放，用户现场不播放的直接原因尚未复现；未验证真机，EIS 仍按现有设备边界等待当前扫描结束。
+
+温度失败诊断（2026-10-08）：`NodeExecutor` 的温度处理器按启动前检查、命令写入、运行状态确认、目标等待划分失败。目标温度等待窗口耗尽与串口状态读取失败分别分类；取消保留取消语义，取消时停止命令失败仍记录真实命令或确认失败。`ExecutionFailure` 共享契约携带中文标题、说明、建议、启动命令回执结果、原始原因及故障当时事实。命令结果描述启动命令：首条参数写入失败仍是启动未发送，只有启动已尝试而无有效回执才是启动结果未知；不要求瞬态运行寄存器回读等于写入值。结构化失败写入现有步骤 `result` JSON，`AppRuntime` 将同一事实发布到执行快照、结束事件及通知；新执行和重置清空当前失败。设备收到启动回执不等于工作流成功，也不意味着炉子因工作流失败而停止；不自动重复设备命令。
 
 诊断导出（2026-10-08）：`GET /api/runtime/diagnostics` 由现有运行时读取缓存与 SQLite；指定 `executionId` 只读取该次历史执行，未知身份返回 404。通知和实验记录通过同一 `runtimeClient` 下载本地 JSON，不对外发送。历史步骤失败可以跨重置和重启读取；设备快照明确是导出时状态，通信日志明确是当前进程日志且无法归属单次执行。字段白名单、文本脱敏和条数上限限制导出内容，不收集用户设置、完整路径和原始曲线；不轮询设备、不新增数据库结构。
 
 当前规则：工作流执行是本地单用户状态机，同一时间只允许一个活跃执行。共享契约定义 `idle`、`running`、`paused`、`cancelling`、`completed`、`failed`、`cancelled` 七个 phase；后端 `EXECUTION_PHASES` 按 `is_*`、`can_*` 的自然语言字段编组状态含义和允许命令，前端 `executionPhases` 使用相同编组派生展示。`running`、`paused`、`cancelling` 是活跃态，`completed`、`failed`、`cancelled` 是终态。暂停、恢复和取消命令必须命中当前 execution id 并符合当前 phase。终态保留 execution id、当前步骤、节点计时、循环进度、结果和测量曲线，只有显式重置才回到 `idle` 并清空这些数据；终态未重置前不得创建下一条 execution 记录。命令请求中的 pending/error 与后端业务 phase 分开保存，不得用乐观前端状态伪造后端 phase。执行启动必须接收后端生成的 `ExecutionPlan`，执行引擎只消费计划中的步骤，不在执行过程中重新展开工作流。执行引擎的 Furnace 温度节点可以负责协议写入和等待，但成功写入运行/停止命令后必须通过 `AppRuntime` 确认设备运行快照。执行创建、取消、重置、运行中快照和刷新接管都以后端为准；快照携带 `nodeTimings`、`loopProgress` 和 `results`，用于恢复每个展开节点的生命周期、当前循环和结果；启动失败必须关闭已创建的 SQLite execution 记录，不能遗留 `running`。后端关闭时当前执行必须收口为 `failed`；后端启动时必须将上一进程遗留的 `running`、`paused`、`cancelling` 执行及其活动步骤收口为 `failed`，不提供跨进程续跑。
 
-归属文件：`apps/shared/contracts/workflow.py`、`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/routers/executions.py`、`apps/frontend/src/state/executionStateModel.ts`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/App.tsx`。
+归属文件：`apps/shared/contracts/workflow.py`、`apps/python_backend/runtime/execution_semantics.py`、`apps/python_backend/runtime/execution_engine.py`、`apps/python_backend/runtime/execution_control.py`、`apps/python_backend/runtime/node_executors.py`、`apps/python_backend/runtime/app_runtime.py`、`apps/python_backend/runtime/execution_planner.py`、`apps/python_backend/routers/executions.py`、`apps/frontend/src/state/executionStateModel.ts`、`apps/frontend/src/state/executionStateBridge.ts`、`apps/frontend/src/App.tsx`。
 
 允许变化：可以增强节点执行、取消、暂停、恢复和错误呈现。
 

@@ -63,7 +63,6 @@ class ZahnerSimulator:
     def _measure_dc(self, measurement_type: str, params: dict, callback: Callable | None, mode: str) -> dict:
         duration = max(0.0, float(params.get("measurement_duration", 60.0)))
         interval = max(0.001, float(params.get("sampling_interval", 1.0)))
-        cancel_requested = params.get("_cancel_requested")
         output_file = self._output_file(params, measurement_type, ".csv")
 
         min_current = float(params.get("min_current", -2.0))
@@ -75,8 +74,7 @@ class ZahnerSimulator:
         error_reason = None
 
         for point in range(points):
-            if callable(cancel_requested) and cancel_requested():
-                raise RuntimeError("Measurement cancelled by workflow stop")
+            logic.check_measurement_cancelled(params)
             t = round(point * interval, 3)
             voltage, current, setpoint = self._dc_values(mode, params, t, duration)
             if callback:

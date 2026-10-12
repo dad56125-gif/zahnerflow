@@ -18,7 +18,7 @@ from device_data_service import (
 )
 from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
-from runtime.execution_recorder import fail_execution, fail_orphaned_executions, finish_execution, finish_step, start_step
+from runtime.execution_recorder import fail_orphaned_executions, finish_execution, finish_step, start_step
 from runtime.execution_planner import ExecutionPlan, ExecutionPlanner
 from runtime.execution_semantics import is_active_execution_status, is_terminal_execution_status
 from shared.contracts.events import (
@@ -256,9 +256,6 @@ class AppRuntime:
 
     async def stop(self) -> None:
         self._running = False
-        execution_id = self.execution.execution_id
-        if execution_id and self.execution.is_active:
-            fail_execution(execution_id, "RUNTIME_SHUTDOWN: 后端关闭，执行无法继续")
         for device in DEVICE_CAPABILITIES:
             self._connect_attempt_tokens[device] += 1
         if self._poll_task:
@@ -267,6 +264,7 @@ class AppRuntime:
                 await self._poll_task
             except asyncio.CancelledError:
                 pass
+        await self.execution.shutdown()
         for device in ("furnace", "mfc", "zahner"):
             state = self._runtime_states[device]
             now = _utc_now()
@@ -770,11 +768,7 @@ class AppRuntime:
                 print(f"[Runtime] Warning email notification error: {email_err}")
         now = datetime.utcnow().isoformat() + "Z"
         active_status = self.execution.status
-        next_status = (
-            active_status
-            if status == "completed" and is_active_execution_status(active_status)
-            else status
-        )
+        next_status = active_status
         await self.on_experiment_state(
             {
                 "executionId": exec_id,
@@ -783,8 +777,8 @@ class AppRuntime:
                 "eta": self._eta_snapshot(now),
                 "nodeTimings": node_timings,
                 "results": results,
-                "error": (data.get("error") or data.get("reason")) if data and status == "failed" else None,
-                "failure": data.get("failure") if data and status == "failed" else None,
+                "error": None,
+                "failure": None,
             }
         )
 
@@ -800,13 +794,22 @@ class AppRuntime:
             finish_execution(exec_id, status, duration_ms, error)
 
         now = datetime.utcnow().isoformat() + "Z"
+        node_timings = copy.deepcopy(self.experiment_state.get("nodeTimings", []))
+        if status in {"failed", "cancelled"}:
+            for timing in node_timings:
+                if timing.get("status") == "running":
+                    timing.update({
+                        "status": status,
+                        "endedAt": now,
+                        "actualSeconds": _seconds_between(timing.get("startedAt"), now),
+                    })
         self.experiment_state.update(
             {
                 "status": status,
                 "duration": (duration_ms or 0) / 1000,
                 "endTime": now,
                 "eta": self._eta_snapshot(now, finished=True),
-                "nodeTimings": self.experiment_state.get("nodeTimings", []),
+                "nodeTimings": node_timings,
                 "loopProgress": self.experiment_state.get("loopProgress", []),
                 "results": self.experiment_state.get("results", []),
                 "error": error,
@@ -814,6 +817,7 @@ class AppRuntime:
                 "timestamp": now,
             }
         )
+        finished_state = copy.deepcopy(self.experiment_state)
         await self.emit(WORKFLOW_SNAPSHOT, self.execution_snapshot())
         await self.emit(
             WORKFLOW_EXECUTION_FINISHED,
@@ -830,24 +834,24 @@ class AppRuntime:
             "completed": {
                 "type": "success",
                 "title": "执行完成",
-                "message": f"{self.experiment_state.get('workflowName') or exec_id} 已完成",
+                "message": f"{finished_state.get('workflowName') or exec_id} 已完成",
             },
             "cancelled": {
                 "type": "info",
                 "title": "执行已取消",
-                "message": f"{self.experiment_state.get('workflowName') or exec_id} 已取消",
+                "message": f"{finished_state.get('workflowName') or exec_id} 已取消",
             },
             "failed": {
                 "type": "error",
                 "title": "执行失败",
-                "message": f"{self.experiment_state.get('workflowName') or exec_id} 执行失败",
+                "message": f"{finished_state.get('workflowName') or exec_id} 执行失败",
             },
         }.get(
             status,
             {
                 "type": "info",
                 "title": "执行状态已更新",
-                "message": f"{self.experiment_state.get('workflowName') or exec_id} 状态：{status}",
+                "message": f"{finished_state.get('workflowName') or exec_id} 状态：{status}",
             },
         )
         if failure:
@@ -872,12 +876,12 @@ class AppRuntime:
             if status != "cancelled":
                 await email_service.send_workflow_notification(
                     type_="completed" if status == "completed" else "failed",
-                    workflow_id=self.experiment_state.get("workflowId"),
-                    user=self.experiment_state.get("ownerName", ""),
+                    workflow_id=finished_state.get("workflowId"),
+                    user=finished_state.get("ownerName", ""),
                     details={
                         "duration": duration_ms,
                         "error": error,
-                        "workflowName": self.experiment_state.get("workflowName", ""),
+                        "workflowName": finished_state.get("workflowName", ""),
                     },
                 )
         except Exception as email_err:

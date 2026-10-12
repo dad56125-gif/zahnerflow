@@ -221,6 +221,12 @@ def finish_execution(exec_id: str, status: str, duration_ms: int, error: str | N
         """,
         (status, now, duration_ms, error, exec_id),
     )
+    if status in {"failed", "cancelled"}:
+        db.conn.execute(
+            "UPDATE execution_steps SET status = ?, ended_at = ?, error = ? "
+            "WHERE execution_id = ? AND status = 'running'",
+            (status, now, error, exec_id),
+        )
     db.conn.commit()
 
 

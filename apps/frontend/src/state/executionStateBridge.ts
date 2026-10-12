@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type {
-  ExecutionPhase,
   ExecutionSnapshot,
   LoopIterationEvent,
   LoopProgress,
@@ -22,11 +21,14 @@ import type { FilePathConfig } from '../components/shared/userContextState';
 import type { NodeParameters } from '../types/NodeConfiguration';
 import {
   describeExecution,
-  executionPhases,
   nodeStatusesFromSnapshot,
   readExecutionPhase,
 } from './executionStateModel';
 import type { ExecutionCommandState } from './executionStateModel';
+import {
+  createExecutionCommandCoordinator,
+  idleExecutionCommand,
+} from './executionCommandCoordinator';
 
 export interface StartExecutionOptions {
   nodes: WorkflowNode[];
@@ -84,24 +86,6 @@ const emptyProgress = (): ExecutionProgressState => ({
   loops: {},
 });
 
-const idleCommand = (): ExecutionCommandState => ({
-  pending: null,
-  error: null,
-});
-
-const commandReachedPhase = (
-  command: ExecutionCommandState['pending'],
-  phase: ExecutionPhase,
-): boolean => {
-  if (command && command !== 'reset' && executionPhases[phase].is.terminal) return true;
-  if (command === 'start') return phase !== 'idle';
-  if (command === 'pause') return phase === 'paused';
-  if (command === 'resume') return phase === 'running';
-  if (command === 'cancel') return phase === 'cancelling' || phase === 'cancelled';
-  if (command === 'reset') return phase === 'idle';
-  return false;
-};
-
 const snapshotPercentage = (snapshot: ExecutionSnapshot): number => {
   const elapsedSeconds = snapshot.eta?.elapsedSeconds ?? 0;
   const remainingSeconds = snapshot.eta?.estimatedRemainingSeconds ?? 0;
@@ -114,8 +98,21 @@ export const useExecutionStore = create<ExecutionState>()(
     (set, get) => {
       let connectedRuntimeId: string | null = null;
       let lastSnapshotSequence = -1;
-      let cancellationRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-      const receiveSnapshot = (snapshot: ExecutionSnapshot) => {
+      // 工作区代次：运行时切换、nodes reset、教学进出都会推进，用于丢弃过期的 HTTP 结果。
+      let workspaceGeneration = 0;
+      let snapshotRequest: Promise<void> | null = null;
+
+      // 命令收口统一交给共用机制；Socket 与 HTTP 只把公共事实喂给它。
+      const coordinator = createExecutionCommandCoordinator({
+        readCommand: () => get().command,
+        writeCommand: (next) => set({ command: next }),
+        readPhase: () => readExecutionPhase(get().snapshot?.status),
+        readRuntimeId: () => connectedRuntimeId,
+        readExecutionId: () => get().identity.executionId,
+        refreshSnapshot: () => refreshSnapshot(),
+      });
+
+      function receiveSnapshot(snapshot: ExecutionSnapshot) {
         const state = get();
         if (snapshot.runtimeId !== connectedRuntimeId || snapshot.snapshotSequence <= lastSnapshotSequence) return;
         lastSnapshotSequence = snapshot.snapshotSequence;
@@ -130,9 +127,6 @@ export const useExecutionStore = create<ExecutionState>()(
         const snapshotLoops = snapshot.loopProgress
           ? Object.fromEntries(snapshot.loopProgress.map(loop => [loop.loopStartIndex, loop]))
           : sameExecution ? state.progress.loops : {};
-        const command = commandReachedPhase(state.command.pending, phase)
-          ? idleCommand()
-          : state.command;
 
         set({
           identity: phase === 'idle'
@@ -157,37 +151,40 @@ export const useExecutionStore = create<ExecutionState>()(
               loops: snapshotLoops,
             },
           snapshot,
-          command,
+          command: coordinator.reconcileCommand(phase, snapshot.executionId ?? null),
         });
-        if (cancellationRefreshTimer !== null) {
-          clearTimeout(cancellationRefreshTimer);
-          cancellationRefreshTimer = null;
-        }
-        if (phase === 'cancelling') {
-          cancellationRefreshTimer = setTimeout(() => {
-            cancellationRefreshTimer = null;
-            if (get().snapshot !== snapshot) return;
-            void refreshSnapshot().catch((error: unknown) => {
-              if (get().snapshot !== snapshot) return;
-              set({ command: {
-                pending: null,
-                error: error instanceof Error ? error.message : '停止状态同步失败',
-              } });
-            });
-          }, 500);
-        }
-      };
-      const refreshSnapshot = async () => {
+        coordinator.noteSnapshot(phase, snapshot.executionId ?? null);
+      }
+
+      // 真正 single-flight：同一时刻只有一个快照请求，且按工作区代次保护 HTTP 结果。
+      async function refreshSnapshot() {
+        if (snapshotRequest) return snapshotRequest;
+        const generation = workspaceGeneration;
         const requestedRuntimeId = connectedRuntimeId;
-        const snapshot = await runtimeClient.runtime.snapshot();
-        if (connectedRuntimeId !== requestedRuntimeId) return;
-        if (connectedRuntimeId === null) connectedRuntimeId = snapshot.runtimeId;
-        receiveSnapshot(snapshot);
-      };
+        const request = (async () => {
+          const snapshot = await runtimeClient.runtime.snapshot();
+          if (generation !== workspaceGeneration) return;
+          if (connectedRuntimeId !== requestedRuntimeId) return;
+          if (connectedRuntimeId === null) connectedRuntimeId = snapshot.runtimeId;
+          receiveSnapshot(snapshot);
+        })();
+        snapshotRequest = request;
+        try {
+          await request;
+        } finally {
+          snapshotRequest = null;
+        }
+      }
 
       if (typeof window !== 'undefined') {
         runtimeSocket.on<{ runtimeId: string }>(RUNTIME_CONNECTED, ({ runtimeId }) => {
-          if (connectedRuntimeId !== runtimeId) lastSnapshotSequence = -1;
+          if (connectedRuntimeId !== runtimeId) {
+            lastSnapshotSequence = -1;
+            workspaceGeneration += 1;
+          }
+          if (connectedRuntimeId !== null && connectedRuntimeId !== runtimeId) {
+            coordinator.invalidateScope();
+          }
           connectedRuntimeId = runtimeId;
         });
         runtimeSocket.connectSocket();
@@ -214,12 +211,14 @@ export const useExecutionStore = create<ExecutionState>()(
         });
 
         runtimeSocket.on<NodesResetEvent>(WORKFLOW_NODES_RESET, () => {
+          workspaceGeneration += 1;
+          coordinator.invalidateScope();
           set({
             identity: emptyIdentity(),
             nodes: emptyNodes(),
             progress: emptyProgress(),
             snapshot: null,
-            command: idleCommand(),
+            command: idleExecutionCommand(),
           });
         });
 
@@ -257,7 +256,7 @@ export const useExecutionStore = create<ExecutionState>()(
         nodes: emptyNodes(),
         progress: emptyProgress(),
         snapshot: null,
-        command: idleCommand(),
+        command: idleExecutionCommand(),
 
         startExecution: async ({
           nodes,
@@ -273,8 +272,9 @@ export const useExecutionStore = create<ExecutionState>()(
           if (!execution.can.start || execution.command.pending) {
             throw new Error(`Cannot start execution while phase is ${execution.phase}`);
           }
+          // 发起前已有的执行身份：用于挡掉旧执行的终态快照，避免提前解锁 start。
+          const previousExecutionId = get().identity.executionId;
 
-          const command: ExecutionCommandState = { pending: 'start', error: null };
           set({
             identity: emptyIdentity(),
             nodes: {
@@ -284,11 +284,11 @@ export const useExecutionStore = create<ExecutionState>()(
             },
             progress: emptyProgress(),
             snapshot: null,
-            command,
           });
 
-          try {
-            const result = await runtimeClient.executions.start<{
+          const outcome = await coordinator.execute({
+            kind: 'start',
+            send: () => runtimeClient.executions.start<{
               executionId: string;
               workflowId: string;
               status: string;
@@ -301,32 +301,29 @@ export const useExecutionStore = create<ExecutionState>()(
               pathConfig,
               startFromUnrolledIndex,
               forceStartWithMissingRunMetadata,
-            });
-
-            if (get().command === command) {
+            }),
+            onAccepted: (accepted) => {
               set({
                 identity: {
-                  executionId: result.executionId,
-                  workflowId: result.workflowId,
+                  executionId: accepted.executionId,
+                  workflowId: accepted.workflowId,
                 },
               });
-            }
-            await refreshSnapshot();
+            },
+            failureMessage: (error) => {
+              const details = error && typeof error === 'object' && 'details' in error
+                ? (error as { details?: { code?: string } }).details
+                : undefined;
+              if (details?.code === 'MISSING_RUN_METADATA') return null;
+              return error instanceof Error ? error.message : '启动执行失败';
+            },
+            previousExecutionId,
+          });
 
-            return {
-              executionId: result.executionId,
-              workflowId: result.workflowId,
-            };
-          } catch (error) {
-            const details = error && typeof error === 'object' && 'details' in error
-              ? (error as { details?: { code?: string } }).details
-              : undefined;
-            const message = details?.code === 'MISSING_RUN_METADATA'
-              ? null
-              : error instanceof Error ? error.message : '启动执行失败';
-            if (get().command === command) set({ command: { pending: null, error: message } });
-            throw error;
-          }
+          if (!outcome.accepted) throw outcome.error;
+          const accepted = outcome.acceptedValue;
+          if (!accepted) throw new Error('启动执行失败');
+          return { executionId: accepted.executionId, workflowId: accepted.workflowId };
         },
 
         cancelExecution: async () => {
@@ -335,17 +332,11 @@ export const useExecutionStore = create<ExecutionState>()(
           const executionId = state.identity.executionId;
           if (!executionId || !execution.can.cancel || execution.command.pending) return;
 
-          const command: ExecutionCommandState = { pending: 'cancel', error: null };
-          set({ command });
-          try {
-            await runtimeClient.executions.cancel(executionId);
-            await refreshSnapshot();
-            if (get().command === command) set({ command: idleCommand() });
-          } catch (error) {
-            if (get().command === command) {
-              set({ command: { pending: null, error: error instanceof Error ? error.message : '停止失败' } });
-            }
-          }
+          await coordinator.execute({
+            kind: 'cancel',
+            send: async () => { await runtimeClient.executions.cancel(executionId); },
+            failureMessage: (error) => (error instanceof Error ? error.message : '停止失败'),
+          });
         },
 
         pauseExecution: async () => {
@@ -354,20 +345,11 @@ export const useExecutionStore = create<ExecutionState>()(
           const executionId = state.identity.executionId;
           if (!executionId || !execution.can.pause || execution.command.pending) return;
 
-          const command: ExecutionCommandState = { pending: 'pause', error: null };
-          set({ command });
-          try {
-            await runtimeClient.executions.pause(executionId);
-            await refreshSnapshot();
-            if (get().command === command) set({ command: idleCommand() });
-          } catch (error) {
-            if (get().command === command) set({
-              command: {
-                pending: null,
-                error: error instanceof Error ? error.message : '暂停失败',
-              },
-            });
-          }
+          await coordinator.execute({
+            kind: 'pause',
+            send: async () => { await runtimeClient.executions.pause(executionId); },
+            failureMessage: (error) => (error instanceof Error ? error.message : '暂停失败'),
+          });
         },
 
         resumeExecution: async () => {
@@ -376,20 +358,11 @@ export const useExecutionStore = create<ExecutionState>()(
           const executionId = state.identity.executionId;
           if (!executionId || !execution.can.resume || execution.command.pending) return;
 
-          const command: ExecutionCommandState = { pending: 'resume', error: null };
-          set({ command });
-          try {
-            await runtimeClient.executions.resume(executionId);
-            await refreshSnapshot();
-            if (get().command === command) set({ command: idleCommand() });
-          } catch (error) {
-            if (get().command === command) set({
-              command: {
-                pending: null,
-                error: error instanceof Error ? error.message : '恢复失败',
-              },
-            });
-          }
+          await coordinator.execute({
+            kind: 'resume',
+            send: async () => { await runtimeClient.executions.resume(executionId); },
+            failureMessage: (error) => (error instanceof Error ? error.message : '恢复失败'),
+          });
         },
 
         resetExecution: async () => {
@@ -397,26 +370,20 @@ export const useExecutionStore = create<ExecutionState>()(
           const execution = describeExecution(state.snapshot, state.command);
           if (!execution.can.reset || execution.command.pending) return false;
 
-          const command: ExecutionCommandState = { pending: 'reset', error: null };
-          set({ command });
-          try {
-            const result = await runtimeClient.executions.reset();
-            if (!result?.success) {
-              if (get().command === command) set({ command: { pending: null, error: result?.message || '重置失败' } });
-              return false;
-            }
-            await refreshSnapshot();
-            if (get().command === command) set({ command: idleCommand() });
-            return describeExecution(get().snapshot).phase === 'idle';
-          } catch (error) {
-            if (get().command === command) set({
-              command: {
-                pending: null,
-                error: error instanceof Error ? error.message : '重置失败',
-              },
-            });
-            return false;
-          }
+          const outcome = await coordinator.execute({
+            kind: 'reset',
+            send: async () => {
+              const result = await runtimeClient.executions.reset<{
+                success: boolean;
+                message: string;
+                timestamp: string;
+              }>();
+              if (!result?.success) throw new Error(result?.message || '重置失败');
+            },
+            failureMessage: (error) => (error instanceof Error ? error.message : '重置失败'),
+          });
+          if (!outcome.accepted) return false;
+          return describeExecution(get().snapshot).phase === 'idle';
         },
       };
     },

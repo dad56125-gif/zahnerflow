@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import math
 import time
-from datetime import datetime
 from typing import Optional
 
-from devices.furnace.limits import validate_furnace_temperature
-from runtime.execution_failure import ExecutionFailureError, TemperatureTargetTimeout, temperature_failure
+from runtime.execution_failure import ExecutionFailureError
 from runtime.execution_eta import params_for_eta
 from runtime.execution_planner import ExecutionPlan
 from runtime.execution_semantics import (
@@ -18,33 +15,20 @@ from runtime.execution_semantics import (
     MeasurementOutcome,
     NoActiveExecutionError,
     execution_phase,
-    normalize_measurement_outcome,
-    parse_scheduled_at,
-    require_node_execution_spec,
 )
-from runtime.temperature_control import (
-    estimate_remaining_temperature_seconds,
-    estimate_temperature_program_minutes,
-    estimate_temperature_ramp_minutes,
-)
-from shared.contracts.events import WORKFLOW_EIS, WORKFLOW_MEASUREMENT
-
-
-class WorkflowCancelled(RuntimeError):
-    pass
+from runtime.execution_control import ExecutionControl, NodeExecutionContext, WorkflowCancelled
+from runtime.node_executors import execute_node
 
 
 class ExecutionEngine:
     def __init__(self, runtime):
         self.runtime = runtime
-        self.devices = runtime.devices
         self.status = "idle"
         self.execution_id: Optional[str] = None
         self.workflow_id: Optional[str] = None
         self.nodes: list[dict] = []
         self.current_step_index = 0
-        self._cancel_requested = False
-        self._pause_requested = False
+        self._control: ExecutionControl | None = None
         self._task: Optional[asyncio.Task] = None
         self._plan: ExecutionPlan | None = None
         self._owner_name = ""
@@ -62,7 +46,7 @@ class ExecutionEngine:
 
     @property
     def is_cancelling(self) -> bool:
-        return self._cancel_requested or self.status == "cancelling"
+        return bool(self._control and self._control.cancel_requested) or self.status == "cancelling"
 
     def reset(self) -> None:
         if self.phase.is_active:
@@ -72,8 +56,7 @@ class ExecutionEngine:
         self.workflow_id = None
         self.nodes = []
         self.current_step_index = 0
-        self._cancel_requested = False
-        self._pause_requested = False
+        self._control = None
         self._task = None
         self._plan = None
 
@@ -94,18 +77,25 @@ class ExecutionEngine:
         self._workstation_type = payload.get("workstationType")
         self._path_config = payload.get("pathConfig") or {}
         self.current_step_index = 0
-        self._cancel_requested = False
-        self._pause_requested = False
+        self._control = ExecutionControl(self.execution_id)
         self.status = "running"
 
-        self._task = asyncio.create_task(self._execute())
+        context = NodeExecutionContext(
+            runtime=self.runtime,
+            control=self._control,
+            execution_id=self.execution_id,
+            workflow_id=self.workflow_id,
+            workflow_name=self._workflow_name,
+            path_config=dict(self._path_config),
+        )
+        self._task = asyncio.create_task(self._execute(context, plan))
         return {"status": "started", "executionId": self.execution_id}
 
     async def pause(self, expected_execution_id: str) -> dict:
         self._require_execution_target(expected_execution_id)
         if not self.phase.can_pause:
             raise InvalidExecutionTransitionError(f"Cannot pause execution while status is {self.status}")
-        self._pause_requested = True
+        self._control.pause()
         self.status = "paused"
         await self.runtime.on_experiment_state({"executionId": self.execution_id, "status": "paused", "error": None})
         return {"message": "Execution paused"}
@@ -114,17 +104,18 @@ class ExecutionEngine:
         self._require_execution_target(expected_execution_id)
         if not self.phase.can_resume:
             raise InvalidExecutionTransitionError(f"Cannot resume execution while status is {self.status}")
-        self._pause_requested = False
+        self._control.resume()
         self.status = "running"
         await self.runtime.on_experiment_state({"executionId": self.execution_id, "status": "running", "error": None})
         return {"message": "Execution resumed"}
 
     async def cancel(self, expected_execution_id: str) -> dict:
         self._require_execution_target(expected_execution_id)
+        if self._control.cancel_requested:
+            return {"message": "Execution cancellation requested"}
         if not self.phase.can_cancel:
             raise InvalidExecutionTransitionError(f"Cannot cancel execution while status is {self.status}")
-        self._cancel_requested = True
-        self._pause_requested = False
+        self._control.request_cancel()
         self.status = "cancelling"
         await self.runtime.on_experiment_state(
             {
@@ -136,44 +127,51 @@ class ExecutionEngine:
         )
         return {"message": "Execution cancellation requested"}
 
+    async def shutdown(self) -> None:
+        task = self._task
+        if not task or task.done():
+            return
+        if self.is_active and self._control:
+            self._control.request_cancel(shutdown_reason="RUNTIME_SHUTDOWN: 后端关闭，执行无法继续")
+            self.status = "cancelling"
+        await asyncio.shield(task)
+
     def _require_execution_target(self, expected_execution_id: str) -> None:
         if not self.execution_id or not self.is_active:
             raise NoActiveExecutionError("No active execution")
         if self.execution_id != expected_execution_id:
             raise ExecutionIdMismatchError("Execution id does not match active execution")
 
-    async def _execute(self) -> None:
+    async def _execute(self, context: NodeExecutionContext, plan: ExecutionPlan) -> None:
         start_time = time.time()
-        execution_id = self.execution_id
-        workflow_id = self.workflow_id
-        plan = self._plan
-        if plan is None:
-            raise RuntimeError("Execution plan is required")
+        execution_id = context.execution_id
+        workflow_id = context.workflow_id
+        control = context.control
 
         steps = plan.steps
         total_steps = len(steps)
         start_from = plan.start_from_unrolled_index
-        await self.runtime.on_execution_timeline_started(
-            {
-                "executionId": execution_id,
-                "workflowId": workflow_id,
-                "nodes": self.nodes,
-                "steps": steps,
-                "ownerName": self._owner_name,
-                "workflowName": self._workflow_name,
-                "workstationType": self._workstation_type,
-                "startFromUnrolledIndex": start_from,
-                "boundaryPreludeIndices": list(plan.boundary_prelude_indices),
-                "timeline": plan.timeline,
-            }
-        )
-
         try:
+            await self.runtime.on_execution_timeline_started(
+                {
+                    "executionId": execution_id,
+                    "workflowId": workflow_id,
+                    "nodes": self.nodes,
+                    "steps": steps,
+                    "ownerName": self._owner_name,
+                    "workflowName": self._workflow_name,
+                    "workstationType": self._workstation_type,
+                    "startFromUnrolledIndex": start_from,
+                    "boundaryPreludeIndices": list(plan.boundary_prelude_indices),
+                    "timeline": plan.timeline,
+                }
+            )
+
             for unrolled_idx, step in enumerate(steps):
                 if unrolled_idx < start_from and unrolled_idx not in plan.boundary_prelude_indices:
                     continue
 
-                await self._wait_until_runnable()
+                await control.checkpoint()
 
                 node = step.get("node") or plan.nodes[step["originalIndex"]]
                 node_type = node.get("type")
@@ -191,7 +189,7 @@ class ExecutionEngine:
                             **loop_event,
                         }
                     )
-                await self._wait_until_runnable()
+                await control.checkpoint()
 
                 step_info = {
                     "nodeId": node["id"],
@@ -215,8 +213,8 @@ class ExecutionEngine:
 
                 step_finished = False
                 try:
-                    await self._wait_until_runnable()
-                    dispatch_result = await self._dispatch_node(node, step, params)
+                    await control.checkpoint()
+                    dispatch_result = await execute_node(context, node, step, params)
                     outcome = dispatch_result if isinstance(dispatch_result, MeasurementOutcome) else None
                     status = outcome.step_status if outcome else "completed"
                     result = outcome.result if outcome else dispatch_result
@@ -238,9 +236,11 @@ class ExecutionEngine:
                         raise WorkflowCancelled(result.get("reason") or "Measurement cancelled")
                     if status == "failed":
                         raise RuntimeError(result.get("reason") or "Measurement failed")
-                    if self._cancel_requested:
-                        raise WorkflowCancelled("Execution cancelled after current step completed")
-                except WorkflowCancelled as e:
+                    control.check_cancelled()
+                except (WorkflowCancelled, asyncio.CancelledError) as e:
+                    if isinstance(e, asyncio.CancelledError):
+                        control.request_cancel()
+                    stopped_status = "failed" if control.shutdown_reason else "cancelled"
                     if not step_finished:
                         await self.runtime.on_execution_step_finished(
                             {
@@ -249,8 +249,8 @@ class ExecutionEngine:
                                 "unrolledIndex": unrolled_idx,
                                 "nodeId": node.get("id"),
                                 "iterationPath": step.get("iterationPath", []),
-                                "status": "cancelled",
-                                "data": {"reason": str(e)},
+                                "status": stopped_status,
+                                "data": {"reason": control.shutdown_reason or str(e) or "Execution cancelled by user"},
                             }
                         )
                     raise
@@ -272,389 +272,30 @@ class ExecutionEngine:
                         )
                     raise
 
-            duration_ms = int((time.time() - start_time) * 1000)
-            self.status = "completed"
-            await self.runtime.on_execution_finished(
-                {
-                    "executionId": execution_id,
-                    "status": "completed",
-                    "durationMs": duration_ms,
-                    "error": None,
-                    "failure": None,
-                    "summary": {"total_steps": total_steps},
-                }
-            )
-        except Exception as e:
-            duration_ms = int((time.time() - start_time) * 1000)
-            final_status = (
-                "cancelled"
-                if isinstance(e, WorkflowCancelled) or (
-                    not isinstance(e, ExecutionFailureError)
-                    and (self._cancel_requested or self.status in ("cancelled", "cancelling"))
-                )
-                else "failed"
-            )
-            self.status = final_status
+            control.check_cancelled()
+            final_status = "completed"
+            error = None
+            failure = None
+        except (Exception, asyncio.CancelledError) as e:
+            if isinstance(e, asyncio.CancelledError):
+                control.request_cancel()
+            final_status = "cancelled" if isinstance(e, (WorkflowCancelled, asyncio.CancelledError)) and not control.shutdown_reason else "failed"
+            error = str(e) or control.shutdown_reason or "Execution cancelled by user"
+            failure = e.failure if final_status == "failed" and isinstance(e, ExecutionFailureError) else None
+
+        self.status = final_status
+        try:
             await self.runtime.on_execution_finished(
                 {
                     "executionId": execution_id,
                     "status": final_status,
-                    "durationMs": duration_ms,
-                    "error": str(e),
-                    "failure": e.failure if final_status == "failed" and isinstance(e, ExecutionFailureError) else None,
-                    "summary": {},
+                    "durationMs": int((time.time() - start_time) * 1000),
+                    "error": error,
+                    "failure": failure,
+                    "summary": {"total_steps": total_steps} if final_status == "completed" else {},
                 }
             )
         finally:
-            self._task = None
-            self._plan = None
-
-    async def _dispatch_node(self, node: dict, step: dict, params: dict):
-        node_type = node.get("type")
-        spec = require_node_execution_spec(node_type)
-        if spec.dispatch_kind == "zahner_startup":
-            await asyncio.to_thread(self.devices.connect_zahner, params or {})
-            return None
-        if spec.dispatch_kind == "zahner_shutdown":
-            await asyncio.to_thread(self.devices.disconnect_zahner)
-            return None
-        if spec.dispatch_kind == "wait":
-            await self._execute_wait_delay(float(params.get("duration", 1)))
-            return None
-        if spec.dispatch_kind == "scheduled_wait":
-            scheduled_value = step.get("scheduledAt")
-            if not scheduled_value:
-                raise RuntimeError("scheduled_start is missing the absolute scheduledAt from its execution plan")
-            scheduled_at = parse_scheduled_at(scheduled_value)
-            delay = (scheduled_at - datetime.now()).total_seconds()
-            if delay <= 0:
-                raise RuntimeError(f"Scheduled time has already passed: {scheduled_at.isoformat()}")
-            await self._execute_wait_delay(delay)
-            return {"scheduledFor": scheduled_at.isoformat()}
-        if spec.dispatch_kind == "change_temperature":
-            return await self._execute_change_temperature(params)
-        if spec.dispatch_kind == "change_gas_flow":
-            return await self._execute_change_gas_flow(params)
-        if spec.dispatch_kind == "measurement":
-            meas_type = params.get("measurement_type") if node_type == "measurement" else spec.measurement_type
-            if not meas_type:
-                raise RuntimeError("measurement node is missing measurement_type")
-            return await self._execute_measurement(node, meas_type, params, step, interruptible=spec.interruptible)
-        raise RuntimeError(f"Unsupported dispatch kind for {node_type}: {spec.dispatch_kind}")
-
-    async def _execute_wait_delay(self, duration: float):
-        deadline = time.monotonic() + max(0.0, duration)
-        while time.monotonic() < deadline:
-            if self._cancel_requested:
-                raise WorkflowCancelled("Wait node cancelled by user")
-            await asyncio.sleep(min(0.25, max(0.0, deadline - time.monotonic())))
-
-    async def _wait_until_runnable(self) -> None:
-        if self._cancel_requested:
-            raise WorkflowCancelled("Execution cancelled by user")
-        while self._pause_requested and not self._cancel_requested:
-            await asyncio.sleep(0.25)
-        if self._cancel_requested:
-            raise WorkflowCancelled("Execution cancelled by user")
-
-    async def _execute_change_temperature(self, params: dict):
-        execution_id = self.execution_id
-
-        def require_current_run():
-            self.runtime.require_furnace_execution(execution_id)
-            if self._cancel_requested:
-                raise WorkflowCancelled("Temperature change cancelled by user")
-
-        def do_change():
-            stage = "preflight"
-            parameter_keys = (
-                "targetTemperature", "rate", "tolerance", "stabilizationTime", "coolingLinearFloor",
-                "temperatureProgressExtensionSeconds", "temperatureStallTimeoutSeconds", "maxTemperatureWaitSeconds",
-            )
-            details = {
-                "executionId": execution_id,
-                "parameters": {key: params[key] for key in parameter_keys if key in params},
-                "pv": None,
-                "writeAttemptCount": 0,
-                "acknowledgedWriteCount": 0,
-                "runCommandAttempted": False,
-                "runCommandAcknowledged": False,
-                "runStateConfirmed": False,
-                "confirmedWrites": [],
-            }
-
-            def command_outcome():
-                if details["runCommandAcknowledged"]:
-                    return "acknowledged"
-                if details["runCommandAttempted"]:
-                    return "unknown"
-                if details["acknowledgedWriteCount"]:
-                    return "partial"
-                return "not_sent"
-
-            def write_param(code, value, *, allow_cancelled=False):
-                if allow_cancelled:
-                    self.runtime.require_furnace_execution(execution_id)
-                else:
-                    require_current_run()
-                details["lastCommand"] = {"code": code, "register": f"0x{code:02X}", "value": value, "acknowledged": False}
-                details["writeAttemptCount"] += 1
-                is_run = code == 0x15 and value == 0
-                if is_run:
-                    details["runCommandAttempted"] = True
-                receipt = self.devices.furnace_write_param(code, value)
-                details["lastWriteResponse"] = receipt
-                # 驱动在写命令响应后读取寄存器；value 是回读值，瞬态运行指令
-                # 不要求回读值等于写入值。只确认取得了驱动定义的有效响应。
-                if not isinstance(receipt, dict) or any(
-                    type(receipt.get(key)) not in (int, float) or not math.isfinite(receipt[key])
-                    for key in ("value", "pv")
-                ):
-                    raise RuntimeError("Furnace write response missing or invalid")
-                details["acknowledgedWriteCount"] += 1
-                details["confirmedWrites"].append({"code": code, "value": value})
-                details["lastWriteAcknowledgement"] = receipt
-                details["lastCommand"]["acknowledged"] = True
-                if "pv" in receipt:
-                    details["pv"] = receipt["pv"]
-                if is_run:
-                    details["runCommandAcknowledged"] = True
-
-            def finite_number(value, name):
-                number = float(value)
-                if not math.isfinite(number):
-                    raise ValueError(f"{name} must be finite")
-                return number
-
-            try:
-                require_current_run()
-                status = self.devices.furnace_status()
-                details["lastDeviceStatus"] = status
-                if not status.get("connected"):
-                    raise RuntimeError("Furnace not connected")
-                if "pv" not in status:
-                    raise RuntimeError("Furnace status response missing pv before temperature command")
-                current_temp = finite_number(status["pv"], "pv")
-                details["pv"] = current_temp
-                target_temp = validate_furnace_temperature(params.get("targetTemperature"), "targetTemperature")
-                rate = finite_number(params.get("rate", 5), "rate")
-                tolerance = max(0.0, finite_number(params.get("tolerance", 0.5), "tolerance"))
-                stabilization_time = max(0.0, finite_number(params.get("stabilizationTime", 30), "stabilizationTime"))
-                cooling_linear_floor = finite_number(params.get("coolingLinearFloor", 500) or 500, "coolingLinearFloor")
-                program_minutes = estimate_temperature_program_minutes(current_temp, target_temp, rate)
-                estimated_ramp_minutes = estimate_temperature_ramp_minutes(
-                    current_temp, target_temp, rate, tolerance, cooling_linear_floor,
-                )
-                program_duration = int(math.ceil(program_minutes))
-                base_wait_s = estimated_ramp_minutes * 60 + stabilization_time
-                min_extension_s = finite_number(params.get("temperatureProgressExtensionSeconds", 600) or 600, "temperatureProgressExtensionSeconds")
-                stall_timeout_s = finite_number(params.get("temperatureStallTimeoutSeconds", 1800) or 1800, "temperatureStallTimeoutSeconds")
-                hard_cap_s = finite_number(params.get("maxTemperatureWaitSeconds", max(base_wait_s * 4.0, base_wait_s + 3600.0, 21600.0)), "maxTemperatureWaitSeconds")
-                details["parameters"].update({
-                    "targetTemperature": target_temp, "rate": rate, "tolerance": tolerance,
-                    "stabilizationTime": stabilization_time, "coolingLinearFloor": cooling_linear_floor,
-                    "temperatureProgressExtensionSeconds": min_extension_s,
-                    "temperatureStallTimeoutSeconds": stall_timeout_s, "maxTemperatureWaitSeconds": hard_cap_s,
-                })
-                details.update({"initialPv": current_temp, "programDurationMinutes": program_duration, "estimatedRampMinutes": estimated_ramp_minutes})
-                require_current_run()
-                stage = "command"
-                # scratch 温度寄存器保持 0.1℃ 编码，程序时间仅取设定速率。
-                for code, value in (
-                    (0x50, int(round(current_temp * 10))), (0x51, program_duration),
-                    (0x52, int(round(target_temp * 10))), (0x53, 5001),
-                    (0x54, int(round(target_temp * 10))), (0x00, 28), (0x15, 0),
-                ):
-                    write_param(code, value)
-                stage = "confirmation"
-                self.runtime.confirm_furnace_action_from_worker("run", execution_id)
-                details["runStateConfirmed"] = True
-                stage = "waiting"
-                start = time.monotonic()
-                deadline = start + base_wait_s
-                hard_deadline = start + hard_cap_s
-                best_distance = abs(current_temp - target_temp)
-                last_progress_at = start
-                progress_epsilon = max(0.25, tolerance * 0.25)
-                samples: list[tuple[float, float]] = [(start, current_temp)]
-
-                while True:
-                    details["elapsedSeconds"] = time.monotonic() - start
-                    if self._cancel_requested:
-                        stage = "command"
-                        # 取消时仍允许当前 execution 停止炉子；不重新发送 run。
-                        write_param(0x15, 12, allow_cancelled=True)
-                        stage = "confirmation"
-                        self.runtime.confirm_furnace_action_from_worker("stop", execution_id)
-                        raise WorkflowCancelled("Temperature change cancelled by user")
-                    time.sleep(2.0)
-                    details["elapsedSeconds"] = time.monotonic() - start
-                    try:
-                        status = self.devices.furnace_status()
-                        details["lastDeviceStatus"] = status
-                        if not status.get("connected"):
-                            raise RuntimeError("Furnace status reported disconnected while waiting")
-                        if "pv" not in status:
-                            raise RuntimeError("Furnace status response missing pv while waiting")
-                        pv = finite_number(status["pv"], "pv")
-                    except WorkflowCancelled:
-                        raise
-                    except Exception as error:
-                        raise temperature_failure(
-                            error, stage, command_outcome(), details,
-                            code="FURNACE_TEMPERATURE_STATUS_READ_FAILED",
-                        ) from error
-                    now = time.monotonic()
-                    details.update({"pv": pv, "elapsedSeconds": now - start})
-                    distance = abs(pv - target_temp)
-                    samples.append((now, pv))
-                    samples = [sample for sample in samples if now - sample[0] <= 300.0]
-                    if distance <= tolerance:
-                        return {
-                            "reached": True, "targetTemperature": target_temp, "finalTemperature": pv,
-                            "tolerance": tolerance, "elapsedSeconds": now - start,
-                        }
-                    if distance < best_distance - progress_epsilon:
-                        best_distance = distance
-                        last_progress_at = now
-                    remaining_s = estimate_remaining_temperature_seconds(samples, target_temp, tolerance)
-                    if remaining_s is not None and remaining_s > 0:
-                        adaptive_deadline = now + remaining_s * 1.5 + stabilization_time
-                        deadline = min(hard_deadline, max(deadline, adaptive_deadline))
-                    details.update({"waitDeadlineSeconds": deadline - start, "hardDeadlineSeconds": hard_cap_s, "lastProgressSeconds": last_progress_at - start})
-                    if now < deadline:
-                        continue
-                    if now - last_progress_at <= stall_timeout_s and now < hard_deadline:
-                        deadline = min(hard_deadline, now + min_extension_s)
-                        continue
-                    raise TemperatureTargetTimeout(
-                        "Furnace temperature did not approach target "
-                        f"{target_temp:.1f}C within the adaptive wait window; "
-                        f"last pv={pv:.1f}C, tolerance={tolerance:.1f}C"
-                    )
-            except (WorkflowCancelled, ExecutionFailureError):
-                raise
-            except Exception as error:
-                raise temperature_failure(
-                    error, stage, command_outcome(), details,
-                    code="FURNACE_TEMPERATURE_TARGET_TIMEOUT" if isinstance(error, TemperatureTargetTimeout) else None,
-                ) from error
-
-        return await asyncio.to_thread(do_change)
-
-    async def _execute_change_gas_flow(self, params: dict):
-        def do_change():
-            device_sel = params.get("deviceSelection", "")
-            if not device_sel or ":" not in device_sel:
-                raise ValueError("Invalid deviceSelection")
-            addr = int(device_sel.split(":")[0])
-            target_flow = params.get("targetFlowRate")
-            stabilization_time = int(params.get("stabilizationTime", 10))
-            self.devices.mfc_set_setpoint(addr, target_flow)
-
-            for _ in range(stabilization_time):
-                if self._cancel_requested:
-                    self.devices.mfc_set_setpoint(addr, 0)
-                    raise WorkflowCancelled("Gas flow change cancelled by user")
-                time.sleep(1.0)
-                status = self.devices.mfc_read_status(addr)
-                flow = status.get("flowSccm", 0)
-                if target_flow == 0 and -10 <= flow <= 4:
-                    break
-                if target_flow and abs(flow - target_flow) / target_flow <= 0.05:
-                    break
-            return None
-
-        return await asyncio.to_thread(do_change)
-
-    async def _execute_measurement(
-        self,
-        node: dict,
-        meas_type: str,
-        params: dict,
-        step: dict,
-        *,
-        interruptible: bool = True,
-    ) -> MeasurementOutcome:
-        from experiment_worker import build_output_path
-
-        timestamp = time.strftime("%y%m%d_%H%M%S")
-        path_config = self._path_config if isinstance(self._path_config, dict) else {}
-        options = {
-            "basePath": params.get("outputPath") or path_config.get("basePath") or "C:\\data\\archive",
-            "projectName": params.get("projectName") or path_config.get("projectName") or "",
-            "individualName": params.get("individualName") or path_config.get("individualName") or "",
-            "measurementType": meas_type,
-            "workflowId": self.workflow_id,
-            "workflowName": self._workflow_name,
-            "workflowTimestamp": timestamp,
-        }
-        if params.get("parentNodeType"):
-            options["parentNodeType"] = params["parentNodeType"]
-            options["nodeConfig"] = params.get("nodeConfig")
-        output_path = build_output_path(options)
-
-        env_context = {}
-        furnace_status = self.devices.furnace_status()
-        if furnace_status.get("connected") and furnace_status.get("pv") is not None:
-            env_context["furnace_temp"] = int(round(furnace_status["pv"]))
-        mfc_status = self.devices.mfc_status()
-        mfc_flows = {}
-        for device in mfc_status.get("devices", []) if mfc_status.get("connected") else []:
-            flow = device.get("flowSccm")
-            if flow is None:
-                continue
-            gas_name = device.get("gasType") or f"MFC{device.get('address')}"
-            if gas_name == "Unknown" and device.get("address") is not None:
-                gas_name = f"MFC{device['address']}"
-            mfc_flows[gas_name] = flow
-        if mfc_flows:
-            env_context["mfc_flows"] = mfc_flows
-
-        measurement_params = {
-            **params,
-            "outputPath": output_path,
-            "output_path": output_path,
-            "environment_context": env_context,
-        }
-        if interruptible:
-            measurement_params["_cancel_requested"] = lambda: self._cancel_requested
-
-        def stream_callback(data):
-            self.runtime.emit_from_thread(
-                WORKFLOW_MEASUREMENT,
-                {
-                    "executionId": self.execution_id,
-                    "stepIndex": step.get("originalIndex", 0),
-                    "nodeId": node.get("id", ""),
-                    "iterationPath": step.get("iterationPath", []),
-                    "data": data,
-                },
-            )
-
-        try:
-            result = await asyncio.to_thread(self.devices.zahner_measure, meas_type, measurement_params, stream_callback)
-        except Exception as e:
-            if self._cancel_requested:
-                raise WorkflowCancelled("Measurement cancelled by user") from e
-            raise
-        eis_data = result.get("eis_data") if isinstance(result, dict) else None
-        if eis_data and ("eis_potentiostatic" in meas_type or "eis_galvanostatic" in meas_type):
-            await self.runtime.emit(
-                WORKFLOW_EIS,
-                {
-                    "executionId": self.execution_id,
-                    "nodeIndex": step.get("originalIndex", 0),
-                    "nodeId": node.get("id", ""),
-                    "iterationPath": step.get("iterationPath", []),
-                    "data": {
-                        "frequency": eis_data.get("frequency"),
-                        "z_real": eis_data.get("z_real"),
-                        "z_imag": eis_data.get("z_imag"),
-                        "point_count": eis_data.get("point_count"),
-                        "csv_path": eis_data.get("csv_path"),
-                    },
-                },
-            )
-
-        return normalize_measurement_outcome(result, output_dir=output_path)
+            if self._control is control:
+                self._task = None
+                self._plan = None
