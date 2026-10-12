@@ -12,6 +12,7 @@ export interface NodeRendererProps {
   node: DisplayNode;
   index?: number;
   isSelected?: boolean;
+  hasValidationError?: boolean;
   isConnecting?: boolean;
   connectionStart?: string | null;
   nodeStatus?: string; // 节点执行状态: idle, running, completed, failed, paused, pending
@@ -48,6 +49,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   node,
   index,
   isSelected = false,
+  hasValidationError = false,
   isConnecting = false,
   connectionStart = null,
   onNodeClick,
@@ -130,11 +132,11 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
   const nodeClassName = useMemo(() => {
     // 状态映射: idle, run/running, completed, failed, paused… → status-xxx
     const statusClass = `status-${nodeStatus === 'run' ? 'running' : nodeStatus}`;
-    return `node glass ${statusClass} ${isSelected ? 'is-selected' : ''
+    return `node glass ${statusClass} ${hasValidationError ? 'has-validation-error' : ''} ${isSelected ? 'is-selected' : ''
       } ${isConnecting ? 'is-connecting' : ''
       } ${isDragOver ? 'is-drag-over' : ''
       }`.trim();
-  }, [nodeStatus, isSelected, isConnecting, isDragOver]);
+  }, [nodeStatus, hasValidationError, isSelected, isConnecting, isDragOver]);
 
   return (
     <div
@@ -185,6 +187,7 @@ export const NodeRenderer: React.FC<NodeRendererProps> = memo(({
     prev.node.id === next.node.id &&
     prev.index === next.index &&
     prev.isSelected === next.isSelected &&
+    prev.hasValidationError === next.hasValidationError &&
     prev.isConnecting === next.isConnecting &&
     prev.nodeStatus === next.nodeStatus && // 添加状态比较
     hasSameNodeData(prev.node.data, next.node.data) &&

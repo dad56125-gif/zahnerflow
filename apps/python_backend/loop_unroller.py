@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from devices.zahner.logic import normalize_measurement_parameters
 from runtime.execution_semantics import ADVANCED_MEASUREMENT_TYPES, MEASUREMENT_NODE_TYPES
 
 LOOP_START = "loop_start"
@@ -29,9 +30,9 @@ def find_matching_loop_end(nodes: list[dict], loop_start_idx: int, end_idx: int 
     return -1
 
 
-def unroll_loops(nodes: list[dict], workflow_loader=None, auto_startup_config: dict | None = None) -> dict:
+def unroll_loops(nodes: list[dict], workflow_loader=None, auto_startup_config: dict | None = None, node_validator=None) -> dict:
     _validate_loop_structure(nodes)
-    steps = _unroll_recursive(nodes, 0, len(nodes), [], [], [], workflow_loader or _load_workflow_nodes)
+    steps = _unroll_recursive(nodes, 0, len(nodes), [], [], [], workflow_loader or _load_workflow_nodes, node_validator=node_validator)
     steps = _with_measurement_boundaries(steps, auto_startup_config or {})
     for unrolled_index, step in enumerate(steps):
         step["unrolledIndex"] = unrolled_index
@@ -62,6 +63,7 @@ def _unroll_recursive(
     block_path: list[dict],
     workflow_loader,
     parent_original_index: int | None = None,
+    node_validator=None,
 ) -> list[dict]:
     steps: list[dict] = []
     index = start_idx
@@ -102,6 +104,7 @@ def _unroll_recursive(
                     block_path,
                     workflow_loader,
                     parent_original_index,
+                    node_validator,
                 )
                 if child_steps:
                     child_steps[0].setdefault("loopEvents", []).insert(0, loop_event)
@@ -119,8 +122,13 @@ def _unroll_recursive(
                 block_path,
                 workflow_loader,
                 parent_original_index,
+                node_validator,
             )
             steps.extend(child_steps)
+            index += 1
+            continue
+
+        if node_validator and not node_validator(node, parent_original_index if parent_original_index is not None else index):
             index += 1
             continue
 
@@ -170,6 +178,7 @@ def _expand_advanced_node(
 ) -> list[dict]:
     config = dict(node.get("config") or {})
     node_type = node.get("type")
+    parameters = normalize_measurement_parameters(node_type, config)
     original_index = parent_original_index if parent_original_index is not None else index
     common_meta = {
         "parentNodeId": node.get("id"),
@@ -179,17 +188,11 @@ def _expand_advanced_node(
 
     if node_type in ("galvanostatic_step_ramp", "potentiostatic_step_ramp"):
         is_galvanostatic = node_type == "galvanostatic_step_ramp"
-        start = _float_config(
-            config,
-            ["startCurrent", "start_current", "start_potential", "startPotential"],
-            0.1 if is_galvanostatic else 0.0,
-        )
-        end = _float_config(config, ["endCurrent", "end_current", "end_potential", "endPotential"], 1.0)
-        step_value = _float_config(config, ["stepCurrent", "step_current", "step_potential", "stepPotential"], 0.1)
-        hold_time = _float_config(config, ["holdTime", "hold_time", "measurementDuration"], 30.0)
-        sampling_interval = _float_config(config, ["samplingInterval", "sampling_interval"], 0.5)
-        if not step_value:
-            step_value = 0.1
+        start = parameters["start_current" if is_galvanostatic else "start_potential"]
+        end = parameters["end_current" if is_galvanostatic else "end_potential"]
+        step_value = parameters["step_current" if is_galvanostatic else "step_potential"]
+        hold_time = parameters["hold_time"]
+        sampling_interval = parameters["sampling_interval"]
         raw_step_count = int(abs(end - start) // abs(step_value)) + 1
         step_count = min(max(1, raw_step_count), 1000)
         direction = 1 if end >= start else -1
@@ -203,7 +206,9 @@ def _expand_advanced_node(
                 **config,
                 **common_meta,
                 "measurementDuration": hold_time,
+                "measurement_duration": hold_time,
                 "samplingInterval": sampling_interval,
+                "sampling_interval": sampling_interval,
                 "stepIndex": step_index,
                 "totalSteps": step_count,
                 "stepValue": value,
@@ -230,22 +235,11 @@ def _expand_advanced_node(
 
     if node_type in ("galvanostatic_switching", "potentiostatic_switching"):
         is_galvanostatic = node_type == "galvanostatic_switching"
-        cycles = max(0, int(_float_config(config, ["cycles"], 5)))
-        sampling_interval = _float_config(config, ["samplingInterval", "sampling_interval"], 0.5)
-        first_value = _float_config(
-            config,
-            ["current1", "current_1", "potential1", "potential_1"],
-            0.0,
-        )
-        second_value = _float_config(
-            config,
-            ["current2", "current_2", "potential2", "potential_2"],
-            0.01 if is_galvanostatic else 0.5,
-        )
-        hold_times = [
-            _float_config(config, ["holdTime1", "hold_time_1"], 30.0),
-            _float_config(config, ["holdTime2", "hold_time_2"], 30.0),
-        ]
+        cycles = parameters["cycles"]
+        sampling_interval = parameters["sampling_interval"]
+        first_value = parameters["current_1" if is_galvanostatic else "potential_1"]
+        second_value = parameters["current_2" if is_galvanostatic else "potential_2"]
+        hold_times = [parameters["hold_time_1"], parameters["hold_time_2"]]
         values = [first_value, second_value]
         child_type = "chronopotentiometry" if is_galvanostatic else "chronoamperometry"
         total_steps = cycles * 2
@@ -258,7 +252,9 @@ def _expand_advanced_node(
                     **config,
                     **common_meta,
                     "measurementDuration": hold_times[phase_index],
+                    "measurement_duration": hold_times[phase_index],
                     "samplingInterval": sampling_interval,
+                    "sampling_interval": sampling_interval,
                     "stepIndex": step_index,
                     "totalSteps": total_steps,
                     "cycleIndex": cycle_index,
@@ -331,6 +327,7 @@ def _expand_workflow_block(
     block_path: list[dict],
     workflow_loader,
     parent_original_index: int | None,
+    node_validator=None,
 ) -> list[dict]:
     config = node.get("config") or {}
     workflow_id = str(config.get("workflowId") or "").strip()
@@ -348,6 +345,12 @@ def _expand_workflow_block(
         for child in child_nodes
         if child.get("type") not in IGNORED_BLOCK_NODE_TYPES
     ]
+    if node_validator:
+        root_index = parent_original_index if parent_original_index is not None else index
+        invalid_counts = [child for child in executable_nodes
+                          if child.get("type") == LOOP_START and not node_validator(child, root_index)]
+        if invalid_counts:
+            return []
     _validate_loop_structure(executable_nodes)
     child_block_path = [
         *block_path,
@@ -367,6 +370,7 @@ def _expand_workflow_block(
         child_block_path,
         workflow_loader,
         parent_original_index if parent_original_index is not None else index,
+        node_validator,
     )
 
 
@@ -446,17 +450,6 @@ def _loop_count(node: dict) -> int:
         return count
     except (TypeError, ValueError, OverflowError):
         raise ValueError(f"循环节点 {node.get('id', '')} 的 loopCount 必须是非负整数") from None
-
-
-def _float_config(config: dict, keys: list[str], default: float) -> float:
-    for key in keys:
-        if key not in config:
-            continue
-        try:
-            return float(config[key])
-        except (TypeError, ValueError):
-            continue
-    return float(default)
 
 
 def _body_node_indices(nodes: list[dict], start_idx: int, end_idx: int) -> list[int]:

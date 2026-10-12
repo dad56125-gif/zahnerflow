@@ -12,6 +12,8 @@ Pydantic Model → TypeScript 类型生成器
 """
 
 import os
+import ast
+import json
 import sys
 import types
 from typing import Literal, Union, get_args
@@ -33,6 +35,17 @@ PYTHON_TO_TS = {
     "Any": "any",
     "dict": "Record<string, any>",
 }
+
+
+def measurement_parameter_aliases() -> dict[str, str]:
+    """读取驱动已有字面量，不导入驱动或维护第二份别名表。"""
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "python_backend", "devices", "zahner", "logic.py")
+    with open(path, encoding="utf-8") as source:
+        tree = ast.parse(source.read())
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "_PARAMETER_ALIASES" for target in statement.targets):
+            return ast.literal_eval(statement.value)
+    raise ValueError("未找到测量参数别名定义")
 
 
 def resolve_type(annotation, local_ns: dict = None) -> str:
@@ -168,7 +181,7 @@ def generate():
     )
     from contracts.workflow import (
         WorkstationType, NodeType, NodeCategory, EXECUTION_PHASE_VALUES, ExecutionPhase, NodeStatus,
-        WorkflowNode, Workflow, IterationPathEntry, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
+        WorkflowNode, WorkflowValidationIssue, WorkflowValidationDetails, Workflow, IterationPathEntry, ExecutionSnapshot, CurrentStep, ExecutionEtaSnapshot,
         ExecutionEtaStep, NodeTiming, LoopProgress, WorkflowEtaEstimate,
         ExecutionStartRequest, ExecutionPreviewRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
         NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
@@ -236,7 +249,7 @@ def generate():
         "import type { ExecutionFailure } from './common.js';",
         "",
     ]
-    for model in [WorkflowNode, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming, LoopProgress,
+    for model in [WorkflowNode, WorkflowValidationIssue, WorkflowValidationDetails, Workflow, IterationPathEntry, CurrentStep, ExecutionEtaSnapshot, ExecutionEtaStep, NodeTiming, LoopProgress,
                   WorkflowEtaEstimate, ExecutionStartRequest, ExecutionPreviewRequest, UnrolledWorkflowStep, WorkflowUnrollPreview,
                   ExecutionSnapshot,
                   NodeStatusUpdate, NodesResetEvent, LoopIterationEvent,
@@ -272,6 +285,12 @@ def generate():
         "",
     ])
 
+    workflow_content.extend([
+        "/** 测量参数别名；源自 devices/zahner/logic.py，规范字段优先。 */",
+        "export const MEASUREMENT_PARAMETER_ALIASES: Readonly<Record<string, string>> = "
+        + json.dumps(measurement_parameter_aliases(), ensure_ascii=False, indent=2) + ";",
+        "",
+    ])
     with open(os.path.join(output_dir, "workflow.ts"), "w", encoding="utf-8") as f:
         f.write("\n".join(workflow_content))
     print(f"  Generated: contracts/workflow.ts")
@@ -339,7 +358,6 @@ def generate():
     # 完整设置响应和报告文档共用与运行时相同的模型。
     from contracts.settings import (FilePathConfig, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse)
     settings_models = [FilePathConfig, NotificationSettings, CloudSettings, UserSettings, UserProfile, UserListResponse, UserSettingsResponse, CreateUserResponse]
-    import json
     content = ["/** 自动生成，来源 apps/shared/contracts/settings.py；勿手动修改。 */"]
     content.extend(model_to_interface(model) for model in settings_models)
     content.append("export const DEFAULT_FILE_PATH_CONFIG: FilePathConfig = " + json.dumps(FilePathConfig().model_dump(by_alias=True), ensure_ascii=False) + ";")

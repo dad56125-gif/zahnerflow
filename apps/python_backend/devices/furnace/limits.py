@@ -8,6 +8,7 @@ changes. Public program APIs must never overwrite those scratch segments.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 
@@ -25,6 +26,8 @@ def validate_furnace_temperature(value: float, context: str = "temperature") -> 
         temperature = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"Furnace {context} must be a number") from exc
+    if isinstance(value, bool) or not math.isfinite(temperature):
+        raise ValueError(f"Furnace {context} must be a finite number")
     if temperature < FURNACE_MIN_TEMPERATURE_C or temperature > FURNACE_MAX_TEMPERATURE_C:
         raise ValueError(
             f"Furnace {context} must be between "

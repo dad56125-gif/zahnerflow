@@ -314,7 +314,7 @@ export const useExecutionStore = create<ExecutionState>()(
               const details = error && typeof error === 'object' && 'details' in error
                 ? (error as { details?: { code?: string } }).details
                 : undefined;
-              if (details?.code === 'MISSING_RUN_METADATA') return null;
+              if (details?.code === 'MISSING_RUN_METADATA' || details?.code === 'WORKFLOW_VALIDATION_FAILED') return null;
               return error instanceof Error ? error.message : '启动执行失败';
             },
             previousExecutionId,

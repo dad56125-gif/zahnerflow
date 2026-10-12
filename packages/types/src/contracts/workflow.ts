@@ -16,6 +16,26 @@ export interface WorkflowNode {
   group?: Record<string, any> | null;
 }
 
+export interface WorkflowValidationIssue {
+  nodeId: string;
+  /** 画布节点索引，从零开始 */
+  nodeIndex: number;
+  /** 实际问题节点或高级节点类型 */
+  nodeType: string;
+  /** 问题参数；设备条件使用 device */
+  parameter: string;
+  /** 用户可读的问题说明 */
+  message: string;
+  /** 工作流块内部问题节点 */
+  sourceNodeId?: string | null;
+}
+
+export interface WorkflowValidationDetails {
+  code?: 'WORKFLOW_VALIDATION_FAILED';
+  message?: string;
+  issues: WorkflowValidationIssue[];
+}
+
 export interface Workflow {
   /** 唯一标识 (如 wf-000008) */
   id: string;
@@ -399,3 +419,48 @@ export type ExecutionPhase = 'idle' | 'running' | 'paused' | 'cancelling' | 'com
 
 /** 节点状态 */
 export type NodeStatus = ExecutionPhase;
+
+/** 测量参数别名；源自 devices/zahner/logic.py，规范字段优先。 */
+export const MEASUREMENT_PARAMETER_ALIASES: Readonly<Record<string, string>> = {
+  "outputPath": "output_path",
+  "outputFileName": "filename",
+  "measurementDuration": "measurement_duration",
+  "samplingInterval": "sampling_interval",
+  "polarizationVoltage": "polarization_voltage",
+  "polarizationCurrent": "polarization_current",
+  "startVoltage": "start_voltage",
+  "endVoltage": "end_voltage",
+  "startVoltageReference": "start_voltage_reference",
+  "endVoltageReference": "end_voltage_reference",
+  "startCurrent": "start_current",
+  "endCurrent": "end_current",
+  "scanRate": "scan_rate",
+  "minCurrent": "min_current",
+  "maxCurrent": "max_current",
+  "minVoltage": "min_voltage",
+  "maxVoltage": "max_voltage",
+  "enableDcBias": "enable_dc_bias",
+  "eisLowerFrequency": "eis_lower_frequency",
+  "eisStartFrequency": "eis_start_frequency",
+  "eisUpperFrequency": "eis_upper_frequency",
+  "eisAmplitude": "eis_amplitude",
+  "eisPotential": "eis_potential",
+  "eisCurrent": "eis_current",
+  "eisLowerPeriods": "eis_lower_periods",
+  "eisUpperPeriods": "eis_upper_periods",
+  "eisLowerSteps": "eis_lower_steps",
+  "eisUpperSteps": "eis_upper_steps",
+  "eisScanDirection": "eis_scan_direction",
+  "eisScanStrategy": "eis_scan_strategy",
+  "startPotential": "start_potential",
+  "endPotential": "end_potential",
+  "stepCurrent": "step_current",
+  "stepPotential": "step_potential",
+  "holdTime": "hold_time",
+  "current1": "current_1",
+  "current2": "current_2",
+  "potential1": "potential_1",
+  "potential2": "potential_2",
+  "holdTime1": "hold_time_1",
+  "holdTime2": "hold_time_2"
+};

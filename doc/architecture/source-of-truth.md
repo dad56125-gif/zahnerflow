@@ -8,6 +8,8 @@
 
 ## 怎样理解“源头”
 
+工作流启动校验（2026-10-12）：`runtime/node_validation.py` 定义必需输入及问题定位，参数规则复用测量归一化和炉温限制；`ExecutionPlanner` 组合源节点和展开步骤检查，`AppRuntime.validate_execution_devices` 在执行创建时读取当前连接、扫描及量程。`workflow.py` 定义问题契约并生成 TypeScript，前端沿既有 `runtimeClient` 在运行提示中选择、高亮节点。历史节点配置和节点库创建限制都不能证明启动就绪；隔离后端、浏览器回归、生产界面真实历史加载路径及最终构建已通过，未连接真机。
+
 2026-10-07 修复边界：Furnace 工作流身份由 `ExecutionEngine.execution_id/is_active` 校验，`AppRuntime` 负责新执行接管与旧确认事件拒绝；重置不伪造物理停止。参数控件只暂存输入，失焦前验证有限数；Furnace 响应式网格使用顺序 DOM，寄存器映射仍由原段号决定。此次不增加共享字段、数据库结构或平行状态源。
 
 同一个功能可以有不同职责的源头：契约定义允许什么形状，执行代码决定怎样运行，实时对象持有当前状态，数据库保存已经发生的记录。它们不是互相替代的四份定义。
@@ -42,7 +44,8 @@
 | 展开与执行计划 | [execution_planner.py](../../apps/python_backend/runtime/execution_planner.py) 的 `plan`，`loop_unroller.py` 的展开与验证 | 创建/预览/估算共用 Planner 实现；循环、块、高级节点与测量边界展开，产出 ExecutionPlan；Engine 消费这次执行的计划 | `useUnrollPreview`、展开窗口、实际步骤与报告索引；三次 HTTP 请求不保证复用同一对象，前端不另算执行顺序 |
 | ETA 与倒计时 | [execution_eta.py](../../apps/python_backend/runtime/execution_eta.py) 的估算规则和历史时长 | recorder 仅对合格成功步骤学习 → SQLite `node_duration_estimates` → 下次计划预测 → 时间线/快照 | 前端倒计时；预测不是设备测量时长命令，也不是实测数据 |
 | 普通测量参数 | [zahner/logic.py](../../apps/python_backend/devices/zahner/logic.py) 的别名表、缺省及 `normalize_measurement_parameters` | worker、真机、模拟器调用同一归一化；真机分派到 measure 方法，调用 thales_remote | 仪器测量及结果文件；与 UI 预设分开维护，真机路径转换只在调用边界 |
-| 高级节点参数 | [loop_unroller.py](../../apps/python_backend/loop_unroller.py) 的高级展开和 `_float_config` | 先读原始 config 的别名/默认，再生成 chrono 子节点，之后进入测量归一化 | switching / step ramp 的实际子步骤；目前这部分没有自动复用 logic 的全部规则 |
+| 属性栏参数别名 | 同一 `logic.py` 的 `_PARAMETER_ALIASES` 字面量 | `contracts/generate.py` 静态读取并生成 `MEASUREMENT_PARAMETER_ALIASES`；属性栏、画布展示及 canvasStore 消费 | 导入规范字段按后端优先级显示，编辑界面别名同步已有规范字段；不复制手写映射、不在生成时导入真机模块 |
+| 高级节点参数 | [zahner/logic.py](../../apps/python_backend/devices/zahner/logic.py) 的归一化和 [loop_unroller.py](../../apps/python_backend/loop_unroller.py) 的高级展开 | 先复用归一化，再生成 chrono 子节点及明确时长、采样、极化值，规划检查实际子步骤 | switching / step ramp 的实际子步骤；非法输入不能靠展开缺省掩盖 |
 | 活跃执行 / 设备连接 | [app_runtime.py](../../apps/python_backend/runtime/app_runtime.py)、`device_manager.py` 和实际设备对象 | AppRuntime 推进状态版本、记录并广播；DeviceManager 管理连接代次，直接导入真机/模拟类 | HTTP/Socket 快照 → runtimeClient → bridge / 设备 hooks → UI；重启前的 DB 快照不能证明当前物理连接 |
 
 执行命令收口（2026-10-12）：`executionStateBridge.ts` 的 `receiveSnapshot` 统一接收 Socket 和既有 `GET /api/runtime/snapshot` 结果；启动、暂停、恢复、取消及重置完成后读取后端状态，停止中持续复核至终态。`runtimeId/snapshotSequence` 由 AppRuntime 生成；请求 pending 与后端 phase 分开，不能用 HTTP 命令回执伪造 phase。工具栏清空通过 App 的重置回调复用样品清理，确认空闲后再修改草稿。字段定义、共享契约和数据库来源链不变。
@@ -139,9 +142,9 @@ flowchart TD
 | 项目 | 已核实的证据 | 后续维护要求 |
 | --- | --- | --- |
 | 节点类型分散 | `workflow.py:17` 的 NodeType 是 str；`generate.py:246–264` 手写 TS 联合；`execution_semantics.py:83–135` 定义执行集合；`NodeConfiguration.ts:48` 手写 UI 配置 | 新节点同时核对四处。后端 `delay`、`ocp`、通用 `measurement` 等入口不一定属于 UI 枚举，不能仅比数量判定缺失 |
-| 两套 EIS 初值确实不同 | UI 恒电位 EIS：0.1–300000 Hz、0.025 V、START_TO_MAX；后端空 config：10–100000 Hz、0.01 V、START_TO_MIN。分别见 `NodeConfiguration.ts:110–123` 与 `logic.py:108–119` | 完整 UI 参数覆盖缺省，CLI/API 省略字段才使用后端缺省；是否统一需明确产品选择，不能从文档自动改测量参数 |
+| 两套 EIS 初值确实不同 | UI 新建预设与 `logic.py` 的驱动缺省仍分别维护 | 工作流启动要求频率、振幅及启用后的偏置明确填写；可选扫描策略继续采用缺省。直接驱动归一化的缺省不代表空工作流配置可运行 |
 | 其他入口也有缺省差异 | UI chronoamperometry 采样 0.1 s、后端 common 为 1 s；UI voltage_ramp 为 -0.5→0.8 V / 130 s，后端为 0→1 V / 60 s | 维护参数说明时注明入口，不写无来源的“统一默认值” |
-| 高级展开重复读别名 | `loop_unroller.py:171–278` 自行读 config、使用 `_float_config`，子节点还同时写 camelCase/snake_case；没有导入归一化函数 | 变更必须检查展开前后的参数；其统一属于后续代码任务，本次仅记录实际边界 |
+| 高级展开已复用归一化 | `loop_unroller._expand_advanced_node` 读取规范值，生成子步骤时明确覆盖两种字段形式 | 变更继续检查源输入和生成的实际参数，不重新加入 `_float_config` 的静默回退 |
 | phase 权限表手工镜像 | Python `execution_semantics.py:37–45` 与 TS `executionStateModel.ts:77–85` 分别定义 active/terminal 和允许操作；本次逐项一致 | phase 名字虽自动生成，权限不会自动同步；改状态机需比较两表，类型覆盖不能证明规则一致 |
 | 炉子约束至少三处 | `devices/furnace/limits.py:14–20`、`contracts/furnace.py:39–49`、`modules/furnace/temperatureLimits.ts:1–5` 都含数值约束 | 修改温度、段数或时间同时核对三处；用户 1–27 段与硬件 30 段含义不同，不能机械合并 |
 | 构建没有证明契约同步 | `packages/types/package.json` build 只有版本检查与 tsc；所查构建/CI 入口未发现自动契约重生成及差异门禁 | 显式运行生成器并审查 diff；不能以 build 通过替代生成一致性检查 |

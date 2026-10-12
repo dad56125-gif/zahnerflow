@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from devices.mfc.real_device import ErrorCategory, MfcCommLogManager, MfcError
+from devices.mfc.real_device import ErrorCategory, MfcCommLogManager, MfcError, validate_mfc_setpoint
 
 
 class SimulatedMfcDevice:
@@ -140,7 +140,7 @@ class MfcSimulator:
         device = self.devices.get(address)
         if not device:
             raise MfcError(f"Device {address} not scanned", ErrorCategory.DEVICE)
-        clamped_sccm = max(0.0, min(float(device.max_flow_sccm), float(sccm)))
+        clamped_sccm = validate_mfc_setpoint(sccm, device.max_flow_sccm)
         device.setpoint_sccm = clamped_sccm
         percent = round((clamped_sccm / device.max_flow_sccm) * 100, 2) if device.max_flow_sccm else 0
         self.comm_log.add_log("TX", f"SET {address} {clamped_sccm:.3f}sccm", self.connection_id)

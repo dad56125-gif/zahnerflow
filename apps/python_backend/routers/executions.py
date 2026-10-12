@@ -32,6 +32,7 @@ from workflow_identity import workflow_fingerprint
 from report_service import load_execution_report
 from shared.contracts.report import ExecutionReport
 from shared.contracts.workflow import ExecutionStartRequest, ExecutionPreviewRequest
+from runtime.node_validation import WorkflowValidationError
 
 router = APIRouter(prefix="/api/executions", tags=["executions"])
 sio = None
@@ -69,6 +70,8 @@ def _build_execution_plan(nodes: list[dict], auto_startup_config: dict | None = 
             auto_startup_config=auto_startup_config or {},
             start_from_unrolled_index=start_from_unrolled_index,
         )
+    except WorkflowValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.details.model_dump(mode="json")) from exc
     except (ExecutionPlanningError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -185,6 +188,10 @@ async def create_execution(request: ExecutionStartRequest):
     plan = _build_execution_plan(nodes, auto_startup_config, body.get("startFromUnrolledIndex", 0))
     if not plan.steps:
         raise HTTPException(status_code=400, detail="Workflow has no executable steps")
+    try:
+        runtime.validate_execution_devices(plan)
+    except WorkflowValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.details.model_dump(mode="json")) from exc
     nodes = plan.nodes
     start_from_unrolled_index = plan.start_from_unrolled_index
     resolved_workflow = None

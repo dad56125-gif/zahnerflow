@@ -177,7 +177,7 @@
   .node__icon, .node:hover .node__icon { filter: none; text-shadow: none; }
   .node.glass.status-running { border-color: var(--workflow-running); }
   .node.glass.status-completed { border-color: var(--workflow-completed); }
-  .node.glass.status-failed { border-color: var(--workflow-error); }
+  .node.glass.status-failed, .node.glass.has-validation-error { border-color: var(--workflow-error); }
   .node.glass.status-paused { border-color: var(--workflow-paused); }
 
   // 浮层共享半透明玻璃表面，透出背景并保留文字对比。

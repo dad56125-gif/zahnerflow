@@ -247,13 +247,14 @@ class NodeExecutor:
         return await self.control.run_in_thread(do_change)
 
     async def _execute_change_gas_flow(self, params: dict):
+        from runtime.node_validation import gas_device_address, node_parameter_issues
+        issues = node_parameter_issues({"type": "change_gas_flow", "config": params})
+        if issues:
+            raise ValueError("；".join(message for _, message in issues))
         def do_change():
             self.control.check_cancelled()
-            device_sel = params.get("deviceSelection", "")
-            if not device_sel or ":" not in device_sel:
-                raise ValueError("Invalid deviceSelection")
-            addr = int(device_sel.split(":")[0])
-            target_flow = params.get("targetFlowRate")
+            addr = gas_device_address(params)
+            target_flow = float(params["targetFlowRate"])
             stabilization_time = int(params.get("stabilizationTime", 10))
             self.control.check_cancelled()
             self.devices.mfc_set_setpoint(addr, target_flow)

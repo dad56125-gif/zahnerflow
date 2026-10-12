@@ -2,7 +2,7 @@ import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 // 导入新的类型
-import type { NodeType, WorkstationType } from '@zahnerflow/types';
+import type { NodeType, WorkstationType, WorkflowValidationDetails } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore';
 import { selectCanvasEditable, useExecutionStore } from '../../state/executionStateBridge';
 import { NodeRenderer } from './NodeRenderer';
@@ -26,6 +26,7 @@ interface CanvasProps {
   onUnrollViewOpenChange?: (open: boolean) => void;
   autoStartupConfig?: NodeParameters;
   runMetadataWarning?: string | null;
+  runValidationWarning?: WorkflowValidationDetails | null;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -40,6 +41,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   onUnrollViewOpenChange,
   autoStartupConfig,
   runMetadataWarning,
+  runValidationWarning,
 }) => {
   // 1. 从 Store 获取纯数据和 Actions
   const {
@@ -54,6 +56,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const nodeStatuses = useExecutionStore(state => state.nodes.statuses);
   const editable = useExecutionStore(selectCanvasEditable);
+  const [validationInset, setValidationInset] = useState(0);
 
   // 2. 生成渲染视图 (View Model)
   const { layoutNodes, layoutEdges, adjustedDimensions } = useLayout(
@@ -70,7 +73,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       containerPadding: 42,
       startOffset: {
         x: 42,
-        y: 74
+        y: Math.max(74, validationInset + 40)
       }
     },
     canvasSize.width
@@ -78,6 +81,31 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const validationNodeIds = new Set(runValidationWarning?.issues.map(issue => issue.nodeId));
+  useEffect(() => {
+    const warning = canvasRef.current?.querySelector<HTMLElement>('.toolbar-run-warning--validation');
+    if (!warning) { setValidationInset(0); return; }
+    const updateInset = () => setValidationInset(warning.offsetHeight);
+    const observer = new ResizeObserver(updateInset);
+    observer.observe(warning);
+    updateInset();
+    return () => observer.disconnect();
+  }, [runValidationWarning]);
+  useEffect(() => {
+    if (!runValidationWarning?.issues.some(issue => issue.nodeId === selectedNodeId)) return;
+    const selectedElement = Array.from(viewportRef.current?.querySelectorAll<HTMLElement>('[data-tutorial-node]') || [])
+      .find(element => element.dataset.tutorialNode === selectedNodeId);
+    const viewport = viewportRef.current;
+    if (!selectedElement || !viewport) return;
+    const bounds = selectedElement.getBoundingClientRect();
+    const visible = viewport.getBoundingClientRect();
+    const scale = visible.width / viewport.offsetWidth || 1;
+    viewport.scrollBy({
+      top: (bounds.top < visible.top ? bounds.top - visible.top : Math.max(0, bounds.bottom - visible.bottom)) / scale,
+      left: (bounds.left < visible.left ? bounds.left - visible.left : Math.max(0, bounds.right - visible.right)) / scale,
+      behavior: 'smooth',
+    });
+  }, [selectedNodeId, runValidationWarning, validationInset]);
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null);
   const [layoutStable, setLayoutStable] = useState(true);
 
@@ -222,6 +250,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           onUnrollViewOpenChange={onUnrollViewOpenChange}
           autoStartupConfig={autoStartupConfig}
           runMetadataWarning={runMetadataWarning}
+          runValidationWarning={runValidationWarning}
         />
       )}
 
@@ -258,6 +287,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 node={node}
                 index={index}
                 isSelected={selectedNodeId === node.id}
+                hasValidationError={validationNodeIds.has(node.id)}
                 isConnecting={false}
                 nodeStatus={nodeStatuses[index] || 'idle'}
                 onNodeClick={handleNodeClick}

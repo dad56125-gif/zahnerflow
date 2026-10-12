@@ -49,6 +49,22 @@ class WorkflowNode(ContractModel):
     group: Optional[dict] = Field(default=None, description="可选分组元数据，不参与节点参数")
 
 
+class WorkflowValidationIssue(ContractModel):
+    """启动前校验问题；nodeId 始终指向画布上可选择的源节点。"""
+    nodeId: str
+    nodeIndex: int = Field(ge=0, description="画布节点索引，从零开始")
+    nodeType: str = Field(description="实际问题节点或高级节点类型")
+    parameter: str = Field(description="问题参数；设备条件使用 device")
+    message: str = Field(description="用户可读的问题说明")
+    sourceNodeId: Optional[str] = Field(default=None, description="工作流块内部问题节点")
+
+
+class WorkflowValidationDetails(ContractModel):
+    code: Literal["WORKFLOW_VALIDATION_FAILED"] = "WORKFLOW_VALIDATION_FAILED"
+    message: str = "工作流配置不完整，请修正后再运行。"
+    issues: List[WorkflowValidationIssue]
+
+
 class Workflow(ContractModel):
     """
     完整工作流 — 画布上所有节点的有序列表

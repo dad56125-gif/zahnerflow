@@ -91,12 +91,12 @@ export const NODE_CONFIGS: Record<NodeType, NodeConfig> = {
     description: '控制指定 MFC 通道的气体流量至目标值，并等待流量稳定，为后续实验步骤提供一致的气氛条件。',
     icon: 'change_gas_flow',
     defaultParameters: {
-      deviceSelection: '1:N2',
-      deviceAddress: 1,
-      gasType: 'N2',
+      deviceSelection: '',
+      deviceAddress: null,
+      gasType: '',
       targetFlowRate: 50,
       currentFlowRate: 0,
-      maxFlowSccm: 200,
+      maxFlowSccm: 0,
       stabilizationTime: 10
     }
   },

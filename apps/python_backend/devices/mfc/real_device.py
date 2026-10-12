@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import struct
+import math
 import threading
 import time
 import uuid
@@ -74,6 +75,17 @@ class MfcCommLogManager:
     def clear(self) -> None:
         with self._lock:
             self._logs.clear()
+
+
+def validate_mfc_setpoint(sccm: float, maximum: float) -> float:
+    if isinstance(sccm, bool) or isinstance(maximum, bool):
+        raise ValueError("流量和最大流量必须是有效数值")
+    value, limit = float(sccm), float(maximum)
+    if not math.isfinite(limit) or limit <= 0:
+        raise ValueError("设备没有有效的最大流量，请重新扫描")
+    if not math.isfinite(value) or not 0 <= value <= limit:
+        raise ValueError(f"目标流量必须在 0–{limit:g} sccm 之间")
+    return value
 
 
 class MfcSession:
@@ -216,6 +228,7 @@ class MfcSession:
         if not info:
             raise MfcError(f"Device {address} not scanned (unknown max flow)", ErrorCategory.DEVICE)
 
+        sccm = validate_mfc_setpoint(sccm, info.max_flow_sccm)
         pct = (sccm / info.max_flow_sccm) * 100.0
         val = self._pct_to_ufrac(pct)
         data = bytes([val & 0xFF, (val >> 8) & 0xFF])

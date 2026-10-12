@@ -1,4 +1,5 @@
 import { registerWorkspaceParticipant } from '../../tutorialEnvironment';
+import { MEASUREMENT_PARAMETER_ALIASES } from '@zahnerflow/types';
 // --- START OF FILE apps/frontend/src/components/property/RightPanel.tsx ---
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -575,7 +576,10 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
 
     // 参数更新逻辑：直接操作 config 对象
     const handleParamChange = (key: string, value: NodeParameterValue | undefined) => {
-      const currentConfig = node.config || {};
+      const currentConfig = { ...node.config };
+      for (const [alias, canonical] of Object.entries(MEASUREMENT_PARAMETER_ALIASES)) {
+        if (canonical in currentConfig) currentConfig[alias] = currentConfig[canonical];
+      }
 
       if (key === 'deviceSelection' && node.type === 'change_gas_flow') {
         const [address, gasType] = (value as string).split(':');
@@ -585,7 +589,7 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
           deviceSelection: value,
           deviceAddress: Number(address),
           gasType: gasType,
-          maxFlowSccm: device?.maxFlowSccm || 200
+          maxFlowSccm: device?.maxFlowSccm ?? 0
         });
       } else if (key === 'check_battery_health' && node.type === 'ocp_measurement') {
         // ✅ OCV 模式切换逻辑：开启时固定参数，关闭时恢复默认
@@ -610,6 +614,10 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
         ['eisUpperFrequency', 'eisLowerFrequency'].includes(key)
       ) {
         // 单程扫描方向决定起始端点：向最高频扫时从低频限制开始，反之从高频限制开始。
+        if (value === '' || value == null) {
+          updateNodeConfig(node.id, { ...currentConfig, [key]: value });
+          return;
+        }
         const newValue = Number(value);
         const newConfig: NodeParameters = { ...currentConfig, [key]: newValue };
 
@@ -750,7 +758,10 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
     );
 
     const renderParameterField = (key: string, defaultValue: NodeParameterValue | undefined) => {
-      const currentValue = (node.config || {})[key];
+      const canonical = MEASUREMENT_PARAMETER_ALIASES[key] || key;
+      const alternate = Object.entries(MEASUREMENT_PARAMETER_ALIASES).find(([, target]) => target === canonical)?.[0];
+      const config = node.config || {};
+      const currentValue = canonical in config ? config[canonical] : key in config ? config[key] : alternate ? config[alternate] : undefined;
       const isDisabled = !canvasEditable || ((node.config || {}).check_battery_health && (key === 'measurementDuration' || key === 'samplingInterval'));
 
       const props = {
@@ -763,7 +774,8 @@ export const RightPanel = React.forwardRef<HTMLDivElement, RightPanelProps>(
       };
 
       if (node.type === 'change_temperature') return <TemperatureInput {...props} />;
-      if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.devices} />;
+      if (node.type === 'change_gas_flow') return <GasFlowInput {...props} availableDevices={mfcState.devices}
+        selectedDevice={mfcState.devices.find(device => `${device.address}:${device.gasType}` === node.config?.deviceSelection)} />;
 
       // 枚举判断逻辑
       const isEnum = [

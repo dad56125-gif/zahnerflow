@@ -20,6 +20,7 @@ from runtime.device_manager import DeviceManager
 from runtime.execution_engine import ExecutionEngine
 from runtime.execution_recorder import fail_orphaned_executions, finish_execution, finish_step, start_step
 from runtime.execution_planner import ExecutionPlan, ExecutionPlanner
+from runtime.node_validation import WorkflowValidationError, gas_device_address, step_validation_issue
 from runtime.execution_semantics import is_active_execution_status, is_terminal_execution_status
 from shared.contracts.events import (
     DEVICE_STATUS_UPDATE,
@@ -1330,6 +1331,47 @@ class AppRuntime:
 
     async def start_execution(self, payload: dict) -> dict:
         return await self.execution.start(payload)
+
+    def validate_execution_devices(self, plan: ExecutionPlan) -> None:
+        """Check current runtime facts before any archive, execution row or command."""
+        issues = []
+        for index, step in enumerate(plan.steps):
+            if index < plan.start_from_unrolled_index and index not in plan.boundary_prelude_indices:
+                continue
+            node = step.get("node") or plan.nodes[step["originalIndex"]]
+            kind = node.get("type")
+            if kind not in ("change_temperature", "change_gas_flow"):
+                continue
+            device = "furnace" if kind == "change_temperature" else "mfc"
+            state = self._runtime_states[device]
+            message = None
+            if state.get("connectionStatus") != "connected" or not getattr(self.devices, f"{device}_connected") or getattr(self.devices, device) is None:
+                message = f"{'管式炉' if device == 'furnace' else 'MFC'}未就绪，请连接设备并确认通信正常"
+            elif device == "furnace":
+                status = state.get("deviceStatus") or {}
+                pv = status.get("pv")
+                if type(pv) not in (int, float) or not math.isfinite(pv):
+                    message = "管式炉没有有效温度读数，请确认设备通信正常"
+            elif self._mfc_scan_active:
+                message = "MFC 正在扫描，请等待扫描完成后再运行"
+            else:
+                params = node.get("config") or {}
+                address = gas_device_address(params)
+                scanned = next((item for item in state.get("scannedDevices", []) if item.get("address") == address), None)
+                if scanned is None:
+                    message = f"地址 {address} 未在当前连接中扫描，请扫描并重新选择气体设备"
+                elif str(scanned.get("gasType", "")) != params["deviceSelection"].partition(":")[2]:
+                    message = f"地址 {address} 的气体类型与保存配置不一致，请重新选择设备"
+                else:
+                    maximum = scanned.get("maxFlowSccm")
+                    if type(maximum) not in (int, float) or not math.isfinite(maximum) or maximum <= 0:
+                        message = f"地址 {address} 没有有效的最大流量，请重新扫描设备"
+                    elif float(params["targetFlowRate"]) > maximum:
+                        issues.append(step_validation_issue(plan, step, "targetFlowRate", f"目标流量不能超过所选设备的最大流量 {maximum:g} sccm"))
+            if message:
+                issues.append(step_validation_issue(plan, step, "device", message))
+        if issues:
+            raise WorkflowValidationError(issues)
 
     def plan_execution(
         self,

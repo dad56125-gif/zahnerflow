@@ -121,7 +121,7 @@ const AppContent: React.FC = () => {
       }
       : { host: 'localhost' };
   }, [simulatorActive, simulatorSettings]);
-  const { runFlow, resetRun, runMetadataWarning, workflowBlockRunBlocked } = useWorkflowExecution({ nodes, nodeFingerprint, executionActive, selectedWorkstation, zahnerAutoStartupConfig });
+  const { runFlow, resetRun, runMetadataWarning, runValidationWarning, workflowBlockRunBlocked } = useWorkflowExecution({ nodes, nodeFingerprint, executionActive, selectedWorkstation, zahnerAutoStartupConfig });
 
   useEffect(() => {
     if (suppressedEtaNodeFingerprint && suppressedEtaNodeFingerprint !== nodeFingerprint) {
@@ -270,6 +270,7 @@ const AppContent: React.FC = () => {
           onUnrollViewOpenChange={setShowUnrollView}
           autoStartupConfig={zahnerAutoStartupConfig}
           runMetadataWarning={runMetadataWarning?.message || null}
+          runValidationWarning={runValidationWarning}
         />
       </div>
 

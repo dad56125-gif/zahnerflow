@@ -109,7 +109,7 @@
 
 .node.status-running   { border-color: var(--workflow-running);   @include node-status-bg(59, 130, 246, 0.3);  animation: running_status_pulse 1.5s ease-in-out infinite; }
 .node.status-completed { border-color: var(--workflow-completed); @include node-status-bg(16, 185, 129, 0.25); animation: completed_status_success 2s ease-in-out; }
-.node.status-failed    { border-color: var(--workflow-error);     @include node-status-bg(239, 68, 68, 0.16);  animation: failed_status_glow 2s ease-in-out infinite; }
+.node.status-failed, .node.has-validation-error { border-color: var(--workflow-error); @include node-status-bg(239, 68, 68, 0.16); animation: failed_status_glow 2s ease-in-out infinite; }
 .node.status-paused    { border-color: var(--workflow-paused);    @include node-status-bg(245, 158, 11, 0.2); }
 .node.status-pending   { border-color: var(--glass-border);       @include node-status-bg(255, 255, 255, 0.25); }
 
@@ -124,6 +124,8 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   transition: none;
 }
+
+.node.has-validation-error.is-selected { border-color: var(--workflow-error); }
 
 .node.is-drag-over {
   border-color: var(--color-primary); background: rgba(var(--color-primary-rgb), 0.2);

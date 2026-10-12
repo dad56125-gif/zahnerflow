@@ -65,7 +65,7 @@ interface BaseInputProps {
 export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number' }> = ({
   paramKey, value, defaultValue, onChange, type = 'text', disabled
 }) => {
-  const externalValue = toInputValue(value ?? defaultValue);
+  const externalValue = toInputValue(value);
   const [localValue, setLocalValue] = useState(externalValue);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -93,6 +93,11 @@ export const StandardInput: React.FC<BaseInputProps & { type?: 'text' | 'number'
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
     if (type === 'number') {
+      if (!e.target.value.trim()) {
+        onChange(paramKey, '');
+        setLocalValue('');
+        return;
+      }
       const fallback = Number(defaultValue ?? 0);
       const parsed = parseNumericInput(e.target.value, Number.isFinite(fallback) ? fallback : 0);
       onChange(paramKey, parsed);
@@ -121,7 +126,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
   paramKey, value, defaultValue, onChange, dropdownState, options, disabled
 }) => {
   const dropdownId = `enum-${paramKey}`;
-  const val = value ?? defaultValue;
+  const val = value === undefined ? defaultValue : value;
   const labelValue = typeof val === 'boolean' ? val : String(val ?? '');
   const isOpen = dropdownState.isOpen(dropdownId);
   const isHiding = dropdownState.isHiding(dropdownId);
@@ -187,7 +192,7 @@ export const EnumInput: React.FC<BaseInputProps & { options?: string[] }> = ({
 // ✅ 统一使用本地 state，只在 onBlur 时更新 store
 export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
   const { paramKey, value, defaultValue, onChange, disabled } = props;
-  const externalValue = toInputValue(value ?? defaultValue);
+  const externalValue = toInputValue(paramKey === 'targetTemperature' ? value : value === undefined ? defaultValue : value);
   const [localValue, setLocalValue] = useState(externalValue);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -231,6 +236,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
         onBlur={(e) => {
           setIsFocused(false);
           if (disabled) return;
+          if (!e.target.value.trim()) { onChange(paramKey, ''); setLocalValue(''); return; }
           const numValue = parseNumericInput(e.target.value, Number(defaultValue));
           const correctedValue = Math.max(
             FURNACE_TEMPERATURE_MIN_C,
@@ -267,6 +273,7 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
         onBlur={(e) => {
           setIsFocused(false);
           if (disabled) return;
+          if (!e.target.value.trim()) { onChange(paramKey, ''); setLocalValue(''); return; }
           const numValue = parseNumericInput(e.target.value, Number(defaultValue));
           const correctedValue = Math.max(0.1, Math.min(20, numValue));
           onChange(paramKey, correctedValue);
@@ -287,9 +294,15 @@ export const TemperatureInput: React.FC<BaseInputProps> = (props) => {
 
 // --- MFC 专用组件 (简化版) ---
 // ✅ 统一使用本地 state，只在 onBlur 时更新 store
-export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDeviceInfo[] }> = (props) => {
-  const { paramKey, availableDevices, value, defaultValue, onChange, dropdownState, disabled } = props;
-  const externalValue = toInputValue(value ?? defaultValue);
+export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDeviceInfo[]; selectedDevice?: MfcDeviceInfo }> = (props) => {
+  const { paramKey, availableDevices, selectedDevice: configuredDevice, value, defaultValue, onChange, dropdownState, disabled } = props;
+  const scannedValues: Record<string, NodeParameterValue | undefined> = {
+    maxFlowSccm: configuredDevice?.maxFlowSccm,
+    deviceAddress: configuredDevice?.address,
+    gasType: configuredDevice?.gasType,
+  };
+  const externalValue = toInputValue(paramKey in scannedValues ? scannedValues[paramKey]
+    : ['deviceSelection', 'targetFlowRate'].includes(paramKey) ? value : value === undefined ? defaultValue : value);
   const [localValue, setLocalValue] = useState(externalValue);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -302,7 +315,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
 
   if (paramKey === 'deviceSelection') {
     const dropdownId = 'mfc-device-selection';
-    const currentValue = String(value ?? defaultValue ?? '');
+    const currentValue = String(value ?? '');
     const isOpen = dropdownState.isOpen(dropdownId);
     const isHiding = dropdownState.isHiding(dropdownId);
     const position = dropdownState.getPosition(dropdownId);
@@ -323,6 +336,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
       <div className="dropdown-wrapper">
         <button
           type="button"
+          data-tutorial-parameter={paramKey}
           className="btn btn--md btn--secondary btn--block dropdown-trigger"
           disabled={disabled}
           onClick={(e) => !disabled && dropdownState.open(dropdownId, e)}
@@ -361,10 +375,12 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
   }
 
   if (paramKey === 'targetFlowRate') {
-    const maxFlow = 200; // MFC 最大流量上限 200 sccm
+    const maxFlow = configuredDevice && Number.isFinite(configuredDevice.maxFlowSccm) && configuredDevice.maxFlowSccm > 0
+      ? configuredDevice.maxFlowSccm : undefined;
     return (
       <input
         type="text"
+        data-tutorial-parameter={paramKey}
         value={localValue}
         disabled={disabled}
         onChange={(e) => {
@@ -378,8 +394,9 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
         onBlur={(e) => {
           setIsFocused(false);
           if (disabled) return;
+          if (!e.target.value.trim()) { onChange(paramKey, ''); setLocalValue(''); return; }
           const numValue = parseNumericInput(e.target.value, Number(defaultValue));
-          const correctedValue = Math.max(0, Math.min(maxFlow, numValue));
+          const correctedValue = Math.max(0, maxFlow === undefined ? numValue : Math.min(maxFlow, numValue));
           onChange(paramKey, correctedValue);
           setLocalValue(correctedValue);
         }}
@@ -388,7 +405,7 @@ export const GasFlowInput: React.FC<BaseInputProps & { availableDevices: MfcDevi
         max={maxFlow}
         step={0.1}
         placeholder={getParameterPlaceholder(paramKey)}
-        title={`目标流量 (0-${maxFlow} sccm)`}
+        title={maxFlow === undefined ? '目标流量 (sccm)，请先选择已扫描的设备' : `目标流量 (0-${maxFlow} sccm)`}
       />
     );
   }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { WorkflowNode, NodeType } from '@zahnerflow/types';
+import { MEASUREMENT_PARAMETER_ALIASES } from '@zahnerflow/types';
 import { createWorkflowNode } from '../utils/nodeUtilities';
 import type { NodeParameters } from '../types/NodeConfiguration';
 import { selectCanvasEditable, useExecutionStore } from './executionStateBridge';
@@ -44,7 +45,14 @@ export const useCanvasStore = create<CanvasState>()(devtools((set, get) => {
     },
     deleteNode: nodeId => { if (editable()) applyNodes(get().nodes.filter(node => node.id !== nodeId)); },
     updateNodeConfig: (nodeId, config) => {
-      if (editable()) applyNodes(get().nodes.map(node => node.id === nodeId ? { ...node, config: { ...node.config, ...config } } : node));
+      if (editable()) applyNodes(get().nodes.map(node => {
+        if (node.id !== nodeId) return node;
+        const merged = { ...node.config, ...config };
+        for (const [alias, canonical] of Object.entries(MEASUREMENT_PARAMETER_ALIASES)) {
+          if (canonical in (node.config || {}) && alias in config) merged[canonical] = config[alias];
+        }
+        return { ...node, config: merged };
+      }));
     },
     replaceNodeConfig: (nodeId, config) => {
       if (editable()) applyNodes(get().nodes.map(node => node.id === nodeId ? { ...node, config: { ...config } } : node));

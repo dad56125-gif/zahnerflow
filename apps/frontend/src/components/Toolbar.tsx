@@ -6,6 +6,9 @@ import { describeExecution } from '../state/executionStateModel';
 import { UnrollViewModal } from './UnrollViewModal';
 import type { RunFlowHandler } from '../types/executionControl';
 import type { NodeParameters } from '../types/NodeConfiguration';
+import type { WorkflowValidationDetails } from '@zahnerflow/types';
+import { NODE_CONFIGS } from '../types/NodeConfiguration';
+import { getParameterLabel } from './property/propertyConfig';
 
 interface ToolbarProps {
   onRunFlow: RunFlowHandler;
@@ -17,6 +20,7 @@ interface ToolbarProps {
   onUnrollViewOpenChange?: (open: boolean) => void;
   autoStartupConfig?: NodeParameters;
   runMetadataWarning?: string | null;
+  runValidationWarning?: WorkflowValidationDetails | null;
 }
 
 type PrimaryAction = 'run' | 'reset' | 'stop';
@@ -92,8 +96,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onUnrollViewOpenChange,
   autoStartupConfig,
   runMetadataWarning,
+  runValidationWarning,
 }) => {
-  const { clearCanvas, nodes } = useCanvasStore();
+  const { clearCanvas, nodes, selectNode } = useCanvasStore();
   const { setDraftWorkflowName } = useWorkflowStore();
   const cancelExecution = useExecutionStore(state => state.cancelExecution);
   const executionSnapshot = useExecutionStore(state => state.snapshot);
@@ -210,7 +215,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const buttonStates = getButtonStates();
-  const isRunMetadataBlocked = Boolean(runMetadataWarning && buttonStates.primaryAction === 'run');
+  const isRunMetadataBlocked = Boolean(runMetadataWarning && !runValidationWarning && buttonStates.primaryAction === 'run');
 
   const setUnrollViewOpen = (open: boolean) => {
     setShowUnrollView(open);
@@ -316,11 +321,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const handleRunPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    longPressTriggeredRef.current = false;
     if (buttonStates.primaryAction !== 'stop') stopPressTriggeredRef.current = false;
     if (!isRunMetadataBlocked) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
-    longPressTriggeredRef.current = false;
     clearLongPressTimer();
     longPressTimerRef.current = window.setTimeout(() => {
       longPressTimerRef.current = null;
@@ -339,15 +344,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       stopPressTriggeredRef.current = false;
       return;
     }
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
     if (buttonStates.primaryAction === 'stop') {
       triggerStopFeedback();
       return;
     }
     if (isRunMetadataBlocked) return;
-    if (longPressTriggeredRef.current) {
-      longPressTriggeredRef.current = false;
-      return;
-    }
     handlePrimaryAction();
   };
 
@@ -385,10 +390,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         <div className="toolbar__group toolbar__group--top-right">
-          {runMetadataWarning && buttonStates.primaryAction === 'run' && (
-            <div className="toolbar-run-warning" role="status" aria-live="polite">
+          {(runMetadataWarning || runValidationWarning) && buttonStates.primaryAction === 'run' && (
+            <div className={`toolbar-run-warning ${runValidationWarning ? 'toolbar-run-warning--validation' : ''}`} role="status" aria-live="polite">
               <span className="toolbar-run-warning__marker">!</span>
-              <span className="toolbar-run-warning__message">{runMetadataWarning}</span>
+              <div className="toolbar-run-warning__message">
+                {runValidationWarning ? <>
+                  <span>{runValidationWarning.message}</span>
+                  {runValidationWarning.issues.map((issue, index) => (
+                    <button key={`${issue.nodeId}:${issue.parameter}:${index}`} type="button" className="toolbar-run-warning__issue"
+                      onClick={() => selectNode(issue.nodeId)}>
+                      [{issue.nodeIndex + 1}] {NODE_CONFIGS[issue.nodeType]?.name || issue.nodeType} · {getParameterLabel(issue.parameter, issue.nodeType)}：{issue.message}
+                    </button>
+                  ))}
+                </> : runMetadataWarning}
+              </div>
             </div>
           )}
           <button
@@ -447,7 +462,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         nodes={nodes}
         autoStartupConfig={autoStartupConfig}
         canRunFromStep={!buttonStates.primaryButtonDisabled && buttonStates.primaryAction === 'run'}
-        runMetadataWarning={runMetadataWarning}
+        runMetadataWarning={runValidationWarning?.message || runMetadataWarning}
         onRunFromStep={(startFromUnrolledIndex) => onRunFlow({ startFromUnrolledIndex })}
       />
 

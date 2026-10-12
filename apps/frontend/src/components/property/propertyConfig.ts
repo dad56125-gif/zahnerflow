@@ -1,9 +1,12 @@
+import { MEASUREMENT_PARAMETER_ALIASES } from '@zahnerflow/types';
+
 // 参数标签配置
 export const getParameterLabel = (key: string, nodeType?: string): string => {
   // 根据节点类型确定EIS幅值单位
   const getEisAmplitudeUnit = () => nodeType === 'eis_galvanostatic' ? '(A)' : '(V)';
 
   const labels: Record<string, string> = {
+    device: '设备',
     // 通用测量参数
     polarizationVoltage: '极化电压 (V)',
     polarizationCurrent: '极化电流 (A)',
@@ -106,7 +109,8 @@ export const getParameterLabel = (key: string, nodeType?: string): string => {
     workflowShortId: '工作流编号',
     nodeCount: '节点数'
   };
-  return labels[key] || key;
+  const alias = Object.entries(MEASUREMENT_PARAMETER_ALIASES).find(([, canonical]) => canonical === key)?.[0];
+  return labels[key] || (alias && labels[alias]) || key;
 };
 
 // 参数占位符配置

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { WorkflowNode } from '@zahnerflow/types';
+import { MEASUREMENT_PARAMETER_ALIASES } from '@zahnerflow/types';
 import { useCanvasStore } from '../../state/canvasStore';
 // 注意：请确保路径与你实际文件结构一致
 import { NODE_CONFIGS } from '../../types/NodeConfiguration';
@@ -219,6 +220,9 @@ function calculateLayout(
       // 注入视图属性 (兼容 React Flow data 结构)
       data: {
         ...node.config,
+        ...Object.fromEntries(Object.entries(MEASUREMENT_PARAMETER_ALIASES)
+          .filter(([, canonical]) => canonical in (node.config || {}))
+          .map(([alias, canonical]) => [alias, node.config[canonical]])),
         label: staticConfig?.name,
         icon: staticConfig?.icon,
         _nodeType: node.type, // 供组件逻辑判断

@@ -132,18 +132,21 @@ _MEASUREMENT_PARAMETER_DEFAULTS = {
         "enable_dc_bias": True,
     },
     "galvanostatic_step_ramp": {
+        "sampling_interval": 0.5,
         "start_current": 0.1,
         "end_current": 1.0,
         "step_current": 0.1,
         "hold_time": 30.0,
     },
     "potentiostatic_step_ramp": {
+        "sampling_interval": 0.5,
         "start_potential": 0.0,
         "end_potential": 1.0,
         "step_potential": 0.1,
         "hold_time": 30.0,
     },
     "galvanostatic_switching": {
+        "sampling_interval": 0.5,
         "current_1": 0.0,
         "current_2": 0.01,
         "hold_time_1": 30.0,
@@ -151,6 +154,7 @@ _MEASUREMENT_PARAMETER_DEFAULTS = {
         "cycles": 5,
     },
     "potentiostatic_switching": {
+        "sampling_interval": 0.5,
         "potential_1": 0.0,
         "potential_2": 0.5,
         "hold_time_1": 30.0,
@@ -206,6 +210,12 @@ _INTEGER_PARAMETER_KEYS = {
 }
 
 
+class MeasurementParameterError(ValueError):
+    def __init__(self, issues: list[tuple[str, str]]):
+        self.issues = issues
+        super().__init__("；".join(f"{key}: {message}" for key, message in issues))
+
+
 def normalize_measurement_parameters(measurement_type: str, raw_params: dict | None) -> dict:
     """Return the canonical snake_case parameter model consumed by Zahner logic.
 
@@ -233,41 +243,75 @@ def normalize_measurement_parameters(measurement_type: str, raw_params: dict | N
         }
     )
 
-    for key in _FLOAT_PARAMETER_KEYS:
-        if key in normalized:
-            normalized[key] = float(normalized[key])
-    for key in _INTEGER_PARAMETER_KEYS:
-        if key in normalized:
-            normalized[key] = int(normalized[key])
+    issues: list[tuple[str, str]] = []
+    for key in sorted(_FLOAT_PARAMETER_KEYS | _INTEGER_PARAMETER_KEYS):
+        if key not in normalized:
+            continue
+        value = normalized[key]
+        try:
+            if isinstance(value, bool) or value is None or (isinstance(value, str) and not value.strip()):
+                raise ValueError
+            number = float(value)
+            if not math.isfinite(number):
+                raise ValueError
+            if key in _INTEGER_PARAMETER_KEYS and not number.is_integer():
+                issues.append((key, "必须是整数"))
+                continue
+            normalized[key] = int(number) if key in _INTEGER_PARAMETER_KEYS else number
+        except (TypeError, ValueError, OverflowError):
+            issues.append((key, "请填写有效的有限数值"))
+
+    invalid_keys = {key for key, _ in issues}
+    positive_keys = {
+        "measurement_duration", "sampling_interval", "eis_lower_frequency", "eis_upper_frequency",
+        "eis_start_frequency", "eis_amplitude", "eis_lower_periods", "eis_upper_periods",
+        "eis_lower_steps", "eis_upper_steps", "points_per_decade", "hold_time", "hold_time_1", "hold_time_2",
+        "scan_rate",
+    }
+    for key in sorted(positive_keys & normalized.keys() - invalid_keys):
+        if normalized[key] <= 0:
+            issues.append((key, "必须大于 0"))
+    if "cycles" in normalized and "cycles" not in invalid_keys and normalized["cycles"] < 0:
+        issues.append(("cycles", "必须是非负整数"))
+    for key in ("step_current", "step_potential"):
+        if key in normalized and key not in invalid_keys and normalized[key] == 0:
+            issues.append((key, "步长不能为 0"))
+    for lower_key, upper_key in (("min_current", "max_current"), ("min_voltage", "max_voltage"), ("eis_lower_frequency", "eis_upper_frequency")):
+        if lower_key in normalized and upper_key in normalized and not {lower_key, upper_key} & invalid_keys:
+            if normalized[lower_key] > normalized[upper_key]:
+                issues.append((lower_key, "下限不能大于上限"))
 
     for key in ("start_voltage_reference", "end_voltage_reference"):
         if key in normalized:
             reference = str(normalized[key]).lower()
             if reference not in ("absolute", "ocv"):
-                raise ValueError(f"Unsupported voltage reference: {reference}")
+                issues.append((key, "请选择有效的电位参考模式"))
             normalized[key] = reference
+
+    if "enable_dc_bias" in normalized and not isinstance(normalized["enable_dc_bias"], bool):
+        issues.append(("enable_dc_bias", "请选择启用或禁用直流偏置"))
 
     if measurement_type in ("eis_potentiostatic", "eis_galvanostatic"):
         direction = str(normalized.get("eis_scan_direction", "START_TO_MIN")).upper()
         if direction not in ("START_TO_MAX", "START_TO_MIN"):
-            raise ValueError(f"Unsupported EIS scan direction: {direction}")
+            issues.append(("eis_scan_direction", "请选择有效的扫描方向"))
         normalized["eis_scan_direction"] = direction
         strategy = str(
             normalized.get("eis_scan_strategy", "SINGLE_SINE")
         ).upper()
         if strategy not in ("SINGLE_SINE", "MULTI_SINE"):
-            raise ValueError(f"Unsupported EIS scan strategy: {strategy}")
+            issues.append(("eis_scan_strategy", "请选择有效的扫描策略"))
         normalized["eis_scan_strategy"] = strategy
 
         lower = normalized.get("eis_lower_frequency")
         upper = normalized.get("eis_upper_frequency")
-        if lower is not None and upper is not None:
-            if lower > upper:
-                raise ValueError("EIS lower frequency must not exceed upper frequency")
+        if lower is not None and upper is not None and not {"eis_lower_frequency", "eis_upper_frequency"} & invalid_keys:
             # The scan direction is authoritative; a stale UI start value cannot
             # contradict the selected direction.
             normalized["eis_start_frequency"] = lower if direction == "START_TO_MAX" else upper
 
+    if issues:
+        raise MeasurementParameterError(issues)
     return normalized
 
 

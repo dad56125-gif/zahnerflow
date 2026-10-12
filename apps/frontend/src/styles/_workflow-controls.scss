@@ -58,6 +58,7 @@
 }
 
 .toolbar__group--top-right {
+  align-items: flex-start;
   top: var(--size-md);
   right: var(--toolbar-edge-offset);
 }
@@ -93,6 +94,31 @@
   font-size: var(--size-sm);
   font-weight: 700;
   line-height: 1;
+}
+
+.toolbar-run-warning--validation {
+  align-items: flex-start;
+  max-width: min(32rem, 60vw);
+  max-height: min(40vh, 18rem);
+  overflow-y: auto;
+  white-space: normal;
+  pointer-events: auto;
+  background: var(--surface-card);
+}
+
+.toolbar-run-warning__issue {
+  display: block;
+  width: 100%;
+  margin-top: var(--size-2xs);
+  padding: var(--size-2xs);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  &:hover, &:focus-visible { background: var(--glass-hover); }
 }
 
 .toolbar-run-warning__message {

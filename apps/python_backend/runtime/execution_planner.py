@@ -12,6 +12,7 @@ from database import db
 from loop_unroller import WorkflowBlockError, unroll_loops
 from runtime.execution_eta import estimate_workflow
 from runtime.node_executors import validate_node_executor
+from runtime.node_validation import WorkflowValidationError, node_parameter_issues, validation_issue
 from runtime.execution_semantics import (
     MEASUREMENT_NODE_TYPES,
     resolve_scheduled_start,
@@ -97,11 +98,25 @@ class ExecutionPlanner:
         unsupported_nodes = unsupported_source_nodes(nodes_snapshot)
         if unsupported_nodes:
             raise ExecutionPlanningError(_unsupported_nodes_message(unsupported_nodes))
+        issues = []
+
+        def validate_source(node, index):
+            problems = node_parameter_issues(node)
+            issues.extend(validation_issue(nodes_snapshot, node, index, field, message) for field, message in problems)
+            return not problems
+
+        for index, node in enumerate(nodes_snapshot):
+            if node.get("type") == "loop_start":
+                validate_source(node, index)
+        if issues:
+            raise WorkflowValidationError(issues)
+
         try:
             unrolled = unroll_loops(
                 nodes_snapshot,
                 workflow_loader=self.workflow_loader,
                 auto_startup_config=auto_startup_config or {},
+                node_validator=validate_source,
             )
         except WorkflowBlockError as exc:
             raise ExecutionPlanningError(str(exc)) from exc
@@ -114,6 +129,11 @@ class ExecutionPlanner:
         planned_at = now or datetime.now()
         for step in steps:
             node = step.get("node") or nodes_snapshot[step["originalIndex"]]
+            source = {**node, "id": step.get("parentNodeId") or node.get("id"), "type": step.get("parentNodeType") or node.get("type")}
+            problems = node_parameter_issues(node)
+            issues.extend(validation_issue(nodes_snapshot, source, step["originalIndex"], field, message) for field, message in problems)
+            if problems:
+                continue
             try:
                 validate_node_executor(node)
             except (TypeError, ValueError) as exc:
@@ -125,11 +145,11 @@ class ExecutionPlanner:
             except (TypeError, ValueError) as exc:
                 raise ExecutionPlanningError(f"Invalid scheduled_start parameters: {exc}") from exc
             if scheduled_at <= planned_at:
-                raise ExecutionPlanningError(
-                    f"Scheduled time has already passed: {scheduled_at.isoformat()}"
-                )
+                issues.append(validation_issue(nodes_snapshot, source, step["originalIndex"], "hour", "定时时间已过，请重新选择"))
             step["scheduledAt"] = scheduled_at.isoformat()
 
+        if issues:
+            raise WorkflowValidationError(issues)
         estimate = estimate_workflow(nodes_snapshot, steps, self.devices, now=planned_at)
         start_index = self._validate_start_index(start_from_unrolled_index, len(steps))
         boundary_prelude_indices = _boundary_prelude_indices(steps, start_index)
