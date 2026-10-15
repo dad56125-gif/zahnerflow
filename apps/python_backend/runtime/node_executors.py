@@ -14,6 +14,7 @@ from devices.zahner.advanced_node_sink import ADVANCED_NODE_TYPES, AdvancedNodeS
 from devices.zahner.logic import MeasurementCancelled
 from runtime.execution_control import NodeExecutionContext, WorkflowCancelled
 from runtime.execution_failure import ExecutionFailureError, TemperatureTargetTimeout, temperature_failure
+from runtime.filename_environment import workflow_filename_environment
 from runtime.execution_semantics import MeasurementOutcome, NodeExecutionSpec, normalize_measurement_outcome, parse_scheduled_at, resolve_node_execution_spec
 from runtime.temperature_control import estimate_remaining_temperature_seconds, estimate_temperature_program_minutes, estimate_temperature_ramp_minutes
 from shared.contracts.events import WORKFLOW_EIS, WORKFLOW_MEASUREMENT
@@ -57,6 +58,7 @@ class NodeExecutor:
 
     async def _execute_change_temperature(self, params: dict):
         execution_id = self.context.execution_id
+        self.control.filename_temperature_band = None
 
         def require_current_run():
             self.runtime.require_furnace_execution(execution_id)
@@ -167,6 +169,7 @@ class NodeExecutor:
                 stage = "confirmation"
                 self.runtime.confirm_furnace_action_from_worker("run", execution_id)
                 details["runStateConfirmed"] = True
+                self.control.filename_temperature_band = (target_temp, tolerance)
                 stage = "waiting"
                 start = time.monotonic()
                 deadline = start + base_wait_s
@@ -305,24 +308,7 @@ class NodeExecutor:
             options["nodeConfig"] = params.get("nodeConfig")
         output_path = build_output_path(options)
 
-        env_context = {}
-        furnace_status = await self.control.run_in_thread(self.devices.furnace_status)
-        self.control.check_cancelled()
-        if furnace_status.get("connected") and furnace_status.get("pv") is not None:
-            env_context["furnace_temp"] = int(round(furnace_status["pv"]))
-        mfc_status = await self.control.run_in_thread(self.devices.mfc_status)
-        self.control.check_cancelled()
-        mfc_flows = {}
-        for device in mfc_status.get("devices", []) if mfc_status.get("connected") else []:
-            flow = device.get("flowSccm")
-            if flow is None:
-                continue
-            gas_name = device.get("gasType") or f"MFC{device.get('address')}"
-            if gas_name == "Unknown" and device.get("address") is not None:
-                gas_name = f"MFC{device['address']}"
-            mfc_flows[gas_name] = flow
-        if mfc_flows:
-            env_context["mfc_flows"] = mfc_flows
+        env_context = await self._filename_environment()
 
         measurement_params = {
             **params,
@@ -393,6 +379,22 @@ class NodeExecutor:
             )
 
         return normalize_measurement_outcome(result, output_dir=output_path)
+
+    async def _filename_environment(self) -> dict:
+        statuses = []
+        for read_status in (self.devices.furnace_status, self.devices.mfc_status):
+            try:
+                status = await self.control.run_in_thread(read_status)
+            except WorkflowCancelled:
+                raise
+            except Exception:
+                # 标签的可选读数失败不伪造 0；底层仍按原语义记录/传播设备故障。
+                status = {}
+            self.control.check_cancelled()
+            statuses.append(status)
+        return workflow_filename_environment(
+            *statuses, self.control.filename_temperature_band,
+        )
 
     def _advanced_sink_for(self, step: dict, measurement_params: dict) -> AdvancedNodeSink | None:
         '''高级子步的单一文件句柄，只按父执行身份归属到执行期资源。'''

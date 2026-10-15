@@ -23,6 +23,8 @@ class ExecutionControl:
         self._cancel = Event()
         self._paused = Event()
         self.shutdown_reason: str | None = None
+        # 仅用于本次工作流的文件名；不从计划、设备旧设定或历史执行恢复。
+        self.filename_temperature_band: tuple[float, float] | None = None
 
     @property
     def cancel_requested(self) -> bool:
