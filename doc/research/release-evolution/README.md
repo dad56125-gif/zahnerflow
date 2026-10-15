@@ -1,5 +1,22 @@
 # 版本演进事实与迁移证据
 
+## 2.13.1 版本演进（2026-10-15）
+
+状态：研究结论，事实、图像及浏览器验收完成，演进图资产已上传并核验，Release 正文已追加图像与离线 HTML 下载入口。归属：本次版本演进分析负责人，主代理审阅。来源：既有用户基线登记、本地 Git、主审批准的 A/B 事实及 GitHub API。
+
+- 固定范围为沿用已登记的 2.12.0／`9751988183db7ee7b430cf3c6675bda03fcef5dd`（不含）至已发布 `release/v2.13.1`／`e019a203cd05e33e3d811962f7f372bfd85bf1b1`（含）。30 条更新提交、0 合并、11 阶段，不跟随 main，不推进基线 `current`。
+- [账本](commit-facts.json)统一追加 30 条获批的 `reviewed` 事实，合计 178 条；旧 148 条逐对象摘要、旧 2.12.0 快照与基线登记文件哈希完全不变。阶段类型为各自提交类型并集，SHA 全覆盖且无重复。
+- [展示请求](../release-tree-2.13.1.json)及[新快照](snapshots/2.13.1/snapshot.json)保存固定事实与阶段；个人技能模板生成 HTML，独立单列包装层保留节点边界、箭头与完整证据，阶段数取实际快照。HTML/PNG 和浏览器证据保存在忽略目录 `.codex-run/release-tree-2.13.1/`，不纳入 Git。
+- 数据影响分开记录共享契约扩展、进程内状态、既有 SQL 写值及历史匹配语义；这些不等于 SQL schema 迁移。历史文档讨论不计为新增产品能力。
+- 2.13.0 为高级节点单 CSV 保存：阶梯六列、切换八列，工步结果 JSON 部分结果扩充，每点 flush、收尾 fsync。2.13.1 仅修复工作流环境命名及本次执行温区状态：温区内目标、区外实测；零设定 [-10,10] sccm 内省略，非零偏差 ≤5% 用标称、超出用实测，原始 CSV 不变。
+- 浏览器 1280px/320px 各点击全部 11 阶段，合计核对 60 条详情 SHA、展开 26 条内部事实证据与路径；两种宽度均 13 节点/12 主线箭头，无溢出重叠、零 pageerror/外网请求。总览 PNG 为 1120×2299，隐藏详情及选中高亮；图内不追加打包流程、验证或下一轮尾注。
+- [PNG 资产](https://github.com/dad56125-gif/zahnerflow/releases/download/release/v2.13.1/release-tree-2.13.1.png)：228237 字节，`image/png`，服务端与本地 SHA256 均为 `e52cbfb51ced4c223d6f5c611e0a75c478db23d0b35142b925bc7ae3bfeb1c3b`。
+- [交互 HTML 资产](https://github.com/dad56125-gif/zahnerflow/releases/download/release/v2.13.1/release-tree-2.13.1.html)：93002 字节，`text/html; charset=utf-8`，服务端与本地 SHA256 均为 `ed85d3b7e24d42b1120f8ba7d302644ce788f70c29b0ed896006f67e1748d482`；下载后可离线展开逐提交证据。
+- [正式 Release](https://github.com/dad56125-gif/zahnerflow/releases/tag/release/v2.13.1)仍为公开 Latest；更新前正文与资产信息已留只读备份。仅在首段简介后、主要更新前插入演进图段，原正文其余内容及原安装包、校验资产均保持完整；API 已核对真实下载 URL、类型与 digest。证据见忽略目录的 `remote-verification.json`、`final-verification.json`。
+- 产品版本 2.13.1 → 2.13.1，无升级（本次仅分析事实与派生图）。Git 归档范围仅为本 README、账本、新请求与新快照四文件；不修改产品、INSTALL、旧快照或个人技能。
+
+## 2.12.0 历史迁移与验收
+
 状态：研究结论，迁移、独立复验与浏览器验收完成。归属：本次演进分析。来源：已有 Git 元数据、历史检查报告及子代理逐提交检查结论。复核日期：2026-10-08。
 
 ## 当前具体记录

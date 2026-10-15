@@ -7324,6 +7324,1879 @@
           ]
         }
       ]
+    },
+    "a50acf2540547b29d981298ffa23d46816d5dd93": {
+      "hash": "a50acf2540547b29d981298ffa23d46816d5dd93",
+      "version": "2.12.0",
+      "summary": "登记固定发布基线并新增阶段更新树生成工具及维护说明。",
+      "changes": [
+        {
+          "summary": "登记源码、安装包哈希和阶段清单，增加发布分析规则与来源导航。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "发布分析元数据，不改变应用数据模型或SQL结构。"
+          }
+        },
+        {
+          "summary": "新增读取Git对象、校验范围覆盖和合并父关系并生成可展开分类图的脚本与模板。",
+          "types": [
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "开发分析工具；阶段类型不等于逐提交分类。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff a50acf2^ a50acf2 -- scripts/release-update-tree.mjs scripts/release-update-tree.html",
+          "detail": "生成器调用rev-list/show读取提交与VERSION，检查assigned覆盖、版本及合并父提交；模板select显示提交证据。"
+        },
+        {
+          "source": "git diff a50acf2^ a50acf2 -- doc/reference/release-baselines.json doc/research/release-tree-2.12.0.json AGENTS.md",
+          "detail": "新增固定9751988与安装包SHA256登记、15阶段输入及8.5发布更新分析规则；未改产品实现。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "a50acf2",
+      "parents": [
+        "9751988183db7ee7b430cf3c6675bda03fcef5dd"
+      ],
+      "date": "2026-10-08T09:46:16+08:00",
+      "title": "固定2.12.0发布基线并完善更新分类树与复用流程",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "AGENTS.md",
+        "doc/README.md",
+        "doc/architecture/source-of-truth.md",
+        "doc/guides/release-analysis.md",
+        "doc/reference/release-baselines.json",
+        "doc/research/desktop-baseline-update-tree-2026-10-07.md",
+        "doc/research/release-tree-2.12.0.json",
+        "scripts/release-update-tree.html",
+        "scripts/release-update-tree.mjs"
+      ],
+      "types": [
+        "文档",
+        "工程"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "17d413d10745b4d368478874e2d6eab78f034e51": {
+      "hash": "17d413d10745b4d368478874e2d6eab78f034e51",
+      "version": "2.12.0",
+      "summary": "记录分析流程迁入个人技能及逐提交增量复用的待执行方案。",
+      "changes": [
+        {
+          "summary": "在发布分析指南追加明确标为未执行的迁移方案。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "只有计划文字，无技能迁移代码、账本或产品实现变更。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 17d413d^ 17d413d -- doc/guides/release-analysis.md",
+          "detail": "仅新增“待迁移方案（仅方案，未执行）”四行，说明完整SHA账本、复用与补缺规则；原规则尚未迁移。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "17d413d",
+      "parents": [
+        "a50acf2540547b29d981298ffa23d46816d5dd93"
+      ],
+      "date": "2026-10-08T10:01:56+08:00",
+      "title": "记录版本演进分析迁入技能与逐提交增量复用方案",
+      "files": [
+        "doc/guides/release-analysis.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "29c5170fd223f783193d3021a6d18f2e3aeefe6f": {
+      "hash": "29c5170fd223f783193d3021a6d18f2e3aeefe6f",
+      "version": "2.12.0",
+      "summary": "移除仓库内重复发布分析工具及强制流程，保存迁移账本和版本快照。",
+      "changes": [
+        {
+          "summary": "删除旧生成脚本、模板、指南和AGENTS强制发布分析条款，导航改指个人技能及项目事实。",
+          "types": [
+            "工程",
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "工具与维护规则迁移，不是新增应用能力。"
+          }
+        },
+        {
+          "summary": "新增完整SHA事实账本与2.12.0快照，并在基线登记增加用户选择依据。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "研究JSON元数据，非应用持久化JSON扩展；历史114条保留imported与缺项，未冒充本次重新审阅。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 29c5170^ 29c5170 -- scripts/release-update-tree.mjs scripts/release-update-tree.html AGENTS.md .gitignore",
+          "detail": "删除旧绘图实现及8.5条款，新增快照HTML忽略项，支持项目只保存事实与快照的迁移结论。"
+        },
+        {
+          "source": "git diff 29c5170^ 29c5170 -- doc/research/release-evolution/README.md doc/research/release-evolution/commit-facts.json doc/reference/release-baselines.json",
+          "detail": "新增账本schemaVersion/records及迁移证据；示例旧记录summary/verification为null、missingFields明确保留，登记selectionAuthority=user。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。 技能目录外部实现是否当时完整迁入，仅能引用该提交README记录；本次未重审既有148条。",
+      "short": "29c5170",
+      "parents": [
+        "17d413d10745b4d368478874e2d6eab78f034e51"
+      ],
+      "date": "2026-10-08T10:30:24+08:00",
+      "title": "将版本演进分析迁入个人技能并保存增量事实账本",
+      "files": [
+        ".gitignore",
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "AGENTS.md",
+        "doc/README.md",
+        "doc/architecture/source-of-truth.md",
+        "doc/guides/release-analysis.md",
+        "doc/reference/release-baselines.json",
+        "doc/research/desktop-baseline-update-tree-2026-10-07.md",
+        "doc/research/release-evolution/README.md",
+        "doc/research/release-evolution/commit-facts.json",
+        "doc/research/release-evolution/snapshots/2.12.0/snapshot.json",
+        "doc/research/release-tree-2.12.0.json",
+        "scripts/release-update-tree.html",
+        "scripts/release-update-tree.mjs"
+      ],
+      "types": [
+        "工程",
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "974e6e13236c949d40f68734a024abc42e1ef3d9": {
+      "hash": "974e6e13236c949d40f68734a024abc42e1ef3d9",
+      "version": "2.12.0",
+      "summary": "交付当前主线功能调查资料与离线交互全景图。",
+      "changes": [
+        {
+          "summary": "保存功能覆盖、源码证据、问题分类、验证索引和截图，区分源码、接口、UI及真机边界。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "调查资料不改变应用契约或数据库。"
+          }
+        },
+        {
+          "summary": "新增从graph.json渲染可搜索、展开、缩放全景图的模板和生成器。",
+          "types": [
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "研究展示工具；不作为产品新功能。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 974e6e1^ 974e6e1 -- doc/research/feature-network/README.md doc/research/feature-network/findings.md",
+          "detail": "基线固定29c5170，登记33模块/228条目；缺陷与能力边界分开，明确只调查不修复。"
+        },
+        {
+          "source": "git diff 974e6e1^ 974e6e1 -- doc/research/feature-network/render.mjs doc/research/feature-network/network.template.html",
+          "detail": "render校验模块/功能ID及关联后嵌入模板；模板实现搜索、模块展开和内部层切换，不读取产品运行状态。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。 文中接口/UI/导出结果为当时记录，本次未复现，也不将Blob生成等同文件落盘。",
+      "short": "974e6e1",
+      "parents": [
+        "29c5170fd223f783193d3021a6d18f2e3aeefe6f"
+      ],
+      "date": "2026-10-08T13:27:40+08:00",
+      "title": "文档：调查主线功能并交付交互全景图",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "doc/README.md",
+        "doc/architecture/source-of-truth.md",
+        "doc/research/feature-network/README.md",
+        "doc/research/feature-network/coverage.json",
+        "doc/research/feature-network/feature-network.html",
+        "doc/research/feature-network/findings.md",
+        "doc/research/feature-network/graph.json",
+        "doc/research/feature-network/network.template.html",
+        "doc/research/feature-network/render.mjs",
+        "doc/research/feature-network/screenshots/furnace-program.png",
+        "doc/research/feature-network/screenshots/live-dashboard.png",
+        "doc/research/feature-network/screenshots/mfc-panel.png",
+        "doc/research/feature-network/screenshots/network-expanded.png",
+        "doc/research/feature-network/screenshots/network-mobile.png",
+        "doc/research/feature-network/screenshots/network-overview.png",
+        "doc/research/feature-network/screenshots/report-preview.png",
+        "doc/research/feature-network/screenshots/simulator-panel.png",
+        "doc/research/feature-network/screenshots/tutorial-catalog.png",
+        "doc/research/feature-network/screenshots/tutorial-playing.png",
+        "doc/research/feature-network/screenshots/user-preferences.png",
+        "doc/research/feature-network/source-audit.json",
+        "doc/research/feature-network/verification.json"
+      ],
+      "types": [
+        "文档",
+        "工程"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "eead097ce0cf5c0dd406519287ed1b888c298673": {
+      "hash": "eead097ce0cf5c0dd406519287ed1b888c298673",
+      "version": "2.12.0",
+      "summary": "记录2.12.0远端发布的授权、固定源码与尚未完成状态。",
+      "changes": [
+        {
+          "summary": "在既有诊断验收文档追加远端发布进行中说明。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "无产品、发布资产或数据结构变更可由该文档diff直接证明。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff eead097^ eead097 -- doc/research/execution-diagnostics-2026-10-07.md",
+          "detail": "新增段落明确“远端发布尚未完成”，固定发布源码9751988；不能记为本提交完成发布。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "eead097",
+      "parents": [
+        "974e6e13236c949d40f68734a024abc42e1ef3d9"
+      ],
+      "date": "2026-10-08T13:35:21+08:00",
+      "title": "记录电脑版2.12.0远端发布范围",
+      "files": [
+        "doc/research/execution-diagnostics-2026-10-07.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "9e99ca213de759a27e9fb8236ef535031a82aeab": {
+      "hash": "9e99ca213de759a27e9fb8236ef535031a82aeab",
+      "version": "2.12.0",
+      "summary": "将远端发布进行中记录更新为已发布及资产核验记录。",
+      "changes": [
+        {
+          "summary": "登记Release链接、安装包大小与服务端哈希一致、标签解引用SHA等历史发布证据。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "只更新发布记录，未重新编译或修改应用数据。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 9e99ca2^ 9e99ca2 -- doc/research/execution-diagnostics-2026-10-07.md",
+          "detail": "替换上一段进行中说明，记录uploaded资产169564792字节、哈希一致及目标9751988，并明确未重新编译。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。 远端状态来自当时文档，本次未访问GitHub或重新核验安装包。",
+      "short": "9e99ca2",
+      "parents": [
+        "eead097ce0cf5c0dd406519287ed1b888c298673"
+      ],
+      "date": "2026-10-08T13:36:45+08:00",
+      "title": "登记电脑版2.12.0正式发布与远端资产校验",
+      "files": [
+        "doc/research/execution-diagnostics-2026-10-07.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "b6a10a1c16b6b044631119c8e2bd815704c38491": {
+      "hash": "b6a10a1c16b6b044631119c8e2bd815704c38491",
+      "version": "2.12.1",
+      "summary": "修复设备错误展示与假成功，并隔离连接、日志和用户配置的过期异步响应。",
+      "changes": [
+        {
+          "summary": "炉子错误按监控/程序段/预设/历史呈现，操作返回成功标志或实际程序段；MFC写流量失败传给卡片且保留输入。",
+          "types": [
+            "Bug",
+            "UI"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "FurnaceState.error拆为errors，控制方法返回值为前端内部约定；共享API契约和SQL未改。"
+          }
+        },
+        {
+          "summary": "为MFC连接/扫描/日志和炉子日志、预设、日曲线请求加代次及加载所有权保护。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "即时锁与请求代次为内存状态，阻止旧回包覆盖新操作。"
+          }
+        },
+        {
+          "summary": "用户配置加载、自动保存、目录选择及头像裁剪核对用户/工作区身份，切换时清空旧状态。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "保护前端设置所属身份，不新增持久化字段。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff b6a10a1^ b6a10a1 -- apps/frontend/src/modules/furnace/useFurnace.ts apps/frontend/src/components/furnace/PresetManager.tsx",
+          "detail": "execute返回boolean、get_segments返回数组或null；预设写入/保存失败提前返回，读取运行使用返回数组，错误按context落位。"
+        },
+        {
+          "source": "git diff b6a10a1^ b6a10a1 -- apps/frontend/src/modules/mfc/useMfc.ts apps/frontend/src/components/mfc/MFCDeviceCard.tsx",
+          "detail": "connectionAttemptIdRef/connectInFlightRef/scanRunIdRef/loadingOwnersRef控制并发；setFlowRate不再吞异常，卡片catch保留输入。"
+        },
+        {
+          "source": "git diff b6a10a1^ b6a10a1 -- apps/frontend/src/components/user/UserSettingsModal.tsx",
+          "detail": "settingsUserId、userLoadRequestRef和cropIdentityRef约束加载/防抖保存/头像确认，旧回调不能写当前用户状态。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "b6a10a1",
+      "parents": [
+        "9e99ca213de759a27e9fb8236ef535031a82aeab"
+      ],
+      "date": "2026-10-09T00:54:51+08:00",
+      "title": "修复设备操作错误归属和用户配置异步状态串用",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/components/furnace/FurnaceDeviceModal.tsx",
+        "apps/frontend/src/components/furnace/FurnaceErrorBanner.tsx",
+        "apps/frontend/src/components/furnace/PresetManager.tsx",
+        "apps/frontend/src/components/furnace/ProgramEditor.tsx",
+        "apps/frontend/src/components/furnace/StatusPanel.tsx",
+        "apps/frontend/src/components/mfc/MFCDeviceCard.tsx",
+        "apps/frontend/src/components/mfc/MFCModal.tsx",
+        "apps/frontend/src/components/user/UserSettingsModal.tsx",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/modules/furnace/furnaceError.ts",
+        "apps/frontend/src/modules/furnace/useFurnace.ts",
+        "apps/frontend/src/modules/mfc/useMfc.ts",
+        "apps/frontend/src/styles/_furnace.scss",
+        "apps/python_backend/version.py",
+        "package.json",
+        "packages/types/package.json",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "Bug",
+        "UI"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "572acca4498c3622474b448afca1870e33297f72": {
+      "hash": "572acca4498c3622474b448afca1870e33297f72",
+      "version": "2.12.2",
+      "summary": "修复MFC通信失败被伪装为零读数或已连接，并显示串口中断与手动恢复提示。",
+      "changes": [
+        {
+          "summary": "MFC流量/设定值读取失败上抛，扫描传播失效串口，运行时保留最后扫描设备但标记error。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "沿用runtime envelope的connectionStatus/lastError/scannedDevices；改变故障语义，无新增共享字段或SQL结构。"
+          }
+        },
+        {
+          "summary": "炉子和MFC显示通信中断、端口及过期读数提示，禁用过期MFC控制，提供断开恢复入口。",
+          "types": [
+            "Bug",
+            "UI"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "保留最后读数用于展示；明确不代表真实设备已停止，不自动重连。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 572acca^ 572acca -- apps/python_backend/devices/mfc/real_device.py apps/python_backend/runtime/device_manager.py apps/python_backend/runtime/app_runtime.py",
+          "detail": "read_status不再吞MfcError并填0；mfc_status检查ensure_session/ser.is_open/in_waiting；_mfc_scan_once捕获并调用on_device_communication_error，错误快照设备标error。"
+        },
+        {
+          "source": "git diff 572acca^ 572acca -- apps/frontend/src/modules/mfc/useMfc.ts apps/frontend/src/components/mfc/MFCModal.tsx apps/frontend/src/components/common/DeviceConnectionPanel.tsx apps/frontend/src/components/furnace/FurnaceDeviceModal.tsx",
+          "detail": "前端按communication_error显示保留设备和恢复提示；明确空设备载荷不回退旧列表，通信错误入口提供断开按钮。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "572acca",
+      "parents": [
+        "b6a10a1c16b6b044631119c8e2bd815704c38491"
+      ],
+      "date": "2026-10-09T01:15:35+08:00",
+      "title": "修复串口拔出后的通信状态与手动恢复提示",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/components/common/DeviceConnectionPanel.tsx",
+        "apps/frontend/src/components/furnace/FurnaceDeviceModal.tsx",
+        "apps/frontend/src/components/furnace/StatusPanel.tsx",
+        "apps/frontend/src/components/mfc/MFCDeviceCard.tsx",
+        "apps/frontend/src/components/mfc/MFCModal.tsx",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/modules/furnace/useFurnace.ts",
+        "apps/frontend/src/modules/mfc/useMfc.ts",
+        "apps/python_backend/devices/mfc/real_device.py",
+        "apps/python_backend/runtime/app_runtime.py",
+        "apps/python_backend/runtime/device_manager.py",
+        "apps/python_backend/version.py",
+        "package.json",
+        "packages/types/package.json",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "Bug",
+        "UI"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "99e24c8cc330a13cf014cd74298d217b66c52fc3": {
+      "hash": "99e24c8cc330a13cf014cd74298d217b66c52fc3",
+      "version": "2.12.3",
+      "summary": "修复长按停止触发与松手误操作，终态清空先确认后端重置，执行命令后主动复核快照。",
+      "changes": [
+        {
+          "summary": "长按停止用独立定时器触发，动画只显示进度；屏蔽松手后落到重置/运行的click。",
+          "types": [
+            "Bug",
+            "UI"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "指针及定时器均为组件会话状态。"
+          }
+        },
+        {
+          "summary": "终态允许文件/画布操作，但清空必须先等待reset成功且快照为idle；命令响应与Socket共用快照接收规则。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "统一现有runtimeId/snapshotSequence接收，命令对象身份保护旧响应；未改共享契约或SQL。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 99e24c8^ 99e24c8 -- apps/frontend/src/components/Toolbar.tsx apps/frontend/src/App.tsx apps/frontend/src/components/canvas/Canvas.tsx",
+          "detail": "setTimeout负责1秒停止，stopPressTriggeredRef拦截click；onResetFlow改Promise<boolean>，handleClearCanvas重置失败即返回。"
+        },
+        {
+          "source": "git diff 99e24c8^ 99e24c8 -- apps/frontend/src/state/executionStateBridge.ts",
+          "detail": "receiveSnapshot复用HTTP/Socket序号守卫；命令后refreshSnapshot，cancelling定时复核；resetExecution仅idle返回true。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "99e24c8",
+      "parents": [
+        "572acca4498c3622474b448afca1870e33297f72"
+      ],
+      "date": "2026-10-12T09:47:09+08:00",
+      "title": "修复长按停止和终态清空及执行状态收口",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/App.tsx",
+        "apps/frontend/src/components/Toolbar.tsx",
+        "apps/frontend/src/components/canvas/Canvas.tsx",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/state/executionStateBridge.ts",
+        "apps/python_backend/version.py",
+        "doc/architecture/source-of-truth.md",
+        "package.json",
+        "packages/types/package.json",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "Bug",
+        "UI"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "622e45db99add4e6689a486321242d5aaddb97d9": {
+      "hash": "622e45db99add4e6689a486321242d5aaddb97d9",
+      "version": "2.12.4",
+      "summary": "拆分每次执行的停止控制与节点执行器，并集中前端命令确认及终态收口。",
+      "changes": [
+        {
+          "summary": "ExecutionControl与NodeExecutionContext绑定单次执行，节点声明cooperative或finish_current；停止等待清理结束并保留真实故障。",
+          "types": [
+            "工程",
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "执行取消/暂停标志及上下文为进程内状态；NodeExecutionSpec.stop_policy是后端内部约定，非新增跨端契约。"
+          }
+        },
+        {
+          "summary": "start/pause/resume/cancel/reset统一到命令协调器，采用唯一快照复核链、退避及作用域保护。",
+          "types": [
+            "Bug",
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "pending和复核链为前端内存；ACK不伪造phase，旧执行终态不提前确认新start。"
+          }
+        },
+        {
+          "summary": "执行失败/取消时收口仍running的步骤行与节点计时，关闭运行时先等待执行清理。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "修改已有execution_steps状态/结束时间/错误值的写入；没有CREATE/ALTER或SQL迁移，不是表结构变化。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 622e45d^ 622e45d -- apps/python_backend/runtime/execution_control.py apps/python_backend/runtime/node_executors.py apps/python_backend/runtime/execution_semantics.py apps/python_backend/runtime/execution_engine.py",
+          "detail": "新增Event控制与shield线程等待；EIS用finish_current，温控取消下发stop并确认，气体取消归零；MeasurementCancelled单独识别，普通故障不再因取消标志被吞。"
+        },
+        {
+          "source": "git diff 622e45d^ 622e45d -- apps/frontend/src/state/executionCommandCoordinator.ts apps/frontend/src/state/executionStateBridge.ts",
+          "detail": "execute/reconcileCommand/noteSnapshot集中命令，start保存previousExecutionId；快照single-flight、工作区代次和500–4000ms复核退避。"
+        },
+        {
+          "source": "git diff 622e45d^ 622e45d -- apps/python_backend/runtime/execution_recorder.py apps/python_backend/runtime/app_runtime.py",
+          "detail": "finish_execution追加UPDATE execution_steps WHERE status='running'；on_execution_finished补终态计时，AppRuntime.stop调用execution.shutdown。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "622e45d",
+      "parents": [
+        "99e24c8cc330a13cf014cd74298d217b66c52fc3"
+      ],
+      "date": "2026-10-12T10:28:33+08:00",
+      "title": "解耦工作流停止控制与节点执行并统一命令收口",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/state/executionCommandCoordinator.ts",
+        "apps/frontend/src/state/executionStateBridge.ts",
+        "apps/python_backend/devices/zahner/logic.py",
+        "apps/python_backend/devices/zahner/simulator_device.py",
+        "apps/python_backend/runtime/app_runtime.py",
+        "apps/python_backend/runtime/execution_control.py",
+        "apps/python_backend/runtime/execution_engine.py",
+        "apps/python_backend/runtime/execution_planner.py",
+        "apps/python_backend/runtime/execution_recorder.py",
+        "apps/python_backend/runtime/execution_semantics.py",
+        "apps/python_backend/runtime/node_executors.py",
+        "apps/python_backend/version.py",
+        "doc/README.md",
+        "doc/architecture/source-of-truth.md",
+        "doc/reference/workflow-stop.md",
+        "package.json",
+        "packages/types/package.json",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "工程",
+        "Bug"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "0f42d936cdc3e038c8a01ccce5a4915d64f72446": {
+      "hash": "0f42d936cdc3e038c8a01ccce5a4915d64f72446",
+      "version": "2.12.5",
+      "summary": "在启动归档前校验节点参数与炉子/MFC就绪条件，返回可定位问题并统一测量别名语义。",
+      "changes": [
+        {
+          "summary": "新增结构化工作流校验问题模型和生成类型，API以422返回画布节点、参数及内部来源。",
+          "types": [
+            "数据／契约",
+            "功能"
+          ],
+          "dataImpact": {
+            "kind": "shared-contract",
+            "explanation": "新增WorkflowValidationIssue/Details及MEASUREMENT_PARAMETER_ALIASES；没有SQL表列变更。"
+          }
+        },
+        {
+          "summary": "规划检查必填/有限值/范围/循环/定时，设备校验检查实际就绪、炉温及扫描MFC地址/气体/量程；驱动拒绝非法流量。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "校验在归档和执行记录建立前阻断；真机与模拟器共享流量校验，未新增持久化字段。"
+          }
+        },
+        {
+          "summary": "显示可点击的问题清单和节点标记；运行前提交未失焦输入；规范字段优先显示并同步编辑，取消虚构MFC默认选择和固定量程。",
+          "types": [
+            "Bug",
+            "UI"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "错误、选中和输入为空的状态留在前端；已有config允许别名与规范字段同步，非SQL迁移。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 0f42d93^ 0f42d93 -- apps/shared/contracts/workflow.py apps/shared/contracts/generate.py packages/types/src/contracts/workflow.ts",
+          "detail": "新增nodeId/nodeIndex/nodeType/parameter/message/sourceNodeId和WORKFLOW_VALIDATION_FAILED；生成器从logic.py字面量提取别名，未维护第二份手写表。"
+        },
+        {
+          "source": "git diff 0f42d93^ 0f42d93 -- apps/python_backend/runtime/node_validation.py apps/python_backend/runtime/execution_planner.py apps/python_backend/runtime/app_runtime.py apps/python_backend/routers/executions.py",
+          "detail": "node_parameter_issues与validate_execution_devices接入create_execution归档之前；高级展开复用normalize_measurement_parameters，错误映射源节点。"
+        },
+        {
+          "source": "git diff 0f42d93^ 0f42d93 -- apps/frontend/src/hooks/useWorkflowExecution.ts apps/frontend/src/components/Toolbar.tsx apps/frontend/src/components/property/RightPanel.tsx apps/frontend/src/state/canvasStore.ts",
+          "detail": "启动blur后取最新nodes；捕获结构化问题并selectNode；属性与canvasStore消费共享别名，编辑已有规范字段同步。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "0f42d93",
+      "parents": [
+        "622e45db99add4e6689a486321242d5aaddb97d9"
+      ],
+      "date": "2026-10-12T14:52:50+08:00",
+      "title": "修复工作流启动前参数与设备校验",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/App.tsx",
+        "apps/frontend/src/components/Toolbar.tsx",
+        "apps/frontend/src/components/canvas/Canvas.tsx",
+        "apps/frontend/src/components/canvas/NodeRenderer.tsx",
+        "apps/frontend/src/components/canvas/useLayout.ts",
+        "apps/frontend/src/components/property/PropertyInputs.tsx",
+        "apps/frontend/src/components/property/RightPanel.tsx",
+        "apps/frontend/src/components/property/propertyConfig.ts",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/hooks/useWorkflowExecution.ts",
+        "apps/frontend/src/state/canvasStore.ts",
+        "apps/frontend/src/state/executionStateBridge.ts",
+        "apps/frontend/src/styles/_canvas.scss",
+        "apps/frontend/src/styles/_light-theme.scss",
+        "apps/frontend/src/styles/_workflow-controls.scss",
+        "apps/frontend/src/types/NodeConfiguration.ts",
+        "apps/python_backend/devices/furnace/limits.py",
+        "apps/python_backend/devices/mfc/real_device.py",
+        "apps/python_backend/devices/mfc/simulator_device.py",
+        "apps/python_backend/devices/zahner/logic.py",
+        "apps/python_backend/loop_unroller.py",
+        "apps/python_backend/routers/executions.py",
+        "apps/python_backend/runtime/app_runtime.py",
+        "apps/python_backend/runtime/execution_planner.py",
+        "apps/python_backend/runtime/node_executors.py",
+        "apps/python_backend/runtime/node_validation.py",
+        "apps/python_backend/version.py",
+        "apps/shared/contracts/generate.py",
+        "apps/shared/contracts/workflow.py",
+        "doc/architecture/source-of-truth.md",
+        "package.json",
+        "packages/types/package.json",
+        "packages/types/src/contracts/workflow.ts",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "数据／契约",
+        "功能",
+        "Bug",
+        "UI"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "49fb84fc6025d5628cc55b48a0d396de98ae0f72": {
+      "hash": "49fb84fc6025d5628cc55b48a0d396de98ae0f72",
+      "version": "2.12.6",
+      "summary": "设置面板与执行入口共用后端运行信息校验，启动前阻断非法路径且不允许强制绕过。",
+      "changes": [
+        {
+          "summary": "新增运行信息校验请求/字段错误/结果契约与只读POST接口，设置面板和教学复用真实校验。",
+          "types": [
+            "数据／契约",
+            "功能"
+          ],
+          "dataImpact": {
+            "kind": "shared-contract",
+            "explanation": "RunMetadataValidationRequest/FieldErrors/Result及/api/files/validate-run-metadata；返回missingFields/fieldErrors/message/canForceStart，非持久化字段扩展。"
+          }
+        },
+        {
+          "summary": "统一缺失、字符、绝对路径、保留名及现存祖先目录可用性校验；显式空值不再被旧配置或缺省覆盖。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "只读文件系统，不试写或建目录；非法信息在归档前422拒绝，缺失名称仍可明确确认。"
+          }
+        },
+        {
+          "summary": "非法信息提示禁用运行及长按绕过，拒绝旧用户或旧路径校验结果。",
+          "types": [
+            "Bug",
+            "UI"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "面板请求及运行提示属于会话状态；未改SQL结构。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 49fb84f^ 49fb84f -- apps/python_backend/run_metadata.py apps/python_backend/routers/executions.py",
+          "detail": "validate_run_metadata统一规则，_base_path_error检查本机路径祖先与os.access；_resolve_path_config保留显式空值，can_force_start为false先422拒绝。"
+        },
+        {
+          "source": "git diff 49fb84f^ 49fb84f -- apps/shared/contracts/settings.py packages/types/src/contracts/settings.ts apps/python_backend/routers/files.py apps/frontend/src/runtimeClient.ts",
+          "detail": "共享模型、TS类型与runtimeClient统一接入只读校验端点。"
+        },
+        {
+          "source": "git diff 49fb84f^ 49fb84f -- apps/frontend/src/components/user/UserSettingsModal.tsx apps/frontend/src/components/tutorial/tutorialRuntime.ts apps/frontend/src/hooks/useWorkflowExecution.ts apps/frontend/src/components/Toolbar.tsx",
+          "detail": "删除面板正则与教学缺失检查副本，面板200ms请求带用户/工作区守卫；INVALID_RUN_METADATA不允许长按强制启动。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "49fb84f",
+      "parents": [
+        "0f42d936cdc3e038c8a01ccce5a4915d64f72446"
+      ],
+      "date": "2026-10-12T17:30:59+08:00",
+      "title": "统一个人项目信息校验并在启动前拦截路径错误",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/App.tsx",
+        "apps/frontend/src/components/Toolbar.tsx",
+        "apps/frontend/src/components/canvas/Canvas.tsx",
+        "apps/frontend/src/components/tutorial/tutorialRuntime.ts",
+        "apps/frontend/src/components/user/UserSettingsModal.tsx",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/hooks/useWorkflowExecution.ts",
+        "apps/frontend/src/runtimeClient.ts",
+        "apps/frontend/src/state/executionStateBridge.ts",
+        "apps/python_backend/routers/executions.py",
+        "apps/python_backend/routers/files.py",
+        "apps/python_backend/run_metadata.py",
+        "apps/python_backend/version.py",
+        "apps/shared/contracts/generate.py",
+        "apps/shared/contracts/settings.py",
+        "doc/architecture/source-of-truth.md",
+        "package.json",
+        "packages/types/package.json",
+        "packages/types/src/contracts/settings.ts",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "数据／契约",
+        "功能",
+        "Bug",
+        "UI"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "7fd04465c0ceb2bd64ef5b275a19db2261b4d417": {
+      "hash": "7fd04465c0ceb2bd64ef5b275a19db2261b4d417",
+      "version": "2.12.6",
+      "summary": "记录节点与底部栏ETA不一致的现状、缺陷与未实施修复建议。",
+      "changes": [
+        {
+          "summary": "说明重复估算请求、首步与累计口径、高级节点误取边界、所选节点计时及参数别名优先级问题。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "仅更新设计事实、来源表和核查记录，未修复产品、改契约或数据结构。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 7fd0446^ 7fd0446 -- .memory/design.md .memory/changelog.md doc/architecture/source-of-truth.md",
+          "detail": "新增显示一致性复核与现有缺陷段，明确产品本次未修改；修复建议标为后续未实施。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。 隔离后端及浏览器复现为该提交记载的历史证据，本次未重跑。",
+      "short": "7fd0446",
+      "parents": [
+        "49fb84fc6025d5628cc55b48a0d396de98ae0f72"
+      ],
+      "date": "2026-10-12T17:44:54+08:00",
+      "title": "记录节点与底部栏时间预估一致性核查",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "doc/architecture/source-of-truth.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "032d99f0479a7f7bb12a5c56e9b49e016cd146b9": {
+      "hash": "032d99f0479a7f7bb12a5c56e9b49e016cd146b9",
+      "version": "2.12.7",
+      "summary": "统一ETA请求与时间派生，按真实步骤归属累计节点耗时，并修正规范参数和连续温度预测。",
+      "changes": [
+        {
+          "summary": "ETA快照携带完整步骤时间线，步骤增加画布归属、自动边界、开始偏移、完成/跳过/实测及绝对定时事实。",
+          "types": [
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "shared-contract",
+            "explanation": "ExecutionEtaSnapshot.steps及ExecutionEtaStep字段扩展并同步TS；运行时输出时间线副本，无SQL结构迁移。"
+          }
+        },
+        {
+          "summary": "ETA和历史学习均先归一化测量参数；后续温度步骤从前一目标投影；实际零耗时不回退估值。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "既有node_duration_estimates的参数规范化/哈希语义改变，旧历史可能不再命中新哈希；未迁移表列或改原始测量。"
+          }
+        },
+        {
+          "summary": "App唯一useWorkflowTime统一请求与计时，节点按来源/循环归属累计并排除自动边界；显示真实预计开始、超时及精确分钟秒数。",
+          "types": [
+            "Bug",
+            "UI",
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "预览缓存与公共时间派生为前端会话；停止/暂停后的未知开始时间不编造当前时间。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 032d99f^ 032d99f -- apps/shared/contracts/workflow.py packages/types/src/contracts/workflow.ts apps/python_backend/runtime/app_runtime.py",
+          "detail": "新增sourceNodeId/autoBoundary/startOffsetSeconds等步骤字段，eta.steps输出deepcopy；actualSeconds使用is not None保留0。"
+        },
+        {
+          "source": "git diff 032d99f^ 032d99f -- apps/python_backend/runtime/execution_eta.py",
+          "detail": "params_for_eta及learn_successful_duration共用normalize_measurement_parameters；build_timeline更新projected_temperature、起点偏移及UTC updatedAt。"
+        },
+        {
+          "source": "git diff 032d99f^ 032d99f -- apps/frontend/src/hooks/useWorkflowTime.ts apps/frontend/src/state/workflowTimeModel.ts apps/frontend/src/components/ProgressBar.tsx apps/frontend/src/components/property/RightPanel.tsx apps/frontend/src/utils/timeFormat.ts",
+          "detail": "移除两个组件各自请求/计时；nodeTimeView按sourceNodeId/loopNodeId归属且排除autoBoundary；超时不继续扣未来步骤，formatDuration保留分钟余秒。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。",
+      "short": "032d99f",
+      "parents": [
+        "7fd04465c0ceb2bd64ef5b275a19db2261b4d417"
+      ],
+      "date": "2026-10-12T18:36:11+08:00",
+      "title": "统一时间预估与节点开始时间",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/App.tsx",
+        "apps/frontend/src/components/BottomBar.tsx",
+        "apps/frontend/src/components/ProgressBar.tsx",
+        "apps/frontend/src/components/property/RightPanel.tsx",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/frontend/src/hooks/useWorkflowTime.ts",
+        "apps/frontend/src/state/workflowTimeModel.ts",
+        "apps/frontend/src/utils/timeFormat.ts",
+        "apps/python_backend/runtime/app_runtime.py",
+        "apps/python_backend/runtime/execution_eta.py",
+        "apps/python_backend/version.py",
+        "apps/shared/contracts/workflow.py",
+        "doc/architecture/source-of-truth.md",
+        "package.json",
+        "packages/types/package.json",
+        "packages/types/src/contracts/workflow.ts",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "数据／契约",
+        "Bug",
+        "UI",
+        "工程"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "3af744d2685e565f081d36d91747953fa37189f5": {
+      "hash": "3af744d2685e565f081d36d91747953fa37189f5",
+      "version": "2.12.7",
+      "summary": "记录测量输出目录、文件命名及重名后果的源码核查结论。",
+      "changes": [
+        {
+          "summary": "补充普通/高级测量目录、环境标签、时间来源、重名行为和未验证边界，并登记命名来源链。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "只摘录当时行为；没有修复命名、合并高级节点文件、修改数据或SQL结构。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 3af744d^ 3af744d -- doc/reference/data-contracts.md doc/architecture/source-of-truth.md",
+          "detail": "仅新增命名复核章节与来源表行，记录秒级重名、真机直流追加/模拟器覆盖、高级目录逐步骤生成及UTC/本地混用；明确真机EIS重名后果未验证。"
+        }
+      ],
+      "verification": "本次逐SHA读取实际git show及父提交差异，并读取该SHA:VERSION；仅静态核对，未重跑历史测试、构建、安装或真机验证。 临时文件、固定时钟和模拟器结果均引用文中历史记录，本次未重跑，也不据此宣称真机验证。",
+      "short": "3af744d",
+      "parents": [
+        "032d99f0479a7f7bb12a5c56e9b49e016cd146b9"
+      ],
+      "date": "2026-10-15T14:52:30+08:00",
+      "title": "文档：核查测量输出文件命名与重名行为",
+      "files": [
+        "doc/architecture/source-of-truth.md",
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "391129ca24d8b1bb021091ce1f4470269d20eed2": {
+      "hash": "391129ca24d8b1bb021091ce1f4470269d20eed2",
+      "version": "2.12.7",
+      "summary": "清理未接入命名器的自定义文件名参数残留，同步共享别名，并将高级节点表头明确列为待审阅方案。",
+      "changes": [
+        {
+          "summary": "移除 outputFileName→filename 别名、filename=measurement 缺省和属性标签；既有 build_filename 仍自动生成文件名，不是修复一个已存在的自定义命名功能。",
+          "types": [
+            "工程",
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "shared-contract",
+            "explanation": "后端 _PARAMETER_ALIASES 与生成的 MEASUREMENT_PARAMETER_ALIASES 同步删除一个无消费者的别名；不删除测量结果 filename 字段，不改变 SQL。"
+          }
+        },
+        {
+          "summary": "更正将构造的同名、同气多通道和隐藏偏置参数分支当作现场故障的旧判断，列出四种高级节点单文件的拟议列序与时间/步骤语义，明确尚未改写保存和报告代码。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "CSV 表头此时仅为提案，不是已实现的数据格式变化；应用 VERSION 保持 2.12.7。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 3af744d2685e565f081d36d91747953fa37189f5 391129ca24d8b1bb021091ce1f4470269d20eed2 -- apps/python_backend/devices/zahner/logic.py packages/types/src/contracts/workflow.ts apps/frontend/src/components/property/propertyConfig.ts",
+          "detail": "_PARAMETER_ALIASES、_COMMON_PARAMETER_DEFAULTS、MEASUREMENT_PARAMETER_ALIASES 和 getParameterLabel 各删除对应残留；未增加文件命名入口。另读该 SHA 的 logic.py::build_filename/_prepare_output_path，实际名称由测量类型、参数、环境和时间生成，未读取 filename 参数。"
+        },
+        {
+          "source": "391129ca24d8b1bb021091ce1f4470269d20eed2:doc/reference/data-contracts.md；.memory/changelog.md；.memory/design.md",
+          "detail": "父差异新增“高级节点单文件拟议表头（待用户确认，未实施）”，说明未修改单文件写入与报告；changelog 明示仅清理未接入代码、版本不变。"
+        },
+        {
+          "source": "git show 391129ca24d8b1bb021091ce1f4470269d20eed2:VERSION",
+          "detail": "该提交版本为 2.12.7。"
+        }
+      ],
+      "verification": "本次逐项读取相对唯一父提交的实际 git show/diff，并补读该 SHA 命名函数及 VERSION。文档记载的归一化冒烟、生成器、类型及构建通过是当时记录，本次未重跑；未连接真机。",
+      "short": "391129c",
+      "parents": [
+        "3af744d2685e565f081d36d91747953fa37189f5"
+      ],
+      "date": "2026-10-15T15:19:54+08:00",
+      "title": "清理未使用的自定义文件名参数并列出高级测试表头方案",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "apps/frontend/src/components/property/propertyConfig.ts",
+        "apps/python_backend/devices/zahner/logic.py",
+        "doc/architecture/source-of-truth.md",
+        "doc/reference/data-contracts.md",
+        "packages/types/src/contracts/workflow.ts"
+      ],
+      "types": [
+        "工程",
+        "数据／契约",
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "5e7b4abbbae2a0eae1e56ffd3f3dbdae37e82500": {
+      "hash": "5e7b4abbbae2a0eae1e56ffd3f3dbdae37e82500",
+      "version": "2.12.7",
+      "summary": "新增高级节点逐点追加、每点同步与中断保存的待审阅方案，尚未实现。",
+      "changes": [
+        {
+          "summary": "文档对比旧真机十点缓冲及模拟器整段写入，提出先存后回调、每点 flush+fsync、独立清理、错误上抛和部分文件识别等候选行为及故障注入验收，明确验收未执行。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "唯一修改为方案文字，未更改采集、CSV、缓存、报告或持久化实现；每点 fsync 此时只是候选。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 391129ca24d8b1bb021091ce1f4470269d20eed2 5e7b4abbbae2a0eae1e56ffd3f3dbdae37e82500 -- doc/reference/data-contracts.md",
+          "detail": "只新增“高级节点追加与持久化方案（待用户审阅，未实施）”20 行；七项拟议顺序和拟议验收均标明非已具备保证，未包含生产代码差异。"
+        },
+        {
+          "source": "git show 5e7b4abbbae2a0eae1e56ffd3f3dbdae37e82500:VERSION",
+          "detail": "版本仍为 2.12.7。"
+        }
+      ],
+      "verification": "本次静态核对该 SHA 的完整父差异及 VERSION，确认只新增待审阅文档；未把拟议验收算作已执行测试，未重跑历史测试或验证断电、磁盘、真机。",
+      "short": "5e7b4ab",
+      "parents": [
+        "391129ca24d8b1bb021091ce1f4470269d20eed2"
+      ],
+      "date": "2026-10-15T15:24:19+08:00",
+      "title": "文档：说明高级测试逐点追加与中断保存方案",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "6cd4cf824d54f64c90de8178fc33f07e2d9f6240": {
+      "hash": "6cd4cf824d54f64c90de8178fc33f07e2d9f6240",
+      "version": "2.12.7",
+      "summary": "补充单文件方案的内存、容量和同步开销评估，未改变实际资源策略。",
+      "changes": [
+        {
+          "summary": "新增以每行 200 字节估算 1/10/100 点每秒容量和同步次数的预算，区分写入器与全应用内存；记录实时缓存、统计列表、报告整表读取及 32 MiB 上限，提出短窗口 fsync 等待审阅候选。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "表格是示例预算而非实测速率或设备能力；固定缓存、报告抽稀、磁盘保护和同步候选均未实施。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 5e7b4abbbae2a0eae1e56ffd3f3dbdae37e82500 6cd4cf824d54f64c90de8178fc33f07e2d9f6240 -- doc/reference/data-contracts.md",
+          "detail": "只新增“内存、文件容量与同步开销（方案评估，未实施）”；明确 200 字节不是实测行宽、速率不是设备支持声明，末段说明未实现或验证内存上限、采样时序和磁盘故障。"
+        },
+        {
+          "source": "git show 6cd4cf824d54f64c90de8178fc33f07e2d9f6240:VERSION",
+          "detail": "版本为 2.12.7。"
+        }
+      ],
+      "verification": "本次读取完整实际父差异及 VERSION，只确认新增方案评估文字；未测量容量、内存或时序，未重跑历史测试，未连接真机。",
+      "short": "6cd4cf8",
+      "parents": [
+        "5e7b4abbbae2a0eae1e56ffd3f3dbdae37e82500"
+      ],
+      "date": "2026-10-15T15:28:14+08:00",
+      "title": "文档：补充单文件采集的内存容量与同步开销评估",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "43bf4896dbffd4f26c3c3e6f874ab69a28d91935": {
+      "hash": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935",
+      "version": "2.13.0",
+      "summary": "实际接入四种阶梯/切换节点的一次父执行单 CSV、逐点追加、在线工步统计、部分结果归档和按 Step 的报告读取，版本升为 2.13.0。",
+      "changes": [
+        {
+          "summary": "四种高级节点从每个展开子工步各写文件，改为一次父执行共享一个排他创建的 CSV；列含累计 Time、Step time、Step、设定值及实测电压电流，切换另含 Cycle/Phase，保留原始 A/V/s 数值。",
+          "types": [
+            "功能",
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "确有 CSV 文件格式和保存单元变化：阶梯六列、切换八列，Step/Cycle 从 1 开始、Phase 为 1/2；Time 使用父执行单调时钟并包含工步间隔。kind=none 仅表示不是本枚举中的 SQL、共享协议或 JSON 扩展，不表示 CSV 无变化。"
+          }
+        },
+        {
+          "summary": "按 parentNodeId、parentNodeType、iterationPath、blockPath 复用同一 sink，并检查计划下一步决定正常关闭；新父执行另建文件，文件名附 execution_id 与该次首个展开工步编号，中途开始保留真实 Step。",
+          "types": [
+            "功能",
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "NodeExecutionContext 新增 resources 和 plan_steps，ExecutionResources 每次运行登记可关闭对象，持有本次 sink 及身份；这些是进程内执行资源，不是 SQL 迁移或共享 API 新字段。"
+          }
+        },
+        {
+          "summary": "高级真机/模拟分支先逐点保存再回调，取消十点或整段保存缓存；每点只 flush，收尾才 flush+fsync+close；在线统计只累计当前工步实测电流，避免为统计重读已累积文件。",
+          "types": [
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "保存端计数、总和及极值为常量内存；writerow 成功后、flush 前更新计数，dataPoints 是完成追加的行数而非每点已 fsync 的保证。普通分支保留原保存方式，前端曲线缓存和报告 points 数组未变为常量内存。"
+          }
+        },
+        {
+          "summary": "高级写入和收尾失败向上传播；设备关闭同时失败时保留组合错误，取消不能掩盖清理失败；失败/取消步骤归档已追加的路径、点数及工步统计，公共资源关闭失败将执行终态置 failed。",
+          "types": [
+            "Bug",
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "json-extension",
+            "explanation": "异常 partial_step_result 在现有步骤 result JSON 中增加实际部分结果内容 csvPath、outputFile、dataPoints 和可用 statistics，复用原有字段和归档通道；无 SQL 表列或共享契约模型变更。"
+          }
+        },
+        {
+          "summary": "报告对同一新高级 CSV 单次流式扫描，按 Step 分配各工步并以 Step time 作局部横轴，允许总文件超过 32 MiB；无效编号/数值明确报错，普通及历史小文件仍走原读取边界。",
+          "types": [
+            "功能",
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "报告消费新 CSV 列，未改变 ReportCurveSeries 共享结构；不物化额外的整表 rows，但仍保存报告所需 points 数组，未实现绘图缓存上限或全应用固定内存。"
+          }
+        },
+        {
+          "summary": "同步当前设计、来源说明和已实施数据格式，将逐点 fsync 等旧讨论降为历史候选；VERSION 由 2.12.7 升至 2.13.0（MINOR），各版本字段同步。",
+          "types": [
+            "文档",
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "新增用户可见的高级采集保存能力，因此历史提交采用 MINOR；同步文件与发布说明不另计产品功能，无数据库迁移。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 6cd4cf824d54f64c90de8178fc33f07e2d9f6240 43bf4896dbffd4f26c3c3e6f874ab69a28d91935 -- apps/python_backend/devices/zahner/advanced_node_sink.py",
+          "detail": "新增 AdvancedNodeSink；csv_fieldnames/point_rows 固定列序及 Step/Cycle/Phase；_build_path 拼执行身份；open 使用 x 模式且只写一次表头；append 有限数值校验、writerow→计数与 _OnlineStats→flush；finalize 尝试 flush/fsync 并 finally close，保留同步及关闭错误。"
+        },
+        {
+          "source": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935:apps/python_backend/runtime/node_executors.py::_advanced_sink_for/_advanced_sink_continues/_finish_advanced_sink；devices/zahner/advanced_node_sink.py::parent_execution_key",
+          "detail": "父差异按父节点及迭代/块路径判断复用，依据实际 plan_steps 的下一步关闭；构造只使用首次实际 unrolledIndex，后续 output_path 回归实际 sink 目录，避免环境/时间变化拆文件。"
+        },
+        {
+          "source": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935:apps/python_backend/devices/zahner/logic.py::measure_chrono/MeasurementCleanupError；simulator_device.py::_measure_dc；real_device.py::measure",
+          "detail": "实际差异增加 _advanced_sink 分支，先 append 再 callback，模拟高级分支不再累积 records；csv_written_by_sink 跳过整文件 _calculate_stats；普通分支仍保留十点缓冲/整段 records。logic finally 独立关闭设备，采样/写入与关闭同时失败时抛 MeasurementCleanupError。"
+        },
+        {
+          "source": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935:apps/python_backend/runtime/execution_resources.py::ExecutionResources；execution_engine.py::_step_partial_result/_run；node_executors.py::_attach_advanced_partial",
+          "detail": "新增通用 register/unregister/close，遍历清理所有登记对象后抛首个错误；引擎失败/取消归档合入异常部分结果，执行收尾 close 报错覆盖最终状态为 failed 并保留先前错误文字；异常部分结果复用既有 result JSON。"
+        },
+        {
+          "source": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935:apps/python_backend/report_measurements.py::load_measurement_curves/read_advanced_group/assign_advanced_points/step_curve_number/parse_step_cell",
+          "detail": "父差异按规范化 csvPath 分组，识别新表头后单次读取、按 stepIndex+1 分派；局部时间取 Step time (s)，非法工步编号报错，归属工步的无效读数使其曲线报错。新表头分支不套 32 MiB 上限，旧表头与普通 CSV 保留 STANDARD_FILE_SIZE_LIMIT。"
+        },
+        {
+          "source": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935:.memory/changelog.md；.memory/design.md；doc/reference/data-contracts.md；doc/architecture/source-of-truth.md",
+          "detail": "实际文档差异将方案改为已实施，明确每点 flush、收尾 fsync、保存端常量内存及报告 points 增长边界；记载 17/75/49/15/40 项隔离验证通过，这些是该提交记录而非本次重跑结果。"
+        },
+        {
+          "source": "43bf4896dbffd4f26c3c3e6f874ab69a28d91935:VERSION；CHANGELOG.md；package.json；apps/frontend/package.json；apps/desktop/package.json；packages/types/package.json；pyproject.toml；uv.lock；apps/python_backend/version.py；apps/frontend/src/generated/appVersion.ts；apps/desktop/src/generated/appVersion.ts",
+          "detail": "逐文件父差异将应用版本 2.12.7 同步为 2.13.0，并新增对应 CHANGELOG 节；变更文件中无数据库结构或共享模型代码修改。"
+        }
+      ],
+      "verification": "本次按 SHA 读取全部 24 个文件的父差异，重点逐符号核对 sink、真机/模拟接线、引擎资源与异常部分归档、报告分派，并读 VERSION。17/75/49/15/40 项通过只引用当时提交及文档记录，本次未执行历史脚本、构建或运行测量。静态证据不保证磁盘断电安全、真实采样时序或全应用恒定内存；未连接真机。",
+      "short": "43bf489",
+      "parents": [
+        "6cd4cf824d54f64c90de8178fc33f07e2d9f6240"
+      ],
+      "date": "2026-10-15T17:02:59+08:00",
+      "title": "功能：四种高级节点改为一次父执行单文件逐点保存",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/python_backend/devices/zahner/advanced_node_sink.py",
+        "apps/python_backend/devices/zahner/logic.py",
+        "apps/python_backend/devices/zahner/real_device.py",
+        "apps/python_backend/devices/zahner/simulator_device.py",
+        "apps/python_backend/report_measurements.py",
+        "apps/python_backend/runtime/execution_control.py",
+        "apps/python_backend/runtime/execution_engine.py",
+        "apps/python_backend/runtime/execution_resources.py",
+        "apps/python_backend/runtime/node_executors.py",
+        "apps/python_backend/version.py",
+        "doc/architecture/source-of-truth.md",
+        "doc/reference/data-contracts.md",
+        "package.json",
+        "packages/types/package.json",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "功能",
+        "数据／契约",
+        "工程",
+        "Bug",
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "bc303497b174d4ad5e2ae8d707860ec1423065df": {
+      "hash": "bc303497b174d4ad5e2ae8d707860ec1423065df",
+      "version": "2.13.0",
+      "summary": "登记环境标签来源和精度重新审阅，生产命名逻辑尚未改变。",
+      "changes": [
+        {
+          "summary": "记录旧温度 int(round(pv))、旧流量 int(flowSccm) 截断及零漂写入气体标签的问题背景，标记新规则待审阅确认。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "仅增加审阅状态说明，没有温度/流量规则代码、阈值、CSV 或契约变更。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 43bf4896dbffd4f26c3c3e6f874ab69a28d91935 bc303497b174d4ad5e2ae8d707860ec1423065df -- doc/reference/data-contracts.md",
+          "detail": "只增加“2026-10-15 重新审阅中”两行，明确具体方案待确认、生产代码尚未更改。"
+        },
+        {
+          "source": "git show bc303497b174d4ad5e2ae8d707860ec1423065df:VERSION",
+          "detail": "版本为 2.13.0。"
+        }
+      ],
+      "verification": "本次读取完整父差异及该 SHA 的 VERSION；结论仅为文档状态登记，未将问题背景算作修复，未重跑历史测试或连接真机。",
+      "short": "bc30349",
+      "parents": [
+        "43bf4896dbffd4f26c3c3e6f874ab69a28d91935"
+      ],
+      "date": "2026-10-15T21:44:14+08:00",
+      "title": "文档：记录环境标签温度与流量精度待重新审阅",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "8298042c5b4fac24e14a01563a43f3a10a3d30aa": {
+      "hash": "8298042c5b4fac24e14a01563a43f3a10a3d30aa",
+      "version": "2.13.0",
+      "summary": "记录两个环境命名候选未被采纳，新规则仍未确定。",
+      "changes": [
+        {
+          "summary": "在审阅说明中明确“一律用设定值”和“温度实测保留 0.1℃ 搭配流量设定值”两个候选均未获采纳，继续保持生产旧规则。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "只替换文档一段的决策状态，无实现、共享协议或持久化变化。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff bc303497b174d4ad5e2ae8d707860ec1423065df 8298042c5b4fac24e14a01563a43f3a10a3d30aa -- doc/reference/data-contracts.md",
+          "detail": "唯一父差异是一行替换，增加两个候选未获采纳及“新规则未定，生产代码尚未更改”。"
+        },
+        {
+          "source": "git show 8298042c5b4fac24e14a01563a43f3a10a3d30aa:VERSION",
+          "detail": "版本仍为 2.13.0。"
+        }
+      ],
+      "verification": "本次核对实际一行父差异及 VERSION；未把被否决方案视为已实现或已撤销的产品能力，未重跑历史测试或真机验证。",
+      "short": "8298042",
+      "parents": [
+        "bc303497b174d4ad5e2ae8d707860ec1423065df"
+      ],
+      "date": "2026-10-15T21:46:56+08:00",
+      "title": "文档：记录环境标签两个候选未获采纳",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "4d9297f32c1fe25a4a661e8aa85ee1b8a7b83eb9": {
+      "hash": "4d9297f32c1fe25a4a661e8aa85ee1b8a7b83eb9",
+      "version": "2.13.0",
+      "summary": "文档确认环境标签的条件分支，但具体阈值和超界精度仍待指定，代码未实施。",
+      "changes": [
+        {
+          "summary": "用七项规则替换未定说明：温区内标称、区外实测，零设定零漂内省略、非零偏差内用设定，超界用实测，无效省略，维持气名排序和秒级时间；阈值与实测精度仍未确定。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "确认的是方案分支，未增加运行时状态、阈值或文件格式；生产仍使用旧取值逻辑。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 8298042c5b4fac24e14a01563a43f3a10a3d30aa 4d9297f32c1fe25a4a661e8aa85ee1b8a7b83eb9 -- doc/reference/data-contracts.md",
+          "detail": "新增标题“已确认分支，待实施”和七行条件表，末句明确温区/零漂/偏差阈值与超范围精度未指定、生产未实施。"
+        },
+        {
+          "source": "git show 4d9297f32c1fe25a4a661e8aa85ee1b8a7b83eb9:VERSION",
+          "detail": "版本为 2.13.0。"
+        }
+      ],
+      "verification": "本次逐段读取实际文档父差异及 VERSION；无生产代码变化，不声称完成规则验证或历史测试，未连接真机。",
+      "short": "4d9297f",
+      "parents": [
+        "8298042c5b4fac24e14a01563a43f3a10a3d30aa"
+      ],
+      "date": "2026-10-15T21:54:43+08:00",
+      "title": "文档：确认环境标记新命名规则待实施",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "3935bd71d32a55ca69cf506650a066fc081db646": {
+      "hash": "3935bd71d32a55ca69cf506650a066fc081db646",
+      "version": "2.13.0",
+      "summary": "补充 20 个命名工况演示，仍属未实施规则的说明。",
+      "changes": [
+        {
+          "summary": "加入设定、实测及环境片段对照，涵盖升降温、温区内、零漂、非零偏差、负值、有效零读数、失败与多气体排序；范围内外为示例前提，不据数字反推阈值。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "这些是独立文件创建工况的规则演示，非程序验证、未实现取整精度或运行中改名。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 4d9297f32c1fe25a4a661e8aa85ee1b8a7b83eb9 3935bd71d32a55ca69cf506650a066fc081db646 -- doc/reference/data-contracts.md",
+          "detail": "只新增“工况示例（规则演示，非程序验证）”29 行；表后明确示例不证明分支已实现，第 5 例只表达炉温未连接时省略。"
+        },
+        {
+          "source": "git show 3935bd71d32a55ca69cf506650a066fc081db646:VERSION",
+          "detail": "版本为 2.13.0。"
+        }
+      ],
+      "verification": "本次静态核对完整实际父差异和 VERSION；未把示例当作通过的用例或实际设备读数，未重跑测试、未连接真机。",
+      "short": "3935bd7",
+      "parents": [
+        "4d9297f32c1fe25a4a661e8aa85ee1b8a7b83eb9"
+      ],
+      "date": "2026-10-15T22:00:25+08:00",
+      "title": "文档：补充命名规则工况示例",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "41836b44e34f676133accded93940f8c83917aef": {
+      "hash": "41836b44e34f676133accded93940f8c83917aef",
+      "version": "2.13.0",
+      "summary": "记录整数四舍五入要求并提出温区、逐通道零漂和 5% 流量偏差候选，尚待审阅实施。",
+      "changes": [
+        {
+          "summary": "将原 20 例改为 10 例整数标签示例，提出沿用本次工步 tolerance、逐通道 60 点且 60 秒确认零漂、非零设定 5% 及先比较原值再半单位进位的方案。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "整数显示为已指定要求，其余阈值与逐通道零漂流程仍是提案；没有实际采样、校准、自动学习、协议或持久化实现。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 3935bd71d32a55ca69cf506650a066fc081db646 41836b44e34f676133accded93940f8c83917aef -- doc/reference/data-contracts.md",
+          "detail": "实际替换为“阈值方案与工况示例（待审阅，未实施）”；A/B/C/D 分别说明温区、逐通道零漂确认、5% 及整数规则，并明确 60 点/60 秒、扩 1 sccm 和 5% 不是厂商规定。"
+        },
+        {
+          "source": "git show 41836b44e34f676133accded93940f8c83917aef:VERSION",
+          "detail": "版本为 2.13.0。"
+        }
+      ],
+      "verification": "本次读取该 SHA 的完整父差异及 VERSION，仅核对提案内容与未实施状态；未外推文档外链为本机事实，未重跑历史测试或真机采样。",
+      "short": "41836b4",
+      "parents": [
+        "3935bd71d32a55ca69cf506650a066fc081db646"
+      ],
+      "date": "2026-10-15T22:12:11+08:00",
+      "title": "文档：更新命名整数取整与待审阅阈值方案示例",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "f4b5d3e0a2b4f683d581b5d9653d4d118d5537fa": {
+      "hash": "f4b5d3e0a2b4f683d581b5d9653d4d118d5537fa",
+      "version": "2.13.0",
+      "summary": "将逐通道零漂确认方案简化为统一固定范围方式，候选 [-10,10] sccm 尚待批准且未实施。",
+      "changes": [
+        {
+          "summary": "删除 60 点/60 秒逐通道确认及相关厂商参考，改提所有气体零设定统一用含边界 [-10,10] sccm；非零设定仍采用 5% 分支，更新示例中的 N2 读 3 为省略。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "固定值方式已指定，但数值候选及其余阈值仍待审阅，生产未变；不是新增设备零点校准能力。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 41836b44e34f676133accded93940f8c83917aef f4b5d3e0a2b4f683d581b5d9653d4d118d5537fa -- doc/reference/data-contracts.md",
+          "detail": "B 零漂条目由逐物理通道确认替换为统一固定候选，仅设定为 0 时使用；多个状态句明确候选 [-10,10] 待审阅、尚未实施，工况第 6 例改为只保留 700C。"
+        },
+        {
+          "source": "git show f4b5d3e0a2b4f683d581b5d9653d4d118d5537fa:VERSION",
+          "detail": "版本为 2.13.0。"
+        }
+      ],
+      "verification": "本次静态读取实际文档父差异及 VERSION；只确认方案替换，没有实际阈值实现或实测零漂证据，未重跑历史测试或连接真机。",
+      "short": "f4b5d3e",
+      "parents": [
+        "41836b44e34f676133accded93940f8c83917aef"
+      ],
+      "date": "2026-10-15T22:23:08+08:00",
+      "title": "文档：简化零漂为统一固定范围方案",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "8e5d87603609404b9eb1eb5b4b14ee722ef6c009": {
+      "hash": "8e5d87603609404b9eb1eb5b4b14ee722ef6c009",
+      "version": "2.13.0",
+      "summary": "文档登记命名方案获确认，补充正负 10 sccm 边界示例，仍未实施。",
+      "changes": [
+        {
+          "summary": "将方案状态由待审阅改为用户已确认：温区沿用本次 tolerance，零设定统一 [-10,10]、非零偏差 5%、整数标签；明确 700±5℃ 仅示例工步设置，示例增加 ±10 边界省略。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "批准记录未引入代码；默认温度容差、CSV、共享契约与设备命令均未改变，不能计为功能已落地。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff f4b5d3e0a2b4f683d581b5d9653d4d118d5537fa 8e5d87603609404b9eb1eb5b4b14ee722ef6c009 -- doc/reference/data-contracts.md",
+          "detail": "标题及状态反复使用“已确认，未实施”；第 5、6 例把 -3/3 等改为 -10/10，说明闭区间边界；正文明确方案不代表代码已修改。"
+        },
+        {
+          "source": "git show 8e5d87603609404b9eb1eb5b4b14ee722ef6c009:VERSION",
+          "detail": "版本为 2.13.0。"
+        }
+      ],
+      "verification": "本次逐段核对完整父差异及 VERSION；批准状态按该提交文本记录，未当作程序验收或产品功能实现，未重跑历史测试或真机验证。",
+      "short": "8e5d876",
+      "parents": [
+        "f4b5d3e0a2b4f683d581b5d9653d4d118d5537fa"
+      ],
+      "date": "2026-10-15T22:25:34+08:00",
+      "title": "文档：确认命名方案并补充零漂边界示例",
+      "files": [
+        "doc/reference/data-contracts.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "d0a5cca6c991a007d03af61b0042901179a98f46": {
+      "hash": "d0a5cca6c991a007d03af61b0042901179a98f46",
+      "version": "2.13.1",
+      "summary": "在工作流命名入口实现本次执行温区、流量零漂/偏差与整数有效性规则，独立省略读取失败的环境标签，版本升为 2.13.1。",
+      "changes": [
+        {
+          "summary": "每次执行从空温区开始；温度工步开始先清旧值、运行状态确认成功后记目标与既有 tolerance；有效炉温在闭区间内标目标，区外或无本次温区标实测，防止沿用跳过工步及旧任务目标。",
+          "types": [
+            "Bug",
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "session-state",
+            "explanation": "ExecutionControl 新增 filename_temperature_band，仅为当前执行内的 (target,tolerance)，不落 SQL、不从历史或计划恢复，不改变设备温控容差缺省。"
+          }
+        },
+        {
+          "summary": "流量设定确为零且有效读数在 [-10,10] sccm 闭区间时省略；非零读回设定先恢复标称整数 F，再以原始 q 对比 |q-F|≤|F|×5%，区内用 F、区外用 q；设定无效但 q 有效时用实测。",
+          "types": [
+            "Bug",
+            "数据／契约"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "变化是文件名环境片段的数据语义，未修改 CSV 列、原始读数、共享协议或 SQL。阈值比较用 Decimal(str(raw))；最终 ROUND_HALF_UP 半单位进位显示整数，气名排序、秒级时间和高级父执行已有单 CSV 路径保持。"
+          }
+        },
+        {
+          "summary": "读取 Furnace/MFC 状态分别容错；读取失败只省略该类标签，WorkflowCancelled 原样透传；数值必须为有限 int/float 且非布尔，MFC 包及通道需连接，气体名需有效，避免伪造零值或未知气体标签。",
+          "types": [
+            "Bug"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "_filename_environment 为既有 build_filename 提供有效整数环境字段；MFC 整包读取失败省略本次全部气体，设定无效不等于零设定；不新增重试、气体控制、共享模型或持久化数据。"
+          }
+        },
+        {
+          "summary": "将规则说明由已确认未实施更新为实现来源及隔离验收记录，统一指向 filename_environment.py；VERSION 2.13.0→2.13.1（PATCH）及各派生版本字段同步。",
+          "types": [
+            "文档",
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "历史提交按命名缺陷修复升级 PATCH；59+5 项是当时隔离验收记载，新增说明和版本同步不另计功能或发布完成证据。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 8e5d87603609404b9eb1eb5b4b14ee722ef6c009 d0a5cca6c991a007d03af61b0042901179a98f46 -- apps/python_backend/runtime/filename_environment.py",
+          "detail": "新增 _number 排除布尔、非数值及 NaN/Inf；_integer 使用 Decimal ROUND_HALF_UP；gas_filename_value 实现零设定闭区间、未知设定用 q、非零设定标称整数与十进制 5% 比较；workflow_filename_environment 校验炉子/MFC 连接与通道气名，返回整数并排序。"
+        },
+        {
+          "source": "d0a5cca6c991a007d03af61b0042901179a98f46:apps/python_backend/runtime/execution_control.py::ExecutionControl.__init__；runtime/node_executors.py::_execute_change_temperature/_filename_environment/_execute_measurement",
+          "detail": "实际父差异新增本次控制器温区字段，温度处理入口置 None、confirm_furnace_action_from_worker 成功后才赋值；测量入口改调 _filename_environment，逐设备读取捕获普通异常为 {}，WorkflowCancelled 继续抛出，并在读取后检查取消。"
+        },
+        {
+          "source": "d0a5cca6c991a007d03af61b0042901179a98f46:doc/reference/data-contracts.md；.memory/changelog.md；.memory/design.md；doc/architecture/source-of-truth.md",
+          "detail": "实际差异解释设定读回量化、闭区间、原值比较及半单位取整；历史文档登记 59 项实现验证及 5 项独立验收，明确先隔离数据库、四种高级节点路径/句柄及原始精度、未连接真机。该记载不等于本次执行过脚本。"
+        },
+        {
+          "source": "d0a5cca6c991a007d03af61b0042901179a98f46:VERSION；CHANGELOG.md；package.json；apps/frontend/package.json；apps/desktop/package.json；packages/types/package.json；pyproject.toml；uv.lock；apps/python_backend/version.py；apps/frontend/src/generated/appVersion.ts；apps/desktop/src/generated/appVersion.ts",
+          "detail": "逐文件父差异将 2.13.0 同步为 2.13.1，并增加命名修复发布说明；该提交无数据库结构、shared contracts 模型或高级 sink 写入代码差异。"
+        }
+      ],
+      "verification": "本次读取该 SHA 全部 18 个文件的实际父差异，逐分支核对阈值、有效性、整数和温区生命周期，并读取 VERSION。59+5 项、版本/构建/设计检查通过均仅引用该提交文档，不声称本次重跑。未连接真机、未操作生产数据库，静态结果不能证明现场状态或安装包已发布。",
+      "short": "d0a5cca",
+      "parents": [
+        "8e5d87603609404b9eb1eb5b4b14ee722ef6c009"
+      ],
+      "date": "2026-10-15T22:42:12+08:00",
+      "title": "修复工作流文件名环境标签并发布2.13.1",
+      "files": [
+        ".memory/changelog.md",
+        ".memory/design.md",
+        "CHANGELOG.md",
+        "VERSION",
+        "apps/desktop/package.json",
+        "apps/desktop/src/generated/appVersion.ts",
+        "apps/frontend/package.json",
+        "apps/frontend/src/generated/appVersion.ts",
+        "apps/python_backend/runtime/execution_control.py",
+        "apps/python_backend/runtime/filename_environment.py",
+        "apps/python_backend/runtime/node_executors.py",
+        "apps/python_backend/version.py",
+        "doc/architecture/source-of-truth.md",
+        "doc/reference/data-contracts.md",
+        "package.json",
+        "packages/types/package.json",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "types": [
+        "Bug",
+        "数据／契约",
+        "文档",
+        "工程"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "5550c0a428fe34989f98af6cbf298b94c213e550": {
+      "hash": "5550c0a428fe34989f98af6cbf298b94c213e550",
+      "version": "2.13.1",
+      "summary": "删除纯 Node 版本检查工作流的无用 pnpm 缓存配置，补记 2.13.1 桌面发布准备。",
+      "changes": [
+        {
+          "summary": "移除 actions/setup-node@v4 的 cache: pnpm，避免无 store 路径时缓存收尾报错，保留 Node 20、pnpm 9 以及版本/发布检查。",
+          "types": [
+            "Bug",
+            "工程"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "CI 缓存配置修复，不改变产品行为、测量数据或共享协议；本次未运行远端 CI。"
+          }
+        },
+        {
+          "summary": "INSTALL 记录沿用 Windows x64 NSIS+SHA256 资产、隔离数据目录验收和发布授权边界，指出实际打包、包内核对及远端结果仍待执行。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "发布准备登记而非新增桌面能力或已发布结果；版本保持 2.13.1。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff d0a5cca6c991a007d03af61b0042901179a98f46 5550c0a428fe34989f98af6cbf298b94c213e550 -- .github/workflows/version-check.yml",
+          "detail": "唯一工程差异为删除 setup-node 的 cache: pnpm 一行；补读父 SHA 完整 workflow，未见依赖安装或生成 store 的步骤，后续仍为 pnpm version:check 与 pnpm release:check。"
+        },
+        {
+          "source": "5550c0a428fe34989f98af6cbf298b94c213e550:INSTALL.md",
+          "detail": "父差异新增发布准备及 CI 原因两段；引用运行 37733258801 的 Path Validation Error，明确远端修复结果待推送后核验，推送/标签/Latest 等主审许可。"
+        },
+        {
+          "source": "git show 5550c0a428fe34989f98af6cbf298b94c213e550:VERSION",
+          "detail": "版本为 2.13.1，CI/文档变更未升级。"
+        }
+      ],
+      "verification": "本次静态核对两个文件的完整父差异、父版 workflow 上下文及 VERSION。远端运行错误原因是引用当时 INSTALL 记录，未查询或重跑 GitHub CI、未构建安装包或连接真机。",
+      "short": "5550c0a",
+      "parents": [
+        "d0a5cca6c991a007d03af61b0042901179a98f46"
+      ],
+      "date": "2026-10-15T22:46:23+08:00",
+      "title": "修复版本检查缓存收尾并记录电脑版发布准备",
+      "files": [
+        ".github/workflows/version-check.yml",
+        "INSTALL.md"
+      ],
+      "types": [
+        "Bug",
+        "工程",
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "7fd5e218b1bed61c918d0f67108ca0f1c1851c1b": {
+      "hash": "7fd5e218b1bed61c918d0f67108ca0f1c1851c1b",
+      "version": "2.13.1",
+      "summary": "文档登记安装包构建、资源提取及隔离后端健康验收结果，发布仍待主审许可。",
+      "changes": [
+        {
+          "summary": "INSTALL 增加构建源 SHA、安装包大小/SHA256、包内前后端版本与源码一致性、独立端口 health 和旧产物保留记录；注明未真机及异机安装，尚未推送、标签或 Release。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "这是历史验收证据登记，提交只增加 INSTALL 文字；没有新产品实现、持久化结构或共享协议变化。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 5550c0a428fe34989f98af6cbf298b94c213e550 7fd5e218b1bed61c918d0f67108ca0f1c1851c1b -- INSTALL.md",
+          "detail": "唯一修改新增“本轮包验收进展”：源提交 5550c0a428fe34989f98af6cbf298b94c213e550，包 169619949 字节、SHA256 dc6a45930d2ab7f3e1659ab01eca9c1879c171c1d07f022ab6b21106513186be，提取资源与端口 54415 的隔离 health；这些是当时文字记录，本次未校验实际包或访问端口。"
+        },
+        {
+          "source": "git show 7fd5e218b1bed61c918d0f67108ca0f1c1851c1b:VERSION",
+          "detail": "版本为 2.13.1。"
+        }
+      ],
+      "verification": "本次读取完整实际父差异及 VERSION，只验证文档新增了哪些验收声明；未重跑 pnpm 检查/打包、安装包哈希或隔离 health，未验证异机安装、远端发布或真机。",
+      "short": "7fd5e21",
+      "parents": [
+        "5550c0a428fe34989f98af6cbf298b94c213e550"
+      ],
+      "date": "2026-10-15T22:51:39+08:00",
+      "title": "记录2.13.1安装包构建与隔离验收结果",
+      "files": [
+        "INSTALL.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
+    },
+    "e019a203cd05e33e3d811962f7f372bfd85bf1b1": {
+      "hash": "e019a203cd05e33e3d811962f7f372bfd85bf1b1",
+      "version": "2.13.1",
+      "summary": "文档将发布状态由待主审许可改为批准后进入发布阶段，公开 Latest 和服务器资产仍待核验。",
+      "changes": [
+        {
+          "summary": "只替换 INSTALL 验收段末尾：登记主审批准，进入推送、新注释标签及草稿资产上传阶段，公开 Latest、服务器哈希和完整 CI 仍待实际登记。",
+          "types": [
+            "文档"
+          ],
+          "dataImpact": {
+            "kind": "none",
+            "explanation": "授权与进度登记不是产品能力、真实 Release 发布完成证据或数据契约变更；版本保持 2.13.1。"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "source": "git diff 7fd5e218b1bed61c918d0f67108ca0f1c1851c1b e019a203cd05e33e3d811962f7f372bfd85bf1b1 -- INSTALL.md",
+          "detail": "实际差异为同一段的一行替换，安装包/验收记载未变，仅末句从“仍待主审发布准许”改为主审批准及进入发布阶段，且保留远端核验待办。没有产品、工作流或构建实现差异。"
+        },
+        {
+          "source": "git show e019a203cd05e33e3d811962f7f372bfd85bf1b1:VERSION",
+          "detail": "版本为 2.13.1。"
+        }
+      ],
+      "verification": "本次静态核对实际父差异及 VERSION；仅确认文档登记状态，不声称本次或该差异证明推送、标签、Release、Latest、服务器哈希或 CI 已完成，未重跑历史验收或真机测试。",
+      "short": "e019a20",
+      "parents": [
+        "7fd5e218b1bed61c918d0f67108ca0f1c1851c1b"
+      ],
+      "date": "2026-10-15T22:52:32+08:00",
+      "title": "记录主审通过并进入2.13.1正式发布",
+      "files": [
+        "INSTALL.md"
+      ],
+      "types": [
+        "文档"
+      ],
+      "missingFields": [],
+      "status": "reviewed"
     }
   }
 }
