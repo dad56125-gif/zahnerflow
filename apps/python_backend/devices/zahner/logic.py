@@ -33,7 +33,6 @@ except ImportError:
 _PARAMETER_ALIASES = {
     # 通用测量参数
     "outputPath": "output_path",
-    "outputFileName": "filename",
     "measurementDuration": "measurement_duration",
     "samplingInterval": "sampling_interval",
     "polarizationVoltage": "polarization_voltage",
@@ -79,7 +78,6 @@ _PARAMETER_ALIASES = {
 
 _COMMON_PARAMETER_DEFAULTS = {
     "output_path": "c:/zahner_data",
-    "filename": "measurement",
     "measurement_duration": 60.0,
     "sampling_interval": 1.0,
 }

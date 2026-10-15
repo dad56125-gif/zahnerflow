@@ -69,7 +69,6 @@ export const getParameterLabel = (key: string, nodeType?: string): string => {
     potentiostatMode: '恒电位仪模式',
     selectPotentiostat: '选择恒电位仪',
     outputPath: '输出路径',
-    outputFileName: '输出文件名',
     fileNaming: '文件命名方式',
     counter: '计数器起始值',
 

@@ -439,7 +439,6 @@ export type NodeStatus = ExecutionPhase;
 /** 测量参数别名；源自 devices/zahner/logic.py，规范字段优先。 */
 export const MEASUREMENT_PARAMETER_ALIASES: Readonly<Record<string, string>> = {
   "outputPath": "output_path",
-  "outputFileName": "filename",
   "measurementDuration": "measurement_duration",
   "samplingInterval": "sampling_interval",
   "polarizationVoltage": "polarization_voltage",
