@@ -376,6 +376,10 @@ class MeasurementCancelled(RuntimeError):
     """The measurement acknowledged a workflow stop after device cleanup."""
 
 
+class MeasurementCleanupError(RuntimeError):
+    """测量失败且设备安全关闭也失败；按执行失败处理，不得记为取消。"""
+
+
 def check_measurement_cancelled(params: dict):
     cancel_requested = params.get("_cancel_requested")
     if callable(cancel_requested) and cancel_requested():
@@ -614,7 +618,13 @@ def measure_chrono(device: ThalesRemoteScriptWrapper, params: dict, mode: str, c
     
     is_potentiostatic = (mode == 'potentiostatic')
     measurement_type = "chronoamperometry" if is_potentiostatic else "chronopotentiometry"
-    output_file = _prepare_output_path(params, measurement_type)
+    sink = params.pop("_advanced_sink", None)
+    output_file = sink.path if sink is not None else _prepare_output_path(params, measurement_type)
+    advanced_step_index = int(params.get("stepIndex") or 0)
+    advanced_cycle_index = params.get("cycleIndex")
+    if sink is not None:
+        # 开始本工步即清零本步统计与计数；即使本步零点失败也不继承上一步。
+        sink.reset_step(advanced_step_index, advanced_cycle_index)
     
     # 安全限制
     min_safe_i = float(params.get("min_current", -2.0))
@@ -641,26 +651,50 @@ def measure_chrono(device: ThalesRemoteScriptWrapper, params: dict, mode: str, c
     data_buffer = []
     points_count = 0
     error_reason = None
-    
+    sink_error = None
+
     try:
         for _ in accurate_timer(duration, interval):
             check_measurement_cancelled(params)
             now = time.monotonic()
             t = now - start_time
-            
+
             # 读取读数
             curr_v = device.getPotential()
             curr_i = device.getCurrent()
-            
+
+            if sink is not None:
+                # 高级节点：先立即追加原始读数并 flush，再通知图表；保存值保持原始精度。
+                sink.append(
+                    {
+                        "elapsed": t,
+                        "setpoint": setpoint,
+                        "potential": curr_v,
+                        "current": curr_i,
+                    },
+                    advanced_step_index,
+                    advanced_cycle_index,
+                )
+                points_count += 1
+                if callback:
+                    callback({"t": round(t, 3), "v": round(curr_v, 6), "i": round(curr_i, 9)})
+                if not (min_safe_i <= curr_i <= max_safe_i):
+                    error_reason = f"Current limit exceeded: {curr_i:.4e} A"
+                    break
+                if not (min_safe_v <= curr_v <= max_safe_v):
+                    error_reason = f"Voltage limit exceeded: {curr_v:.4f} V"
+                    break
+                continue
+
             # 1. 实时推送
             if callback:
                 callback({"t": round(t, 3), "v": round(curr_v, 6), "i": round(curr_i, 9)})
-                
+
             # 2. 数据缓冲
             record = {"time": t, "potential": curr_v, "current": curr_i}
             data_buffer.append(record)
             points_count += 1
-            
+
             # 3. 安全检查
             if not (min_safe_i <= curr_i <= max_safe_i):
                 error_reason = f"Current limit exceeded: {curr_i:.4e} A"
@@ -668,19 +702,47 @@ def measure_chrono(device: ThalesRemoteScriptWrapper, params: dict, mode: str, c
             if not (min_safe_v <= curr_v <= max_safe_v):
                 error_reason = f"Voltage limit exceeded: {curr_v:.4f} V"
                 break
-                
+
             # 4. 分块保存
             if len(data_buffer) >= 10:
                 _save_data_chunk(output_file, data_buffer)
                 data_buffer = []
-                
+
+    except Exception as exc:
+        if sink is not None:
+            sink_error = exc
+        raise
     finally:
-        # 确保最后保存并关闭设备
-        _save_data_chunk(output_file, data_buffer)
-        device.disablePotentiostat()
+        # 确保最后保存并关闭设备；高级节点由调用方统一收尾文件句柄。
+        if sink is None:
+            _save_data_chunk(output_file, data_buffer)
+            device.disablePotentiostat()
+        else:
+            try:
+                device.disablePotentiostat()
+            except Exception as disable_error:
+                if sink_error is not None:
+                    # 同时保留测量/写入失败与安全关闭失败，最终按执行失败处理。
+                    raise MeasurementCleanupError(
+                        f"{sink_error}；关闭恒电位仪失败：{disable_error}"
+                    ) from sink_error
+                raise
         
     print(f"[Logic] Chrono Finished. Reason: {error_reason or 'Time limit'}")
     
+    if sink is not None:
+        sink_result = {
+            "output_file": output_file,
+            "csv_path": output_file,
+            "status": "stopped_safety" if error_reason else "success",
+            "setpoint": setpoint,
+            "data_points": points_count,
+            "csv_written_by_sink": True,
+        }
+        if error_reason:
+            sink_result["reason"] = error_reason
+        return sink_result
+
     if error_reason:
         # 即使是安全中断，我们也视为一次成功的“部分”测量，但返回警告
         return {

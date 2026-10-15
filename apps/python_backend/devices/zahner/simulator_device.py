@@ -54,16 +54,22 @@ class ZahnerSimulator:
             raise ValueError(f"Unknown measurement type: {measurement_type}")
 
         output_file = result.get("output_file") or result.get("full_path")
-        if output_file and os.path.exists(output_file):
+        if output_file and not result.get("csv_written_by_sink") and os.path.exists(output_file):
             stats = _calculate_stats(result.get("csv_path") or output_file)
             if stats:
                 result["statistics"] = stats
         return result
 
     def _measure_dc(self, measurement_type: str, params: dict, callback: Callable | None, mode: str) -> dict:
+        sink = params.pop("_advanced_sink", None)
         duration = max(0.0, float(params.get("measurement_duration", 60.0)))
         interval = max(0.001, float(params.get("sampling_interval", 1.0)))
-        output_file = self._output_file(params, measurement_type, ".csv")
+        output_file = sink.path if sink is not None else self._output_file(params, measurement_type, ".csv")
+        advanced_step_index = int(params.get("stepIndex") or 0)
+        advanced_cycle_index = params.get("cycleIndex")
+        if sink is not None:
+            # 开始本工步即清零本步统计与计数；即使本步零点失败也不继承上一步。
+            sink.reset_step(advanced_step_index, advanced_cycle_index)
 
         min_current = float(params.get("min_current", -2.0))
         max_current = float(params.get("max_current", 2.0))
@@ -71,14 +77,13 @@ class ZahnerSimulator:
         max_voltage = float(params.get("max_voltage", 5.0))
         points = max(1, int(math.ceil(duration / interval)))
         records = []
+        saved = 0
         error_reason = None
 
         for point in range(points):
             logic.check_measurement_cancelled(params)
             t = round(point * interval, 3)
             voltage, current, setpoint = self._dc_values(mode, params, t, duration)
-            if callback:
-                callback({"t": t, "v": round(voltage, 6), "i": round(current, 9)})
 
             record = {"time": t}
             if mode == "ocp":
@@ -87,7 +92,24 @@ class ZahnerSimulator:
                 record.update({"voltage": voltage, "current": current, "setpoint": setpoint})
             else:
                 record.update({"potential": voltage, "current": current})
-            records.append(record)
+
+            if sink is not None:
+                # 高级路径逐点保存，不再整段累积 records。
+                sink.append(
+                    {
+                        "elapsed": point * interval,
+                        "setpoint": setpoint,
+                        "potential": voltage,
+                        "current": current,
+                    },
+                    advanced_step_index,
+                    advanced_cycle_index,
+                )
+                saved += 1
+            if callback:
+                callback({"t": t, "v": round(voltage, 6), "i": round(current, 9)})
+            if sink is None:
+                records.append(record)
 
             if not (min_current <= current <= max_current):
                 error_reason = f"Current limit exceeded: {current:.4e} A"
@@ -97,16 +119,19 @@ class ZahnerSimulator:
                 break
             self._simulated_sleep(interval, params)
 
-        self._write_csv(output_file, records)
+        if sink is None:
+            self._write_csv(output_file, records)
         status = "stopped_safety" if error_reason else "success"
         result = {
             "output_file": output_file,
             "csv_path": output_file,
             "status": status,
             "duration": duration,
-            "data_points": len(records),
-            "points": len(records),
+            "data_points": len(records) if sink is None else saved,
+            "points": len(records) if sink is None else saved,
         }
+        if sink is not None:
+            result["csv_written_by_sink"] = True
         if error_reason:
             result["reason"] = error_reason
         return result

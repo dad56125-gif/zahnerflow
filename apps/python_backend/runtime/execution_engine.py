@@ -17,7 +17,15 @@ from runtime.execution_semantics import (
     execution_phase,
 )
 from runtime.execution_control import ExecutionControl, NodeExecutionContext, WorkflowCancelled
+from runtime.execution_resources import ExecutionResources
 from runtime.node_executors import execute_node
+
+
+def _step_partial_result(error: BaseException) -> dict:
+    """节点在失败/取消前已落盘的部分结果，沿用现有异常机制携带。"""
+
+    partial = getattr(error, "partial_step_result", None)
+    return dict(partial) if isinstance(partial, dict) else {}
 
 
 class ExecutionEngine:
@@ -57,6 +65,7 @@ class ExecutionEngine:
         self.nodes = []
         self.current_step_index = 0
         self._control = None
+        self._resources = None
         self._task = None
         self._plan = None
 
@@ -78,11 +87,14 @@ class ExecutionEngine:
         self._path_config = payload.get("pathConfig") or {}
         self.current_step_index = 0
         self._control = ExecutionControl(self.execution_id)
+        self._resources = ExecutionResources()
         self.status = "running"
 
         context = NodeExecutionContext(
             runtime=self.runtime,
             control=self._control,
+            resources=self._resources,
+            plan_steps=tuple(plan.steps),
             execution_id=self.execution_id,
             workflow_id=self.workflow_id,
             workflow_name=self._workflow_name,
@@ -242,6 +254,8 @@ class ExecutionEngine:
                         control.request_cancel()
                     stopped_status = "failed" if control.shutdown_reason else "cancelled"
                     if not step_finished:
+                        stopped_data = {"reason": control.shutdown_reason or str(e) or "Execution cancelled by user"}
+                        stopped_data.update(_step_partial_result(e))
                         await self.runtime.on_execution_step_finished(
                             {
                                 "executionId": execution_id,
@@ -250,7 +264,7 @@ class ExecutionEngine:
                                 "nodeId": node.get("id"),
                                 "iterationPath": step.get("iterationPath", []),
                                 "status": stopped_status,
-                                "data": {"reason": control.shutdown_reason or str(e) or "Execution cancelled by user"},
+                                "data": stopped_data,
                             }
                         )
                     raise
@@ -259,6 +273,7 @@ class ExecutionEngine:
                         failure_data = {"error": str(e)}
                         if isinstance(e, ExecutionFailureError):
                             failure_data["failure"] = e.failure
+                        failure_data.update(_step_partial_result(e))
                         await self.runtime.on_execution_step_finished(
                             {
                                 "executionId": execution_id,
@@ -283,6 +298,17 @@ class ExecutionEngine:
             error = str(e) or control.shutdown_reason or "Execution cancelled by user"
             failure = e.failure if final_status == "failed" and isinstance(e, ExecutionFailureError) else None
 
+        try:
+            # 公共收尾只调用通用 close；具体资源由执行期适配登记。
+            context.resources.close()
+        except Exception as close_error:
+            # 收尾失败即使此前已取消也必须最终 failed，同时保留原错误与收尾错误。
+            final_status = "failed"
+            if error:
+                error = f"{error}；收尾失败：{close_error}"
+            else:
+                error = str(close_error)
+
         self.status = final_status
         try:
             await self.runtime.on_execution_finished(
@@ -299,3 +325,4 @@ class ExecutionEngine:
             if self._control is control:
                 self._task = None
                 self._plan = None
+                self._resources = None

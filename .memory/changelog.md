@@ -818,3 +818,15 @@
 变更：删除测量别名 `outputFileName → filename`、通用缺省 `filename=measurement` 及属性名称标签，运行契约生成器同步共享别名常量；更正原核查边界，列出四种高级节点完整拟议表头，单文件写入与报告读取未修改。
 设计影响：实际文件名仍由现有生成器自动生成，不新增接口或数据库结构。应用版本 `2.12.7 → 2.12.7`，本次清理未接入代码，不升级。
 验证：生产源码及生成类型无 outputFileName 残留；后端参数归一化和自动命名冒烟通过，契约生成、版本检查、共享类型及前端生产构建通过，仅既有构建包大小提示。验证脚本通过标准输入执行，未提交测试文件；未连接真机。
+
+## 2026-10-15 - 四种高级节点单文件逐点保存（写入层）
+
+锚点：[设备-高级节点单文件]、[设备-驱动调用]、[报告-实验记录]
+
+原因：四种高级节点（阶梯/切换）此前按展开子步骤各自写独立文件，模拟路径整段累积 `records`，统计按整文件读取，长时测试的保存端内存随点数增长。用户授权改为按父节点一次执行一个 CSV，并明确范围只限这四种高级节点。需要区分的是：旧行为是每个子步骤各自一个文件，旧统计读取的也是各自 CSV，并非“反复重读累计文件”；只有在只合并文件、不改统计的前提下才会产生每子步重读同一累计文件，这不是改造前的既有事实。
+
+变更：新增 `advanced_node_sink.py`，以父执行一次为单位排他创建一个 CSV，构造时一次性确定路径（沿用 `logic._prepare_output_path` 基础名并拼接本执行 `execution_id` 与首个展开工步身份，`build_filename` 不新增身份分支），写一次表头，每条有效原始数据立即追加并 `flush()`，全部子工步共用同一句柄，收尾统一 `flush()`、`os.fsync()`、`close()`；`Time (s)` 取父执行开始的单调时钟、`Step time (s)` 取工步局部时间，设定值取当前工步实际下发值。真机 `logic.measure_chrono` 与模拟 `simulator_device._measure_dc` 的高级分支改用逐点 sink，普通分支保留原 `_save_data_chunk`/`records` 行为；写入、flush、fsync、close 失败与设备关闭失败一起经 `MeasurementCleanupError` 向上传播为执行失败。保存端统计为常量内存，只累计当前工步实测电流。计数与在线统计在 `writerow` 成功后、`flush()` 之前更新，`dataPoints` 语义为已完成追加的行数；这样一次 flush 失败而收尾 flush 成功时，CSV 行数与归档点数仍一致，异常时不宣称持久化成功。
+
+设计影响：见 `[设备-高级节点单文件]`。范围只覆盖四种高级节点，不引入整工作流或跨父节点统一 CSV；普通 OCP、CA/CP、LSV、EIS 的文件与仪器行为、实时绘图缓存不变；运行时接线（`execution_resources.py` 通用资源 `close`，`execution_engine.py`/`node_executors.py` 的父内复用与部分归档）与报告按 `Step` 流式分派均已接入。
+
+验证：`uv run --project apps/python_backend python .codex-run/advanced-csv-driver/verify_advanced_csv.py` 17 项通过（工步间隔累计时间、NaN/Inf/非数值拒绝、排他创建与一次表头、收尾 fsync/close 错误保留、常量内存、单句柄逐点 flush、写失败叠加设备关闭失败、普通 chrono 与模拟普通路径回归，以及新增 `T10`：一次 flush 失败后收尾成功时 CSV 行数与归档点数一致）；`uv run python -m compileall apps/python_backend/devices/zahner` 通过；正常集成 75 项、故障注入与工步间确定性停止 49 项、报告读取 15 项（含总文件 >32 MiB 但单工步仍可报告）、报告/取消 focused 40 项均通过。此处的常量内存只指保存端与在线统计，报告 `points` 数组仍按既有契约随展示点数增长。验证脚本在忽略目录，不提交；全部为隔离、模拟器与假设备验证，未连接真机。2.12.7 → 2.13.0（MINOR）。

@@ -16,6 +16,7 @@
 - `[运行时-AppRuntime]`：`AppRuntime` 是进程内协调对象。
 - `[设备-连接路由]`：设备连接入口由连接参数决定。
 - `[设备-驱动调用]`：设备驱动由 Python 运行时直接调用。
+- `[设备-高级节点单文件]`：四种高级节点一次父执行一个 CSV，逐点追加、收尾同步。
 - `[设备-炉子程序段]`：Furnace 30 个硬件段中，1-27 属于用户程序，28-30 专用于点变温节点。
 - `[设备-runtime状态契约]`：设备实时状态统一使用 runtime envelope。
 - `[执行-状态机]`：工作流执行是本地、单用户、进程内执行。
@@ -108,9 +109,29 @@ Furnace 业务时间由后端生命周期事件累计：开始/恢复设置 `cur
 
 当前边界：普通测量驱动、启动规划和高级节点展开复用 `normalize_measurement_parameters` 的别名、数值和范围规则；高级展开再生成实际 chrono 子步骤。`runtime/node_validation.py` 明确运行必需输入，缺失的实验参数不能靠驱动缺省值补齐。属性栏的历史规范字段与界面别名按后端优先级展示、同步编辑，通过契约生成器复用后端别名表，不能另写映射。前端 `NodeConfiguration.ts` 仍负责新建节点预设，安全限、参考模式及扫描策略等可选项仍采用已有后端缺省，不宣称界面预设与后端缺省已合并。
 
-文件名参数清理（2026-10-15）：测量文件名由 `build_filename` 根据测量类型、参数和环境自动生成。别名表不再包含未使用的 `outputFileName → filename`，缺省不再注入 `filename=measurement`；共享别名由生成器同步，属性标签同步移除。结果中的 `filename` 仍是实际自动生成的名称。本次仅清理未接入功能，高级节点单文件输出与表头方案待用户确认，尚未实施。
+文件名参数清理（2026-10-15）：测量文件名由 `build_filename` 根据测量类型、参数和环境自动生成。别名表不再包含未使用的 `outputFileName → filename`，缺省不再注入 `filename=measurement`；共享别名由生成器同步，属性标签同步移除。结果中的 `filename` 仍是实际自动生成的名称。本次仅清理未接入功能。四种高级节点的单文件保存已在写入层实施，设计事实见 `[设备-高级节点单文件]`。
 
 禁止事项：禁止让 UI 绕过 `DeviceManager` 直接调用设备模块；禁止继续新增独立测量参数别名表，修改高级展开时须核对既有归一化边界；禁止把 Windows API 路径格式扩散到本机持久化路径。
+
+## [设备-高级节点单文件]
+
+当前规则：`galvanostatic_step_ramp`、`potentiostatic_step_ramp`、`galvanostatic_switching`、`potentiostatic_switching` 四种高级节点以父节点的一次执行（含该次展开的全部子工步）为一个保存单元：在该次执行开始时创建并打开一个 CSV、只写一次表头，每条有效原始测量数据立即追加一行并 `flush()`，全部子工步复用同一个句柄，不反复打开、不读回或重写已有文件。正常结束、用户停止、采样异常或写入异常时统一 `flush()`、`os.fsync()`、关闭。写入、flush、fsync 或关闭错误向上抛出进入现有执行失败流程并安全关闭设备，不打印日志后继续，也不误报保存成功；用户取消不掩盖写入或收尾错误。保存端使用常量内存：只保留计数、总和与极值，累计 `Time (s)` 取父执行开始的单调时钟（含工步之间与切换的时间），工步统计只针对当前工步实测电流。实时绘图回调、每工步统计和报告仍保留。本锚点只覆盖四种高级节点；普通 OCP、CA/CP、LSV、EIS 的文件行为与仪器行为不变，不引入整工作流或跨父节点统一 CSV。写入层不新增写入线程、消息队列、批量缓存、定时刷盘或自动拆分，也不逐点 `os.fsync()`。计数与在线统计在 `writerow` 成功后、`flush()` 之前更新，`dataPoints` 语义为已完成追加的行数；因此一次 `flush()` 失败而收尾 `flush()` 成功时，CSV 行数与归档点数仍一致，异常时不宣称持久化成功。
+
+边界澄清：“常量内存”只指保存端与在线统计（只保留计数、总和与极值）；报告仍按既有契约生成曲线 `points` 数组，其内存随需要展示的点数增长，不把整个实验或整份报告宣传为恒定内存。新 CSV 的流式扫描只消除报告读取时额外的整表 `rows` 副本，不改变前端实时绘图缓存和报告曲线需求。
+
+保存路径：沿用现有命名生成器 `logic._prepare_output_path`（其源码与普通测量一致，`build_filename` 不新增身份分支），在其基础文件名上拼接本次父执行的 `execution_id` 与首个展开工步身份作为后缀，构造时一次性确定，使用排他创建，绝不覆盖已有实验；同一父节点在循环内重复执行时各自一个文件，不串到上一次。从中间工步启动（`startFromUnrolledIndex`）时保留真实 `Step` 编号，文件在该次首个执行的工步打开。
+
+表头：恒流阶梯为 `Time (s), Step time (s), Step, Set current (A), Potential (V), Current (A)`；恒压阶梯把 `Set current (A)` 换为 `Set potential (V)`；两种切换在 `Step` 后插入 `Cycle, Phase`。`Step`/`Cycle` 从 1 开始，切换 `Phase` 为 1/2；设定值取当前工步实际下发值，A/V/s 使用原始精度，不加入功率、面积归一化或其他派生列。
+
+归属文件：`apps/python_backend/devices/zahner/advanced_node_sink.py`、`apps/python_backend/devices/zahner/logic.py`（`measure_chrono` 高级分支）、`apps/python_backend/devices/zahner/real_device.py`、`apps/python_backend/devices/zahner/simulator_device.py`；运行时接线见 `apps/python_backend/runtime/execution_engine.py`、`node_executors.py`、`execution_resources.py`；报告读取见 `apps/python_backend/report_measurements.py`。
+
+允许变化：可调整文件名身份后缀细节和 sink 内部实现；可扩展展开器支持的节点类型，但必须继续以父节点一次执行为保存单元。
+
+禁止事项：禁止为四种高级节点引入整工作流或跨父节点统一 CSV；禁止逐点 `os.fsync()`、写入线程、消息队列、批量缓存、定时刷盘或自动拆分；禁止把普通测量路径改为同一句柄或合并文件；禁止把写入错误降级为日志后继续；禁止舍入或改写原始测量值与设定值，A/V/s 必须保持原始精度。
+
+集成现状：运行时接线（`apps/python_backend/runtime/execution_engine.py`、`node_executors.py`、`execution_resources.py`）与报告读取（`apps/python_backend/report_measurements.py` 按 `Step` 流式分派、>32 MiB 单工步仍可报告）已由对应模块接入。同一次父执行的子工步复用同一 sink（按 `parentNodeId` 与 `iterationPath`/`blockPath` 判定），工步边界不新建文件；失败或取消步骤保留相应终态及已落盘部分结果，保留 `csvPath` 与本工步已保存点数，报告能找到部分文件。引擎收尾只调用通用资源 `close`，不新增高级节点专属停止状态或分支。截至 2026-10-15，正常集成 75 项、故障注入与工步间确定性停止 49 项、报告读取 15 项（含总文件 >32 MiB 但单工步仍可报告）、报告/取消 focused 40 项、写入层隔离与普通回归 17 项全部通过；均为隔离、模拟器与假设备验证，未连接真机。
+
+最近复核：2026-10-15，写入层隔离单元与普通回归 17 项通过（含工步间隔累计时间、NaN/Inf/非数值拒绝、排他创建、收尾 `fsync`/`close` 错误保留、常量内存、单句柄逐点 `flush()`、写失败叠加设备关闭失败、普通 chrono 与模拟普通路径回归，以及一次 `flush()` 失败后收尾成功时 CSV 行数与归档点数一致）；未连接真机。
 
 ## [设备-炉子程序段]
 

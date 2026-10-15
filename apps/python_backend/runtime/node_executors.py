@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import math
 import inspect
+import os
 import time
 from datetime import datetime
 from typing import Awaitable, Callable
 
 from devices.furnace.limits import validate_furnace_temperature
+from devices.zahner.advanced_node_sink import ADVANCED_NODE_TYPES, AdvancedNodeSink, parent_execution_key
 from devices.zahner.logic import MeasurementCancelled
 from runtime.execution_control import NodeExecutionContext, WorkflowCancelled
 from runtime.execution_failure import ExecutionFailureError, TemperatureTargetTimeout, temperature_failure
@@ -328,6 +330,14 @@ class NodeExecutor:
             "output_path": output_path,
             "environment_context": env_context,
         }
+        sink = self._advanced_sink_for(step, measurement_params)
+        if sink is not None:
+            # 文件已在高级施加设定前创建；本步统计先清零，零点异常也不继承上一步。
+            measurement_params["_advanced_sink"] = sink
+            sink.reset_step(_advanced_step_index(params), params.get("cycleIndex"))
+            # 复用同一 sink 时各子步仍会重算 output_path（时间/环境可变），
+            # 归档目录必须以实际 sink 文件所在目录为准。
+            output_path = os.path.dirname(sink.path) or output_path
         if interruptible:
             measurement_params["_cancel_requested"] = lambda: self.control.cancel_requested
 
@@ -344,11 +354,25 @@ class NodeExecutor:
             )
 
         try:
-            result = await self.control.run_in_thread(self.devices.zahner_measure, meas_type, measurement_params, stream_callback)
-        except Exception as e:
-            if isinstance(e, MeasurementCancelled):
-                raise WorkflowCancelled("Measurement cancelled by user") from e
+            result = await self.control.run_in_thread(
+                self.devices.zahner_measure, meas_type, measurement_params, stream_callback
+            )
+        except Exception as error:
+            # 取消转换对所有测量路径保持原行为；只有高级路径在异常上附带本步已
+            # 落盘的部分结果，文件句柄仍交给公共资源收尾统一 flush/fsync/close。
+            if isinstance(error, MeasurementCancelled):
+                cancelled = WorkflowCancelled("Measurement cancelled by user")
+                if sink is not None:
+                    _attach_advanced_partial(cancelled, sink)
+                raise cancelled from error
+            if sink is not None:
+                _attach_advanced_partial(error, sink)
             raise
+        if sink is not None:
+            self._merge_advanced_sink_stats(result, sink)
+            if not self._advanced_sink_continues(step):
+                # 正常末子步：立刻 flush/fsync/close 并从公共资源登记移除。
+                self._finish_advanced_sink(sink)
         eis_data = result.get("eis_data") if isinstance(result, dict) else None
         if eis_data and ("eis_potentiostatic" in meas_type or "eis_galvanostatic" in meas_type):
             await self.runtime.emit(
@@ -369,6 +393,92 @@ class NodeExecutor:
             )
 
         return normalize_measurement_outcome(result, output_dir=output_path)
+
+    def _advanced_sink_for(self, step: dict, measurement_params: dict) -> AdvancedNodeSink | None:
+        '''高级子步的单一文件句柄，只按父执行身份归属到执行期资源。'''
+
+        parent_type = measurement_params.get("parentNodeType")
+        if parent_type not in ADVANCED_NODE_TYPES or step.get("parentNodeType") != parent_type:
+            return None
+        resources = self.context.resources
+        key = parent_execution_key(step)
+        sink = getattr(resources, "advanced_sink", None)
+        if sink is not None:
+            if getattr(resources, "advanced_sink_key", None) == key:
+                return sink
+            # 本次父归属已变化：先按公共收尾语义关闭前一个文件，再另开新文件。
+            self._finish_advanced_sink(sink)
+        sink = AdvancedNodeSink(
+            parent_type,
+            measurement_params,
+            execution_id=self.context.execution_id,
+            unrolled_index=step.get("unrolledIndex"),
+            clock=time.monotonic,
+        )
+        sink.open()
+        resources.advanced_sink = sink
+        resources.advanced_sink_key = key
+        resources.register(sink)
+        return sink
+
+    def _advanced_sink_continues(self, step: dict) -> bool:
+        '''真实下一步计划是否仍属于同一父执行的同一文件。'''
+
+        plan = self.context.plan_steps
+        index = step.get("unrolledIndex")
+        if not plan or index is None:
+            return False
+        next_index = index + 1
+        if next_index >= len(plan):
+            return False
+        next_step = plan[next_index]
+        if next_step.get("parentNodeType") not in ADVANCED_NODE_TYPES:
+            return False
+        return parent_execution_key(next_step) == parent_execution_key(step)
+
+    def _finish_advanced_sink(self, sink: AdvancedNodeSink) -> None:
+        '''关闭并解除登记；close 错误保留本步部分数据后向上抛出。'''
+
+        resources = self.context.resources
+        if getattr(resources, "advanced_sink", None) is sink:
+            resources.advanced_sink = None
+            resources.advanced_sink_key = None
+        resources.unregister(sink)
+        try:
+            sink.close()
+        except BaseException as close_error:
+            _attach_advanced_partial(close_error, sink)
+            raise
+
+    def _merge_advanced_sink_stats(self, result: object, sink: AdvancedNodeSink) -> None:
+        if not isinstance(result, dict):
+            return
+        stats = sink.statistics()
+        if stats:
+            result["statistics"] = stats
+        # data_points 记录本子步已保存点数；父执行总数只保留在 sink.saved_points。
+        result["data_points"] = sink.step_points
+
+
+def _advanced_step_index(params: dict) -> int:
+    try:
+        return int(params.get("stepIndex") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _attach_advanced_partial(error: BaseException, sink: AdvancedNodeSink) -> None:
+    '''把高级子步已落盘的部分结果挂到异常上，交由公共执行归档读取。'''
+
+    partial: dict = {
+        "csvPath": sink.path,
+        "outputFile": sink.path,
+        "dataPoints": sink.step_points,
+    }
+    statistics = sink.statistics()
+    if statistics:
+        partial["statistics"] = statistics
+    error.partial_step_result = partial
 
 
 NodeHandler = Callable[[NodeExecutor, dict, dict, dict, NodeExecutionSpec], Awaitable[object]]

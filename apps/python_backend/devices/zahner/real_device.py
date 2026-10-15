@@ -78,7 +78,12 @@ class ZahnerDevice:
         else:
             raise ValueError(f"Unknown measurement type: {measurement_type}")
 
-        if isinstance(result, dict) and "output_file" in result and os.path.exists(result["output_file"]):
+        if (
+            isinstance(result, dict)
+            and not result.get("csv_written_by_sink")
+            and "output_file" in result
+            and os.path.exists(result["output_file"])
+        ):
             stats = _calculate_stats(result["output_file"])
             if stats:
                 result["statistics"] = stats

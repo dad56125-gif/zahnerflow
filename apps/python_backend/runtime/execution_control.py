@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from threading import Event
 from typing import Any, Callable
 
+from runtime.execution_resources import ExecutionResources
+
 
 class WorkflowCancelled(RuntimeError):
     """A node acknowledged the current execution's stop request."""
@@ -85,6 +87,8 @@ class NodeExecutionContext:
 
     runtime: Any
     control: ExecutionControl
+    resources: ExecutionResources
+    plan_steps: tuple[dict, ...]
     execution_id: str
     workflow_id: str | None
     workflow_name: str

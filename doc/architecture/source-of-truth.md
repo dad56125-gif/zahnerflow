@@ -45,7 +45,7 @@
 | 展开与执行计划 | [execution_planner.py](../../apps/python_backend/runtime/execution_planner.py) 的 `plan`，`loop_unroller.py` 的展开与验证 | 创建/预览/估算共用 Planner 实现；循环、块、高级节点与测量边界展开，产出 ExecutionPlan；Engine 消费这次执行的计划 | `useUnrollPreview`、展开窗口、实际步骤与报告索引；三次 HTTP 请求不保证复用同一对象，前端不另算执行顺序 |
 | ETA 与倒计时 | [execution_eta.py](../../apps/python_backend/runtime/execution_eta.py) 的估算规则和历史时长，测量参数复用 `normalize_measurement_parameters` | recorder 仅对合格成功步骤学习 → SQLite `node_duration_estimates` → 下次计划预测 → 含画布来源、边界、偏移及绝对定时的时间线 → 运行快照完成/跳过/实测事实 | App 中唯一 `useWorkflowTime` 请求与计时 → `workflowTimeModel` 公共插值和节点汇总 → 底部栏与属性栏；前置等待计入预计开始，自动边界只进入工作流总量，失败不回填当前时间，真机预测不等于实测数据 |
 | 普通测量参数 | [zahner/logic.py](../../apps/python_backend/devices/zahner/logic.py) 的别名表、缺省及 `normalize_measurement_parameters` | worker、真机、模拟器调用同一归一化；真机分派到 measure 方法，调用 thales_remote | 仪器测量及结果文件；与 UI 预设分开维护，真机路径转换只在调用边界 |
-| 测量输出目录与文件名 | `experiment_worker.py` 的 `build_output_path` / `build_advanced_node_folder_name`；`devices/zahner/logic.py` 的 `build_filename` | `NodeExecutor` 每个测量步骤注入路径及实测炉温、流量；真机和模拟器共用文件名生成器，分别按自身保存逻辑写文件 | 现有格式、时间来源、高级目录逐步骤生成及重名后果见 [测量输出文件命名复核](../reference/data-contracts.md#测量输出文件命名复核)（2026-10-15）；该文档只摘录行为，不定义规则，不证明真机 EIS 的重名处理 |
+| 测量输出目录与文件名 | `experiment_worker.py` 的 `build_output_path` / `build_advanced_node_folder_name`；`devices/zahner/logic.py` 的 `build_filename` | `NodeExecutor` 每个测量步骤注入路径及实测炉温、流量；真机和模拟器共用文件名生成器，分别按自身保存逻辑写文件；四种高级节点单文件身份见下文「高级节点单文件写入」小节 | 现有格式与重名后果见 [测量输出文件命名复核](../reference/data-contracts.md#测量输出文件命名复核)（2026-10-15）；高级目录只在该次父执行构造单文件时实际采用一次，后续子步骤即使重算也不新建文件或目录；该文档只摘录行为，不定义规则，不证明真机 EIS 的重名处理 |
 | 属性栏参数别名 | 同一 `logic.py` 的 `_PARAMETER_ALIASES` 字面量 | `contracts/generate.py` 静态读取并生成 `MEASUREMENT_PARAMETER_ALIASES`；属性栏、画布展示及 canvasStore 消费 | 导入规范字段按后端优先级显示，编辑界面别名同步已有规范字段；不复制手写映射、不在生成时导入真机模块。2026-10-15 删除未被命名器使用的自定义文件名别名、缺省和属性标签；实际自动命名路径不变 |
 | 高级节点参数 | [zahner/logic.py](../../apps/python_backend/devices/zahner/logic.py) 的归一化和 [loop_unroller.py](../../apps/python_backend/loop_unroller.py) 的高级展开 | 先复用归一化，再生成 chrono 子节点及明确时长、采样、极化值，规划检查实际子步骤 | switching / step ramp 的实际子步骤；非法输入不能靠展开缺省掩盖 |
 | 活跃执行 / 设备连接 | [app_runtime.py](../../apps/python_backend/runtime/app_runtime.py)、`device_manager.py` 和实际设备对象 | AppRuntime 推进状态版本、记录并广播；DeviceManager 管理连接代次，直接导入真机/模拟类 | HTTP/Socket 快照 → runtimeClient → bridge / 设备 hooks → UI；重启前的 DB 快照不能证明当前物理连接 |
@@ -190,6 +190,10 @@ flowchart TD
 ### 报告测量曲线
 
 执行步骤归档的 csvPath/outputFile → report_measurements.py 只读解析 → report.py 的 measurementCurves → 生成 TypeScript → reportDataBuilder → reportCharts → 报告预览与 HTML/PDF。模式与温度来自 workflowSnapshot.nodes 的显式 group.label（发电/电解、温度及模拟条件标签），按模式和测量类型叠加不同温度；颜色区分温度，线型/点型区分重复轮次。未声明温度的工作流不推断温度，不混入温度对比组。真实测量 CSV 与模拟 CSV 按各自已知列名读取；前端不依赖实时缓存恢复历史曲线。ReportMeasurementChart 挂载交互 ECharts 并随容器缩放，关闭时释放；程序内不以图片替代图表。导出通过实例捕获当前图例/缩放状态，独立HTML生成调用使用同一图表配置离屏渲染。
+
+### 高级节点单文件写入（2026-10-15）
+
+定义源头：`apps/python_backend/devices/zahner/advanced_node_sink.py` 的 `AdvancedNodeSink` 持有一个父执行一次的生命周期（排他创建、一次表头、逐点 `flush()`、收尾 `fsync()`/`close()`、常量内存统计与有限值校验）；文件路径由既有 `logic._prepare_output_path` 生成基础名后拼接本执行 `execution_id` 与首个展开工步身份，`build_filename` 不新增身份分支。子步骤身份来自 `loop_unroller.py` 的展开步骤，真机分支在 `logic.measure_chrono`、模拟分支在 `simulator_device._measure_dc` 消费同一句柄；同一次父执行的子工步复用同一 sink（按 `parentNodeId` 与 `iterationPath`/`blockPath` 判定），工步边界不新建文件；`real_device.measure` 与 `simulator_device.measure` 对高级路径不再整表调用 `_calculate_stats`。范围只限 `galvanostatic_step_ramp`、`potentiostatic_step_ramp`、`galvanostatic_switching`、`potentiostatic_switching`；普通 OCP、CA/CP、LSV、EIS 的文件与仪器行为不变，不引入整工作流统一 CSV。运行时接线由 `execution_engine.py`、`node_executors.py`、`execution_resources.py` 负责，引擎收尾只调用通用资源 `close`，失败或取消步骤保留相应终态及已落盘部分结果，并保留 `csvPath` 与本工步已保存点数。消费者：`report_measurements.py` 按 `Step` 列流式分派恢复各工步曲线，不物化整表 `rows`，总文件 >32 MiB 而单工步仍可报告。验证：写入层隔离单元与普通回归 17 项、正常集成 75 项、故障注入与工步间确定性停止 49 项、报告读取 15 项、报告/取消 focused 40 项通过；常量内存只指保存端与在线统计，报告 `points` 数组仍按既有契约随展示点数增长；未连接真机。
 
 ### 有效电极面积（2026-09-23）
 
