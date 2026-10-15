@@ -60,4 +60,8 @@ uv run python -m apps.shared.contracts.generate
 
 构建及发布脚本包含版本前置检查。版本需要变化时修改 `VERSION`，运行 `pnpm version:sync`，维护根 `CHANGELOG.md`，再执行 `pnpm version:check`；完整升级规则由 [AGENTS.md](AGENTS.md) 维护。
 
+本轮发布准备（2026-10-15）：沿用既有 Windows x64 NSIS 安装包与 SHA256 两资产发布方式，应用版本保持 `2.13.1`；已核对桌面分发脚本会先构建前端、桌面壳和当前 PyInstaller 后端，再调用 electron-builder。当前待执行版本/发布检查、实际打包、包内版本及隔离后端健康检查；产物和验收证据放已忽略的 `.codex-run/release-2.13.1/`。后端验收必须设置独立 `ZAHNERFLOW_DATA_DIR` 与空闲端口，不访问生产数据库。推送、标签及更新 Latest Release 等待主审最终准许，保留旧产物和旧 Release，不改写旧标签。
+
+本轮同时处理版本检查 CI 缓存问题：主审核实运行 `37733258801` 的版本及发布检查已成功，但 `actions/setup-node@v4` 收尾因配置 `cache: pnpm`、未生成 store 路径而报 Path Validation Error。该工作流只执行纯 Node 检查，无需依赖缓存；仅删除无用缓存配置，保留检查及 actions 版本。此项 CI/文档修复不升级应用版本，实际远端运行结果待推送后核验。
+
 仓库不提交测试源码、测试配置、夹具或测试目录。外部验证文件放仓库外或已忽略目录；后端验证从 `apps/python_backend` 上下文通过 `uv run ...` 执行，按实际外部路径设置导入上下文。前端外部验证可使用 `pnpm exec vitest run --config <外部配置>`。不要引用不存在的仓库测试目录。
