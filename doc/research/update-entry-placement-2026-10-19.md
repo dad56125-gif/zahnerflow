@@ -37,3 +37,11 @@ GitHub 的公开 Release 查询无需登录；匿名 REST API 按来源 IP 限�
 第三方公共 GitHub 加速站不作为默认可信更新源。若采用镜像，需保证同一发布版本、明确同步时间，并验证安装包完整性。具体服务与网络可达性尚未实测。
 
 依据：[GitHub Releases REST API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release)、[REST API 限额](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)、[electron-builder 更新源支持](https://www.electron.build/docs/publish/)。
+
+## 国内平台比较（2026-10-19）
+
+用户说明仅实验室内部使用，没有服务器或对象存储。针对更新发布用途，当前建议优先试用 GitCode，未确认替换 GitHub 发布源。其[最新 Release 接口](https://docs.gitcode.com/docs/apis/get-api-v-5-repos-owner-repo-releases-latest/)返回版本、说明和附件地址，[发行版说明](https://docs.gitcode.com/docs/help/home/org_project/project_manage/release_management/release_overview/)明确支持安装包附件。当前电脑未携带令牌或登录 Cookie 调用公开示例 `TFR-Studios/DeltaForceAnimation_app` 的最新 Release 接口，返回 HTTP 200、v1.0.2 和安装包链接；未下载附件，不宣称安装包免登录下载或实验室全部网络可达已验证。
+
+Gitee 同样支持 Release 与附件，[官方发布插件说明](https://blog.gitee.com/2026/01/23/gitee-go-release-plugin-auto-deploy-artifact/)提供了自动发布流程；本轮未完成其匿名查询及附件下载实测，不能据此判断不支持。两家的实际附件配额均未核实，代码仓库单文件限额不能当作 Release 附件限额。
+
+建议保持开发仓库不动，选定平台后用独立公开发布仓库存放版本说明与安装包，并验证实际包大小、匿名查询和下载。公开发布意味着其他人也可能下载；若需要限制为实验室成员，需另行确定认证方式。功能尚未实施，应用版本不变。
