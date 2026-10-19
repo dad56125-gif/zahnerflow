@@ -72,3 +72,14 @@ uv run python -m apps.shared.contracts.generate
 
 包验收：从 NSIS 安装包直接提取资源，核对桌面/后端版本均为 `2.13.1`、主进程及 228 个前端文件匹配本次构建，后端版本、环境命名、单 CSV 写入和执行模块代码匹配源码。实际启动提取出的后端，在独立 `ZAHNERFLOW_DATA_DIR` 和空闲端口 `54415` 确认 `/health` 为 healthy、`app_version=2.13.1`、运行时已启动且 SQLite 指向隔离目录；本次进程已停止、端口已释放，未访问生产数据库。证据及旧构建目录备份位于已忽略的 `.codex-run/release-2.13.1/`。此前 59+5 项隔离验证与本次包验收分开记录；未连接真机、未验证异机安装。
 仓库不提交测试源码、测试配置、夹具或测试目录。外部验证文件放仓库外或已忽略目录；后端验证从 `apps/python_backend` 上下文通过 `uv run ...` 执行，按实际外部路径设置导入上下文。前端外部验证可使用 `pnpm exec vitest run --config <外部配置>`。不要引用不存在的仓库测试目录。
+
+## 2.14.0 发布验收（2026-10-19）
+
+状态：已公开发布为 Latest，发布后检查更新与完整下载验收均通过。[ZahnerFlow 2.14.0 电脑版](https://github.com/dad56125-gif/zahnerflow/releases/tag/release/v2.14.0) 包含 Windows x64 NSIS 安装包和 SHA256 两个资产，旧版本保留。构建源与标签目标均为 `3aeb9c01259c346efdcaa22ca186fbb309914caf`。版本保持 2.14.0（上一轮 2.13.1 → 2.14.0 已按新增功能完成 MINOR 升级，本轮发布不另升版）。
+
+安装包 `ZAHNERFLOW.Setup.2.14.0.exe` 为 169634120 字节，SHA256 为 `7e40d7ae2224068f39ccfb7e78fcbd0271df405355be44546e89a68038621890`，GitHub 资产 ID 为 `655511874`；安装包和校验文件的服务器 digest 均与本地一致。实际 `pnpm desktop:dist:win`、发布规则检查通过；[main CI](https://github.com/dad56125-gif/zahnerflow/actions/runs/39213274140) 与[标签 CI](https://github.com/dad56125-gif/zahnerflow/actions/runs/39213829082) 均成功。
+
+从安装包提取的主进程、preload、版本文件、更新模块与当前构建一致，228 个前端文件逐一匹配；提取后端在隔离目录启动，返回 healthy、app_version=2.14.0、runtime_running=true。真实包内主进程、preload、前端和后端联动，使用隔离启动器设置独立路径，版本面板从 GitHub 读到 2.14.0 并显示当前无需更新。未运行安装程序，未连接真机。证据位于已忽略目录 `.codex-run/release-2.14.0/`。
+
+
+发布后下载验收：使用安装包提取的生产更新模块，在隔离环境中将当前版本设为 2.13.1，仅用于验证新版本分支；真实 GitHub API 识别 2.14.0。从空缓存开始，通过无应用代理的官方直连下载全部 169634120 字节，中途取消后续传成功，最终 SHA256 与本地构建及 GitHub digest 一致，并经 PowerShell 独立复核。本次耗时 644 秒，仅代表当前网络。2.14.0 自身通过真实版本面板显示“当前无需更新”。2.13.1 原发行版没有此次新增的更新入口，首次升级仍需手动下载安装包。
