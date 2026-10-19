@@ -1,5 +1,7 @@
 # 检查更新入口位置评估
 
+本轮验证范围（2026-10-19，已完成）：用户决定继续使用 GitHub，先前的 GitCode 优先试用建议已被取代；已验证无应用代理的地址发现、安装包完整下载和应用内技术路径。不修改系统网络设置，不运行安装包。临时脚本、下载和证据放已忽略目录 `.codex-run/`；网络验证不代表更新功能已经接入产品。
+
 状态：研究结论，功能尚未实现。归属：桌面端与前端维护者。复核日期：2026-10-19。
 
 ## 范围与已确认事实
@@ -38,7 +40,7 @@ GitHub 的公开 Release 查询无需登录；匿名 REST API 按来源 IP 限�
 
 依据：[GitHub Releases REST API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release)、[REST API 限额](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)、[electron-builder 更新源支持](https://www.electron.build/docs/publish/)。
 
-## 国内平台比较（2026-10-19）
+## 国内平台比较（2026-10-19，历史讨论，选型已被 GitHub 决定取代）
 
 用户说明仅实验室内部使用，没有服务器或对象存储。针对更新发布用途，当前建议优先试用 GitCode，未确认替换 GitHub 发布源。其[最新 Release 接口](https://docs.gitcode.com/docs/apis/get-api-v-5-repos-owner-repo-releases-latest/)返回版本、说明和附件地址，[发行版说明](https://docs.gitcode.com/docs/help/home/org_project/project_manage/release_management/release_overview/)明确支持安装包附件。当前电脑未携带令牌或登录 Cookie 调用公开示例 `TFR-Studios/DeltaForceAnimation_app` 的最新 Release 接口，返回 HTTP 200、v1.0.2 和安装包链接；未下载附件，不宣称安装包免登录下载或实验室全部网络可达已验证。
 
@@ -57,3 +59,38 @@ Gitee 同样支持 Release 与附件，[官方发布插件说明](https://blog.g
 对首页临时指定另一解析地址 `172.182.252.133` 仍超时；公开 DNS `223.5.5.5`、`119.29.29.29` 的直接 DNS 查询也超时，不能据此建议直接更改全局 DNS。经代理已成功下载本项目安装包的 94 字节 SHA256 附件，未完整下载约 169.6 MB 安装包，不宣称大文件下载完成或无代理下载可用。
 
 结论：暂不因国内访问问题迁移发布平台，GitHub 仍可作为候选首选。可考虑应用范围的 DNS/地址选择策略，但尚未设计或实现；禁止将本次地址作为永久固定 IP。GitHub 官方说明 IP 会变化，见[地址说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses)。最终需分别验收版本查询、发布页和安装包下载。本轮仅研究文档，版本不变。
+
+## 无应用代理的获取地址与下载验证（2026-10-19）
+
+状态：地址发现、API 查询、官方附件重定向、原生 Node/Electron HTTPS 小文件下载及整包下载校验已验证。证据目录为本地忽略目录 `.codex-run/github-direct-probe/`，不随 Git 提交或安装包分发。
+
+### 地址发现与下载链
+
+- 所有 curl 探测显式使用 `--noproxy '*'`，子进程环境移除代理变量；不发送 GitHub 令牌或登录 Cookie。网卡检查仅见 WLAN 活跃，默认 IPv4 路由经 WLAN，未发现 TUN 默认路由；不据此声称排除了网关层透明转发。
+- 直接访问腾讯 `https://doh.pub/dns-query` 和阿里 `https://dns.alidns.com/resolve` 的 JSON 查询成功，三域名查询各约 81–298 毫秒。Google / Cloudflare DoH 本次超时，不能作为当前环境的必需依赖。
+- 当前 API 候选地址 `140.82.114.6` 与 `20.205.243.168` 均查询成功，分别约 1.15 秒和 0.75 秒。上一轮超时的地址本轮恢复，证明网络会波动，不能将一次超时定性为地址永久不可用或 DNS 污染。
+- 调用 Release asset API，设置 `Accept: application/octet-stream`，成功获得 HTTP 302 指向 `release-assets.githubusercontent.com`。这是 GitHub 官方支持的二进制获取方式，无需先加载 GitHub 页面；客户端同时需处理直接返回二进制 HTTP 200 的情况。依据：[GitHub Release assets API](https://docs.github.com/en/rest/releases/assets#get-a-release-asset)。
+- 官方下载节点返回 HTTP 206、Content-Range、ETag；首轮四个地址的 1 MiB 小样本有快有慢，部分超时。不能仅凭一次探测永久选择某个 IP。
+- 原生 Node HTTPS（显式独立 Agent、请求级 lookup，保留域名及默认 TLS 验证）完成 DoH → Release → asset API → 官方 CDN 的校验文件下载，响应记录远端公网地址且 `authorized=true`。它证明桌面主进程可用的技术路径，不等于已接入应用界面或完成 Electron 打包验收。
+
+原生运行时复核：同一脚本在项目安装的 Electron 38.8.6（Node 22.22.0）以 `ELECTRON_RUN_AS_NODE=1` 运行，再次通过全链；DNS、API、重定向与校验附件请求分别约 68、653、116、618 毫秒（中间另一次 DNS 为 8 毫秒），证书验证均通过。仅对该子进程设置运行模式并清除代理环境，不启动业务界面或设备后端。
+
+### 拟采用的软件内策略，尚未接入
+
+保持系统网络设置不动，更新模块独立管理 HTTPS DNS、候选地址和按 TTL 的缓存；失败时刷新或尝试其他候选，保留原域名、SNI 与证书验证。候选地址只来自本次解析，不内置本次测试 IP。
+
+先从官方 API 取得版本、资产 ID、大小与摘要，再实时获取官方附件重定向。签名链接会过期，不能持久化为固定下载地址。下载限制并发数，验证 HTTP 206、精确 Content-Range、ETag 和总大小；续传必须绑定同一资产，服务端返回 200 或资源变化不能直接追加。下载完成进行完整 SHA256 比对，再向用户提供安装操作。整个过程可放 Electron 主进程，经既有 preload bridge 提供有限接口，不依赖改系统 hosts，也不需要第三方中转服务器。
+
+本轮测试的 8 路并发仅用于验证；正式产品应按速度与失败率限定并发和重试，不能从此测试宣传固定加速倍数。浏览器开发模式与桌面模式实现边界另行确定。本轮不安装或运行下载的可执行文件。
+
+### 整包结果与独立验收
+
+已完成 `ZAHNERFLOW.Setup.2.13.1.exe`（资产 ID `644193696`）的无应用代理下载，大小 **169,619,949 字节**（约 169.6 MB / 161.8 MiB）。下载文件保存在证据目录 `ZAHNERFLOW.Setup.2.13.1.direct-verified.exe`，没有运行。
+
+完整 SHA256 为 `dc6a45930d2ab7f3e1659ab01eca9c1879c171c1d07f022ab6b21106513186be`，与本次直连获取的 GitHub API 资产摘要及独立下载的 `.sha256` 附件一致。Node 合并阶段校验后，再用 PowerShell `Get-FileHash` 独立读取成品，大小与摘要均一致。
+
+测试经历初始 4 路下载、超时、停止测试进程后保留分片、8 路续传及合并校验，证明本次资源可续传。8 路恢复阶段耗时 212.703 秒，复用了前序已下载分片，因此不能称为全包从零下载耗时，也未做无竞争的单路/并发对照，不报告加速倍数。分片保留只在 HTTP 206、Content-Range 与 ETag 匹配时执行；最终整包摘要是内容完整性的验收依据。
+
+主要本地证据：`dns.json`、`discovery-evidence.json`、`download-probes.json`、`native-https-evidence.json`、`full-download-evidence.json`、`independent-verification.json`。原始响应头与临时签名链接只保存在忽略目录，不能进入发布配置。
+
+结论：当前电脑网络已完成不借助应用代理、不改系统设置的完整下载链；采用国内 HTTPS DNS + 官方 API 资产链接 + 官方 CDN 候选地址 + 有界并发与续传具备落地依据。可达性和速度仍受网络与时间影响；应用界面、取消/重试状态机、下载持久化恢复、安装交互及打包集成尚未实施。本轮仅研究记录，应用版本 `2.13.1 → 2.13.1`，无需升级。
