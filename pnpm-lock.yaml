@@ -32,6 +32,9 @@ importers:
       '@types/node':
         specifier: ^24.5.2
         version: 24.13.2
+      '@zahnerflow/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       electron:
         specifier: ^38.0.0
         version: 38.8.6

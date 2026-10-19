@@ -8,6 +8,7 @@ import type { SimpleLoopInfo } from './canvas/useLoopDetection';
 import { useAppStore } from '../state/appStore';
 import { describeExecution } from '../state/executionStateModel';
 import type { WorkflowTimeState } from '../state/workflowTimeModel';
+import { UpdateControl } from './updates/UpdateControl';
 
 interface BottomBarProps {
   detectedLoops?: SimpleLoopInfo[];
@@ -90,6 +91,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
       <div className="bottom-bar__right">
         <span className="bottom-bar__stat">节点: <strong>{nodeCount}</strong></span>
         <span className="bottom-bar__stat">循环: <strong>{loopCount}</strong></span>
+        <UpdateControl />
         <span className="bottom-bar__stat bottom-bar__stat--time">{currentTime}</span>
       </div>
 

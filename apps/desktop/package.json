@@ -1,6 +1,6 @@
 {
   "name": "zahnerflow-desktop",
-  "version": "2.13.1",
+  "version": "2.14.0",
   "description": "ZAHNERFLOW Electron desktop shell",
   "author": "ZAHNERFLOW Team",
   "private": true,
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
+    "@zahnerflow/types": "workspace:*",
     "electron": "^38.0.0",
     "electron-builder": "24.13.3",
     "typescript": "^5.9.2"

@@ -36,6 +36,7 @@
   @include meta.load-css('./_tutorial.scss');
   @include meta.load-css('./_chart.scss');
   @include meta.load-css('./_workflow-controls.scss');
+  @include meta.load-css('./_updates.scss');
   
   // 高级布局与业务组件
   @include meta.load-css('./_advanced-components.scss');

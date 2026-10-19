@@ -1,9 +1,12 @@
+import type { DesktopUpdateBridge } from '@zahnerflow/types';
+
 export interface DirectorySelectionResult {
     canceled: boolean;
     path?: string;
 }
 
 export interface ZahnerflowDesktopBridge {
+    updates: DesktopUpdateBridge;
     selectDirectory: () => Promise<DirectorySelectionResult>;
     getRuntimeBaseUrl: () => string;
     windowMinimize: () => void;

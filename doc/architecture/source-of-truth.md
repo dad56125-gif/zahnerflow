@@ -70,6 +70,10 @@
 
 `extract_methods.py` 的 SDK/项目快照目录版本是脚本写定的，实际复制的是重跑时当前源码；重跑须核对版本、提交和哈希，不能用目录名证明来源。现存 coverage 或 validation 的“通过”仅覆盖其声明的完整性检查，不等于语义完全恢复或本次真机复测。
 
+## 桌面更新来源（2026-10-19）
+
+桌面更新 IPC 类型唯一来源是 `packages/types/src/desktopUpdate.ts`，由共享类型包编译后供主进程、preload 与前端使用；它不属于 Python 业务 API，不增加 Python 契约或数据库字段。当前应用版本仍由根 `VERSION` 同步生成。GitHub 正式 Release 是远程版本、资产 ID/大小/摘要的来源；`apps/desktop/src/updates/release.ts` 校验版本和平台产物，`UpdateManager` 唯一维护进度和完成路径。HTTPS DNS 返回地址只作为带 TTL 的候选，不作为发布配置。下载缓存不等于已验证安装包，只有整包摘要一致后才导出到下载目录。
+
 ## 功能源头与派生关系图
 
 实线明确标注生成、导入、调用或存储；虚线表示人工同步、解释或核查，不能理解为自动生成。目录治理图另见 [文档架构](../README.md)。

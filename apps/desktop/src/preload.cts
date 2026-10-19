@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { DesktopUpdateBridge, DesktopUpdateState } from '@zahnerflow/types';
 
 export interface DirectorySelectionResult {
   canceled: boolean;
@@ -6,6 +7,7 @@ export interface DirectorySelectionResult {
 }
 
 export interface ZahnerflowDesktopBridge {
+  updates: DesktopUpdateBridge;
   selectDirectory: () => Promise<DirectorySelectionResult>;
   getRuntimeBaseUrl: () => string;
   windowMinimize: () => void;
@@ -16,6 +18,18 @@ export interface ZahnerflowDesktopBridge {
 }
 
 const desktopBridge: ZahnerflowDesktopBridge = {
+  updates: {
+    getState: () => ipcRenderer.invoke('updates:get-state'),
+    check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
+    cancel: () => ipcRenderer.invoke('updates:cancel'),
+    revealFile: () => ipcRenderer.invoke('updates:reveal-file'),
+    onStateChanged: (callback: (state: DesktopUpdateState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: DesktopUpdateState) => callback(state);
+      ipcRenderer.on('updates:state', handler);
+      return () => ipcRenderer.removeListener('updates:state', handler);
+    },
+  },
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
   getRuntimeBaseUrl: () => ipcRenderer.sendSync('runtime:get-base-url'),
   windowMinimize: () => ipcRenderer.send('window:minimize'),

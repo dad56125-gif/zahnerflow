@@ -5,6 +5,7 @@
  */
 
 export * from './contracts/index.js';
+export type { DesktopUpdateStatus, DesktopUpdateRelease, DesktopUpdateState, DesktopUpdateBridge } from './desktopUpdate.js';
 
 export type {
   RuntimeDeviceState,

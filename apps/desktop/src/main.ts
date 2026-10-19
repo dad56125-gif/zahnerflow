@@ -3,6 +3,9 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { appendFileSync, cpSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { APP_VERSION } from './generated/appVersion.js';
+import { UpdateManager } from './updates/updateManager.js';
+import { registerUpdateIpc } from './updates/updateIpc.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const runtimePort = process.env.ZAHNERFLOW_RUNTIME_PORT || '3001';
@@ -14,6 +17,7 @@ let mainWindow: BrowserWindow | null = null;
 let normalMainWindowBounds: Rectangle | null = null;
 let backendProcess: ChildProcessWithoutNullStreams | null = null;
 let appQuitting = false;
+let updateManager: UpdateManager | undefined;
 
 function writeHarnessLog(message: string): void {
   try {
@@ -280,6 +284,7 @@ ipcMain.on('window:is-maximized', (event) => {
 
 app.on('before-quit', () => {
   appQuitting = true;
+  updateManager?.dispose();
   stopBackend();
 });
 
@@ -296,6 +301,15 @@ app.on('activate', () => {
 });
 
 void app.whenReady().then(async () => {
+  updateManager = new UpdateManager({
+    currentVersion: APP_VERSION,
+    cacheRoot: join(app.getPath('userData'), 'updates'),
+    downloadsRoot: app.getPath('downloads'),
+    onStateChanged: state => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updates:state', state);
+    },
+  });
+  registerUpdateIpc(updateManager, () => mainWindow);
   writeHarnessLog('app ready');
   startBackend();
   const backendDataDir = resolveDataDir();

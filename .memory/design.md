@@ -11,6 +11,7 @@
 - `[文档-架构与来源]`：文档分类、定义来源与派生链维护入口。
 - `[产品-运行拓扑]`：Web 前端、Electron 桌面壳和 Python 运行时的当前组合方式。
 - `[桌面-Electron壳]`：Electron 主进程、preload bridge 和桌面运行时边界。
+- `[桌面-手动更新]`：底部版本入口、GitHub 检查和可校验的直连安装包下载。
 - `[桌面-窗口布局]`：无边框窗口、窗口控制按钮和桌面 chrome 高度。
 - `[运行时-Python后端]`：Python 后端进程承载 REST、Socket.IO 和本地运行时。
 - `[运行时-AppRuntime]`：`AppRuntime` 是进程内协调对象。
@@ -54,6 +55,20 @@
 允许变化：可以扩展 preload bridge 的桌面能力，但必须通过显式 IPC 暴露，不能让前端获得 Node 运行时能力。
 
 禁止事项：禁止在 React 组件中直接使用 Electron 或 Node API；禁止绕过 `window.zahnerflowDesktop` 新增第二套桌面桥。
+
+## [桌面-手动更新]
+
+当前规则：底部版本号打开“版本与更新”，只有用户点击才检查或下载。Electron 主进程的 `UpdateManager` 唯一持有版本结果、进度、错误和已校验路径，通过既有 preload bridge 的 `updates` 暴露固定操作和递增 revision 快照；界面拒绝旧回包。当前版本仍由 `VERSION` 同步生成。更新只访问 `dad56125-gif/zahnerflow` 的正式 GitHub Releases，支持 `release/vMAJOR.MINOR.PATCH`、`vMAJOR.MINOR.PATCH` 和裸版本标签，版本必须比当前版本高才可下载。当前下载目标仅为 Windows x64 的对应命名安装包，并要求官方资产 SHA256；其他平台仅检查并说明下载限制，浏览器模式明确提示使用桌面版。
+
+下载边界：应用独立 HTTPS 请求使用国内 HTTPS DNS 与系统解析产生的公网候选，保留原域名、SNI 和证书校验；不修改系统 DNS、hosts、代理或业务运行时通信。经 GitHub asset API 获取官方附件地址，下载只跟随官方 CDN；安装包以有限并发分段，按精确 Content-Range、ETag 和大小校验后保留断点，超时或取消后可续传。缓存位于 Electron `userData/updates` 的资产 ID 与摘要目录；完成后校验整包 SHA256，再保存到系统下载目录的 `ZahnerFlow` 唯一子目录，避免覆盖已有文件。仅允许打开已完成文件的所在文件夹，不执行安装文件。应用退出会取消更新请求，已完成分片保留；关闭更新浮层不取消后台下载。
+
+归属文件：`packages/types/src/desktopUpdate.ts`（桌面专用手写类型）、`apps/desktop/src/updates/`、`apps/desktop/src/preload.cts`、`apps/frontend/src/desktopBridge.ts`、`apps/frontend/src/components/updates/UpdateControl.tsx`、`apps/frontend/src/styles/_updates.scss`。
+
+允许变化：优化候选选择、并发与重试上限，扩展有真实发布产物的平台；契约与两端消费者必须同步。当前接口不增加 Python 路由、设备行为或数据库结构。
+
+禁止事项：禁止固定 GitHub IP、绕过证书校验、任意 URL/路径 IPC、把检查失败展示为最新版、未校验文件显示下载完成、自动安装或自动重启。用户未选择实验账户也能使用版本入口。
+
+最近复核：2026-10-19，13 项隔离回归、深浅色与窄窗口交互、真实 Electron preload/IPC/状态管理联动均通过；生产传输模块完成 GitHub 实际安装包续传并校验整包 SHA256。验证未运行安装包，未连接设备；证据记入 changelog。
 
 ## [桌面-窗口布局]
 
