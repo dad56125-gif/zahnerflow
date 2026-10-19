@@ -88,6 +88,7 @@ flowchart TD
 - 使用：[安装启动](../INSTALL.md)、[CLI 与 Agent](guides/cli-agent.md)。
 - 规范：[数据与命名](reference/data-contracts.md)、[视觉与样式](reference/design-system.md)、[工作流停止与节点扩展](reference/workflow-stop.md)。
 - 研究：[展开执行步骤 modal 改版前现状复核](research/unroll-modal-redesign-2026-09-20.md)。
+- 更新入口：[检查更新控件位置评估](research/update-entry-placement-2026-10-19.md)（研究建议，尚未实现）。
 - 更新核查：[电脑版打包基线之后的更新与提交树](research/desktop-baseline-update-tree-2026-10-07.md)。
 - 演进记录：[事实迁移与证据](research/release-evolution/README.md)、[用户指定基线](reference/release-baselines.json)、[逐提交账本](research/release-evolution/commit-facts.json)、[2.12.0 展示输入](research/release-tree-2.12.0.json)、[版本快照](research/release-evolution/snapshots/2.12.0/snapshot.json)。行为与绘图实现由个人技能 `git-release-evolution` 提供，项目只保存具体记录与派生产物。
 - 历史：[1.0.0 归档](insight/1.0.0/README.md)、[2.2.1 归档](insight/2.2.1/README.md)。
